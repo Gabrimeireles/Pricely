@@ -1,50 +1,132 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version change: template -> 1.0.0
+- Modified principles:
+  - Template Principle 1 -> I. Code Quality & Maintainability
+  - Template Principle 2 -> II. Architecture, Modularity & Separation of Concerns
+  - Template Principle 3 -> III. Testing & Reliability (NON-NEGOTIABLE)
+  - Template Principle 4 -> IV. Performance, Efficiency & Scalability
+  - Template Principle 5 -> V. Simplicity, Reuse, UX Consistency & Observability
+- Added sections:
+  - Engineering Standards
+  - Delivery Workflow & Quality Gates
+- Removed sections:
+  - None
+- Templates requiring updates:
+  - ✅ updated: .specify/templates/plan-template.md
+  - ✅ updated: .specify/templates/spec-template.md
+  - ✅ updated: .specify/templates/tasks-template.md
+  - ⚠ pending: .specify/templates/commands/*.md (directory not present in repository)
+  - ⚠ pending: README.md (file not present in repository)
+- Follow-up TODOs:
+  - None
+-->
+
+# Pricely Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Code Quality & Maintainability
+All production code MUST optimize for readability, clarity of intent, and ease of
+change. Naming, structure, and documentation MUST make the next safe change easier,
+not harder. Teams MUST prefer small, cohesive units, explicit contracts, and
+consistent project conventions over cleverness or local optimizations that reduce
+understandability. Duplication that creates long-term drift MUST be removed or
+consolidated.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Rationale: Sustainable delivery depends on code that can be understood, reviewed,
+debugged, and extended without re-discovering hidden assumptions.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Architecture, Modularity & Separation of Concerns
+The system MUST use consistent architecture patterns with clear boundaries between UI,
+application orchestration, domain logic, data access, and integration concerns. Each
+module MUST have one clear responsibility and communicate through explicit interfaces.
+Cross-cutting concerns such as validation, error handling, logging, and configuration
+MUST be implemented in shared, predictable layers rather than duplicated ad hoc across
+features.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Rationale: Strong boundaries improve maintainability, reduce accidental coupling, and
+allow the system to scale without cascading regressions.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Testing & Reliability (NON-NEGOTIABLE)
+Every behavior change MUST be protected by automated tests at the appropriate level:
+unit tests for local logic, integration tests for collaborating components, and
+contract or end-to-end tests where interfaces or user journeys are affected. Bug fixes
+MUST include a regression test that fails before the fix and passes after it.
+Merges MUST preserve deterministic behavior, safe defaults, backward-compatible data
+handling when required, and explicit rollback or remediation paths for risky changes.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Rationale: Reliability is not inferred from implementation effort; it is demonstrated
+through repeatable verification and safe change discipline.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Performance, Efficiency & Scalability
+Features MUST define and respect performance and resource expectations appropriate to
+their context, including latency, throughput, memory, storage, and external service
+usage where relevant. Designs MUST avoid unnecessary layers, wasteful queries,
+redundant computation, and avoidable network or rendering work. Architecture and data
+flows MUST support incremental scaling through modular decomposition, stateless or
+well-bounded services, and bottleneck-aware interfaces.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Rationale: Performance and scalability are part of correctness when systems grow or
+operate under real production constraints.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Simplicity, Reuse, UX Consistency & Observability
+Teams MUST prefer the simplest design that satisfies current requirements and MUST
+justify added complexity before introducing abstractions, frameworks, or patterns.
+Reusable solutions SHOULD be extracted only when repetition is proven, but once shared,
+they MUST become the default path to avoid divergence. User-facing behavior MUST remain
+consistent, intuitive, and aligned with established interaction patterns across the
+product. Systems MUST emit actionable logs, metrics, traces, and diagnostics so
+failures can be detected, explained, and repaired quickly.
+
+Rationale: Simplicity lowers defect rates, consistent UX reduces user friction, and
+observability turns production uncertainty into debuggable evidence.
+
+## Engineering Standards
+
+- Code MUST validate inputs, outputs, and state transitions at system boundaries.
+- Error handling MUST be explicit, actionable, and free of silent failure paths.
+- Shared abstractions MUST exist to reduce duplication, not to speculate about future
+  needs.
+- Changes that affect user workflows MUST preserve a coherent and intuitive experience
+  across screens, APIs, and messages.
+- New dependencies, infrastructure, or architectural patterns MUST have a clear
+  operational and maintenance justification.
+- Instrumentation MUST be added alongside critical paths, background jobs, integrations,
+  and failure-prone workflows.
+
+## Delivery Workflow & Quality Gates
+
+- Work MUST be delivered incrementally in small, reviewable slices that can be
+  validated independently.
+- Plans MUST document architecture impact, testing strategy, performance expectations,
+  observability needs, validation rules, and rollback considerations before
+  implementation starts.
+- Tasks MUST include the work needed for tests, validation, error handling,
+  instrumentation, and UX consistency whenever those concerns are affected.
+- Code review MUST verify readability, architecture alignment, boundary integrity,
+  duplication control, test coverage, performance impact, and operability.
+- Continuous improvement is mandatory: defects, incidents, and review feedback MUST
+  inform follow-up refactors, automation, and documentation updates.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes local preferences when they conflict with project-wide
+engineering discipline. Every plan, specification, task list, implementation, and
+review MUST demonstrate compliance with these principles or document a justified,
+time-bounded exception.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Amendments MUST be recorded in this file and reflected in dependent templates before
+they are considered effective. Versioning follows semantic versioning:
+
+- MAJOR: Principle removal, incompatible governance changes, or material redefinition of
+  existing rules
+- MINOR: New principle or materially expanded guidance
+- PATCH: Clarifications, wording improvements, or non-semantic edits
+
+Compliance review is continuous. Each feature plan MUST pass a constitution check
+before design and again before implementation completion. Each pull request or review
+cycle MUST confirm that testing, observability, validation, performance, and
+maintainability expectations remain satisfied.
+
+**Version**: 1.0.0 | **Ratified**: 2026-04-03 | **Last Amended**: 2026-04-03
