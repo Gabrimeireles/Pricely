@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 
+import { MongoModule } from './persistence/mongo.module';
+
 @Module({
-  imports: [],
+  imports: [MongoModule],
   controllers: [],
   providers: [],
 })
