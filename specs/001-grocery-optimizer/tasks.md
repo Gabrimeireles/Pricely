@@ -60,9 +60,9 @@ and testing of each story.
 - [x] T017 [P] Create Flutter core API, storage, and error abstractions in `mobile/lib/core/networking/`, `mobile/lib/core/storage/`, and `mobile/lib/core/errors/` | Issue: [#17](https://github.com/Gabrimeireles/Pricely/issues/17)
 - [x] T018 [P] Configure shadcn/ui base, global styles, and responsive layout primitives in `web/src/components/ui/`, `web/src/index.css`, and `web/src/lib/utils.ts` | Issue: [#18](https://github.com/Gabrimeireles/Pricely/issues/18)
 - [x] T019 [P] Create web routing shell for marketing and dashboard areas in `web/src/routes/`, `web/src/marketing/`, and `web/src/dashboard/` | Issue: [#19](https://github.com/Gabrimeireles/Pricely/issues/19)
-- [ ] T020 Configure test runners and scripts in `backend/package.json`, `web/package.json`, and `mobile/pubspec.yaml` | Issue: [#20](https://github.com/Gabrimeireles/Pricely/issues/20)
-- [ ] T021 [P] Add Terraform environment/module skeletons in `infra/terraform/environments/`, `infra/terraform/modules/`, and `infra/terraform/variables/` | Issue: [#21](https://github.com/Gabrimeireles/Pricely/issues/21)
-- [ ] T022 [P] Add GitFlow-supporting GitHub workflow placeholders in `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`, and `.github/PULL_REQUEST_TEMPLATE.md` | Issue: [#22](https://github.com/Gabrimeireles/Pricely/issues/22)
+- [x] T020 Configure test runners and scripts in `backend/package.json`, `web/package.json`, and `mobile/pubspec.yaml` | Issue: [#20](https://github.com/Gabrimeireles/Pricely/issues/20)
+- [x] T021 [P] Add Terraform environment/module skeletons in `infra/terraform/environments/`, `infra/terraform/modules/`, and `infra/terraform/variables/` | Issue: [#21](https://github.com/Gabrimeireles/Pricely/issues/21)
+- [x] T022 [P] Add GitFlow-supporting GitHub workflow placeholders in `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`, and `.github/PULL_REQUEST_TEMPLATE.md` | Issue: [#22](https://github.com/Gabrimeireles/Pricely/issues/22)
 
 **Checkpoint**: Foundation ready; user story implementation can begin
 

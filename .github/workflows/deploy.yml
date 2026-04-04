@@ -1,0 +1,15 @@
+name: Deploy Placeholder
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - homolog
+
+jobs:
+  terraform-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder deploy step
+        run: echo "Terraform deployment workflow will be expanded in later tasks."
