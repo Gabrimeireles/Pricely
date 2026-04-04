@@ -1,0 +1,291 @@
+openapi: 3.1.0
+info:
+  title: Grocery Optimizer API
+  version: 0.1.0
+  description: >
+    Contract for receipt ingestion, shopping list management, and grocery optimization
+    workflows used by the mobile application.
+servers:
+  - url: http://localhost:3000
+paths:
+  /shopping-lists:
+    post:
+      summary: Create a shopping list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShoppingListRequest'
+      responses:
+        '201':
+          description: Shopping list created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingList'
+    get:
+      summary: List shopping lists
+      responses:
+        '200':
+          description: Shopping lists returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShoppingList'
+  /shopping-lists/{shoppingListId}/items:
+    post:
+      summary: Add items to a shopping list
+      parameters:
+        - $ref: '#/components/parameters/ShoppingListId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddShoppingListItemsRequest'
+      responses:
+        '200':
+          description: Shopping list updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingList'
+  /receipts:
+    post:
+      summary: Ingest a parsed or raw receipt payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptIngestionRequest'
+      responses:
+        '202':
+          description: Receipt accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptRecord'
+  /shopping-lists/{shoppingListId}/optimize:
+    post:
+      summary: Generate optimization results for a shopping list
+      parameters:
+        - $ref: '#/components/parameters/ShoppingListId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptimizeShoppingListRequest'
+      responses:
+        '200':
+          description: Optimization result generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationResult'
+  /shopping-lists/{shoppingListId}/optimizations/latest:
+    get:
+      summary: Fetch latest optimization result for a shopping list
+      parameters:
+        - $ref: '#/components/parameters/ShoppingListId'
+      responses:
+        '200':
+          description: Latest result returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationResult'
+        '404':
+          description: No optimization result found
+components:
+  parameters:
+    ShoppingListId:
+      name: shoppingListId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    CreateShoppingListRequest:
+      type: object
+      required: [name, mode]
+      properties:
+        name:
+          type: string
+        mode:
+          $ref: '#/components/schemas/OptimizationMode'
+        preferredStoreId:
+          type: string
+        locationHint:
+          type: string
+    AddShoppingListItemsRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShoppingListItemInput'
+    ShoppingListItemInput:
+      type: object
+      required: [requestedName]
+      properties:
+        requestedName:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        preferredBrand:
+          type: string
+        notes:
+          type: string
+    ReceiptIngestionRequest:
+      type: object
+      required: [storeName, items]
+      properties:
+        storeName:
+          type: string
+        purchaseDate:
+          type: string
+          format: date-time
+        sourceType:
+          type: string
+          enum: [manual_entry, image_parse, import]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReceiptLineItemInput'
+    ReceiptLineItemInput:
+      type: object
+      required: [rawProductName, unitPrice]
+      properties:
+        rawProductName:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        currency:
+          type: string
+        packageSize:
+          type: string
+    OptimizeShoppingListRequest:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          $ref: '#/components/schemas/OptimizationMode'
+        preferredStoreId:
+          type: string
+        locationHint:
+          type: string
+    OptimizationMode:
+      type: string
+      enum: [multi_market, local_market, global_store]
+    ShoppingList:
+      type: object
+      required: [id, name, mode, status, items]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        mode:
+          $ref: '#/components/schemas/OptimizationMode'
+        preferredStoreId:
+          type: string
+        locationHint:
+          type: string
+        status:
+          type: string
+          enum: [draft, ready, optimized, stale]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShoppingListItem'
+    ShoppingListItem:
+      type: object
+      required: [id, requestedName, resolutionStatus]
+      properties:
+        id:
+          type: string
+        requestedName:
+          type: string
+        normalizedName:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        preferredBrand:
+          type: string
+        resolutionStatus:
+          type: string
+          enum: [unresolved, matched, partially_matched, unavailable]
+        notes:
+          type: string
+    ReceiptRecord:
+      type: object
+      required: [id, parseStatus]
+      properties:
+        id:
+          type: string
+        storeId:
+          type: string
+        purchaseDate:
+          type: string
+          format: date-time
+        parseStatus:
+          type: string
+          enum: [parsed, partial, failed]
+        confidenceScore:
+          type: number
+    OptimizationResult:
+      type: object
+      required:
+        [id, shoppingListId, mode, totalEstimatedCost, coverageStatus, generatedAt, selections]
+      properties:
+        id:
+          type: string
+        shoppingListId:
+          type: string
+        mode:
+          $ref: '#/components/schemas/OptimizationMode'
+        recommendedStoreId:
+          type: string
+        totalEstimatedCost:
+          type: number
+        savingsComparedToAlternative:
+          type: number
+        coverageStatus:
+          type: string
+          enum: [complete, partial]
+        explanationSummary:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        selections:
+          type: array
+          items:
+            $ref: '#/components/schemas/OptimizationSelection'
+    OptimizationSelection:
+      type: object
+      required: [shoppingListItemId, selectionStatus]
+      properties:
+        shoppingListItemId:
+          type: string
+        storeOfferId:
+          type: string
+        selectionStatus:
+          type: string
+          enum: [selected, unavailable, unresolved]
+        estimatedCost:
+          type: number
+        confidenceNotice:
+          type: string

@@ -50,7 +50,7 @@ and testing of each story.
 
 **CRITICAL**: No user story work should begin until this phase is complete
 
-- [ ] T010 Create MongoDB connection and persistence bootstrap in `backend/src/persistence/mongo.module.ts` and `backend/src/persistence/mongo.config.ts` | Issue: [#10](https://github.com/Gabrimeireles/Pricely/issues/10)
+- [x] T010 Create MongoDB connection and persistence bootstrap in `backend/src/persistence/mongo.module.ts` and `backend/src/persistence/mongo.config.ts` | Issue: [#10](https://github.com/Gabrimeireles/Pricely/issues/10)
 - [ ] T011 [P] Create Redis and BullMQ bootstrap in `backend/src/common/queue/queue.module.ts` and `backend/src/common/queue/queue.config.ts` | Issue: [#11](https://github.com/Gabrimeireles/Pricely/issues/11)
 - [ ] T012 [P] Configure NestJS Pino logging in `backend/src/common/logging/logging.module.ts` and `backend/src/main.ts` | Issue: [#12](https://github.com/Gabrimeireles/Pricely/issues/12)
 - [ ] T013 [P] Add shared backend validation and error filters in `backend/src/common/validation/validation.pipe.ts`, `backend/src/common/errors/http-exception.filter.ts`, and `backend/src/common/errors/domain-error.ts` | Issue: [#13](https://github.com/Gabrimeireles/Pricely/issues/13)
