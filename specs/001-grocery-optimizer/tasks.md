@@ -50,19 +50,19 @@ and testing of each story.
 
 **CRITICAL**: No user story work should begin until this phase is complete
 
-- [ ] T010 Create MongoDB connection and persistence bootstrap in `backend/src/persistence/mongo.module.ts` and `backend/src/persistence/mongo.config.ts` | Issue: [#10](https://github.com/Gabrimeireles/Pricely/issues/10)
-- [ ] T011 [P] Create Redis and BullMQ bootstrap in `backend/src/common/queue/queue.module.ts` and `backend/src/common/queue/queue.config.ts` | Issue: [#11](https://github.com/Gabrimeireles/Pricely/issues/11)
-- [ ] T012 [P] Configure NestJS Pino logging in `backend/src/common/logging/logging.module.ts` and `backend/src/main.ts` | Issue: [#12](https://github.com/Gabrimeireles/Pricely/issues/12)
-- [ ] T013 [P] Add shared backend validation and error filters in `backend/src/common/validation/validation.pipe.ts`, `backend/src/common/errors/http-exception.filter.ts`, and `backend/src/common/errors/domain-error.ts` | Issue: [#13](https://github.com/Gabrimeireles/Pricely/issues/13)
-- [ ] T014 Create backend feature module skeletons in `backend/src/receipts/`, `backend/src/catalog/`, `backend/src/lists/`, `backend/src/stores/`, `backend/src/optimization/`, `backend/src/admin/`, and `backend/src/jobs/` | Issue: [#14](https://github.com/Gabrimeireles/Pricely/issues/14)
-- [ ] T015 [P] Create shared backend DTO and contract models from the API spec in `backend/src/common/contracts/` | Issue: [#15](https://github.com/Gabrimeireles/Pricely/issues/15)
-- [ ] T016 [P] Create Flutter app shell, navigation scaffold, and shared theme in `mobile/lib/app/app.dart`, `mobile/lib/app/router.dart`, and `mobile/lib/core/widgets/` | Issue: [#16](https://github.com/Gabrimeireles/Pricely/issues/16)
-- [ ] T017 [P] Create Flutter core API, storage, and error abstractions in `mobile/lib/core/networking/`, `mobile/lib/core/storage/`, and `mobile/lib/core/errors/` | Issue: [#17](https://github.com/Gabrimeireles/Pricely/issues/17)
-- [ ] T018 [P] Configure shadcn/ui base, global styles, and responsive layout primitives in `web/src/components/ui/`, `web/src/index.css`, and `web/src/lib/utils.ts` | Issue: [#18](https://github.com/Gabrimeireles/Pricely/issues/18)
-- [ ] T019 [P] Create web routing shell for marketing and dashboard areas in `web/src/routes/`, `web/src/marketing/`, and `web/src/dashboard/` | Issue: [#19](https://github.com/Gabrimeireles/Pricely/issues/19)
-- [ ] T020 Configure test runners and scripts in `backend/package.json`, `web/package.json`, and `mobile/pubspec.yaml` | Issue: [#20](https://github.com/Gabrimeireles/Pricely/issues/20)
-- [ ] T021 [P] Add Terraform environment/module skeletons in `infra/terraform/environments/`, `infra/terraform/modules/`, and `infra/terraform/variables/` | Issue: [#21](https://github.com/Gabrimeireles/Pricely/issues/21)
-- [ ] T022 [P] Add GitFlow-supporting GitHub workflow placeholders in `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`, and `.github/PULL_REQUEST_TEMPLATE.md` | Issue: [#22](https://github.com/Gabrimeireles/Pricely/issues/22)
+- [x] T010 Create MongoDB connection and persistence bootstrap in `backend/src/persistence/mongo.module.ts` and `backend/src/persistence/mongo.config.ts` | Issue: [#10](https://github.com/Gabrimeireles/Pricely/issues/10)
+- [x] T011 [P] Create Redis and BullMQ bootstrap in `backend/src/common/queue/queue.module.ts` and `backend/src/common/queue/queue.config.ts` | Issue: [#11](https://github.com/Gabrimeireles/Pricely/issues/11)
+- [x] T012 [P] Configure NestJS Pino logging in `backend/src/common/logging/logging.module.ts` and `backend/src/main.ts` | Issue: [#12](https://github.com/Gabrimeireles/Pricely/issues/12)
+- [x] T013 [P] Add shared backend validation and error filters in `backend/src/common/validation/validation.pipe.ts`, `backend/src/common/errors/http-exception.filter.ts`, and `backend/src/common/errors/domain-error.ts` | Issue: [#13](https://github.com/Gabrimeireles/Pricely/issues/13)
+- [x] T014 Create backend feature module skeletons in `backend/src/receipts/`, `backend/src/catalog/`, `backend/src/lists/`, `backend/src/stores/`, `backend/src/optimization/`, `backend/src/admin/`, and `backend/src/jobs/` | Issue: [#14](https://github.com/Gabrimeireles/Pricely/issues/14)
+- [x] T015 [P] Create shared backend DTO and contract models from the API spec in `backend/src/common/contracts/` | Issue: [#15](https://github.com/Gabrimeireles/Pricely/issues/15)
+- [x] T016 [P] Create Flutter app shell, navigation scaffold, and shared theme in `mobile/lib/app/app.dart`, `mobile/lib/app/router.dart`, and `mobile/lib/core/widgets/` | Issue: [#16](https://github.com/Gabrimeireles/Pricely/issues/16)
+- [x] T017 [P] Create Flutter core API, storage, and error abstractions in `mobile/lib/core/networking/`, `mobile/lib/core/storage/`, and `mobile/lib/core/errors/` | Issue: [#17](https://github.com/Gabrimeireles/Pricely/issues/17)
+- [x] T018 [P] Configure shadcn/ui base, global styles, and responsive layout primitives in `web/src/components/ui/`, `web/src/index.css`, and `web/src/lib/utils.ts` | Issue: [#18](https://github.com/Gabrimeireles/Pricely/issues/18)
+- [x] T019 [P] Create web routing shell for marketing and dashboard areas in `web/src/routes/`, `web/src/marketing/`, and `web/src/dashboard/` | Issue: [#19](https://github.com/Gabrimeireles/Pricely/issues/19)
+- [x] T020 Configure test runners and scripts in `backend/package.json`, `web/package.json`, and `mobile/pubspec.yaml` | Issue: [#20](https://github.com/Gabrimeireles/Pricely/issues/20)
+- [x] T021 [P] Add Terraform environment/module skeletons in `infra/terraform/environments/`, `infra/terraform/modules/`, and `infra/terraform/variables/` | Issue: [#21](https://github.com/Gabrimeireles/Pricely/issues/21)
+- [x] T022 [P] Add GitFlow-supporting GitHub workflow placeholders in `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`, and `.github/PULL_REQUEST_TEMPLATE.md` | Issue: [#22](https://github.com/Gabrimeireles/Pricely/issues/22)
 
 **Checkpoint**: Foundation ready; user story implementation can begin
 
