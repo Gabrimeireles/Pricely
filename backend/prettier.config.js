@@ -5,4 +5,4 @@ const config = {
   semi: true,
 };
 
-export default config;
+module.exports = config;

@@ -51,11 +51,11 @@ and testing of each story.
 **CRITICAL**: No user story work should begin until this phase is complete
 
 - [x] T010 Create MongoDB connection and persistence bootstrap in `backend/src/persistence/mongo.module.ts` and `backend/src/persistence/mongo.config.ts` | Issue: [#10](https://github.com/Gabrimeireles/Pricely/issues/10)
-- [ ] T011 [P] Create Redis and BullMQ bootstrap in `backend/src/common/queue/queue.module.ts` and `backend/src/common/queue/queue.config.ts` | Issue: [#11](https://github.com/Gabrimeireles/Pricely/issues/11)
-- [ ] T012 [P] Configure NestJS Pino logging in `backend/src/common/logging/logging.module.ts` and `backend/src/main.ts` | Issue: [#12](https://github.com/Gabrimeireles/Pricely/issues/12)
-- [ ] T013 [P] Add shared backend validation and error filters in `backend/src/common/validation/validation.pipe.ts`, `backend/src/common/errors/http-exception.filter.ts`, and `backend/src/common/errors/domain-error.ts` | Issue: [#13](https://github.com/Gabrimeireles/Pricely/issues/13)
-- [ ] T014 Create backend feature module skeletons in `backend/src/receipts/`, `backend/src/catalog/`, `backend/src/lists/`, `backend/src/stores/`, `backend/src/optimization/`, `backend/src/admin/`, and `backend/src/jobs/` | Issue: [#14](https://github.com/Gabrimeireles/Pricely/issues/14)
-- [ ] T015 [P] Create shared backend DTO and contract models from the API spec in `backend/src/common/contracts/` | Issue: [#15](https://github.com/Gabrimeireles/Pricely/issues/15)
+- [x] T011 [P] Create Redis and BullMQ bootstrap in `backend/src/common/queue/queue.module.ts` and `backend/src/common/queue/queue.config.ts` | Issue: [#11](https://github.com/Gabrimeireles/Pricely/issues/11)
+- [x] T012 [P] Configure NestJS Pino logging in `backend/src/common/logging/logging.module.ts` and `backend/src/main.ts` | Issue: [#12](https://github.com/Gabrimeireles/Pricely/issues/12)
+- [x] T013 [P] Add shared backend validation and error filters in `backend/src/common/validation/validation.pipe.ts`, `backend/src/common/errors/http-exception.filter.ts`, and `backend/src/common/errors/domain-error.ts` | Issue: [#13](https://github.com/Gabrimeireles/Pricely/issues/13)
+- [x] T014 Create backend feature module skeletons in `backend/src/receipts/`, `backend/src/catalog/`, `backend/src/lists/`, `backend/src/stores/`, `backend/src/optimization/`, `backend/src/admin/`, and `backend/src/jobs/` | Issue: [#14](https://github.com/Gabrimeireles/Pricely/issues/14)
+- [x] T015 [P] Create shared backend DTO and contract models from the API spec in `backend/src/common/contracts/` | Issue: [#15](https://github.com/Gabrimeireles/Pricely/issues/15)
 - [ ] T016 [P] Create Flutter app shell, navigation scaffold, and shared theme in `mobile/lib/app/app.dart`, `mobile/lib/app/router.dart`, and `mobile/lib/core/widgets/` | Issue: [#16](https://github.com/Gabrimeireles/Pricely/issues/16)
 - [ ] T017 [P] Create Flutter core API, storage, and error abstractions in `mobile/lib/core/networking/`, `mobile/lib/core/storage/`, and `mobile/lib/core/errors/` | Issue: [#17](https://github.com/Gabrimeireles/Pricely/issues/17)
 - [ ] T018 [P] Configure shadcn/ui base, global styles, and responsive layout primitives in `web/src/components/ui/`, `web/src/index.css`, and `web/src/lib/utils.ts` | Issue: [#18](https://github.com/Gabrimeireles/Pricely/issues/18)
