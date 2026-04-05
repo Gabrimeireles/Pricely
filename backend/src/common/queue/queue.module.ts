@@ -7,6 +7,10 @@ import {
   QUEUE_CONNECTION,
   type QueueConfig,
 } from './queue.config';
+import {
+  OPTIMIZATION_QUEUE,
+  RECEIPT_PROCESSING_QUEUE,
+} from './queue.tokens';
 
 @Global()
 @Module({
@@ -25,13 +29,13 @@ import {
       inject: [QUEUE_CONFIG],
     },
     {
-      provide: 'RECEIPT_PROCESSING_QUEUE',
+      provide: RECEIPT_PROCESSING_QUEUE,
       useFactory: (connection: ConnectionOptions): Queue =>
         new Queue('receipt-processing', { connection }),
       inject: [QUEUE_CONNECTION],
     },
     {
-      provide: 'OPTIMIZATION_QUEUE',
+      provide: OPTIMIZATION_QUEUE,
       useFactory: (connection: ConnectionOptions): Queue =>
         new Queue('optimization', { connection }),
       inject: [QUEUE_CONNECTION],
@@ -40,8 +44,8 @@ import {
   exports: [
     QUEUE_CONFIG,
     QUEUE_CONNECTION,
-    'RECEIPT_PROCESSING_QUEUE',
-    'OPTIMIZATION_QUEUE',
+    RECEIPT_PROCESSING_QUEUE,
+    OPTIMIZATION_QUEUE,
   ],
 })
 export class QueueModule {}
