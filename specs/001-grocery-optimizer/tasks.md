@@ -99,7 +99,7 @@ offer per item with total cost and savings breakdown.
 - [x] T037 [P] [US1] Implement Flutter receipt submission and ingestion status flow in `mobile/lib/features/receipts/` | Issue: [#37](https://github.com/Gabrimeireles/Pricely/issues/37)
 - [x] T038 [US1] Implement Flutter multi-market optimization result flow in `mobile/lib/features/optimization/` | Issue: [#38](https://github.com/Gabrimeireles/Pricely/issues/38)
 - [x] T039 [US1] Add Flutter offline draft and cached-result storage for core P1 flows in `mobile/lib/core/storage/local_cache_service.dart` and related feature state files | Issue: [#39](https://github.com/Gabrimeireles/Pricely/issues/39)
-- [ ] T040 [P] [US1] Implement responsive landing page that introduces the app and its value proposition in `web/src/marketing/pages/home-page.tsx`, `web/src/marketing/components/`, and `web/src/routes/marketing.tsx` | Issue: [#40](https://github.com/Gabrimeireles/Pricely/issues/40)
+- [x] T040 [P] [US1] Implement responsive landing page that introduces the app and its value proposition in `web/src/marketing/pages/home-page.tsx`, `web/src/marketing/components/`, and `web/src/routes/marketing.tsx` | Issue: [#40](https://github.com/Gabrimeireles/Pricely/issues/40)
 
 **Checkpoint**: User Story 1 is independently functional as the MVP
 
