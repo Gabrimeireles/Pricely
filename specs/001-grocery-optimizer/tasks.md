@@ -83,7 +83,7 @@ offer per item with total cost and savings breakdown.
 - [x] T024 [P] [US1] Add backend unit tests for multi-market optimization logic in `backend/test/unit/optimization/multi-market-optimizer.service.spec.ts` | Issue: [#24](https://github.com/Gabrimeireles/Pricely/issues/24)
 - [x] T025 [P] [US1] Add backend integration tests for receipt ingestion and optimization flows in `backend/test/integration/receipts/receipt-ingestion.integration.spec.ts` and `backend/test/integration/optimization/multi-market-optimization.integration.spec.ts` | Issue: [#25](https://github.com/Gabrimeireles/Pricely/issues/25)
 - [x] T026 [P] [US1] Add API contract tests for shopping list, receipt, and optimization endpoints in `backend/test/contract/grocery-optimizer-api.contract.spec.ts` | Issue: [#26](https://github.com/Gabrimeireles/Pricely/issues/26)
-- [ ] T027 [P] [US1] Add Flutter unit and widget tests for shopping list and multi-market result flows in `mobile/test/unit/features/shopping_lists/` and `mobile/test/widget/features/optimization/multi_market_result_screen_test.dart` | Issue: [#27](https://github.com/Gabrimeireles/Pricely/issues/27)
+- [x] T027 [P] [US1] Add Flutter unit and widget tests for shopping list and multi-market result flows in `mobile/test/unit/features/shopping_lists/` and `mobile/test/widget/features/optimization/multi_market_result_screen_test.dart` | Issue: [#27](https://github.com/Gabrimeireles/Pricely/issues/27)
 
 ### Implementation for User Story 1
 
@@ -95,10 +95,10 @@ offer per item with total cost and savings breakdown.
 - [x] T033 [US1] Implement multi-market optimizer and result assembly in `backend/src/optimization/domain/multi-market-optimizer.service.ts`, `backend/src/optimization/domain/optimization-selection.entity.ts`, and `backend/src/optimization/application/optimization-result.service.ts` | Issue: [#33](https://github.com/Gabrimeireles/Pricely/issues/33)
 - [x] T034 [US1] Implement shopping list, receipt, and optimization API endpoints in `backend/src/lists/api/`, `backend/src/receipts/api/`, and `backend/src/optimization/api/` | Issue: [#34](https://github.com/Gabrimeireles/Pricely/issues/34)
 - [x] T035 [US1] Add backend logging, diagnostics, and confidence handling for parsing and optimization in `backend/src/common/logging/`, `backend/src/receipts/application/`, and `backend/src/optimization/application/` | Issue: [#35](https://github.com/Gabrimeireles/Pricely/issues/35)
-- [ ] T036 [P] [US1] Implement Flutter shopping list creation and editing flow in `mobile/lib/features/shopping_lists/` | Issue: [#36](https://github.com/Gabrimeireles/Pricely/issues/36)
-- [ ] T037 [P] [US1] Implement Flutter receipt submission and ingestion status flow in `mobile/lib/features/receipts/` | Issue: [#37](https://github.com/Gabrimeireles/Pricely/issues/37)
-- [ ] T038 [US1] Implement Flutter multi-market optimization result flow in `mobile/lib/features/optimization/` | Issue: [#38](https://github.com/Gabrimeireles/Pricely/issues/38)
-- [ ] T039 [US1] Add Flutter offline draft and cached-result storage for core P1 flows in `mobile/lib/core/storage/local_cache_service.dart` and related feature state files | Issue: [#39](https://github.com/Gabrimeireles/Pricely/issues/39)
+- [x] T036 [P] [US1] Implement Flutter shopping list creation and editing flow in `mobile/lib/features/shopping_lists/` | Issue: [#36](https://github.com/Gabrimeireles/Pricely/issues/36)
+- [x] T037 [P] [US1] Implement Flutter receipt submission and ingestion status flow in `mobile/lib/features/receipts/` | Issue: [#37](https://github.com/Gabrimeireles/Pricely/issues/37)
+- [x] T038 [US1] Implement Flutter multi-market optimization result flow in `mobile/lib/features/optimization/` | Issue: [#38](https://github.com/Gabrimeireles/Pricely/issues/38)
+- [x] T039 [US1] Add Flutter offline draft and cached-result storage for core P1 flows in `mobile/lib/core/storage/local_cache_service.dart` and related feature state files | Issue: [#39](https://github.com/Gabrimeireles/Pricely/issues/39)
 - [ ] T040 [P] [US1] Implement responsive landing page that introduces the app and its value proposition in `web/src/marketing/pages/home-page.tsx`, `web/src/marketing/components/`, and `web/src/routes/marketing.tsx` | Issue: [#40](https://github.com/Gabrimeireles/Pricely/issues/40)
 
 **Checkpoint**: User Story 1 is independently functional as the MVP
