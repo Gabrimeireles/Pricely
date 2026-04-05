@@ -79,7 +79,7 @@ offer per item with total cost and savings breakdown.
 
 ### Tests for User Story 1
 
-- [ ] T023 [P] [US1] Add backend unit tests for receipt parsing and normalization rules in `backend/test/unit/receipts/receipt-parser.service.spec.ts` and `backend/test/unit/catalog/product-normalizer.service.spec.ts` | Issue: [#23](https://github.com/Gabrimeireles/Pricely/issues/23)
+- [x] T023 [P] [US1] Add backend unit tests for receipt parsing and normalization rules in `backend/test/unit/receipts/receipt-parser.service.spec.ts` and `backend/test/unit/catalog/product-normalizer.service.spec.ts` | Issue: [#23](https://github.com/Gabrimeireles/Pricely/issues/23)
 - [ ] T024 [P] [US1] Add backend unit tests for multi-market optimization logic in `backend/test/unit/optimization/multi-market-optimizer.service.spec.ts` | Issue: [#24](https://github.com/Gabrimeireles/Pricely/issues/24)
 - [ ] T025 [P] [US1] Add backend integration tests for receipt ingestion and optimization flows in `backend/test/integration/receipts/receipt-ingestion.integration.spec.ts` and `backend/test/integration/optimization/multi-market-optimization.integration.spec.ts` | Issue: [#25](https://github.com/Gabrimeireles/Pricely/issues/25)
 - [ ] T026 [P] [US1] Add API contract tests for shopping list, receipt, and optimization endpoints in `backend/test/contract/grocery-optimizer-api.contract.spec.ts` | Issue: [#26](https://github.com/Gabrimeireles/Pricely/issues/26)

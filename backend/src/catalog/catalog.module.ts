@@ -1,4 +1,9 @@
 import { Module } from '@nestjs/common';
 
-@Module({})
+import { ProductNormalizerService } from './application/product-normalizer.service';
+
+@Module({
+  providers: [ProductNormalizerService],
+  exports: [ProductNormalizerService],
+})
 export class CatalogModule {}
