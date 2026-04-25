@@ -1,12 +1,11 @@
 ﻿# Pricely Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-04
+Auto-generated from all feature plans. Last updated: 2026-04-25
 
 ## Active Technologies
-- TypeScript on current NestJS LTS runtime; TypeScript on current + NestJS core modules, NestJS Pino, BullMQ, Redis, official (001-grocery-optimizer)
-- Local MongoDB instance for backend persistence; Redis for queues and job (001-grocery-optimizer)
-
-- TypeScript on current NestJS LTS runtime; Dart 3 with current + NestJS core modules, official MongoDB driver or NestJS (001-grocery-optimizer)
+- TypeScript on current NestJS LTS runtime; TypeScript on current + NestJS core modules, NestJS Pino, BullMQ, Redis, PostgreSQL, Prisma ORM (001-grocery-optimizer)
+- PostgreSQL for backend persistence; Redis for queues and job coordination (001-grocery-optimizer)
+- TypeScript on current Vite/React runtime; Dart 3 with current Flutter stable; shadcn/ui for web; Flutter Stacked for mobile (001-grocery-optimizer)
 
 ## Project Structure
 
@@ -21,12 +20,11 @@ npm test; npm run lint
 
 ## Code Style
 
-TypeScript on current NestJS LTS runtime; Dart 3 with current: Follow standard conventions
+TypeScript on current NestJS LTS runtime; TypeScript on current Vite/React runtime; Dart 3 with current Flutter stable: Follow standard conventions
 
 ## Recent Changes
-- 001-grocery-optimizer: Added TypeScript on current NestJS LTS runtime; TypeScript on current + NestJS core modules, NestJS Pino, BullMQ, Redis, official
-
-- 001-grocery-optimizer: Added TypeScript on current NestJS LTS runtime; Dart 3 with current + NestJS core modules, official MongoDB driver or NestJS
+- 001-grocery-optimizer: Replanned backend around PostgreSQL, Prisma ORM, Redis, BullMQ, shared auth, regions, establishments, canonical products, product offers, admin metrics, and backend-owned optimization runs
+- 001-grocery-optimizer: Confirmed frontend stack remains Vite/React + shadcn/ui and mobile remains Flutter Stacked with shared-account behavior
 
 <!-- MANUAL ADDITIONS START -->
  - Default execution workflow: each task should complete the cycle `issue -> branch -> implementation -> validation -> commit -> PR` before moving to the next task, unless the plan explicitly groups tasks into a single delivery unit.

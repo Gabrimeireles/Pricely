@@ -1,87 +1,69 @@
 # Implementation Plan: Grocery Shopping Optimizer
 
-**Branch**: `001-grocery-optimizer` | **Date**: 2026-04-03 | **Spec**: [spec.md](E:/Gabriel/Pricely/specs/001-grocery-optimizer/spec.md)
-**Input**: Feature specification from `/specs/001-grocery-optimizer/spec.md`
-
-**Note**: This template is filled in by the `/speckit.plan` command. See
-`.specify/templates/plan-template.md` for the execution workflow.
+**Branch**: `001-grocery-optimizer` | **Date**: 2026-04-25 | **Spec**: [spec.md](D:/Pricely/specs/001-grocery-optimizer/spec.md)
+**Input**: Replanned feature specification from `/specs/001-grocery-optimizer/spec.md`
 
 ## Summary
 
-Build a grocery shopping optimization system with a NestJS backend, Flutter mobile app,
-Vite/React web surface for the landing page and admin dashboard, and local MongoDB
-storage that ingests receipt-derived supermarket data, normalizes product names, and
-generates savings-focused shopping recommendations in three modes: multi-market, local
-single-market, and best single-store. The design prioritizes modular architecture,
-offline-first behavior where practical, minimal dependencies, clear trade-off
-explanations, queue-backed background processing, responsive interfaces, and
-extensibility for future optimization and personalization features.
+Rebuild the backend architecture around PostgreSQL, Redis, and BullMQ so the product
+can support one shared account model across mobile and web, role-gated admin
+dashboards on web, explicit region activation, establishment-level pricing, a canonical
+product catalog, reusable shopping lists, and queue-backed optimization runs executed
+on the server. The design keeps the consumer experience simple while making the data
+model relational, auditable, and suitable for admin CRUD and operational metrics.
 
 ## Technical Context
 
 **Language/Version**: TypeScript on current NestJS LTS runtime; TypeScript on current
 Vite/React runtime; Dart 3 with current Flutter stable  
-**Primary Dependencies**: NestJS core modules, NestJS Pino, BullMQ, Redis, official
-MongoDB driver or NestJS MongoDB integration, Flutter SDK core libraries, Vite, React,
-shadcn/ui, OpenAPI for API contract documentation, Terraform for infrastructure as
-code  
-**Storage**: Local MongoDB instance for backend persistence; Redis for queues and job
-coordination; local device cache for offline-first mobile behavior; browser-local state
-for web UX where appropriate  
-**Testing**: Backend unit and integration tests with NestJS testing utilities; mobile
-widget and unit tests with Flutter test framework; web component and route tests for
-React surfaces; contract tests for API behavior  
-**Target Platform**: Android and iOS mobile clients, responsive web landing page,
-responsive admin dashboard, and a local/developer-hosted NestJS API service  
+**Primary Dependencies**: NestJS core modules, NestJS Pino, BullMQ, Redis, PostgreSQL,
+Prisma ORM with migration support, Flutter Stacked, Vite, React, shadcn/ui, OpenAPI
+for API contract documentation  
+**Storage**: PostgreSQL for application data; Redis for queues and transient job state;
+local device cache for mobile drafts and recent results; browser-local UI state where
+useful  
+**Testing**: Backend unit, integration, and contract tests; web route and component
+tests; mobile unit and widget tests; migration and queue regression coverage for risky
+backend changes  
+**Target Platform**: Android and iOS mobile clients, responsive public web experience,
+responsive admin dashboard on web, and a NestJS API plus worker runtime  
 **Project Type**: Mobile app plus backend service plus responsive web applications  
-**Performance Goals**: Optimized shopping plans for standard grocery lists should be
-computed quickly enough for interactive use; receipt parsing and normalization should
-complete without noticeable blocking in normal flows; mobile and web screens should
-remain responsive during sync, optimization, and dashboard operations  
-**Constraints**: Prefer a minimal number of external libraries; process and store data
-locally when possible; preserve user privacy; support offline-first behavior when
-possible; keep architecture simple and extensible; avoid speculative over-engineering;
-follow GitFlow with issues, branches, and pull requests; deploy from GitHub through the
-selected infrastructure pipeline  
-**Scale/Scope**: Initial release supports grocery list optimization, receipt ingestion,
-product normalization, store comparison, local historical price intelligence, a
-marketing landing page, and an admin dashboard for price, item, and list visibility
+**Performance Goals**: Standard list optimization requests should move into queued
+processing quickly enough to preserve interactive UX; API reads for region, product, and
+dashboard views should feel immediate under normal local/developer loads; admin queries
+must remain legible and traceable on responsive layouts  
+**Constraints**: Keep the MVP bounded to shared accounts, regions, establishments,
+products, offers, lists, optimization runs, and admin CRUD; do not depend on QR-code
+online receipt resolution; preserve explicit error handling and structured logging;
+avoid duplicating optimization logic on mobile clients  
+**Scale/Scope**: Initial release supports customer shopping flows, public regional offer
+discovery, backend-owned optimization, admin dashboards, catalog CRUD, region/store
+activation, and queue observability
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- Code quality: Architecture is organized into clear backend and mobile modules, with
-  explicit domain boundaries for receipts, catalog normalization, pricing,
-  optimization, marketing web content, and admin reporting. Design artifacts keep
-  responsibilities narrow and traceable.
-- Architecture: Backend separates API, application, domain, and persistence concerns.
-  Mobile separates presentation, state orchestration, domain use cases, and local sync
-  concerns. Web separates marketing UI and admin dashboard features from backend data
-  contracts. Shared contracts are documented at the API boundary only.
-- Testing: Plan requires backend unit tests for parsing, normalization, and
-  optimization logic; integration tests for persistence, queues, and API flows;
-  Flutter unit and widget tests for state and presentation; React tests for landing and
-  dashboard behavior; contract tests for client-server behavior.
-- Reliability: Parsing and optimization flows surface unresolved items rather than
-  inventing answers. Local persistence, queue retries, sync retries, stale-data
-  handling, and explicit feedback paths are designed into the workflows.
-- Performance: Receipt ingestion, product matching, and optimization are designed around
-  efficient local reads, normalized lookup indexes, bounded optimization passes for
-  common list sizes, and queued background processing for heavier work. Mobile and web
-  avoid blocking UI on long-running operations.
-- Observability: Backend structured logging with NestJS Pino, queue diagnostics,
-  domain event tracing, sync diagnostics, and optimization decision summaries are
-  included. Mobile and web include user-visible sync and processing states plus
-  actionable error reporting.
-- Simplicity and reuse: Design favors NestJS and Flutter native capabilities, minimal
-  dependencies, reusable normalization and optimization services, and no unnecessary
-  abstraction layers. Web UI is consolidated in a single Vite/React workspace with
-  shared shadcn-based primitives instead of separate design systems.
-- UX consistency: All optimization modes return the same output shape: recommended
-  option, total estimated cost, savings comparison, confidence or missing-data notices,
-  and clear store breakdown where relevant. Landing, dashboard, and app flows all
-  require responsive mobile-ready layouts and consistent interaction feedback.
+- Code quality: The replan replaces under-modeled MongoDB persistence with explicit
+  relational structures for regions, establishments, products, offers, lists, users,
+  and optimization runs. Clear module boundaries remain required.
+- Architecture: Backend responsibility is now explicit across auth, catalog, regions,
+  establishments, pricing, lists, optimization, admin reporting, and jobs. Client apps
+  remain thin at the decision layer.
+- Testing: Plan requires coverage for database relations, authorization, queued job
+  behavior, optimization decisions, admin contracts, and region-selection edge cases.
+- Reliability: Optimization and heavy processing stay on the backend, preserving
+  consistent logic, retry control, and audited job state. Historical runs and inactive
+  region/store behavior are explicit model concerns.
+- Performance: PostgreSQL is chosen to support strong relations and admin querying.
+  Redis/BullMQ absorb heavy processing. Read-heavy public endpoints remain cacheable at
+  the application level later without changing domain boundaries.
+- Observability: Structured logs, processing job states, queue diagnostics, and admin
+  metrics are first-class requirements rather than optional follow-ups.
+- Simplicity and reuse: The MVP deliberately avoids a separate chain table and avoids
+  client-side optimization engines. Shared backend contracts remain the default.
+- UX consistency: Shared account semantics, region visibility rules, and consistent
+  optimization outputs apply across mobile and web.
 
 ## Project Structure
 
@@ -96,6 +78,8 @@ specs/001-grocery-optimizer/
 |-- contracts/
 |   |-- grocery-optimizer-api.yaml
 |   `-- admin-dashboard-flows.md
+|-- checklists/
+|   `-- backend-domain.md
 `-- tasks.md
 ```
 
@@ -103,31 +87,23 @@ specs/001-grocery-optimizer/
 
 ```text
 backend/
+|-- prisma/
+|   `-- schema.prisma
 |-- src/
 |   |-- app.module.ts
-|   |-- common/
-|   |   |-- errors/
-|   |   |-- logging/
-|   |   |-- queue/
-|   |   `-- validation/
-|   |-- receipts/
-|   |   |-- api/
-|   |   |-- application/
-|   |   |-- domain/
-|   |   `-- infrastructure/
-|   |-- catalog/
-|   |   |-- application/
-|   |   |-- domain/
-|   |   `-- infrastructure/
-|   |-- optimization/
-|   |   |-- api/
-|   |   |-- application/
-|   |   |-- domain/
-|   |   `-- infrastructure/
-|   |-- stores/
-|   |-- lists/
+|   |-- auth/
 |   |-- admin/
+|   |-- catalog/
+|   |-- establishments/
+|   |-- optimization/
+|   |-- lists/
 |   |-- jobs/
+|   |-- pricing/
+|   |-- processing/
+|   |-- regions/
+|   |-- receipts/
+|   |-- users/
+|   |-- common/
 |   `-- persistence/
 `-- test/
     |-- contract/
@@ -138,51 +114,55 @@ mobile/
 |-- lib/
 |   |-- app/
 |   |-- core/
-|   |   |-- errors/
-|   |   |-- networking/
-|   |   |-- storage/
-|   |   `-- widgets/
 |   |-- features/
-|   |   |-- shopping_lists/
-|   |   |-- receipts/
+|   |   |-- auth/
+|   |   |-- offers/
 |   |   |-- optimization/
-|   |   `-- stores/
+|   |   |-- profile/
+|   |   |-- regions/
+|   |   `-- shopping_lists/
 |   `-- shared/
 `-- test/
-    |-- unit/
-    `-- widget/
 
 web/
 |-- src/
-|   |-- marketing/
+|   |-- app/
+|   |-- public/
 |   |-- dashboard/
 |   |-- components/
 |   |-- hooks/
-|   |-- lib/
 |   `-- routes/
 `-- test/
-
-infra/
-|-- terraform/
-|   |-- environments/
-|   |-- modules/
-|   `-- variables/
-`-- delivery/
-
-.github/
-|-- workflows/
-`-- PULL_REQUEST_TEMPLATE.md
 ```
 
-**Structure Decision**: Use a three-surface structure with `backend/` for NestJS,
-`mobile/` for Flutter, and `web/` for the responsive landing page plus admin dashboard.
-Add `infra/` for Terraform-based deployment assets and `.github/` for GitFlow-supporting
-automation. This keeps user-facing channels separate while preserving shared backend
-contracts and clear boundaries between marketing, operations, optimization, and core
-data workflows.
+**Structure Decision**: Keep the monorepo surface split by backend, mobile, and web,
+but refactor backend internals around explicit relational modules and Prisma-backed
+PostgreSQL persistence. Separate public region/offer reads from admin CRUD and metrics
+while sharing auth and domain contracts.
+
+## Phase 0: Research Focus
+
+1. Validate PostgreSQL + Prisma as the relational persistence layer for accounts,
+   regions, establishments, products, offers, shopping lists, and optimization runs.
+2. Define the backend-owned optimization execution model and job status tracking
+   contract.
+3. Confirm role-based access design for shared customer/admin accounts.
+4. Bound receipt persistence as optional MVP support without making QR-based online
+   invoice lookup a dependency.
+
+## Phase 1: Design Artifacts
+
+- `data-model.md`: relational entities, validation rules, and lifecycle states
+- `contracts/grocery-optimizer-api.yaml`: public and admin APIs for auth, region
+  selection, offers, lists, optimization, metrics, and CRUD
+- `contracts/admin-dashboard-flows.md`: dashboard use cases and UX rules
+- `quickstart.md`: local developer validation for PostgreSQL, Redis, queue workers, web,
+  and mobile
+- agent context update to reflect PostgreSQL/Prisma instead of MongoDB
 
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| None | N/A | N/A |
+| Prisma ORM | Explicit relational schema, migrations, and query clarity are needed for admin CRUD and product/store relations | Raw SQL or MongoDB would either slow delivery or keep the domain under-modeled |
+| Queue-backed optimization | Needed for responsiveness, retry handling, and operational diagnostics | Client-side or synchronous optimization would duplicate logic and reduce control |

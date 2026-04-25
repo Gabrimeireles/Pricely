@@ -2,216 +2,303 @@
 
 **Feature Branch**: `001-grocery-optimizer`  
 **Created**: 2026-04-03  
+**Updated**: 2026-04-25  
 **Status**: Draft  
-**Input**: User description: "You are an intelligent shopping optimization assistant
-designed to help users build the most efficient grocery shopping lists based on
-real-world supermarket data."
+**Input**: Replanned backend and product scope for a grocery optimization platform with
+shared customer/admin accounts, regional catalog activation, store-level pricing,
+admin CRUD, and queue-backed optimization processing.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Build Cheapest List Across Stores (Priority: P1)
+### User Story 1 - Reuse Shopping Lists and Run Optimization from Shared Accounts (Priority: P1)
 
-As a shopper, I want to submit a grocery list and receive the lowest-total-cost plan
-across multiple supermarkets so I can maximize savings when I am willing to shop at
-more than one store.
+As a shopper, I want to keep reusable grocery lists in one account shared by mobile
+and web, then trigger optimization runs whenever I need them, so I can reuse the same
+monthly or weekly list and re-calculate it against the latest available prices.
 
-**Why this priority**: This is the core value proposition of the product and the most
-direct path to measurable user savings.
+**Why this priority**: The core product value depends on list persistence, shared
+identity across channels, and repeatable optimization runs against current data.
 
-**Independent Test**: Can be fully tested by submitting a grocery list with overlapping
-products across multiple supermarkets and verifying that each item is assigned to the
-lowest-cost available store with a transparent total.
+**Independent Test**: Create one account, sign in on mobile and web, save a shopping
+list without optimizing it, trigger a new optimization run later, and verify the
+latest result reflects current store offers without requiring the list to be recreated.
 
 **Acceptance Scenarios**:
 
-1. **Given** a user provides a grocery list and pricing data exists in multiple
-   supermarkets, **When** the user selects Multi-Market Optimization, **Then** the
-   system returns the cheapest available option for each requested item and the total
-   estimated cost.
-2. **Given** a shopping plan spans multiple supermarkets, **When** results are shown,
-   **Then** the system displays the total estimated cost, the savings compared to
-   single-store alternatives, and a store-by-store breakdown.
-3. **Given** a requested product has no reliable match or no confirmed price,
-   **When** the plan is generated, **Then** the system excludes fabricated pricing,
-   marks the item as unresolved, and explains the confidence limitation clearly.
+1. **Given** a user signs in with the same account on mobile and web, **When** the
+   user views their lists, **Then** both channels show the same saved lists, profile
+   data, and latest optimization history.
+2. **Given** a user has a saved shopping list, **When** the user requests a new
+   optimization run, **Then** the backend queues the calculation, returns a trackable
+   processing state, and later exposes the completed result.
+3. **Given** a shopping list has already been optimized before, **When** the user runs
+   optimization again later, **Then** the list remains the same object and a new
+   optimization result is produced without overwriting historical runs silently.
+4. **Given** a result includes incomplete or low-confidence data, **When** the result
+   is shown, **Then** the system highlights the limitation explicitly and does not
+   fabricate missing prices or availability.
 
 ---
 
-### User Story 2 - Optimize Within One Nearby Store (Priority: P2)
+### User Story 2 - Browse Regional Offers and Product Store Prices (Priority: P1)
 
-As a shopper, I want to optimize my entire grocery list within the nearest or chosen
-supermarket so I can complete my shopping in one place while still reducing cost as
-much as possible.
+As a shopper, I want to choose a supported region, browse its active offers, and open
+product details that show all known store prices, so I can understand where each item
+is cheaper before or outside a full-list optimization flow.
 
-**Why this priority**: Many users prefer convenience over absolute savings, and this
-mode makes the assistant practical for everyday use.
+**Why this priority**: The offer discovery and product-detail experience is part of the
+public-facing product and supports user trust before full optimization.
 
-**Independent Test**: Can be fully tested by selecting a specific supermarket and
-verifying that all recommended products come from that store, only include available
-items, and produce the lowest total possible within that constraint.
+**Independent Test**: Query supported regions, select one with active stores, browse
+regional offers, open a product detail view, and verify the product lists multiple
+store-specific prices and store identities when available.
 
 **Acceptance Scenarios**:
 
-1. **Given** a user selects a nearest or preferred supermarket, **When** the user runs
-   Local Optimization, **Then** the system returns a plan constrained to that single
-   store with only available items and a total estimated cost.
-2. **Given** one or more requested items are unavailable in the selected store,
-   **When** the plan is generated, **Then** the system identifies the unavailable items
-   explicitly and does not replace them with inconsistent products without signaling
-   the trade-off.
-3. **Given** equivalent products exist in different package sizes or naming variations
-   within the same store, **When** the system evaluates options, **Then** it selects the
-   lowest-cost valid match for the requested need.
+1. **Given** supported regions exist, **When** the frontend loads region options,
+   **Then** only regions with `implantationStatus` other than `inactive` appear in the
+   public selector and each option includes the count of active stores.
+2. **Given** a selected region has zero active stores, **When** offers are requested,
+   **Then** the API returns the region with an active store count of `0` and the client
+   can present a warning to switch regions.
+3. **Given** a product has prices in multiple establishments, **When** the user opens
+   product details, **Then** the response includes each active establishment, current
+   price, freshness, confidence, and store identity needed for the UI modal.
+4. **Given** a region is marked `inactive`, **When** public region options are
+   requested, **Then** that region is excluded from the public dropdown while remaining
+   visible to admins.
 
 ---
 
-### User Story 3 - Choose the Best Single Store (Priority: P3)
+### User Story 3 - Admin Manage Regions, Stores, Catalog, Prices, and Metrics (Priority: P1)
 
-As a shopper, I want the assistant to compare multiple supermarkets and recommend the
-single best store for my whole list so I can balance savings with the practicality of
-one-location shopping.
+As an admin, I want to sign in with the same account used in the consumer app and
+access restricted web dashboards for operational metrics and catalog management, so I
+can control regions, establishments, products, offers, and system health from one
+place.
 
-**Why this priority**: This mode provides the strongest balance between savings and
-convenience and helps users make a fast final decision.
+**Why this priority**: The catalog and price dataset will not remain trustworthy
+without an administrative surface to manage it and observe system behavior.
 
-**Independent Test**: Can be fully tested by submitting a grocery list with data from
-multiple supermarkets and verifying that the system compares valid single-store totals
-and highlights the store with the lowest complete-list cost.
+**Independent Test**: Sign in as an admin on web, access restricted dashboard routes,
+create or edit regions, stores, products, and offers, and verify overview metrics and
+queue health endpoints return the expected operational data.
 
 **Acceptance Scenarios**:
 
-1. **Given** multiple supermarkets can fulfill most or all of a grocery list, **When**
-   the user selects Global Store Optimization, **Then** the system compares complete
-   single-store totals and recommends the lowest-cost store that satisfies the list
-   best.
-2. **Given** no single store can fully satisfy the list, **When** results are shown,
-   **Then** the system identifies the closest valid single-store option, reports missing
-   items, and explains the trade-off against multi-store savings.
-3. **Given** the recommended single-store option is not the absolute cheapest overall,
-   **When** results are displayed, **Then** the system shows the savings difference
-   relative to the multi-market option so the user can choose knowingly.
+1. **Given** an account has the `admin` role, **When** it signs in on web, **Then** it
+   can access restricted dashboard endpoints and views unavailable to customer-only
+   accounts.
+2. **Given** an admin updates a region, establishment, product, or product offer,
+   **When** the change is saved, **Then** subsequent public and optimization queries
+   reflect the updated active state and price relationships.
+3. **Given** the dashboard requests operational metrics, **When** the backend responds,
+   **Then** the response includes user activity, optimization throughput, queue health,
+   processing outcomes, and catalog coverage indicators.
+4. **Given** an admin account signs in on mobile, **When** it uses the mobile app,
+   **Then** it behaves like a normal customer account and does not expose web-only
+   dashboard privileges there.
+
+---
+
+### User Story 4 - Queue Heavy Processing in the Backend (Priority: P2)
+
+As the system, I want optimization and receipt-related processing to run as backend
+jobs with durable state, so the product can scale safely, preserve shared business
+logic, and expose operational diagnostics to admins.
+
+**Why this priority**: Queue-backed processing keeps mobile and web responsive while
+making optimization, ingestion, and retry behavior observable and consistent.
+
+**Independent Test**: Trigger an optimization request, verify a BullMQ job is created,
+observe job status transitions, and confirm the completed result can be retrieved by
+job-aware APIs without client-side optimization logic.
+
+**Acceptance Scenarios**:
+
+1. **Given** a user requests optimization, **When** the backend accepts the request,
+   **Then** it creates a queued processing record and returns a response that can be
+   polled for status.
+2. **Given** an optimization or receipt-processing job fails, **When** the failure is
+   recorded, **Then** the system logs the reason clearly, preserves a retryable state,
+   and exposes the failure in admin diagnostics.
+3. **Given** optimization logic changes over time, **When** clients request new runs,
+   **Then** the backend remains the single source of optimization behavior rather than
+   duplicating critical decision logic inside mobile devices.
 
 ### Edge Cases
 
-- What happens when receipt data contains abbreviations, typos, or inconsistent naming
-  for the same product across supermarkets?
-- How does the system handle duplicate receipt entries, missing store names, unreadable
-  prices, or incomplete quantities?
-- What happens when a user requests a product that has no trusted historical match?
-- How does the system respond when supermarket data is stale or only partially available
-  for the requested list?
-- What happens when different stores sell the same product in different sizes, brands,
-  or bundle formats?
+- What happens when a region is publicly selectable but currently has zero active
+  establishments?
+- How does the system behave when a product exists in the catalog but has no active
+  current offers in the selected region?
+- What happens when the same supermarket brand has multiple units in different
+  neighborhoods and only one unit is active?
+- How does the system respond when an admin deactivates a store or region that is
+  referenced by historical shopping lists or optimization results?
+- What happens when a queued optimization job is retried and a newer run already
+  exists for the same shopping list?
+- How does the system behave when a shopper account becomes admin-capable on web but
+  should still see only consumer flows on mobile?
+- What happens when no region is publicly available because all regions are
+  `inactive`?
+- How does the system handle optional receipt ingestion when QR-code-based online
+  receipt resolution is not part of the MVP?
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: System MUST allow users to submit or edit a grocery shopping list made of
-  one or more desired products.
-- **FR-002**: System MUST support three optimization modes: Multi-Market Optimization,
-  Local Optimization, and Global Store Optimization.
-- **FR-003**: System MUST parse receipt-derived shopping data into structured fields
-  including product name, price, quantity, store, and purchase date when such data is
-  provided.
-- **FR-004**: System MUST normalize product names so semantically equivalent products
-  from different supermarkets can be compared reliably despite abbreviations, typos, or
-  naming variation.
-- **FR-005**: System MUST maintain a historical product matching record that improves
-  future normalization and comparison accuracy.
-- **FR-006**: System MUST compare only products with confirmed price evidence and MUST
-  not invent missing prices or store availability.
-- **FR-007**: In Multi-Market Optimization mode, system MUST choose the lowest-cost
-  confirmed option for each requested item across all eligible supermarkets.
-- **FR-008**: In Local Optimization mode, system MUST restrict recommendations to the
-  nearest or user-selected supermarket and optimize total cost within that store only.
-- **FR-009**: In Global Store Optimization mode, system MUST compare supermarkets as
-  full-list candidates and recommend the single store with the lowest valid total for
-  the complete list or best-coverage list.
-- **FR-010**: System MUST exclude unavailable, unresolved, or inconsistent product
-  options from final recommendations unless clearly labeled as unsupported.
-- **FR-011**: System MUST present results with total estimated cost, savings compared to
-  relevant alternatives, and a store breakdown when more than one store is involved.
-- **FR-012**: System MUST highlight the recommended option that best matches the chosen
-  optimization mode.
-- **FR-013**: System MUST explain the trade-off between lower cost and single-store
-  convenience whenever multiple valid optimization outcomes exist.
-- **FR-014**: System MUST clearly communicate when data is incomplete, confidence is
-  low, or assumptions were applied.
-- **FR-015**: System MUST allow users to provide a location signal or explicit store
-  preference when using modes that depend on local convenience.
-- **FR-016**: System MUST prevent unsupported substitutions from being silently treated
-  as equivalent to the user's requested product.
+- **FR-001**: The system MUST support a single account model shared by mobile and web.
+- **FR-002**: The system MUST distinguish authorization by role so that `admin`
+  accounts can access restricted web dashboard capabilities while behaving like normal
+  consumer accounts on mobile.
+- **FR-003**: The system MUST allow users to create, edit, save, and reuse shopping
+  lists without forcing optimization at creation time.
+- **FR-004**: The system MUST support repeated optimization runs against the same
+  shopping list and preserve historical optimization results as separate records.
+- **FR-005**: The system MUST execute optimization requests in the backend rather than
+  relying on client-side optimization logic as the source of truth.
+- **FR-006**: The system MUST queue heavy optimization and receipt-related processing
+  with Redis and BullMQ-compatible backend job orchestration.
+- **FR-007**: The system MUST expose processing state for queued jobs so clients and
+  dashboards can track pending, running, failed, and completed work.
+- **FR-008**: The system MUST support three optimization modes aligned with the product
+  language: `local`, `global_unique`, and `global_full`.
+- **FR-009**: The system MUST maintain a canonical product catalog representing common
+  grocery products independently of any one establishment.
+- **FR-010**: The system MUST associate each product with zero or more
+  establishment-specific current offers, each containing price and store identity.
+- **FR-011**: The system MUST maintain establishments as store-level units with enough
+  identity to distinguish branches of the same supermarket brand, including at minimum
+  brand name, unit name or neighborhood context, city or region, and CNPJ.
+- **FR-012**: The system MUST maintain explicit region records for public selection and
+  admin management.
+- **FR-013**: Each region MUST include an `implantationStatus` with at least `active`,
+  `activating`, and `inactive`.
+- **FR-014**: Public region selection endpoints MUST exclude regions whose
+  `implantationStatus` is `inactive`.
+- **FR-015**: Public region selection endpoints MUST return the number of active
+  establishments in each visible region.
+- **FR-016**: The system MUST allow a visible region to have zero active
+  establishments and MUST expose that count explicitly so the client can instruct the
+  user to change regions.
+- **FR-017**: Establishments MUST include `isActive` state so inactive units are not
+  treated as valid current shopping options.
+- **FR-018**: The system MUST expose public regional offers filtered to active
+  establishments in the selected region.
+- **FR-019**: The system MUST expose product detail data that lists all active known
+  establishment prices for that product, including store identity, freshness, and
+  confidence.
+- **FR-020**: The system MUST not fabricate unknown prices, unknown availability, or
+  unverified store-product relationships.
+- **FR-021**: The system MUST surface data freshness and confidence on offers and
+  optimization selections.
+- **FR-022**: The system MUST allow admins to create, update, activate, deactivate, and
+  inspect regions, establishments, products, and current product offers.
+- **FR-023**: The admin dashboard backend MUST return operational metrics including at
+  least active-user indicators, optimization volume, queue or processing health, and
+  catalog or offer coverage.
+- **FR-024**: The admin dashboard backend MUST return data needed for dense views of
+  regions, establishments, products, offers, shopping lists, optimization runs, and
+  processing jobs.
+- **FR-025**: The system MUST provide clear structured logging and explicit error
+  classification for informational, warning, and error conditions across API requests,
+  background jobs, and data processing paths.
+- **FR-026**: The system MUST persist translated or parsed receipt data when receipt
+  ingestion is used, but QR-code-based online receipt lookup is OUT OF SCOPE for the
+  MVP.
+- **FR-027**: The optimization result MUST include the chosen mode, total estimated
+  cost, savings or trade-off information where available, item-level selections, and
+  clear incomplete-data notices.
+- **FR-028**: The frontend contract for region selection MUST support showing labels
+  such as `São Paulo - 20` and warning states such as `Nenhum estabelecimento ativo`
+  when the selected visible region has zero active stores.
 
 ### Non-Functional Requirements
 
-- **NFR-001**: The specification and resulting solution MUST prioritize clear,
-  actionable outputs over technical explanation.
-- **NFR-002**: The solution MUST provide optimization results quickly enough for a user
-  to make a shopping decision during normal planning flow.
-- **NFR-003**: The solution MUST preserve result traceability so each recommended price
-  can be tied back to known supermarket data.
-- **NFR-004**: The solution MUST surface uncertainty, missing data, and confidence
-  limitations in a way that supports safe decision-making.
-- **NFR-005**: The solution MUST maintain consistent result presentation across all
-  optimization modes so users can compare options easily.
-- **NFR-006**: The solution MUST support growth in receipt history, product catalogs,
-  and supermarket comparisons without degrading the clarity of results.
+- **NFR-001**: The product MUST preserve a single authoritative optimization behavior
+  in the backend so mobile and web return consistent outcomes.
+- **NFR-002**: The system MUST use PostgreSQL as the primary relational data store for
+  account, region, establishment, catalog, offer, list, and optimization data.
+- **NFR-003**: The system MUST use Redis-backed queues for asynchronous work that would
+  otherwise block user interactions noticeably.
+- **NFR-004**: The backend MUST expose structured logs and actionable diagnostics for
+  normal operations, degraded states, and failures.
+- **NFR-005**: Public and admin queries MUST remain understandable and traceable even
+  when data is partial or stale.
+- **NFR-006**: The design MUST keep the MVP bounded: QR-code-based online receipt
+  resolution and non-MVP LLM enrichment remain future extensions, not baseline
+  dependencies.
+- **NFR-007**: The system MUST support future catalog growth, more regions, more store
+  units, and more optimization runs without redefining the core data relationships.
 
 ### Key Entities *(include if feature involves data)*
 
-- **Shopping List**: A user-defined set of requested grocery items to optimize,
-  including optional quantity, preferred store, and preferred optimization mode.
-- **Shopping List Item**: A single requested product entry within a shopping list,
-  including requested name, normalized name, quantity, and resolution status.
-- **Receipt Record**: A structured purchase evidence record containing product, price,
-  quantity, store, and purchase date extracted from supermarket receipts.
-- **Product Match**: A historical normalization and equivalence record linking variant
-  product names or receipt terms to a comparable product identity.
-- **Store Offer**: A store-specific product option with confirmed price, quantity
-  context, availability confidence, and source evidence.
-- **Optimization Result**: A generated recommendation set containing selected offers,
-  total estimated cost, savings versus alternatives, and explanation of trade-offs.
+- **User Account**: Shared identity used by customers and admins across mobile and web,
+  with role-based access control.
+- **Region**: Publicly selectable geographic area with implantation status and active
+  establishment count.
+- **Establishment**: Specific supermarket unit or branch with brand identity, unit
+  identity, CNPJ, region, and active state.
+- **Product**: Canonical grocery catalog item used as the shared comparison target
+  across establishments.
+- **Product Offer**: Current establishment-specific price record for a product,
+  including freshness and confidence.
+- **Shopping List**: User-owned reusable list of grocery needs, independent of any one
+  optimization run.
+- **Optimization Run**: One backend-generated execution of a selected optimization mode
+  for a shopping list.
+- **Processing Job**: Trackable background work item for optimization or other queued
+  processing.
+- **Receipt Record**: Optional persisted translated receipt data for ingestion-based
+  pricing workflows, excluding QR-code online lookup in the MVP.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: Users can generate an optimized shopping result for a standard grocery
-  list and understand the recommended option in under 2 minutes.
-- **SC-002**: 100% of displayed prices in optimization results are backed by known
-  supermarket data rather than inferred or fabricated values.
-- **SC-003**: At least 90% of optimized lists display a complete total cost and a clear
-  explanation of savings versus at least one alternative strategy when comparable data
-  exists.
-- **SC-004**: Users can distinguish the difference between multi-store savings and
-  single-store convenience without additional assistance in at least 90% of evaluated
-  result sessions.
-- **SC-005**: Product normalization quality is high enough that users rarely need to
-  manually correct equivalent grocery items during comparison workflows.
+- **SC-001**: A user can sign in with one account on mobile and web and access the same
+  shopping lists and latest optimization history in under 2 minutes.
+- **SC-002**: 100% of prices shown in product details and optimization results are tied
+  to active establishment offers stored by the backend rather than fabricated client
+  assumptions.
+- **SC-003**: Admins can create or update a region, establishment, product, or offer
+  and see the change reflected in subsequent API reads without manual data repair.
+- **SC-004**: At least 90% of optimization requests for standard grocery lists expose a
+  visible processing state and complete without blocking the requesting client.
+- **SC-005**: Public region selection always returns counts of active establishments for
+  each visible region and clearly distinguishes zero-store regions from hidden inactive
+  regions.
+- **SC-006**: Dashboard metrics provide enough operational visibility for admins to
+  identify queue failures, stale catalog coverage, and basic user activity without
+  inspecting raw database records directly.
 
 ## Assumptions
 
-- Users are cost-conscious grocery shoppers who may trade convenience for savings
-  depending on the selected mode.
-- The product initially works with supermarket data derived from receipts and other
-  trusted store evidence already available to the system.
-- Users may provide either a nearest-store context or an explicit store preference when
-  choosing single-store optimization modes.
-- Equivalent products can be compared when the system has sufficient confidence that
-  they refer to the same intended shopping need.
-- If no trustworthy price or availability evidence exists, the system will report the
-  gap instead of filling it with speculative recommendations.
-- Savings comparisons are based on the same requested list and the best valid
-  alternatives available at the time of evaluation.
+- The MVP uses the backend as the only authoritative optimization engine.
+- Customer and admin identities share the same account table, with role-based
+  differences enforced server-side.
+- Admin-only dashboards remain a web capability; mobile intentionally stays focused on
+  customer behavior even for admin accounts.
+- A single establishment row will store both brand identity and unit-level identity for
+  the MVP rather than introducing a separate supermarket-chain table immediately.
+- Public region selection is driven by `Region` records and not inferred dynamically
+  from arbitrary establishment rows alone.
+- QR-code-based online invoice lookup and more advanced LLM-assisted enrichment are
+  deferred beyond the MVP.
+- Manual admin CRUD for catalog, stores, and current offers is sufficient to support an
+  MVP dataset even before automated receipt ingestion becomes central.
 
 ## Implementation Constraints *(mandatory)*
 
-- Optimization behavior must remain scoped to grocery shopping list decisions and not
-  expand into unrelated financial or retail recommendation domains in this feature.
-- Result generation must preserve explicit separation between confirmed data, inferred
-  normalization, and unresolved uncertainty.
-- User-facing outputs must remain concise, practical, and non-technical even when the
-  underlying data quality is mixed.
-- The product must never represent unknown prices, unknown availability, or low-trust
-  product matches as confirmed facts.
+- PostgreSQL, Redis, and BullMQ-compatible queueing are mandatory infrastructure for
+  the replanned backend.
+- Frontend and backend technologies remain otherwise unchanged from the agreed stack:
+  NestJS for backend, Vite/React for web, and Flutter Stacked for mobile.
+- The backend must expose explicit admin APIs for full management of regions,
+  establishments, products, and offers.
+- Public frontend region selectors must not include regions with
+  `implantationStatus = inactive`.
+- The system must preserve safe error handling, structured logs, and severity-oriented
+  diagnostics (`info`, `warn`, `error`) across API and background processing paths.

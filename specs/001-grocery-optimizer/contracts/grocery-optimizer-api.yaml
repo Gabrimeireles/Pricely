@@ -1,16 +1,122 @@
 openapi: 3.1.0
 info:
   title: Grocery Optimizer API
-  version: 0.1.0
+  version: 0.2.0
   description: >
-    Contract for receipt ingestion, shopping list management, and grocery optimization
-    workflows used by the mobile application.
+    Contract for shared authentication, public region and offer discovery, reusable
+    shopping lists, backend-owned optimization runs, and restricted admin dashboard
+    management workflows.
 servers:
   - url: http://localhost:3000
 paths:
-  /shopping-lists:
+  /auth/register:
     post:
-      summary: Create a shopping list
+      summary: Register a shared user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+  /auth/login:
+    post:
+      summary: Authenticate a shared user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+  /auth/me:
+    get:
+      summary: Return the authenticated account profile
+      responses:
+        '200':
+          description: Current account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAccount'
+  /regions:
+    get:
+      summary: List public regions visible in selectors
+      responses:
+        '200':
+          description: Public region list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicRegion'
+  /regions/{regionId}/offers:
+    get:
+      summary: List active offers for a visible region
+      parameters:
+        - $ref: '#/components/parameters/RegionId'
+      responses:
+        '200':
+          description: Regional offers returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductOffer'
+  /products/{productId}:
+    get:
+      summary: Fetch a product detail view
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Product detail returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+  /products/{productId}/offers:
+    get:
+      summary: Fetch active establishment prices for one product
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Product offers returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductOffer'
+  /shopping-lists:
+    get:
+      summary: List shopping lists for the authenticated user
+      responses:
+        '200':
+          description: Shopping lists returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShoppingList'
+    post:
+      summary: Create a reusable shopping list
       requestBody:
         required: true
         content:
@@ -24,17 +130,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ShoppingList'
-    get:
-      summary: List shopping lists
+  /shopping-lists/{shoppingListId}:
+    patch:
+      summary: Update shopping list metadata
+      parameters:
+        - $ref: '#/components/parameters/ShoppingListId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShoppingListRequest'
       responses:
         '200':
-          description: Shopping lists returned
+          description: Shopping list updated
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ShoppingList'
+                $ref: '#/components/schemas/ShoppingList'
   /shopping-lists/{shoppingListId}/items:
     post:
       summary: Add items to a shopping list
@@ -53,75 +166,459 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ShoppingList'
-  /receipts:
+  /shopping-lists/{shoppingListId}/optimization-runs:
     post:
-      summary: Ingest a parsed or raw receipt payload
+      summary: Queue a new optimization run for a shopping list
+      parameters:
+        - $ref: '#/components/parameters/ShoppingListId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ReceiptIngestionRequest'
+              $ref: '#/components/schemas/CreateOptimizationRunRequest'
       responses:
         '202':
-          description: Receipt accepted for processing
+          description: Optimization queued
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReceiptRecord'
-  /shopping-lists/{shoppingListId}/optimize:
-    post:
-      summary: Generate optimization results for a shopping list
+                $ref: '#/components/schemas/OptimizationRunAccepted'
+  /shopping-lists/{shoppingListId}/optimization-runs/latest:
+    get:
+      summary: Fetch the latest optimization run for a shopping list
       parameters:
         - $ref: '#/components/parameters/ShoppingListId'
+      responses:
+        '200':
+          description: Latest optimization run returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationRun'
+        '404':
+          description: No optimization run found
+  /processing-jobs/{jobId}:
+    get:
+      summary: Fetch processing job state
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: Processing job returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingJob'
+  /admin/metrics/overview:
+    get:
+      summary: Return overview metrics for the admin dashboard
+      responses:
+        '200':
+          description: Overview metrics returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOverview'
+  /admin/regions:
+    get:
+      summary: List all regions for admin management
+      responses:
+        '200':
+          description: Regions returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminRegion'
+    post:
+      summary: Create a region
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/OptimizeShoppingListRequest'
+              $ref: '#/components/schemas/CreateRegionRequest'
       responses:
-        '200':
-          description: Optimization result generated
+        '201':
+          description: Region created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OptimizationResult'
-  /shopping-lists/{shoppingListId}/optimizations/latest:
-    get:
-      summary: Fetch latest optimization result for a shopping list
+                $ref: '#/components/schemas/AdminRegion'
+  /admin/regions/{regionId}:
+    patch:
+      summary: Update region state and metadata
       parameters:
-        - $ref: '#/components/parameters/ShoppingListId'
+        - $ref: '#/components/parameters/RegionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRegionRequest'
       responses:
         '200':
-          description: Latest result returned
+          description: Region updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OptimizationResult'
-        '404':
-          description: No optimization result found
+                $ref: '#/components/schemas/AdminRegion'
+  /admin/establishments:
+    get:
+      summary: List establishments for admin management
+      responses:
+        '200':
+          description: Establishments returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Establishment'
+    post:
+      summary: Create an establishment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEstablishmentRequest'
+      responses:
+        '201':
+          description: Establishment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Establishment'
+  /admin/establishments/{establishmentId}:
+    patch:
+      summary: Update establishment state and metadata
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEstablishmentRequest'
+      responses:
+        '200':
+          description: Establishment updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Establishment'
+  /admin/products:
+    get:
+      summary: List canonical products for admin management
+      responses:
+        '200':
+          description: Products returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+    post:
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+  /admin/products/{productId}:
+    patch:
+      summary: Update product metadata
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+  /admin/offers:
+    get:
+      summary: List product offers for admin management
+      responses:
+        '200':
+          description: Offers returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductOffer'
+    post:
+      summary: Create a product offer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductOfferRequest'
+      responses:
+        '201':
+          description: Offer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductOffer'
+  /admin/offers/{offerId}:
+    patch:
+      summary: Update a product offer
+      parameters:
+        - $ref: '#/components/parameters/OfferId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductOfferRequest'
+      responses:
+        '200':
+          description: Offer updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductOffer'
+  /admin/processing-jobs:
+    get:
+      summary: List processing jobs for admin diagnostics
+      responses:
+        '200':
+          description: Processing jobs returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProcessingJob'
 components:
   parameters:
+    RegionId:
+      name: regionId
+      in: path
+      required: true
+      schema:
+        type: string
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
     ShoppingListId:
       name: shoppingListId
       in: path
       required: true
       schema:
         type: string
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+    EstablishmentId:
+      name: establishmentId
+      in: path
+      required: true
+      schema:
+        type: string
+    OfferId:
+      name: offerId
+      in: path
+      required: true
+      schema:
+        type: string
   schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, displayName]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        displayName:
+          type: string
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    AuthSession:
+      type: object
+      required: [accessToken, user]
+      properties:
+        accessToken:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserAccount'
+    UserAccount:
+      type: object
+      required: [id, email, displayName, role, status]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [customer, admin]
+        status:
+          type: string
+          enum: [active, suspended]
+    PublicRegion:
+      type: object
+      required: [id, name, stateCode, implantationStatus, activeEstablishmentCount]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        stateCode:
+          type: string
+        implantationStatus:
+          type: string
+          enum: [active, activating]
+        activeEstablishmentCount:
+          type: integer
+    AdminRegion:
+      allOf:
+        - $ref: '#/components/schemas/PublicRegion'
+        - type: object
+          properties:
+            implantationStatus:
+              type: string
+              enum: [active, activating, inactive]
+    Establishment:
+      type: object
+      required: [id, brandName, unitName, cnpj, cityName, neighborhood, regionId, isActive]
+      properties:
+        id:
+          type: string
+        brandName:
+          type: string
+        unitName:
+          type: string
+        cnpj:
+          type: string
+        cityName:
+          type: string
+        neighborhood:
+          type: string
+        regionId:
+          type: string
+        isActive:
+          type: boolean
+    Product:
+      type: object
+      required: [id, name, slug, category, isActive]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        category:
+          type: string
+        brandHint:
+          type: string
+        defaultUnit:
+          type: string
+        isActive:
+          type: boolean
+    ProductOffer:
+      type: object
+      required:
+        [id, productId, establishmentId, displayName, packageLabel, priceAmount, availabilityStatus, confidenceLevel, observedAt, isActive]
+      properties:
+        id:
+          type: string
+        productId:
+          type: string
+        establishmentId:
+          type: string
+        establishment:
+          $ref: '#/components/schemas/Establishment'
+        displayName:
+          type: string
+        packageLabel:
+          type: string
+        priceAmount:
+          type: number
+        availabilityStatus:
+          type: string
+          enum: [available, unavailable, uncertain]
+        confidenceLevel:
+          type: string
+          enum: [high, medium, low]
+        sourceType:
+          type: string
+          enum: [admin, receipt, flyer, site]
+        sourceReference:
+          type: string
+        observedAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+    ProductDetail:
+      type: object
+      required: [product, offers]
+      properties:
+        product:
+          $ref: '#/components/schemas/Product'
+        offers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductOffer'
     CreateShoppingListRequest:
       type: object
-      required: [name, mode]
+      required: [name]
       properties:
         name:
           type: string
-        mode:
-          $ref: '#/components/schemas/OptimizationMode'
-        preferredStoreId:
+        preferredRegionId:
           type: string
-        locationHint:
+    UpdateShoppingListRequest:
+      type: object
+      properties:
+        name:
           type: string
+        preferredRegionId:
+          type: string
+        status:
+          type: string
+          enum: [draft, ready, archived]
     AddShoppingListItemsRequest:
       type: object
       required: [items]
@@ -136,156 +633,288 @@ components:
       properties:
         requestedName:
           type: string
+        productId:
+          type: string
         quantity:
           type: number
-        unit:
-          type: string
-        preferredBrand:
+        unitLabel:
           type: string
         notes:
           type: string
-    ReceiptIngestionRequest:
-      type: object
-      required: [storeName, items]
-      properties:
-        storeName:
-          type: string
-        purchaseDate:
-          type: string
-          format: date-time
-        sourceType:
-          type: string
-          enum: [manual_entry, image_parse, import]
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReceiptLineItemInput'
-    ReceiptLineItemInput:
-      type: object
-      required: [rawProductName, unitPrice]
-      properties:
-        rawProductName:
-          type: string
-        quantity:
-          type: number
-        unitPrice:
-          type: number
-        currency:
-          type: string
-        packageSize:
-          type: string
-    OptimizeShoppingListRequest:
-      type: object
-      required: [mode]
-      properties:
-        mode:
-          $ref: '#/components/schemas/OptimizationMode'
-        preferredStoreId:
-          type: string
-        locationHint:
-          type: string
-    OptimizationMode:
-      type: string
-      enum: [multi_market, local_market, global_store]
+    ShoppingListItem:
+      allOf:
+        - $ref: '#/components/schemas/ShoppingListItemInput'
+        - type: object
+          required: [id, resolutionStatus]
+          properties:
+            id:
+              type: string
+            resolutionStatus:
+              type: string
+              enum: [unresolved, matched, partial, missing]
     ShoppingList:
       type: object
-      required: [id, name, mode, status, items]
+      required: [id, name, status, items]
       properties:
         id:
           type: string
         name:
           type: string
-        mode:
-          $ref: '#/components/schemas/OptimizationMode'
-        preferredStoreId:
-          type: string
-        locationHint:
+        preferredRegionId:
           type: string
         status:
           type: string
-          enum: [draft, ready, optimized, stale]
+          enum: [draft, ready, archived]
         items:
           type: array
           items:
             $ref: '#/components/schemas/ShoppingListItem'
-    ShoppingListItem:
+    CreateOptimizationRunRequest:
       type: object
-      required: [id, requestedName, resolutionStatus]
+      required: [mode, regionId]
       properties:
-        id:
+        mode:
           type: string
-        requestedName:
+          enum: [local, global_unique, global_full]
+        regionId:
           type: string
-        normalizedName:
+        preferredEstablishmentId:
           type: string
-        quantity:
-          type: number
-        unit:
-          type: string
-        preferredBrand:
-          type: string
-        resolutionStatus:
-          type: string
-          enum: [unresolved, matched, partially_matched, unavailable]
-        notes:
-          type: string
-    ReceiptRecord:
+    OptimizationRunAccepted:
       type: object
-      required: [id, parseStatus]
+      required: [optimizationRunId, jobId, status]
       properties:
-        id:
+        optimizationRunId:
           type: string
-        storeId:
+        jobId:
           type: string
-        purchaseDate:
+        status:
           type: string
-          format: date-time
-        parseStatus:
-          type: string
-          enum: [parsed, partial, failed]
-        confidenceScore:
-          type: number
-    OptimizationResult:
+          enum: [queued]
+    OptimizationSelection:
       type: object
-      required:
-        [id, shoppingListId, mode, totalEstimatedCost, coverageStatus, generatedAt, selections]
+      required: [shoppingListItemId, status]
+      properties:
+        shoppingListItemId:
+          type: string
+        productOfferId:
+          type: string
+        status:
+          type: string
+          enum: [selected, review, missing]
+        estimatedCost:
+          type: number
+        confidenceNotice:
+          type: string
+    OptimizationRun:
+      type: object
+      required: [id, shoppingListId, mode, regionId, status, createdAt, selections]
       properties:
         id:
           type: string
         shoppingListId:
           type: string
         mode:
-          $ref: '#/components/schemas/OptimizationMode'
-        recommendedStoreId:
           type: string
+          enum: [local, global_unique, global_full]
+        regionId:
+          type: string
+        preferredEstablishmentId:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
         totalEstimatedCost:
           type: number
-        savingsComparedToAlternative:
+        estimatedSavings:
           type: number
         coverageStatus:
           type: string
-          enum: [complete, partial]
-        explanationSummary:
+          enum: [complete, partial, none]
+        summary:
           type: string
-        generatedAt:
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
           type: string
           format: date-time
         selections:
           type: array
           items:
             $ref: '#/components/schemas/OptimizationSelection'
-    OptimizationSelection:
+    ProcessingJob:
       type: object
-      required: [shoppingListItemId, selectionStatus]
+      required: [id, queueName, jobType, status, attemptCount, createdAt, updatedAt]
       properties:
-        shoppingListItemId:
+        id:
           type: string
-        storeOfferId:
+        queueName:
           type: string
-        selectionStatus:
+        jobType:
           type: string
-          enum: [selected, unavailable, unresolved]
-        estimatedCost:
+          enum: [optimization, receipt_processing]
+        status:
+          type: string
+          enum: [queued, running, completed, failed, retrying]
+        attemptCount:
+          type: integer
+        failureReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+    AdminOverview:
+      type: object
+      required: [activeUsers, optimizationRunsToday, queuedJobs, failedJobs, activeRegions, activeOffers]
+      properties:
+        activeUsers:
+          type: integer
+        optimizationRunsToday:
+          type: integer
+        queuedJobs:
+          type: integer
+        failedJobs:
+          type: integer
+        activeRegions:
+          type: integer
+        activeOffers:
+          type: integer
+    CreateRegionRequest:
+      type: object
+      required: [name, stateCode, implantationStatus]
+      properties:
+        name:
+          type: string
+        stateCode:
+          type: string
+        implantationStatus:
+          type: string
+          enum: [active, activating, inactive]
+    UpdateRegionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        stateCode:
+          type: string
+        implantationStatus:
+          type: string
+          enum: [active, activating, inactive]
+    CreateEstablishmentRequest:
+      type: object
+      required: [brandName, unitName, cnpj, cityName, neighborhood, regionId]
+      properties:
+        brandName:
+          type: string
+        unitName:
+          type: string
+        cnpj:
+          type: string
+        cityName:
+          type: string
+        neighborhood:
+          type: string
+        regionId:
+          type: string
+        isActive:
+          type: boolean
+    UpdateEstablishmentRequest:
+      type: object
+      properties:
+        brandName:
+          type: string
+        unitName:
+          type: string
+        neighborhood:
+          type: string
+        isActive:
+          type: boolean
+    CreateProductRequest:
+      type: object
+      required: [name, slug, category]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        category:
+          type: string
+        brandHint:
+          type: string
+        defaultUnit:
+          type: string
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        brandHint:
+          type: string
+        defaultUnit:
+          type: string
+        isActive:
+          type: boolean
+    CreateProductOfferRequest:
+      type: object
+      required: [productId, establishmentId, displayName, packageLabel, priceAmount, availabilityStatus, confidenceLevel, observedAt]
+      properties:
+        productId:
+          type: string
+        establishmentId:
+          type: string
+        displayName:
+          type: string
+        packageLabel:
+          type: string
+        priceAmount:
           type: number
-        confidenceNotice:
+        availabilityStatus:
           type: string
+          enum: [available, unavailable, uncertain]
+        confidenceLevel:
+          type: string
+          enum: [high, medium, low]
+        sourceType:
+          type: string
+          enum: [admin, receipt, flyer, site]
+        sourceReference:
+          type: string
+        observedAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+    UpdateProductOfferRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+        packageLabel:
+          type: string
+        priceAmount:
+          type: number
+        availabilityStatus:
+          type: string
+          enum: [available, unavailable, uncertain]
+        confidenceLevel:
+          type: string
+          enum: [high, medium, low]
+        sourceType:
+          type: string
+          enum: [admin, receipt, flyer, site]
+        sourceReference:
+          type: string
+        observedAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
