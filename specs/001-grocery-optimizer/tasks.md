@@ -46,7 +46,7 @@ replanned backend.
 **CRITICAL**: No user story work should begin until this phase is complete.
 
 - [ ] T005 Replace Mongo bootstrap with PostgreSQL/Prisma persistence bootstrap in `backend/src/persistence/`, `backend/src/app.module.ts`, and `backend/src/main.ts`
-- [ ] T006 [P] Implement shared auth module, JWT/session guards, and role enforcement in `backend/src/auth/`, `backend/src/users/`, and `backend/src/common/`
+- [X] T006 [P] Implement shared auth module, JWT/session guards, and role enforcement in `backend/src/auth/`, `backend/src/users/`, and `backend/src/common/`
 - [ ] T007 [P] Introduce shared request logging, correlation IDs, and severity-oriented error mapping in `backend/src/common/logging/`, `backend/src/common/errors/`, and `backend/src/common/validation/`
 - [ ] T008 [P] Add queue-backed processing job persistence and BullMQ worker wiring in `backend/src/common/queue/`, `backend/src/processing/`, and `backend/src/jobs/`
 - [ ] T009 Create core relational entities and Prisma mappings for accounts, regions, establishments, products, offers, lists, optimization runs, and jobs in `backend/prisma/schema.prisma`
