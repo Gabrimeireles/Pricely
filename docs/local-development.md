@@ -42,12 +42,27 @@ Current default values:
 
 - Web dev server: `5173`
 - Backend API base URL: `http://localhost:3000`
+- Auth base path: `/auth`
+- Public regions base path: `/regions`
 
 ## Mobile Setup
 
 1. Ensure Flutter stable with Dart 3 is installed.
 2. Install Flutter dependencies in `mobile/`.
 3. Run the app on an emulator or device.
+
+Current mobile defaults are centralized in
+[api_environment.dart](/D:/Pricely/mobile/lib/core/networking/api_environment.dart):
+
+- API base URL: `http://10.0.2.2:3000`
+- Auth base path: `/auth`
+- Public regions base path: `/regions`
+
+Example override for a physical device or alternate host:
+
+```bash
+flutter run --dart-define=PRICELY_API_BASE_URL=http://192.168.0.10:3000
+```
 
 ## Notes
 
