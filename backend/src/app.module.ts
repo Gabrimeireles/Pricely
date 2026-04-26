@@ -8,12 +8,14 @@ import { QueueModule } from './common/queue/queue.module';
 import { OptimizationModule } from './optimization/optimization.module';
 
 import { MongoModule } from './persistence/mongo.module';
+import { PrismaModule } from './persistence/prisma.module';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { StoresModule } from './stores/stores.module';
 
 @Module({
   imports: [
     LoggingModule,
+    PrismaModule,
     MongoModule,
     QueueModule,
     ReceiptsModule,
