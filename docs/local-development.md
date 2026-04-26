@@ -14,7 +14,7 @@ Infrastructure assets live under `infra/terraform/`.
 
 The current baseline assumes these local services are available during development:
 
-- MongoDB on `127.0.0.1:27017`
+- PostgreSQL on `127.0.0.1:5432`
 - Redis on `127.0.0.1:6379`
 
 These defaults are documented in [backend/.env.example](/E:/Gabriel/Pricely/backend/.env.example)
@@ -29,8 +29,9 @@ and [web/.env.example](/E:/Gabriel/Pricely/web/.env.example).
 Current default values:
 
 - API port: `3000`
-- MongoDB database: `pricely`
+- PostgreSQL database: `pricely`
 - Redis port: `6379`
+- JWT secret: local-only value from `backend/.env.example`
 
 ## Web Setup
 
@@ -55,3 +56,4 @@ Current default values:
   introduces hosted services.
 - Add new variables to the relevant `.env.example` file as backend and web features are
   implemented.
+- Prisma is now the source of truth for relational schema and migrations in `backend/prisma/`.
