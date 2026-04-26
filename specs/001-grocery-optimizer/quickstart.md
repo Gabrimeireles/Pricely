@@ -7,24 +7,32 @@ regional catalog queries, reusable shopping lists, optimization jobs, and admin 
 
 ## Prerequisites
 
-- Local PostgreSQL instance running
-- Local Redis instance running
-- NestJS backend dependencies installed
-- Prisma migrations available locally
+- Docker Desktop or Docker Engine available for local orchestration
+- NestJS backend dependencies installed when running services outside Docker
 - Flutter SDK installed and device or emulator available
-- Web application dependencies installed
+- Web application dependencies installed when running services outside Docker
 - Feature branch `001-grocery-optimizer` checked out
+
+## Container Setup
+
+1. Start the full local stack with `docker compose up --build`.
+2. Wait for PostgreSQL, Redis, MongoDB compatibility, backend, and web to report healthy or
+   started states.
+3. Confirm the following endpoints are reachable from the host machine:
+   - `http://localhost:3000` for the backend API
+   - `http://localhost:5173` for the web app
+4. Use `docker compose down` to stop the stack.
+5. Use `docker compose down -v` when you need to reset PostgreSQL, Redis, and MongoDB data.
 
 ## Backend Setup
 
-1. Start PostgreSQL and Redis locally.
-2. Configure backend environment values for PostgreSQL, Redis, JWT/session secrets, and
-   app settings.
-3. Apply Prisma migrations and seed minimal data for one admin, one customer, one
-   active region, and a small offer catalog.
-4. Start the NestJS API locally.
-5. Start the BullMQ worker process if it runs separately from the API.
-6. Confirm the backend can connect to PostgreSQL and Redis and exposes both public and
+1. Configure backend environment values for PostgreSQL, Redis, MongoDB compatibility,
+   JWT/session secrets, and app settings when running outside Docker.
+2. Apply Prisma migrations or `db push` and seed minimal data for one admin, one customer,
+   one active region, and a small offer catalog.
+3. Start the NestJS API locally if not using Docker.
+4. Start the BullMQ worker process if it runs separately from the API.
+5. Confirm the backend can connect to PostgreSQL and Redis and exposes both public and
    admin API surfaces.
 
 ## Mobile Setup

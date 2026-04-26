@@ -17,7 +17,10 @@ async function bootstrap(): Promise<void> {
   app.useGlobalPipes(new AppValidationPipe());
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  await app.listen(Number(process.env.PORT || 3000));
+  await app.listen(
+    Number(process.env.PORT || 3000),
+    process.env.APP_HOST || '0.0.0.0',
+  );
 }
 
 void bootstrap();

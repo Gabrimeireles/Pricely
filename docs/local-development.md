@@ -33,6 +33,44 @@ Current default values:
 - Redis port: `6379`
 - JWT secret: local-only value from `backend/.env.example`
 
+## Docker Compose Setup
+
+The repository now ships with [docker-compose.yml](/D:/Pricely/docker-compose.yml) for local
+development. It starts:
+
+- `postgres` on `localhost:5432`
+- `redis` on `localhost:6379`
+- `mongodb` on `localhost:27017`
+- `backend` on `localhost:3000`
+- `web` on `localhost:5173`
+
+Start the stack:
+
+```bash
+docker compose up --build
+```
+
+Stop the stack:
+
+```bash
+docker compose down
+```
+
+Reset database and Redis state:
+
+```bash
+docker compose down -v
+```
+
+Notes:
+
+- The backend container runs `prisma generate`, `prisma db push`, and `prisma db seed` before
+  starting Nest in development mode.
+- MongoDB is still included as a temporary compatibility dependency while older repositories are
+  migrated off the legacy persistence layer.
+- The current compose file is optimized for local development with bind mounts, not for production.
+- The browser-facing API URL used by the web container is `http://localhost:3000`.
+
 ## Web Setup
 
 1. Copy `web/.env.example` to `web/.env`.
