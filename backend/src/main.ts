@@ -13,6 +13,20 @@ async function bootstrap(): Promise<void> {
     bufferLogs: true,
   });
 
+  app.enableCors({
+    origin: [
+      'http://localhost:4174',
+      'http://127.0.0.1:4174',
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+    ],
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: false,
+  });
+
   app.useLogger(app.get(Logger));
   app.useGlobalPipes(new AppValidationPipe());
   app.useGlobalFilters(new HttpExceptionFilter());

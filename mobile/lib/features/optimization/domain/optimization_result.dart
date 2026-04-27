@@ -2,6 +2,7 @@ class OptimizationResult {
   const OptimizationResult({
     required this.shoppingListTitle,
     required this.generatedAt,
+    required this.status,
     required this.totalCost,
     required this.estimatedSavings,
     required this.unavailableItems,
@@ -10,15 +11,20 @@ class OptimizationResult {
 
   final String shoppingListTitle;
   final DateTime generatedAt;
+  final String status;
   final double totalCost;
   final double estimatedSavings;
   final List<String> unavailableItems;
   final List<StoreOptimizationPlan> storePlans;
+  bool get isStale =>
+      (status == 'queued' || status == 'running') &&
+      DateTime.now().difference(generatedAt).inSeconds > 30;
 
   factory OptimizationResult.fromJson(Map<String, dynamic> json) {
     return OptimizationResult(
       shoppingListTitle: json['shoppingListTitle'] as String? ?? 'Minha lista',
       generatedAt: DateTime.parse(json['generatedAt'] as String),
+      status: json['status'] as String? ?? 'completed',
       totalCost: (json['totalCost'] as num?)?.toDouble() ?? 0,
       estimatedSavings: (json['estimatedSavings'] as num?)?.toDouble() ?? 0,
       unavailableItems:
@@ -38,6 +44,7 @@ class OptimizationResult {
     return <String, dynamic>{
       'shoppingListTitle': shoppingListTitle,
       'generatedAt': generatedAt.toIso8601String(),
+      'status': status,
       'totalCost': totalCost,
       'estimatedSavings': estimatedSavings,
       'unavailableItems': unavailableItems,

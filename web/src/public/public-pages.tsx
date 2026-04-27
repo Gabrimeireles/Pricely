@@ -1,24 +1,30 @@
-import { useMemo, useState } from 'react';
+﻿import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircleIcon,
   ArrowRightIcon,
   BadgeCheckIcon,
   ChevronRightIcon,
-  ReceiptTextIcon,
+  LogInIcon,
   ShieldAlertIcon,
 } from 'lucide-react';
 
 import { formatCurrency, formatDateTime, formatFreshnessLabel } from '@/app/format';
-import { usePricely } from '@/app/pricely-context';
 import {
   getCityById,
-  getOfferById,
-  getOffersForCity,
-  getOptimizationScenarios,
   optimizationModes,
-  supportedCities,
 } from '@/app/mock-data';
+import {
+  type CatalogProductSearchResponse,
+  type OfferDetailApiResponse,
+  type ProductVariantResponse,
+  type RegionOffersApiResponse,
+  fetchCatalogProductVariants,
+  fetchOfferDetail,
+  fetchRegionOffers,
+  searchCatalogProducts,
+} from '@/app/api';
+import { usePricely } from '@/app/pricely-context';
 import type {
   ConfidenceLevel,
   FreshnessLevel,
@@ -32,26 +38,22 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from '@/components/ui/field';
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from '@/components/ui/input-group';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -60,12 +62,38 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from '@/components/ui/toggle-group';
+
+type EditableListItem = {
+  id: string;
+  name: string;
+  catalogProductId?: string;
+  lockedProductVariantId?: string;
+  brandPreferenceMode: 'any' | 'preferred' | 'exact';
+  preferredBrandNames: string[];
+  imageUrl?: string;
+  quantity: number;
+  unitLabel: string;
+  purchaseStatus?: 'pending' | 'purchased';
+  note?: string;
+};
+
+function describeBrandRule(item: {
+  brandPreferenceMode?: 'any' | 'preferred' | 'exact';
+  preferredBrandNames?: string[];
+}) {
+  if (item.brandPreferenceMode === 'preferred') {
+    return (item.preferredBrandNames ?? []).length > 0
+      ? `Preferir: ${(item.preferredBrandNames ?? []).join(', ')}`
+      : 'Preferencia de marca configurada';
+  }
+
+  if (item.brandPreferenceMode === 'exact') {
+    return 'Variante exata selecionada';
+  }
+
+  return 'Qualquer marca';
+}
 
 function freshnessBadge(level: FreshnessLevel) {
   if (level === 'fresh') {
@@ -80,10 +108,10 @@ function freshnessBadge(level: FreshnessLevel) {
 
 function confidenceBadge(level: ConfidenceLevel) {
   if (level === 'alta') {
-    return <Badge className="bg-sky-100 text-sky-900 hover:bg-sky-100">Confiança alta</Badge>;
+    return <Badge className="bg-sky-100 text-sky-900 hover:bg-sky-100">Confianca alta</Badge>;
   }
   if (level === 'media') {
-    return <Badge variant="secondary">Confiança média</Badge>;
+    return <Badge variant="secondary">Confianca media</Badge>;
   }
 
   return <Badge variant="destructive">Revisar</Badge>;
@@ -91,7 +119,7 @@ function confidenceBadge(level: ConfidenceLevel) {
 
 function cityStatusBadge(city: SupportedCity) {
   if (city.status === 'supported') {
-    return <Badge className="bg-lime-100 text-lime-900 hover:bg-lime-100">Disponível</Badge>;
+    return <Badge className="bg-lime-100 text-lime-900 hover:bg-lime-100">Disponivel</Badge>;
   }
   if (city.status === 'pilot') {
     return <Badge variant="secondary">Piloto</Badge>;
@@ -111,11 +139,206 @@ function listStatusTone(status: ShoppingListItem['status']) {
   return 'text-rose-700';
 }
 
+function RequireAuthentication({
+  children,
+  title,
+  description,
+}: {
+  children: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  const { isAuthenticated, isBootstrapping } = usePricely();
+
+  if (isBootstrapping) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Carregando sua conta</CardTitle>
+          <CardDescription>Validando sessao e sincronizando listas.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Alert>
+        <LogInIcon />
+        <AlertTitle>{title}</AlertTitle>
+        <AlertDescription className="space-y-3">
+          <p>{description}</p>
+          <Button asChild size="sm">
+            <Link to="/entrar">Entrar agora</Link>
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+function AuthCard({
+  title,
+  description,
+  ctaLabel,
+  onSubmit,
+  includeDisplayName = false,
+}: {
+  title: string;
+  description: string;
+  ctaLabel: string;
+  includeDisplayName?: boolean;
+  onSubmit: (values: { displayName?: string; email: string; password: string }) => Promise<void>;
+}) {
+  const navigate = useNavigate();
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await onSubmit({ displayName, email, password });
+      navigate('/listas');
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Nao foi possivel concluir o acesso.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-lg">
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="grid gap-4" onSubmit={handleSubmit}>
+            <FieldGroup>
+              {includeDisplayName ? (
+                <Field>
+                  <FieldLabel htmlFor="displayName">Nome</FieldLabel>
+                  <Input
+                    autoComplete="name"
+                    id="displayName"
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    placeholder="Como voce quer aparecer no Pricely"
+                    required
+                    value={displayName}
+                  />
+                </Field>
+              ) : null}
+              <Field>
+                <FieldLabel htmlFor="email">E-mail</FieldLabel>
+                <Input
+                  autoComplete="email"
+                  id="email"
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="voce@exemplo.com"
+                  required
+                  type="email"
+                  value={email}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="password">Senha</FieldLabel>
+                <Input
+                  autoComplete={includeDisplayName ? 'new-password' : 'current-password'}
+                  id="password"
+                  minLength={6}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  type="password"
+                  value={password}
+                />
+              </Field>
+            </FieldGroup>
+
+            {error ? (
+              <Alert variant="destructive">
+                <AlertCircleIcon />
+                <AlertTitle>Falha no acesso</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            <Button disabled={isSubmitting} type="submit">
+              {isSubmitting ? 'Enviando...' : ctaLabel}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export function LandingPage() {
-  const { cityId, profile, selectedListId } = usePricely();
-  const city = getCityById(cityId);
-  const featuredOffers = getOffersForCity(cityId).slice(0, 3);
-  const featuredScenarios = getOptimizationScenarios(selectedListId);
+  const { cityId, cities, currentUser, profile } = usePricely();
+  const city = cities.find((entry) => entry.id === cityId) ?? getCityById(cityId);
+  const [featuredOffers, setFeaturedOffers] = useState<
+    Array<{
+      id: string;
+      productName: string;
+      storeName: string;
+      neighborhood: string;
+      imageUrl: string;
+      freshness: FreshnessLevel;
+      confidence: ConfidenceLevel;
+      price: number;
+    }>
+  >([]);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const load = async () => {
+      try {
+        const response = await fetchRegionOffers(cityId);
+        if (disposed) {
+          return;
+        }
+
+        setFeaturedOffers(
+          response.offers.slice(0, 3).map((offer, index) => ({
+            id: offer.id,
+            productName: offer.productName,
+            storeName: offer.storeName,
+            neighborhood: offer.neighborhood,
+            imageUrl: offer.imageUrl ?? [
+              'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=1200&q=80',
+              'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80',
+              'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=1200&q=80',
+            ][index % 3],
+            freshness: 'fresh',
+            confidence:
+              offer.confidenceLevel === 'high'
+                ? 'alta'
+                : offer.confidenceLevel === 'medium'
+                  ? 'media'
+                  : 'baixa',
+            price: offer.priceAmount,
+          })),
+        );
+      } catch {
+        setFeaturedOffers([]);
+      }
+    };
+
+    void load();
+
+    return () => {
+      disposed = true;
+    };
+  }, [cityId]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -123,27 +346,26 @@ export function LandingPage() {
         <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card/85 p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-5">
             <Badge variant="secondary" className="w-fit">
-              leitura comunitária de preços, notas e promoções
+              mesma conta no mobile e no web
             </Badge>
             <div className="flex flex-col gap-4">
               <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-                O jeito mais claro de decidir onde comprar melhor na sua região.
+                Decida onde comprar melhor com evidencia real.
               </h1>
               <p className="max-w-2xl text-lg text-muted-foreground">
-                O Pricely cruza ofertas locais, lista de compras e evidência real para
-                recomendar economia com contexto. Quando faltar dado, a tela mostra isso
-                sem esconder o risco.
+                O Pricely cruza lista de compras, ofertas e preco observado para mostrar o que
+                vale a pena agora na sua regiao.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg">
-                <Link to="/listas">
-                  Abrir minhas listas
+                <Link to={currentUser ? '/listas' : '/criar-conta'}>
+                  {currentUser ? 'Abrir minhas listas' : 'Criar minha conta'}
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link to="/ofertas">Explorar ofertas por região</Link>
+                <Link to="/ofertas">Explorar ofertas</Link>
               </Button>
             </div>
           </div>
@@ -151,22 +373,20 @@ export function LandingPage() {
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
             <Card size="sm">
               <CardHeader>
-                <CardTitle>Conta única</CardTitle>
-                <CardDescription>Mesmo login no mobile e no web.</CardDescription>
+                <CardTitle>Conta unica</CardTitle>
+                <CardDescription>Mesmo login em todas as superficies.</CardDescription>
               </CardHeader>
             </Card>
             <Card size="sm">
               <CardHeader>
                 <CardTitle>Economia estimada</CardTitle>
-                <CardDescription>{formatCurrency(profile.totalEstimatedSavings)} já rastreados.</CardDescription>
+                <CardDescription>{formatCurrency(profile.totalEstimatedSavings)} acumulados.</CardDescription>
               </CardHeader>
             </Card>
             <Card size="sm">
               <CardHeader>
                 <CardTitle>Cidade ativa</CardTitle>
-                <CardDescription>
-                  {city.name} · {city.regionLabel}
-                </CardDescription>
+                <CardDescription>{city.name}</CardDescription>
               </CardHeader>
             </Card>
           </div>
@@ -178,155 +398,11 @@ export function LandingPage() {
             className="h-full min-h-[360px] w-full object-cover"
             src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/50 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-6">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {featuredScenarios.slice(0, 2).map((scenario) => (
-                <Card key={scenario.mode} className="bg-background/92">
-                  <CardHeader>
-                    <CardTitle>{scenario.label}</CardTitle>
-                    <CardDescription>{scenario.summary}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Total estimado</span>
-                      <span className="font-medium">{formatCurrency(scenario.totalEstimatedCost)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Economia estimada</span>
-                      <span className="font-medium text-lime-700">
-                        {formatCurrency(scenario.estimatedSavings)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {optimizationModes.map((mode) => (
-          <Card key={mode.id}>
-            <CardHeader>
-              <CardTitle>{mode.label}</CardTitle>
-              <CardDescription>{mode.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              {mode.id === 'local'
-                ? 'Ideal para ida rápida. A interface expõe itens sem cobertura suficiente.'
-                : mode.id === 'global_unique'
-                  ? 'Compara lojas como candidatas únicas e mostra a troca entre cobertura e economia.'
-                  : 'Quebra a compra entre mercados quando isso reduz o total com evidência real.'}
-            </CardContent>
-          </Card>
-        ))}
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Valor claro para o usuário</CardTitle>
-            <CardDescription>
-              Perfil, listas e contribuição comunitária mostram por que o app vale a pena.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border border-border/70 p-4">
-              <div className="text-sm text-muted-foreground">Listas criadas</div>
-              <div className="mt-2 text-3xl font-semibold">{profile.listsCreated}</div>
-            </div>
-            <div className="rounded-lg border border-border/70 p-4">
-              <div className="text-sm text-muted-foreground">Notas e recibos enviados</div>
-              <div className="mt-2 text-3xl font-semibold">{profile.receiptsShared}</div>
-            </div>
-            <div className="rounded-lg border border-border/70 p-4">
-              <div className="text-sm text-muted-foreground">Promoções reportadas</div>
-              <div className="mt-2 text-3xl font-semibold">{profile.invalidPromotionReports}</div>
-            </div>
-            <div className="rounded-lg border border-border/70 p-4">
-              <div className="text-sm text-muted-foreground">Economia estimada</div>
-              <div className="mt-2 text-3xl font-semibold text-lime-700">
-                {formatCurrency(profile.totalEstimatedSavings)}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Ofertas em destaque em {city.name}</CardTitle>
-            <CardDescription>
-              Cartões públicos por região, sempre com loja, bairro, evidência e frescor.
-            </CardDescription>
-            <CardAction>
-              <Button asChild size="sm" variant="outline">
-                <Link to="/ofertas">Ver todas</Link>
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-3">
-            {featuredOffers.map((offer) => (
-              <Link key={offer.id} to={`/ofertas/${offer.id}`}>
-                <Card size="sm" className="h-full transition-transform hover:-translate-y-0.5">
-                  <div className="aspect-[4/3] overflow-hidden">
-                    <img
-                      alt={offer.productName}
-                      className="h-full w-full object-cover"
-                      src={offer.imageUrl}
-                    />
-                  </div>
-                  <CardHeader>
-                    <CardTitle>{offer.productName}</CardTitle>
-                    <CardDescription>
-                      {offer.storeName} · {offer.neighborhood}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-3">
-                    <div className="flex flex-wrap gap-2">
-                      {freshnessBadge(offer.freshness)}
-                      {confidenceBadge(offer.confidence)}
-                    </div>
-                    <div className="text-2xl font-semibold">{formatCurrency(offer.price)}</div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
-      </section>
-    </div>
-  );
-}
-
-export function OffersPage() {
-  const { cityId } = usePricely();
-  const city = getCityById(cityId);
-  const offers = useMemo(() => getOffersForCity(cityId), [cityId]);
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Ofertas por região</h1>
-        <p className="text-muted-foreground">
-          {city.name} · {city.regionLabel}. Ofertas públicas ficam disponíveis por cidade
-          suportada, com indicação de confiança e data da última evidência.
-        </p>
-      </div>
-
-      {city.status !== 'supported' && (
-        <Alert>
-          <AlertCircleIcon />
-          <AlertTitle>Cobertura ainda parcial</AlertTitle>
-          <AlertDescription>
-            Esta cidade ainda está em {city.status === 'pilot' ? 'piloto assistido' : 'preparação'}.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        {offers.map((offer) => (
+      <section className="grid gap-4 lg:grid-cols-3">
+        {featuredOffers.map((offer) => (
           <Card key={offer.id} className="overflow-hidden">
             <div className="aspect-[16/9] overflow-hidden">
               <img alt={offer.productName} className="h-full w-full object-cover" src={offer.imageUrl} />
@@ -337,21 +413,87 @@ export function OffersPage() {
                 {offer.storeName} · {offer.neighborhood}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
+            <CardContent className="grid gap-3">
               <div className="flex flex-wrap gap-2">
                 {freshnessBadge(offer.freshness)}
                 {confidenceBadge(offer.confidence)}
               </div>
-              <div className="grid gap-1">
-                <div className="text-3xl font-semibold">{formatCurrency(offer.price)}</div>
-                <div className="text-sm text-muted-foreground">
-                  {offer.packageLabel} · {formatFreshnessLabel(offer.updatedAt)}
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground">{offer.highlight}</p>
+              <div className="text-2xl font-semibold">{formatCurrency(offer.price)}</div>
             </CardContent>
-            <CardFooter className="justify-between">
-              <span className="text-sm text-muted-foreground">{offer.evidence[0]?.sourceLabel}</span>
+          </Card>
+        ))}
+      </section>
+    </div>
+  );
+}
+
+export function OffersPage() {
+  const { cityId, cities } = usePricely();
+  const city = cities.find((entry) => entry.id === cityId) ?? getCityById(cityId);
+  const [offers, setOffers] = useState<RegionOffersApiResponse['offers']>([]);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const load = async () => {
+      try {
+        const response = await fetchRegionOffers(cityId);
+        if (!disposed) {
+          setOffers(response.offers);
+        }
+      } catch {
+        if (!disposed) {
+          setOffers([]);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      disposed = true;
+    };
+  }, [cityId]);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-semibold tracking-tight">Ofertas por regiao</h1>
+        <p className="text-muted-foreground">
+          {city.name}. Ofertas publicas ficam visiveis com origem, frescor e confianca.
+        </p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        {offers.map((offer) => (
+          <Card key={offer.id} className="overflow-hidden">
+            <div className="aspect-[16/9] overflow-hidden">
+              <img
+                alt={offer.productName}
+                className="h-full w-full object-cover"
+                src={offer.imageUrl ?? 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80'}
+              />
+            </div>
+            <CardHeader>
+              <CardTitle>{offer.productName}</CardTitle>
+              <CardDescription>
+                {offer.storeName} · {offer.neighborhood}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              <div className="flex flex-wrap gap-2">
+                {freshnessBadge('fresh')}
+                {confidenceBadge(
+                  offer.confidenceLevel === 'high'
+                    ? 'alta'
+                    : offer.confidenceLevel === 'medium'
+                      ? 'media'
+                      : 'baixa',
+                )}
+              </div>
+              <div className="text-2xl font-semibold">{formatCurrency(offer.priceAmount)}</div>
+            </CardContent>
+            <CardFooter className="justify-end">
               <Button asChild size="sm" variant="outline">
                 <Link to={`/ofertas/${offer.id}`}>
                   Detalhe
@@ -368,16 +510,41 @@ export function OffersPage() {
 
 export function OfferDetailPage() {
   const { offerId } = useParams();
-  const offer = getOfferById(offerId ?? '');
+  const [offer, setOffer] = useState<OfferDetailApiResponse | null>(null);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const load = async () => {
+      if (!offerId) {
+        return;
+      }
+
+      try {
+        const response = await fetchOfferDetail(offerId);
+        if (!disposed) {
+          setOffer(response);
+        }
+      } catch {
+        if (!disposed) {
+          setOffer(null);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      disposed = true;
+    };
+  }, [offerId]);
 
   if (!offer) {
     return (
       <Alert variant="destructive">
         <ShieldAlertIcon />
-        <AlertTitle>Oferta não encontrada</AlertTitle>
-        <AlertDescription>
-          O detalhe pedido não existe mais ou ficou fora da cidade selecionada.
-        </AlertDescription>
+        <AlertTitle>Oferta nao encontrada</AlertTitle>
+        <AlertDescription>O detalhe pedido nao existe mais.</AlertDescription>
       </Alert>
     );
   }
@@ -386,68 +553,68 @@ export function OfferDetailPage() {
     <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
       <Card className="overflow-hidden">
         <div className="aspect-[4/3] overflow-hidden">
-          <img alt={offer.productName} className="h-full w-full object-cover" src={offer.imageUrl} />
+          <img
+            alt={offer.product.name}
+            className="h-full w-full object-cover"
+            src={offer.product.imageUrl ?? 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80'}
+          />
         </div>
       </Card>
 
       <div className="flex flex-col gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>{offer.productName}</CardTitle>
+            <CardTitle>{offer.product.name}</CardTitle>
             <CardDescription>
-              {offer.storeName} · {offer.neighborhood}
+              {offer.activeOffer.storeName} · {offer.activeOffer.neighborhood}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="flex flex-wrap gap-2">
-              {freshnessBadge(offer.freshness)}
-              {confidenceBadge(offer.confidence)}
+              {freshnessBadge('fresh')}
+              {confidenceBadge(
+                offer.activeOffer.confidenceLevel === 'high'
+                  ? 'alta'
+                  : offer.activeOffer.confidenceLevel === 'medium'
+                    ? 'media'
+                    : 'baixa',
+              )}
             </div>
-            <div className="text-4xl font-semibold">{formatCurrency(offer.price)}</div>
-            <div className="text-sm text-muted-foreground">
-              Preço anterior: {offer.previousPrice ? formatCurrency(offer.previousPrice) : 'sem histórico'}
+            <div className="text-4xl font-semibold">
+              {formatCurrency(offer.activeOffer.priceAmount)}
             </div>
-            <p className="text-sm text-muted-foreground">{offer.highlight}</p>
+            <p className="text-sm text-muted-foreground">
+              Preco observado em {offer.region.name} com evidencia rastreavel.
+            </p>
+            <div className="rounded-lg border border-border/70 p-4 text-sm text-muted-foreground">
+              Ultima atualizacao: {formatDateTime(offer.activeOffer.observedAt)}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Evidência da oferta</CardTitle>
+            <CardTitle>Precos do produto na regiao</CardTitle>
             <CardDescription>
-              Cada registro aponta de onde o preço veio e quando foi capturado.
+              Compare estabelecimentos, horarios e fonte antes de decidir.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
-            {offer.evidence.map((evidence) => (
-              <div
-                key={`${offer.id}-${evidence.capturedAt}`}
-                className="flex items-start justify-between gap-4 rounded-lg border border-border/70 p-4"
-              >
-                <div className="flex flex-col gap-1">
-                  <span className="font-medium">{evidence.sourceLabel}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {evidence.sourceType === 'nota'
-                      ? 'Nota fiscal'
-                      : evidence.sourceType === 'panfleto'
-                        ? 'Panfleto'
-                        : 'Site do mercado'}
-                  </span>
+            {offer.alternativeOffers.map((entry) => (
+              <div key={entry.id} className="rounded-lg border border-border/70 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-medium">{entry.storeName}</div>
+                    <div className="text-sm text-muted-foreground">{entry.neighborhood}</div>
+                  </div>
+                  <div className="text-lg font-semibold">{formatCurrency(entry.priceAmount)}</div>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  {formatDateTime(evidence.capturedAt)}
-                </span>
+                <div className="mt-2 text-sm text-muted-foreground">
+                  {entry.packageLabel} · {entry.sourceLabel} · {formatDateTime(entry.observedAt)}
+                </div>
               </div>
             ))}
           </CardContent>
-          <CardFooter className="justify-between">
-            <span className="text-sm text-muted-foreground">
-              Reportar promoção encerrada ou preço divergente
-            </span>
-            <Button size="sm" variant="destructive">
-              Reportar
-            </Button>
-          </CardFooter>
         </Card>
       </div>
     </div>
@@ -455,534 +622,849 @@ export function OfferDetailPage() {
 }
 
 export function CitiesPage() {
-  const { cityId, setCityId } = usePricely();
+  const { cities } = usePricely();
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Cidades suportadas</h1>
         <p className="text-muted-foreground">
-          A entrada do produto começa na cidade. Essa escolha define ofertas públicas,
-          bairros cobertos, mercados elegíveis e otimizações disponíveis.
+          O app lista regioes com estabelecimentos ativos e mostra quando ainda estamos coletando cobertura.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {supportedCities.map((city) => (
-          <Card key={city.id} className={city.id === cityId ? 'ring-2 ring-primary/30' : undefined}>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {cities.map((city) => (
+          <Card key={city.id}>
             <CardHeader>
-              <CardTitle>
-                {city.name} · {city.stateCode}
-              </CardTitle>
-              <CardDescription>{city.regionLabel}</CardDescription>
-              <CardAction>{cityStatusBadge(city)}</CardAction>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm text-muted-foreground">
-              <div className="flex flex-col gap-2">
-                <span className="font-medium text-foreground">Mercados mapeados</span>
-                <span>{city.stores.join(' · ')}</span>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle>
+                    {city.name} · {city.stateCode}
+                  </CardTitle>
+                  <CardDescription>{city.regionLabel}</CardDescription>
+                </div>
+                {cityStatusBadge(city)}
               </div>
-              <div className="flex flex-col gap-2">
-                <span className="font-medium text-foreground">Bairros</span>
-                <span>{city.neighborhoods.join(' · ')}</span>
+            </CardHeader>
+            <CardContent className="grid gap-4 text-sm">
+              <div>
+                <div className="font-medium">Estabelecimentos na regiao</div>
+                <div className="text-muted-foreground">{city.stores.join(', ')}</div>
+              </div>
+              <div>
+                <div className="font-medium">Bairros com cobertura</div>
+                <div className="text-muted-foreground">{city.neighborhoods.join(', ')}</div>
               </div>
             </CardContent>
-            <CardFooter className="justify-between">
-              <span className="text-sm text-muted-foreground">
-                {city.status === 'supported'
-                  ? 'Pronto para ofertas públicas'
-                  : city.status === 'pilot'
-                    ? 'Acesso monitorado'
-                    : 'Sem ofertas públicas ainda'}
-              </span>
-              <Button
-                disabled={city.status === 'soon'}
-                onClick={() => setCityId(city.id)}
-                size="sm"
-                variant={city.id === cityId ? 'secondary' : 'outline'}
-              >
-                {city.id === cityId ? 'Selecionada' : 'Escolher cidade'}
-              </Button>
-            </CardFooter>
           </Card>
         ))}
       </div>
     </div>
-  );
-}
-
-function AuthCard({ mode }: { mode: 'signin' | 'signup' }) {
-  return (
-    <Card className="mx-auto w-full max-w-xl">
-      <CardHeader>
-        <CardTitle>{mode === 'signin' ? 'Entrar no Pricely' : 'Criar conta no Pricely'}</CardTitle>
-        <CardDescription>
-          A mesma conta funciona no mobile e no web. Suas listas, cidade ativa e economia
-          estimada acompanham você.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="email">E-mail</FieldLabel>
-            <Input id="email" placeholder="voce@exemplo.com" />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="senha">Senha</FieldLabel>
-            <Input id="senha" placeholder="••••••••" type="password" />
-          </Field>
-          {mode === 'signup' && (
-            <Field>
-              <FieldLabel htmlFor="cidade">Cidade inicial</FieldLabel>
-              <Input id="cidade" placeholder="Ex.: São Paulo - SP" />
-              <FieldDescription>
-                Você pode trocar a cidade depois sem perder suas listas.
-              </FieldDescription>
-            </Field>
-          )}
-        </FieldGroup>
-      </CardContent>
-      <CardFooter className="justify-between">
-        <span className="text-sm text-muted-foreground">
-          {mode === 'signin'
-            ? 'Entrar sincroniza web e mobile.'
-            : 'Criando conta você mantém um único histórico em todos os dispositivos.'}
-        </span>
-        <Button>{mode === 'signin' ? 'Entrar' : 'Criar conta'}</Button>
-      </CardFooter>
-    </Card>
   );
 }
 
 export function SignInPage() {
-  return <AuthCard mode="signin" />;
+  const { signIn } = usePricely();
+
+  return (
+    <AuthCard
+      ctaLabel="Entrar"
+      description="Use a mesma conta do mobile para acessar listas, otimizacoes e historico."
+      onSubmit={({ email, password }) => signIn(email, password)}
+      title="Entrar no Pricely"
+    />
+  );
 }
 
 export function SignUpPage() {
-  return <AuthCard mode="signup" />;
+  const { signUp } = usePricely();
+
+  return (
+    <AuthCard
+      ctaLabel="Criar conta"
+      description="Sua conta sera compartilhada entre web e mobile com o mesmo historico."
+      includeDisplayName
+      onSubmit={({ displayName, email, password }) =>
+        signUp(email, password, displayName ?? 'Cliente Pricely')
+      }
+      title="Criar conta"
+    />
+  );
 }
 
 export function ListsPage() {
-  const { lists, setSelectedListId } = usePricely();
+  const { lists, profile } = usePricely();
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight">Minhas listas</h1>
-          <p className="text-muted-foreground">
-            A mesma lista pode ser criada no mobile ou no web. O resultado mais recente
-            continua disponível nas duas superfícies.
-          </p>
+    <RequireAuthentication
+      description="Entre para salvar listas, reaproveitar compras mensais e otimizar quando quiser."
+      title="Sua lista precisa da sua conta"
+    >
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight">Minhas listas</h1>
+            <p className="text-muted-foreground">
+              Suas listas ficam sincronizadas entre web e mobile. Voce pode salvar sem otimizar e processar depois.
+            </p>
+          </div>
+          <Button asChild>
+            <Link to="/listas/nova">Nova lista</Link>
+          </Button>
         </div>
-        <Button asChild>
-          <Link to="/listas/nova">Nova lista</Link>
-        </Button>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {lists.map((list) => (
-          <Card key={list.id}>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
             <CardHeader>
-              <CardTitle>{list.name}</CardTitle>
-              <CardDescription>
-                {getCityById(list.cityId).name} · atualizada em {formatDateTime(list.updatedAt)}
-              </CardDescription>
+              <CardDescription>Listas criadas</CardDescription>
+              <CardTitle>{profile.listsCreated}</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="flex items-center justify-between rounded-lg border border-border/70 p-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm text-muted-foreground">Economia estimada</span>
-                  <span className="text-2xl font-semibold text-lime-700">
-                    {formatCurrency(list.expectedSavings)}
-                  </span>
-                </div>
-                <Badge variant="secondary">
-                  {optimizationModes.find((mode) => mode.id === list.lastMode)?.label}
-                </Badge>
-              </div>
-              <div className="grid gap-2">
-                {list.items.slice(0, 4).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between text-sm">
-                    <span className="truncate">{item.name}</span>
-                    <span className={listStatusTone(item.status)}>
-                      {item.quantity} x {item.unitLabel}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter className="justify-between">
-              <Button
-                asChild
-                onClick={() => setSelectedListId(list.id)}
-                size="sm"
-                variant="outline"
-              >
-                <Link to={`/listas/${list.id}`}>Editar lista</Link>
-              </Button>
-              <Button asChild onClick={() => setSelectedListId(list.id)} size="sm">
-                <Link to={`/otimizacao/${list.id}`}>Otimizar</Link>
-              </Button>
-            </CardFooter>
           </Card>
-        ))}
+          <Card>
+            <CardHeader>
+              <CardDescription>Economia estimada</CardDescription>
+              <CardTitle>{formatCurrency(profile.totalEstimatedSavings)}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardDescription>Contribuicoes</CardDescription>
+              <CardTitle>{profile.receiptsShared + profile.invalidPromotionReports}</CardTitle>
+            </CardHeader>
+          </Card>
+        </div>
+
+        {lists.length === 0 ? (
+          <Alert>
+            <BadgeCheckIcon />
+            <AlertTitle>Nenhuma lista ainda</AlertTitle>
+            <AlertDescription>
+              Crie sua primeira lista para salvar a compra do mes e reprocessar quando os precos mudarem.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {lists.map((list) => (
+              <Card key={list.id}>
+                <CardHeader>
+                  <CardTitle>{list.name}</CardTitle>
+                  <CardDescription>
+                    {getCityById(list.cityId).name} - {list.items.length} itens
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                  {list.items[0]?.imageUrl ? (
+                    <div className="overflow-hidden rounded-lg border border-border/70">
+                      <img
+                        alt={list.items[0].name}
+                        className="h-32 w-full object-cover"
+                        src={list.items[0].imageUrl}
+                      />
+                    </div>
+                  ) : null}
+                  <div className="grid gap-2 text-sm text-muted-foreground">
+                  <div>Ultima atualizacao: {formatDateTime(list.updatedAt)}</div>
+                    <div>
+                      Modo preferido: {optimizationModes.find((mode) => mode.id === list.lastMode)?.label}
+                    </div>
+                    {list.items[0] ? (
+                      <div>
+                        Primeiro item: {list.items[0].name} - {describeBrandRule(list.items[0])}
+                      </div>
+                    ) : null}
+                  </div>
+                </CardContent>
+                <CardFooter className="justify-between gap-3">
+                  <Button asChild size="sm" variant="outline">
+                    <Link to={`/listas/${list.id}`}>Editar</Link>
+                  </Button>
+                  <Button asChild size="sm">
+                    <Link to={`/otimizacao/${list.id}`}>Otimizar</Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
+    </RequireAuthentication>
   );
+}
+
+function buildEditableItems(source?: ShoppingList): EditableListItem[] {
+  if (!source) {
+    return [];
+  }
+
+  return source.items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    catalogProductId: item.catalogProductId,
+    lockedProductVariantId: item.lockedProductVariantId,
+    brandPreferenceMode: item.brandPreferenceMode ?? 'any',
+    preferredBrandNames: item.preferredBrandNames ?? [],
+    imageUrl: item.imageUrl,
+    quantity: item.quantity,
+    unitLabel: item.unitLabel,
+    purchaseStatus: item.purchaseStatus,
+    note: item.note,
+  }));
 }
 
 export function ListEditorPage() {
   const navigate = useNavigate();
-  const { listId } = useParams();
-  const { cityId, addList, lists, updateList } = usePricely();
-  const isNew = listId === 'nova';
-  const existingList = lists.find((list) => list.id === listId);
-  const [name, setName] = useState(existingList?.name ?? 'Nova lista');
-  const [draftItems, setDraftItems] = useState<ShoppingListItem[]>(
-    existingList?.items ?? [
-      {
-        id: `item-${Date.now()}`,
-        name: 'Arroz tipo 1',
-        quantity: 1,
-        unitLabel: '5 kg',
-        status: 'resolved',
-      },
-    ],
-  );
-  const [newItemName, setNewItemName] = useState('');
+  const { listId = 'nova' } = useParams();
+  const { cityId, cities, lists, preferredMode, saveList } = usePricely();
+  const editingList = listId === 'nova' ? undefined : lists.find((entry) => entry.id === listId);
+  const [name, setName] = useState(editingList?.name ?? '');
+  const [selectedCityId, setSelectedCityId] = useState(editingList?.cityId ?? cityId);
+  const [mode, setMode] = useState<OptimizationModeId>(editingList?.lastMode ?? preferredMode);
+  const [items, setItems] = useState<EditableListItem[]>(() => buildEditableItems(editingList));
+  const [draftName, setDraftName] = useState('');
+  const [draftQuantity, setDraftQuantity] = useState('1');
+  const [draftUnit, setDraftUnit] = useState('un');
+  const [draftNote, setDraftNote] = useState('');
+  const [draftBrandPreferenceMode, setDraftBrandPreferenceMode] = useState<'any' | 'preferred' | 'exact'>('any');
+  const [draftPreferredBrand, setDraftPreferredBrand] = useState('');
+  const [catalogResults, setCatalogResults] = useState<CatalogProductSearchResponse[]>([]);
+  const [selectedCatalogProduct, setSelectedCatalogProduct] = useState<CatalogProductSearchResponse | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState('');
+  const [selectedVariants, setSelectedVariants] = useState<ProductVariantResponse[]>([]);
+  const [isBrandDialogOpen, setIsBrandDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
 
-  const saveList = () => {
-    const list: ShoppingList = {
-      id: existingList?.id ?? `lista-${Date.now()}`,
-      cityId: existingList?.cityId ?? cityId,
-      expectedSavings: existingList?.expectedSavings ?? 0,
-      lastMode: existingList?.lastMode ?? 'global_full',
-      name,
-      updatedAt: new Date().toISOString(),
-      items: draftItems,
-    };
-
-    if (isNew) {
-      addList(list);
-    } else {
-      updateList(list);
+  useEffect(() => {
+    if (!editingList) {
+      return;
     }
 
-    navigate('/listas');
+    setName(editingList.name);
+    setSelectedCityId(editingList.cityId);
+    setMode(editingList.lastMode);
+    setItems(buildEditableItems(editingList));
+  }, [editingList]);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const loadCatalog = async () => {
+      if (draftName.trim().length < 2) {
+        setCatalogResults([]);
+        return;
+      }
+
+      setIsSearchingCatalog(true);
+      try {
+        const results = await searchCatalogProducts(draftName.trim());
+        if (!disposed) {
+          setCatalogResults(results);
+        }
+      } catch {
+        if (!disposed) {
+          setCatalogResults([]);
+        }
+      } finally {
+        if (!disposed) {
+          setIsSearchingCatalog(false);
+        }
+      }
+    };
+
+    void loadCatalog();
+
+    return () => {
+      disposed = true;
+    };
+  }, [draftName]);
+
+  const addItem = () => {
+    if (!draftName.trim()) {
+      return;
+    }
+
+    setItems((current) => [
+      ...current,
+      {
+        id: `draft-${Date.now()}`,
+        name: draftName.trim(),
+        catalogProductId: selectedCatalogProduct?.id,
+        lockedProductVariantId: draftBrandPreferenceMode === 'exact' ? selectedVariantId || undefined : undefined,
+        brandPreferenceMode: draftBrandPreferenceMode,
+        preferredBrandNames:
+          draftBrandPreferenceMode === 'preferred' && draftPreferredBrand.trim()
+            ? [draftPreferredBrand.trim()]
+            : [],
+        imageUrl:
+          selectedVariants.find((variant) => variant.id === selectedVariantId)?.imageUrl ??
+          selectedCatalogProduct?.imageUrl ??
+          undefined,
+        quantity: Number.isFinite(Number(draftQuantity)) ? Number(draftQuantity) : 1,
+        unitLabel: draftUnit.trim() || 'un',
+        purchaseStatus: 'pending',
+        note: draftNote.trim() || undefined,
+      },
+    ]);
+    setDraftName('');
+    setDraftQuantity('1');
+    setDraftUnit('un');
+    setDraftNote('');
+    setDraftBrandPreferenceMode('any');
+    setDraftPreferredBrand('');
+    setSelectedCatalogProduct(null);
+    setSelectedVariantId('');
+    setSelectedVariants([]);
+    setIsBrandDialogOpen(false);
+    setCatalogResults([]);
+  };
+
+  const removeItem = (itemId: string) => {
+    setItems((current) => current.filter((item) => item.id !== itemId));
+  };
+
+  const togglePurchased = (itemId: string) => {
+    setItems((current) =>
+      current.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              purchaseStatus: item.purchaseStatus === 'purchased' ? 'pending' : 'purchased',
+            }
+          : item,
+      ),
+    );
+  };
+
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    setIsSaving(true);
+
+    try {
+      const saved = await saveList({
+        id: editingList?.id,
+        name: name.trim(),
+        cityId: selectedCityId,
+        lastMode: mode,
+        items: items.map((item) => ({
+          name: item.name,
+          catalogProductId: item.catalogProductId,
+          lockedProductVariantId: item.lockedProductVariantId,
+          brandPreferenceMode: item.brandPreferenceMode,
+          preferredBrandNames: item.preferredBrandNames,
+          purchaseStatus: item.purchaseStatus,
+          quantity: item.quantity,
+          unitLabel: item.unitLabel,
+          note: item.note,
+        })),
+      });
+      navigate(`/otimizacao/${saved.id}`);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Nao foi possivel salvar a lista.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-      <Card>
-        <CardHeader>
-          <CardTitle>{isNew ? 'Criar lista' : 'Editar lista de compras'}</CardTitle>
-          <CardDescription>
-            Os mesmos itens e observações ficam disponíveis depois no app mobile.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-5">
-          <FieldGroup>
+    <RequireAuthentication
+      description="Entre para editar listas e manter tudo sincronizado no mobile."
+      title="Edicao protegida"
+    >
+      <form className="grid gap-6" onSubmit={handleSave}>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {editingList ? 'Editar lista' : 'Nova lista'}
+            </h1>
+            <p className="text-muted-foreground">
+              Salve a lista sem processar ou otimize agora. O mesmo conteudo aparece no mobile.
+            </p>
+          </div>
+          <Button disabled={isSaving} type="submit">
+            {isSaving ? 'Salvando...' : 'Salvar lista'}
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Configuracao</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
             <Field>
-              <FieldLabel htmlFor="nome-lista">Nome da lista</FieldLabel>
-              <Input
-                id="nome-lista"
-                onChange={(event) => setName(event.target.value)}
-                value={name}
-              />
+              <FieldLabel htmlFor="list-name">Nome da lista</FieldLabel>
+              <Input id="list-name" onChange={(event) => setName(event.target.value)} required value={name} />
             </Field>
             <Field>
-              <FieldLabel htmlFor="novo-item">Adicionar item</FieldLabel>
-              <InputGroup>
-                <InputGroupInput
-                  id="novo-item"
-                  onChange={(event) => setNewItemName(event.target.value)}
-                  placeholder="Ex.: tomate italiano"
-                  value={newItemName}
+              <FieldLabel htmlFor="list-city">Cidade</FieldLabel>
+              <select
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                id="list-city"
+                onChange={(event) => setSelectedCityId(event.target.value)}
+                value={selectedCityId}
+              >
+                {cities.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.name} · {city.stateCode}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Itens da compra</CardTitle>
+            <CardDescription>
+              O nome pode ser bruto. O backend vai normalizar e tentar casar com o catalogo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3 rounded-lg border border-dashed border-border/70 p-4 md:grid-cols-[1.8fr_0.7fr_0.7fr]">
+              <Field>
+                <FieldLabel htmlFor="draft-item-name">Produto</FieldLabel>
+                <Input
+                  id="draft-item-name"
+                  onChange={(event) => setDraftName(event.target.value)}
+                  placeholder="Ex.: arroz tipo 1 1kg"
+                  value={draftName}
                 />
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    disabled={!newItemName.trim()}
-                    onClick={() => {
-                      if (!newItemName.trim()) {
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="draft-item-quantity">Quantidade</FieldLabel>
+                <Input
+                  id="draft-item-quantity"
+                  min="1"
+                  onChange={(event) => setDraftQuantity(event.target.value)}
+                  step="1"
+                  type="number"
+                  value={draftQuantity}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="draft-item-unit">Unidade</FieldLabel>
+                <Input
+                  id="draft-item-unit"
+                  onChange={(event) => setDraftUnit(event.target.value)}
+                  placeholder="un, kg, 500 g"
+                  value={draftUnit}
+                />
+              </Field>
+              <Field className="md:col-span-3">
+                <FieldLabel>Produto comparavel</FieldLabel>
+                <div className="grid gap-2">
+                  <select
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    onChange={async (event) => {
+                      const product =
+                        catalogResults.find((entry) => entry.id === event.target.value) ?? null;
+                      setSelectedCatalogProduct(product);
+                      setSelectedVariantId('');
+
+                      if (!product) {
+                        setSelectedVariants([]);
                         return;
                       }
 
-                      setDraftItems((current) => [
-                        ...current,
-                        {
-                          id: `item-${Date.now()}`,
-                          name: newItemName.trim(),
-                          quantity: 1,
-                          unitLabel: 'un',
-                          status: 'partial',
-                        },
-                      ]);
-                      setNewItemName('');
+                      const variants = await fetchCatalogProductVariants(product.id);
+                      setSelectedVariants(variants);
                     }}
-                    size="sm"
+                    value={selectedCatalogProduct?.id ?? ''}
                   >
-                    Adicionar
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </InputGroup>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="observacao">Observação geral</FieldLabel>
-              <Textarea
-                id="observacao"
-                placeholder="Ex.: evitar substituições silenciosas e priorizar embalagem de 5 kg."
-              />
-            </Field>
-          </FieldGroup>
-        </CardContent>
-        <CardFooter className="justify-between">
-          <Button onClick={() => navigate('/listas')} size="sm" variant="outline">
-            Cancelar
-          </Button>
-          <Button onClick={saveList} size="sm">
-            Salvar lista
-          </Button>
-        </CardFooter>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Itens da lista</CardTitle>
-          <CardDescription>
-            Cada item mantém estado de cobertura para futuras otimizações.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          {draftItems.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between gap-4 rounded-lg border border-border/70 p-4"
-            >
-              <div className="flex flex-col gap-1">
-                <span className="font-medium">{item.name}</span>
-                <span className="text-sm text-muted-foreground">
-                  {item.quantity} x {item.unitLabel}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Badge variant={item.status === 'resolved' ? 'secondary' : 'outline'}>
-                  {item.status === 'resolved'
-                    ? 'Coberto'
-                    : item.status === 'partial'
-                      ? 'Parcial'
-                      : 'Sem preço'}
-                </Badge>
-                <Button
-                  onClick={() =>
-                    setDraftItems((current) => current.filter((entry) => entry.id !== item.id))
-                  }
-                  size="sm"
-                  variant="ghost"
-                >
-                  Remover
+                    <option value="">
+                      {isSearchingCatalog ? 'Buscando no catalogo...' : 'Selecione um produto comparavel'}
+                    </option>
+                    {catalogResults.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedCatalogProduct ? (
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 p-3 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-3">
+                        {selectedCatalogProduct.imageUrl ? (
+                          <img
+                            alt={selectedCatalogProduct.name}
+                            className="h-12 w-12 rounded-lg border border-border/70 object-cover"
+                            src={selectedCatalogProduct.imageUrl}
+                          />
+                        ) : null}
+                        <div className="grid gap-1">
+                          <span>Produto base: {selectedCatalogProduct.name}</span>
+                          <span>{describeBrandRule({ brandPreferenceMode: draftBrandPreferenceMode, preferredBrandNames: draftPreferredBrand.trim() ? [draftPreferredBrand.trim()] : [] })}</span>
+                        </div>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setIsBrandDialogOpen(true)}>
+                        Configurar marca
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              </Field>
+              <Field className="md:col-span-3">
+                <FieldLabel htmlFor="draft-item-note">Observacao opcional</FieldLabel>
+                <Textarea
+                  id="draft-item-note"
+                  onChange={(event) => setDraftNote(event.target.value)}
+                  placeholder="Marca preferida, restricao ou comparacao que ajude o parser."
+                  value={draftNote}
+                />
+              </Field>
+              <div className="md:col-span-3">
+                <Button onClick={addItem} type="button" variant="outline">
+                  Adicionar item
                 </Button>
               </div>
             </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
+
+            {items.length === 0 ? (
+              <Alert>
+                <AlertCircleIcon />
+                <AlertTitle>Lista vazia</AlertTitle>
+                <AlertDescription>Adicione pelo menos um item antes de salvar.</AlertDescription>
+              </Alert>
+            ) : (
+              <div className="grid gap-3">
+                {items.map((item) => (
+                  <div key={item.id} className="flex items-start justify-between gap-4 rounded-lg border border-border/70 p-4">
+                    <div className="flex items-start gap-3">
+                      <input
+                        checked={item.purchaseStatus === 'purchased'}
+                        className="mt-5 h-4 w-4"
+                        onChange={() => togglePurchased(item.id)}
+                        type="checkbox"
+                      />
+                      {item.imageUrl ? (
+                        <img
+                          alt={item.name}
+                          className="h-16 w-16 rounded-lg border border-border/70 object-cover"
+                          src={item.imageUrl}
+                        />
+                      ) : null}
+                      <div className="grid gap-1">
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {item.quantity} - {item.unitLabel}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {describeBrandRule(item)}
+                        </div>
+                      {item.note ? <div className="text-sm text-muted-foreground">{item.note}</div> : null}
+                      </div>
+                    </div>
+                    <Button onClick={() => removeItem(item.id)} size="sm" type="button" variant="ghost">
+                      Remover
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Dialog open={isBrandDialogOpen} onOpenChange={setIsBrandDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Configurar marca</DialogTitle>
+              <DialogDescription>
+                Defina se este item aceita qualquer marca, prefere uma marca ou exige uma variante exata.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4">
+              <Field>
+                <FieldLabel>Regra de marca</FieldLabel>
+                <select
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  onChange={(event) =>
+                    setDraftBrandPreferenceMode(
+                      event.target.value as 'any' | 'preferred' | 'exact',
+                    )
+                  }
+                  value={draftBrandPreferenceMode}
+                >
+                  <option value="any">Qualquer marca</option>
+                  <option value="preferred">Preferir marca</option>
+                  <option value="exact">Somente variante exata</option>
+                </select>
+              </Field>
+              {draftBrandPreferenceMode === 'preferred' ? (
+                <Field>
+                  <FieldLabel htmlFor="draft-item-brand">Marca preferida</FieldLabel>
+                  <Input
+                    id="draft-item-brand"
+                    onChange={(event) => setDraftPreferredBrand(event.target.value)}
+                    placeholder="Ex.: Camil"
+                    value={draftPreferredBrand}
+                  />
+                </Field>
+              ) : null}
+              {draftBrandPreferenceMode === 'exact' ? (
+                <Field>
+                  <FieldLabel>Variante exata</FieldLabel>
+                  <select
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    onChange={(event) => setSelectedVariantId(event.target.value)}
+                    value={selectedVariantId}
+                  >
+                    <option value="">Selecione a variante</option>
+                    {selectedVariants.map((variant) => (
+                      <option key={variant.id} value={variant.id}>
+                        {variant.brandName ? `${variant.brandName} - ` : ''}{variant.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsBrandDialogOpen(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {error ? (
+          <Alert variant="destructive">
+            <ShieldAlertIcon />
+            <AlertTitle>Falha ao salvar</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+      </form>
+    </RequireAuthentication>
   );
 }
 
 export function OptimizationPage() {
-  const { listId } = useParams();
-  const { lists, preferredMode, setPreferredMode } = usePricely();
-  const list = lists.find((entry) => entry.id === listId) ?? lists[0];
-  const scenarios = getOptimizationScenarios(list.id);
-  const activeScenario =
-    scenarios.find((scenario) => scenario.mode === preferredMode) ?? scenarios[0];
+  const { listId = '' } = useParams();
+  const { lists, optimizationResults, preferredMode, runOptimization, setPreferredMode } = usePricely();
+  const [error, setError] = useState<string | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const list = lists.find((entry) => entry.id === listId);
+  const result = optimizationResults[listId];
+  const activeMode = result?.mode ?? list?.lastMode ?? preferredMode;
+  const listItemsById = new Map(list?.items.map((item) => [item.id, item]) ?? []);
+  const isProcessingResult =
+    result?.status === 'queued' || result?.status === 'running';
+  const isStaleProcessing =
+    isProcessingResult &&
+    Date.now() - new Date(result.createdAt).getTime() > 30_000;
 
-  if (!activeScenario) {
-    return (
-      <Alert>
-        <AlertCircleIcon />
-        <AlertTitle>Sem cenário disponível</AlertTitle>
-        <AlertDescription>
-          Essa lista ainda não tem um resultado local para exibir.
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  const handleRun = async (mode: OptimizationModeId) => {
+    setError(null);
+    setIsRunning(true);
+
+    try {
+      setPreferredMode(mode);
+      await runOptimization(listId, mode);
+    } catch (runError) {
+      setError(runError instanceof Error ? runError.message : 'Nao foi possivel otimizar a lista.');
+    } finally {
+      setIsRunning(false);
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Resultado da otimização da lista
-        </h1>
-        <p className="text-muted-foreground">
-          {list.name} · {getCityById(list.cityId).name}. O mesmo resultado pode ser aberto
-          depois no mobile com a mesma conta.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Comparador de modos</CardTitle>
-          <CardDescription>
-            Mude entre os três modos sem perder a leitura de cobertura, confiança e custo.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-5">
-          <ToggleGroup
-            onValueChange={(value) => {
-              if (value) {
-                setPreferredMode(value as OptimizationModeId);
-              }
-            }}
-            type="single"
-            value={activeScenario.mode}
-          >
-            {scenarios.map((scenario) => (
-              <ToggleGroupItem key={scenario.mode} value={scenario.mode}>
-                {scenario.label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-
-          <div className="grid gap-4 lg:grid-cols-4">
-            <Card size="sm">
-              <CardHeader>
-                <CardDescription>Total estimado</CardDescription>
-                <CardTitle>{formatCurrency(activeScenario.totalEstimatedCost)}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card size="sm">
-              <CardHeader>
-                <CardDescription>Economia estimada</CardDescription>
-                <CardTitle className="text-lime-700">
-                  {formatCurrency(activeScenario.estimatedSavings)}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card size="sm">
-              <CardHeader>
-                <CardDescription>Cobertura</CardDescription>
-                <CardTitle>{activeScenario.coverageLabel}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card size="sm">
-              <CardHeader>
-                <CardDescription>Trade-off</CardDescription>
-                <CardTitle>{activeScenario.tradeoffLabel}</CardTitle>
-              </CardHeader>
-            </Card>
+    <RequireAuthentication
+      description="Entre para processar sua lista no backend e manter os resultados sincronizados."
+      title="Otimizacao protegida"
+    >
+      {!list ? (
+        <Alert variant="destructive">
+          <ShieldAlertIcon />
+          <AlertTitle>Lista nao encontrada</AlertTitle>
+          <AlertDescription>Escolha uma lista valida para rodar a otimizacao.</AlertDescription>
+        </Alert>
+      ) : (
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <h1 className="text-3xl font-semibold tracking-tight">Resultado da otimizacao</h1>
+              <p className="text-muted-foreground">
+                {list.name} · {getCityById(list.cityId).name}. O processamento roda no backend para garantir consistencia.
+              </p>
+            </div>
+            <Button asChild variant="outline">
+              <Link to={`/listas/${list.id}`}>Editar lista</Link>
+            </Button>
           </div>
-        </CardContent>
-      </Card>
 
-      <Tabs defaultValue="comparativo">
-        <TabsList>
-          <TabsTrigger value="comparativo">Comparativo</TabsTrigger>
-          <TabsTrigger value="detalhes">Itens e lojas</TabsTrigger>
-          <TabsTrigger value="observacoes">Observações</TabsTrigger>
-        </TabsList>
-        <TabsContent value="comparativo">
-          <div className="grid gap-4 md:grid-cols-3">
-            {scenarios.map((scenario) => (
-              <Card key={scenario.mode} className={scenario.mode === activeScenario.mode ? 'ring-2 ring-primary/30' : undefined}>
-                <CardHeader>
-                  <CardTitle>{scenario.label}</CardTitle>
-                  <CardDescription>{scenario.summary}</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Total</span>
-                    <span>{formatCurrency(scenario.totalEstimatedCost)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Economia</span>
-                    <span className="text-lime-700">{formatCurrency(scenario.estimatedSavings)}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-        <TabsContent value="detalhes">
           <Card>
             <CardHeader>
-              <CardTitle>Decisão por item</CardTitle>
+              <CardTitle>Escolha o modo</CardTitle>
               <CardDescription>
-                Fonte, data e confiança seguem visíveis para cada escolha.
+                Voce pode reprocessar a mesma lista quantas vezes quiser sem perder o historico.
               </CardDescription>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Loja</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Fonte</TableHead>
-                    <TableHead>Atualização</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {activeScenario.decisions.map((decision) => (
-                    <TableRow key={decision.id}>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          <span className="font-medium">{decision.itemName}</span>
-                          <span className="text-xs text-muted-foreground">{decision.quantityLabel}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {decision.storeName ? (
-                          <div className="flex flex-col gap-1">
-                            <span>{decision.storeName}</span>
-                            <span className="text-xs text-muted-foreground">{decision.neighborhood}</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">Sem loja sugerida</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {decision.price ? formatCurrency(decision.price) : 'Sem preço confirmado'}
-                      </TableCell>
-                      <TableCell>{decision.sourceLabel ?? 'Revisão manual'}</TableCell>
-                      <TableCell>
-                        {decision.updatedAt ? formatFreshnessLabel(decision.updatedAt) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {confidenceBadge(decision.confidence)}
-                          <span className="text-xs text-muted-foreground">{decision.note}</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <CardContent className="flex flex-wrap gap-3">
+              {optimizationModes.map((mode) => (
+                <Button
+                  key={mode.id}
+                  disabled={isRunning}
+                  onClick={() => handleRun(mode.id)}
+                  variant={activeMode === mode.id ? 'default' : 'outline'}
+                >
+                  {isRunning && activeMode === mode.id ? 'Processando...' : mode.label}
+                </Button>
+              ))}
             </CardContent>
           </Card>
-        </TabsContent>
-        <TabsContent value="observacoes">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Alert>
-              <BadgeCheckIcon />
-              <AlertTitle>Recomendado para você</AlertTitle>
-              <AlertDescription>{activeScenario.summary}</AlertDescription>
-            </Alert>
-            <Alert>
-              <ReceiptTextIcon />
-              <AlertTitle>Observação de confiança</AlertTitle>
+
+            {error ? (
+              <Alert variant="destructive">
+              <ShieldAlertIcon />
+              <AlertTitle>Falha no processamento</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            {isProcessingResult ? (
+              <Alert>
+                <AlertCircleIcon />
+                <AlertTitle>
+                  {result?.status === 'running' ? 'Processamento em andamento' : 'Fila de processamento'}
+                </AlertTitle>
+                <AlertDescription className="space-y-3">
+                  <p>
+                  {isStaleProcessing
+                    ? 'A lista ainda esta sendo processada. Atualize novamente em instantes se o resultado nao aparecer.'
+                    : 'O backend aceitou a lista e esta calculando o melhor resultado agora.'}
+                  </p>
+                  {isStaleProcessing ? (
+                    <Button
+                      onClick={() => handleRun(activeMode)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Tentar novamente
+                    </Button>
+                  ) : null}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            {!result ? (
+              <Alert>
+              <AlertCircleIcon />
+              <AlertTitle>Nenhum resultado ainda</AlertTitle>
               <AlertDescription>
-                Se algum item cair para confiança baixa, o app mantém o item visível e
-                marca a decisão para revisão, sem preencher preço inventado.
+                Rode um dos modos acima para gerar a comparacao desta lista com os precos disponiveis.
               </AlertDescription>
             </Alert>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
+            ) : isProcessingResult ? null : (
+              <>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardHeader>
+                    <CardDescription>Custo estimado</CardDescription>
+                    <CardTitle>{formatCurrency(result.totalEstimatedCost ?? 0)}</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardDescription>Economia estimada</CardDescription>
+                    <CardTitle>{formatCurrency(result.estimatedSavings ?? 0)}</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardDescription>Cobertura</CardDescription>
+                    <CardTitle>{result.coverageStatus}</CardTitle>
+                  </CardHeader>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Decisoes por item</CardTitle>
+                  <CardDescription>
+                    Cada item mostra loja, preco, origem e status de confianca.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Loja</TableHead>
+                        <TableHead>Preco</TableHead>
+                        <TableHead>Origem</TableHead>
+                        <TableHead>Atualizacao</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {result.selections.map((selection) => (
+                        <TableRow key={`${selection.shoppingListItemId}-${selection.id ?? selection.shoppingListItemName}`}>
+                          <TableCell>
+                            <div className="flex items-start gap-3">
+                              {listItemsById.get(selection.shoppingListItemId)?.imageUrl ? (
+                                <img
+                                  alt={selection.shoppingListItemName}
+                                  className="h-14 w-14 rounded-lg border border-border/70 object-cover"
+                                  src={listItemsById.get(selection.shoppingListItemId)?.imageUrl}
+                                />
+                              ) : null}
+                              <div className="flex flex-col gap-1">
+                                <span className="font-medium">{selection.shoppingListItemName}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {describeBrandRule(
+                                    listItemsById.get(selection.shoppingListItemId) ?? {
+                                      brandPreferenceMode: 'any',
+                                      preferredBrandNames: [],
+                                    },
+                                  )}
+                                </span>
+                                {selection.confidenceNotice ? (
+                                  <span className="text-xs text-muted-foreground">{selection.confidenceNotice}</span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {selection.establishmentName ? (
+                              <div className="flex flex-col gap-1">
+                                <span>{selection.establishmentName}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {selection.establishmentNeighborhood ?? 'bairro nao informado'}
+                                </span>
+                              </div>
+                            ) : (
+                              'Sem loja definida'
+                            )}
+                          </TableCell>
+                          <TableCell>{formatCurrency(selection.priceAmount ?? selection.estimatedCost ?? 0)}</TableCell>
+                          <TableCell>{selection.sourceLabel ?? 'Sem evidencia suficiente'}</TableCell>
+                          <TableCell>
+                            {selection.observedAt ? formatFreshnessLabel(selection.observedAt) : 'Sem data'}
+                          </TableCell>
+                          <TableCell>
+                            <span className={listStatusTone(
+                              selection.selectionStatus === 'selected'
+                                ? 'resolved'
+                                : selection.selectionStatus === 'review'
+                                  ? 'partial'
+                                  : 'missing',
+                            )}>
+                              {selection.selectionStatus}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+    </RequireAuthentication>
   );
 }
+

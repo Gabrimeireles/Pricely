@@ -9,6 +9,7 @@ class LocalCacheService {
 
   static const shoppingListDraftKey = 'shopping_list_draft';
   static const optimizationResultKey = 'latest_optimization_result';
+  static const authTokenKey = 'auth_token';
 
   final KeyValueStore _keyValueStore;
 
@@ -44,5 +45,17 @@ class LocalCacheService {
 
     return OptimizationResult.fromJson(
         jsonDecode(rawValue) as Map<String, dynamic>);
+  }
+
+  Future<void> saveAuthToken(String token) async {
+    await _keyValueStore.writeString(authTokenKey, token);
+  }
+
+  Future<String?> loadAuthToken() async {
+    return _keyValueStore.readString(authTokenKey);
+  }
+
+  Future<void> clearAuthToken() async {
+    await _keyValueStore.remove(authTokenKey);
   }
 }

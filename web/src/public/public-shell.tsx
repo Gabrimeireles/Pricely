@@ -2,7 +2,6 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import { MapPinIcon, ShieldCheckIcon, SparklesIcon } from 'lucide-react';
 
 import { usePricely } from '@/app/pricely-context';
-import { getCityById } from '@/app/mock-data';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -26,8 +25,8 @@ const linkClassName = ({ isActive }: { isActive: boolean }) =>
     : 'text-muted-foreground transition-colors hover:text-foreground';
 
 export function PublicLayout() {
-  const { cityId, cities, setCityId } = usePricely();
-  const activeCity = getCityById(cityId);
+  const { cityId, cities, currentUser, isAuthenticated, setCityId, signOut } = usePricely();
+  const activeCity = cities.find((city) => city.id === cityId) ?? cities[0];
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.14),transparent_28%),radial-gradient(circle_at_85%_15%,rgba(37,99,235,0.10),transparent_22%),linear-gradient(180deg,#f8fafb_0%,#f3f8f6_48%,#eef7f8_100%)]">
@@ -45,6 +44,11 @@ export function PublicLayout() {
               <NavLink className={linkClassName} to="/listas">
                 Minhas listas
               </NavLink>
+              {currentUser?.role === 'admin' ? (
+                <NavLink className={linkClassName} to="/dashboard">
+                  Dashboard
+                </NavLink>
+              ) : null}
             </nav>
           </div>
 
@@ -65,12 +69,25 @@ export function PublicLayout() {
               </SelectContent>
             </Select>
 
-            <Button asChild size="sm" variant="ghost">
-              <Link to="/entrar">Entrar</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link to="/criar-conta">Criar conta</Link>
-            </Button>
+            {isAuthenticated ? (
+              <>
+                <Button asChild size="sm" variant="ghost">
+                  <Link to="/listas">{currentUser?.displayName ?? 'Minha conta'}</Link>
+                </Button>
+                <Button onClick={signOut} size="sm" variant="outline">
+                  Sair
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild size="sm" variant="ghost">
+                  <Link to="/entrar">Entrar</Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link to="/criar-conta">Criar conta</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -91,7 +108,7 @@ export function PublicLayout() {
             <div className="flex flex-col gap-1">
               <span className="text-sm font-medium">Ofertas por região</span>
               <span className="text-sm text-muted-foreground">
-                Exibimos cidade ativa e bairros com cobertura agora: {activeCity.name}.
+                Exibimos cidade ativa com cobertura agora: {activeCity.name} · {activeCity.regionLabel}.
               </span>
             </div>
           </div>
@@ -111,4 +128,3 @@ export function PublicLayout() {
     </div>
   );
 }
-

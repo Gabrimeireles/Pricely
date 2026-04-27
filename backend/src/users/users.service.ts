@@ -59,10 +59,43 @@ export class UsersService {
       throw new NotFoundException('Authenticated account was not found');
     }
 
-    return this.toProfile(user);
+    const [shoppingListsCount, completedOptimizationRuns, aggregatedOptimization, receiptSubmissionsCount] =
+      await Promise.all([
+        this.prisma.shoppingList.count({
+          where: { userId: id },
+        }),
+        this.prisma.optimizationRun.count({
+          where: {
+            userId: id,
+            status: 'completed',
+          },
+        }),
+        this.prisma.optimizationRun.aggregate({
+          where: {
+            userId: id,
+            status: 'completed',
+          },
+          _sum: {
+            estimatedSavings: true,
+          },
+        }),
+        this.prisma.receiptRecord.count({
+          where: { userId: id },
+        }),
+      ]);
+
+    return this.toProfile(user, {
+      completedOptimizationRuns,
+      contributionsCount: receiptSubmissionsCount,
+      offerReportsCount: 0,
+      receiptSubmissionsCount,
+      shoppingListsCount,
+      totalEstimatedSavings: Number(aggregatedOptimization._sum.estimatedSavings ?? 0),
+    });
   }
 
-  toProfile(user: {
+  toProfile(
+    user: {
     id: string;
     email: string;
     displayName: string;
@@ -71,7 +104,9 @@ export class UsersService {
     lastLoginAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
-  }): UserProfile {
+    },
+    stats: UserProfileStats = this.buildEmptyProfileStats(),
+  ): UserProfile {
     return {
       id: user.id,
       email: user.email,
@@ -81,7 +116,7 @@ export class UsersService {
       lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
-      profileStats: this.buildEmptyProfileStats(),
+      profileStats: stats,
     };
   }
 

@@ -50,10 +50,14 @@ describe('application routes', () => {
     expect(screen.getByText('Mesma conta no mobile e no web')).toBeTruthy();
   });
 
-  it('renders the admin overview route inside the admin shell', () => {
+  it('blocks the admin overview route for a non-admin session', () => {
     renderRoute('/dashboard');
 
-    expect(screen.getByText('Dashboard restrito a administradores')).toBeTruthy();
-    expect(screen.getByText('Visão geral operacional')).toBeTruthy();
+    expect(screen.getByText('Acesso restrito')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'O dashboard administrativo so pode ser acessado por contas admin no web.',
+      ),
+    ).toBeTruthy();
   });
 });

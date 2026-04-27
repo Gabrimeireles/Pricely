@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -11,6 +12,8 @@ import { type RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -24,6 +27,8 @@ export class AuthService {
       displayName: input.displayName,
     });
 
+    this.logger.log(`Registered shared account ${user.id} (${user.email})`);
+
     return this.buildSession(user);
   }
 
@@ -31,16 +36,19 @@ export class AuthService {
     const user = await this.usersService.findByEmail(input.email);
 
     if (!user) {
+      this.logger.warn(`Rejected login for unknown email ${input.email}`);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const passwordMatches = await compare(input.password, user.passwordHash);
 
     if (!passwordMatches) {
+      this.logger.warn(`Rejected login for user ${user.id}: invalid password`);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const updatedUser = await this.usersService.markSuccessfulLogin(user.id);
+    this.logger.log(`Authenticated user ${updatedUser.id}`);
     return this.buildSession(updatedUser);
   }
 

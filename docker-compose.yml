@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pricely-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -20,24 +20,11 @@ services:
     image: redis:7
     container_name: pricely-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - pricely-redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  mongodb:
-    image: mongo:7
-    container_name: pricely-mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - pricely-mongodb-data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -51,15 +38,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      mongodb:
-        condition: service_healthy
     working_dir: /app
     environment:
       PORT: 3000
       APP_HOST: 0.0.0.0
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pricely
-      MONGODB_URI: mongodb://mongodb:27017/pricely
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_ACCESS_SECRET: changeme-local-secret
@@ -68,7 +52,7 @@ services:
       [
         "sh",
         "-lc",
-        "npm run db:generate && npm run db:push && npm run db:seed && npm run start:dev"
+        "npm run db:generate && npx prisma db push --force-reset && npm run db:seed && npm run start:dev"
       ]
     ports:
       - "3000:3000"
@@ -96,6 +80,5 @@ services:
 volumes:
   pricely-postgres-data:
   pricely-redis-data:
-  pricely-mongodb-data:
   pricely-backend-node-modules:
   pricely-web-node-modules:
