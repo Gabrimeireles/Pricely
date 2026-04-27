@@ -54,6 +54,17 @@ enum ShoppingListItemResolutionStatus {
   missing
 }
 
+enum ShoppingListItemBrandPreferenceMode {
+  any
+  preferred
+  exact
+}
+
+enum ShoppingListItemPurchaseStatus {
+  pending
+  purchased
+}
+
 enum OptimizationMode {
   local
   global_unique
@@ -154,36 +165,59 @@ model Establishment {
   @@index([regionId, isActive])
 }
 
-model Product {
+model CatalogProduct {
   id                String           @id @default(uuid()) @db.Uuid
   slug              String           @unique
-  name              String           @unique
+  name              String
   category          String
-  brandHint         String?
   defaultUnit       String?
+  imageUrl          String?
   isActive          Boolean          @default(true)
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
-  aliases           ProductAlias[]
+  aliases           CatalogProductAlias[]
+  productVariants   ProductVariant[]
   productOffers     ProductOffer[]
   shoppingListItems ShoppingListItem[]
+
+  @@unique([name, category, defaultUnit])
 }
 
-model ProductAlias {
+model CatalogProductAlias {
   id              String                 @id @default(uuid()) @db.Uuid
-  productId       String                 @db.Uuid
+  catalogProductId String                @db.Uuid
   alias           String
   sourceType      ProductAliasSourceType
   confidenceScore Decimal                @db.Decimal(5, 2)
   createdAt       DateTime               @default(now())
-  product         Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  catalogProduct  CatalogProduct         @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
 
-  @@unique([productId, alias])
+  @@unique([catalogProductId, alias])
+}
+
+model ProductVariant {
+  id                String           @id @default(uuid()) @db.Uuid
+  catalogProductId  String           @db.Uuid
+  slug              String           @unique
+  displayName       String
+  brandName         String?
+  variantLabel      String?
+  packageLabel      String?
+  imageUrl          String?
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  catalogProduct    CatalogProduct   @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
+  productOffers     ProductOffer[]
+  shoppingListItems ShoppingListItem[] @relation("LockedProductVariant")
+
+  @@index([catalogProductId, isActive])
 }
 
 model ProductOffer {
   id                 String                  @id @default(uuid()) @db.Uuid
-  productId          String                  @db.Uuid
+  catalogProductId   String                  @db.Uuid
+  productVariantId   String                  @db.Uuid
   establishmentId    String                  @db.Uuid
   displayName        String
   packageLabel       String
@@ -198,10 +232,12 @@ model ProductOffer {
   isActive           Boolean                 @default(true)
   updatedAt          DateTime                @updatedAt
   establishment      Establishment           @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
-  product            Product                 @relation(fields: [productId], references: [id], onDelete: Restrict)
+  catalogProduct     CatalogProduct          @relation(fields: [catalogProductId], references: [id], onDelete: Restrict)
+  productVariant     ProductVariant          @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
   optimizationSelections OptimizationSelection[]
 
-  @@index([productId, isActive, observedAt])
+  @@index([catalogProductId, isActive, observedAt])
+  @@index([productVariantId, isActive, observedAt])
   @@index([establishmentId, isActive])
 }
 
@@ -224,19 +260,27 @@ model ShoppingList {
 model ShoppingListItem {
   id               String                          @id @default(uuid()) @db.Uuid
   shoppingListId   String                          @db.Uuid
-  productId        String?                         @db.Uuid
+  catalogProductId String?                         @db.Uuid
+  lockedProductVariantId String?                   @db.Uuid
+  brandPreferenceMode ShoppingListItemBrandPreferenceMode @default(any)
+  preferredBrandNames String[]                     @default([])
   requestedName    String
   quantity         Decimal?                        @db.Decimal(10, 2)
   unitLabel        String?
   notes            String?
+  purchaseStatus   ShoppingListItemPurchaseStatus  @default(pending)
+  purchasedAt      DateTime?
   resolutionStatus ShoppingListItemResolutionStatus @default(unresolved)
   createdAt        DateTime                        @default(now())
   updatedAt        DateTime                        @updatedAt
   optimizationSelections OptimizationSelection[]
-  product          Product?                        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  catalogProduct   CatalogProduct?                 @relation(fields: [catalogProductId], references: [id], onDelete: SetNull)
+  lockedProductVariant ProductVariant?             @relation("LockedProductVariant", fields: [lockedProductVariantId], references: [id], onDelete: SetNull)
   shoppingList     ShoppingList                    @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
 
   @@index([shoppingListId])
+  @@index([catalogProductId])
+  @@index([lockedProductVariantId])
 }
 
 model OptimizationRun {

@@ -7,23 +7,24 @@ import { ListsModule } from './lists/lists.module';
 import { LoggingModule } from './common/logging/logging.module';
 import { QueueModule } from './common/queue/queue.module';
 import { OptimizationModule } from './optimization/optimization.module';
-
-import { MongoModule } from './persistence/mongo.module';
 import { PrismaModule } from './persistence/prisma.module';
+import { PricingModule } from './pricing/pricing.module';
 import { ReceiptsModule } from './receipts/receipts.module';
+import { RegionsModule } from './regions/regions.module';
 import { StoresModule } from './stores/stores.module';
 
 @Module({
   imports: [
     LoggingModule,
     PrismaModule,
-    MongoModule,
     AuthModule,
     QueueModule,
     ReceiptsModule,
     CatalogModule,
+    RegionsModule,
     ListsModule,
     StoresModule,
+    PricingModule,
     OptimizationModule,
     AdminModule,
     JobsModule,

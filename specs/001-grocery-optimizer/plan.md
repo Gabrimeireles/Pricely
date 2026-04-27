@@ -9,8 +9,14 @@ Rebuild the backend architecture around PostgreSQL, Redis, and BullMQ so the pro
 can support one shared account model across mobile and web, role-gated admin
 dashboards on web, explicit region activation, establishment-level pricing, a canonical
 product catalog, reusable shopping lists, and queue-backed optimization runs executed
-on the server. The design keeps the consumer experience simple while making the data
-model relational, auditable, and suitable for admin CRUD and operational metrics.
+on the server. The current implementation phase also needs a full UX realignment for
+web and mobile so both surfaces match the Stitch direction: city-first selection,
+branded product visuals, richer admin information architecture, more visual metrics,
+real product imagery, and list experiences that work both as optimization inputs and
+as live in-store shopping checklists. The catalog and optimization model also needs to
+shift from direct brand-first selection toward `generic product first -> optional brand
+preference -> concrete variant offers`, so list creation stays fast while optimization
+still respects exact brand constraints when requested.
 
 ## Technical Context
 
@@ -35,7 +41,9 @@ must remain legible and traceable on responsive layouts
 **Constraints**: Keep the MVP bounded to shared accounts, regions, establishments,
 products, offers, lists, optimization runs, and admin CRUD; do not depend on QR-code
 online receipt resolution; preserve explicit error handling and structured logging;
-avoid duplicating optimization logic on mobile clients  
+avoid duplicating optimization logic on mobile clients; keep shopper-facing region
+selection city-based rather than neighborhood-based; stop relying on mock product
+images in the final UI  
 **Scale/Scope**: Initial release supports customer shopping flows, public regional offer
 discovery, backend-owned optimization, admin dashboards, catalog CRUD, region/store
 activation, and queue observability
@@ -159,6 +167,33 @@ while sharing auth and domain contracts.
 - `quickstart.md`: local developer validation for PostgreSQL, Redis, queue workers, web,
   and mobile
 - agent context update to reflect PostgreSQL/Prisma instead of MongoDB
+
+## UX Realignment Focus
+
+1. Split admin IA into dedicated screens:
+   - overview
+   - regions
+   - establishments
+   - products
+   - offers
+   - list operations
+2. Make the overview more visual with charts, stronger color, and high-signal KPI
+   grouping.
+3. Upgrade the product model and UI from generic grocery entities toward specific
+   branded products with images, aliases, package context, and explicit base-product
+   versus variant relationships.
+4. Remove mock product imagery from web and mobile and source visuals from real catalog
+   media records.
+5. Redesign shopping lists so they support:
+   - save without optimization
+   - generic product selection first
+   - optional preferred/exact brand constraints
+   - catalog-backed product search
+   - purchased-state tracking during a supermarket trip
+   - richer row cards with images and stronger separation
+6. Align create-list and city-selection flows with the city-first Stitch direction:
+   preselect current city when available, allow manual override, and remove default
+   optimization-mode choice from list creation.
 
 ## Complexity Tracking
 

@@ -38,9 +38,8 @@ Current default values:
 The repository now ships with [docker-compose.yml](/D:/Pricely/docker-compose.yml) for local
 development. It starts:
 
-- `postgres` on `localhost:5432`
-- `redis` on `localhost:6379`
-- `mongodb` on `localhost:27017`
+- `postgres` on `localhost:5433`
+- `redis` on `localhost:6380`
 - `backend` on `localhost:3000`
 - `web` on `localhost:5173`
 
@@ -64,12 +63,18 @@ docker compose down -v
 
 Notes:
 
-- The backend container runs `prisma generate`, `prisma db push`, and `prisma db seed` before
-  starting Nest in development mode.
-- MongoDB is still included as a temporary compatibility dependency while older repositories are
-  migrated off the legacy persistence layer.
+- The backend container runs `prisma generate`, `prisma db push --force-reset`, and
+  `prisma db seed` before starting Nest in development mode. This is intentionally local-dev
+  oriented so schema refactors do not leave the compose stack half-booted. It also means
+  the compose database is disposable and will be recreated on backend boot when the schema changes.
 - The current compose file is optimized for local development with bind mounts, not for production.
 - The browser-facing API URL used by the web container is `http://localhost:3000`.
+- Validation baseline on `2026-04-27`:
+  - `docker compose up --build -d`
+  - backend `build`, `lint`, and tests green
+  - web `build`, `lint`, and tests green
+  - mobile `analyze`, `test`, and debug APK build green
+  - smoke flow validated for auth, public regions/offers, shopping lists, optimization, and admin metrics
 
 ## Web Setup
 

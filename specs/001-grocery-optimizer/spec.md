@@ -167,7 +167,10 @@ job-aware APIs without client-side optimization logic.
   language: `local`, `global_unique`, and `global_full`.
 - **FR-009**: The system MUST maintain a canonical product catalog representing common
   grocery products independently of any one establishment.
-- **FR-010**: The system MUST associate each product with zero or more
+- **FR-010**: The catalog MUST distinguish between a generic comparable product and one
+  or more concrete branded or packaging-level variants that can actually be offered by
+  establishments.
+- **FR-010a**: The system MUST associate each concrete product variant with zero or more
   establishment-specific current offers, each containing price and store identity.
 - **FR-011**: The system MUST maintain establishments as store-level units with enough
   identity to distinguish branches of the same supermarket brand, including at minimum
@@ -215,6 +218,48 @@ job-aware APIs without client-side optimization logic.
   such as `São Paulo - 20` and warning states such as `Nenhum estabelecimento ativo`
   when the selected visible region has zero active stores.
 
+- **FR-029**: Shopper-facing region selection MUST be city-based rather than
+  neighborhood-based, and only city-level regions with public status other than
+  `inactive` MUST appear in selectors.
+- **FR-030**: City selectors on web and mobile MUST display the count of active
+  establishments for each visible city, including `0` when the city is visible but
+  still collecting supply coverage.
+- **FR-031**: The product catalog MUST support specific branded grocery products, such
+  as brand, line, type, package size, and product image, instead of relying only on
+  generic commodity labels.
+- **FR-031a**: Shopper list entry MUST allow choosing a generic comparable product
+  first, then optionally constraining the item by preferred or exact brand/variant.
+- **FR-031b**: When no brand is constrained, optimization MUST be free to choose the
+  cheapest valid offer according to the selected optimization mode.
+- **FR-031c**: When preferred brands are configured, optimization SHOULD prioritize
+  those brands first and may fall back to other valid variants only when the rule set
+  allows it.
+- **FR-031d**: When an exact brand or variant is configured, optimization MUST only
+  consider matching variants for that shopping-list item.
+- **FR-032**: Admin product creation and editing MUST support slug, display name,
+  category, default unit, aliases, brand specificity, and product image assignment.
+- **FR-033**: Offer records MAY keep `displayName` and `packageLabel`, and admin/public
+  views MUST surface them as the store-facing merchandising text and packaging context
+  used to distinguish multiple offers for the same product.
+- **FR-034**: Shopping-list item entry on web and mobile MUST support searching and
+  selecting real catalog products while still allowing users to save a list without
+  running optimization.
+- **FR-034a**: Shopping-list item entry on web and mobile MUST expose brand preference
+  choices as `any`, `preferred`, or `exact` instead of forcing brand selection at the
+  start of item creation.
+- **FR-035**: Shopping lists on web and mobile MUST support an in-store shopping mode
+  where users can mark items as purchased and follow the list dynamically during a
+  supermarket trip.
+- **FR-036**: The list experience on web and mobile MUST present richer item rows with
+  images, stronger separation between items, and clearer purchased/unpurchased states.
+- **FR-037**: The app MAY request location permission to preselect the shopper city,
+  but the chosen city MUST remain explicit and editable.
+- **FR-038**: The create-list flow MUST default to the user-selected city and MUST NOT
+  require choosing an optimization mode during initial list creation.
+- **FR-039**: Admin list operations MUST include queue state, list ownership, and
+  detail inspection for troubleshooting inconsistencies from a dedicated operational
+  view.
+
 ### Non-Functional Requirements
 
 - **NFR-001**: The product MUST preserve a single authoritative optimization behavior
@@ -241,10 +286,12 @@ job-aware APIs without client-side optimization logic.
   establishment count.
 - **Establishment**: Specific supermarket unit or branch with brand identity, unit
   identity, CNPJ, region, and active state.
-- **Product**: Canonical grocery catalog item used as the shared comparison target
-  across establishments.
-- **Product Offer**: Current establishment-specific price record for a product,
-  including freshness and confidence.
+- **Catalog Product**: Generic comparable grocery item chosen first by shoppers and
+  used as the optimization comparison anchor.
+- **Product Variant**: Specific branded or packaging-level product variant that can be
+  offered by establishments and optionally locked or preferred by shoppers.
+- **Product Offer**: Current establishment-specific price record for one product
+  variant, including freshness and confidence.
 - **Shopping List**: User-owned reusable list of grocery needs, independent of any one
   optimization run.
 - **Optimization Run**: One backend-generated execution of a selected optimization mode
@@ -277,6 +324,8 @@ job-aware APIs without client-side optimization logic.
 ## Assumptions
 
 - The MVP uses the backend as the only authoritative optimization engine.
+- Regions presented to shoppers should be treated as city-level operating areas rather
+  than neighborhood-level delivery zones.
 - Customer and admin identities share the same account table, with role-based
   differences enforced server-side.
 - Admin-only dashboards remain a web capability; mobile intentionally stays focused on
@@ -285,6 +334,10 @@ job-aware APIs without client-side optimization logic.
   the MVP rather than introducing a separate supermarket-chain table immediately.
 - Public region selection is driven by `Region` records and not inferred dynamically
   from arbitrary establishment rows alone.
+- The catalog should prefer specific branded products where data supports them while
+  keeping alias-based sanitization for generic user input and receipt parsing.
+- Shopping-list creation should optimize for speed by letting shoppers choose a generic
+  product first and only constrain brand when they care to do so.
 - QR-code-based online invoice lookup and more advanced LLM-assisted enrichment are
   deferred beyond the MVP.
 - Manual admin CRUD for catalog, stores, and current offers is sufficient to support an

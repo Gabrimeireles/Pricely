@@ -88,6 +88,23 @@ class PrismaUserAccountMock {
   private clone(user: StoredUser | null): StoredUser | null {
     return user ? structuredClone(user) : null;
   }
+
+  readonly shoppingList = {
+    count: async () => 0,
+  };
+
+  readonly optimizationRun = {
+    count: async () => 0,
+    aggregate: async () => ({
+      _sum: {
+        estimatedSavings: 0,
+      },
+    }),
+  };
+
+  readonly receiptRecord = {
+    count: async () => 0,
+  };
 }
 
 describe('Shared auth integration', () => {
@@ -104,6 +121,9 @@ describe('Shared auth integration', () => {
       .overrideProvider(PrismaService)
       .useValue({
         userAccount: userAccountMock,
+        shoppingList: userAccountMock.shoppingList,
+        optimizationRun: userAccountMock.optimizationRun,
+        receiptRecord: userAccountMock.receiptRecord,
       })
       .compile();
 

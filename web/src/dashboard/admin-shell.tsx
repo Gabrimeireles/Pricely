@@ -8,10 +8,9 @@ import {
   WorkflowIcon,
 } from 'lucide-react';
 
-import {
-  adminMetrics,
-  profileSnapshot,
-} from '@/app/mock-data';
+import { adminMetrics } from '@/app/mock-data';
+import { usePricely } from '@/app/pricely-context';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,17 +33,17 @@ import {
 const adminNav = [
   {
     to: '/dashboard',
-    label: 'Visão geral',
+    label: 'Visao geral',
     icon: LayoutDashboardIcon,
   },
   {
     to: '/dashboard/precos',
-    label: 'Preços e ofertas',
+    label: 'Precos e ofertas',
     icon: DatabaseZapIcon,
   },
   {
     to: '/dashboard/catalogo',
-    label: 'Catálogo',
+    label: 'Catalogo',
     icon: PackageSearchIcon,
   },
   {
@@ -54,12 +53,28 @@ const adminNav = [
   },
   {
     to: '/dashboard/fila',
-    label: 'Fila e saúde',
+    label: 'Fila e saude',
     icon: WorkflowIcon,
   },
 ];
 
 export function AdminLayout() {
+  const { currentUser, isAuthenticated } = usePricely();
+
+  if (!isAuthenticated || currentUser?.role !== 'admin') {
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-4xl items-center px-4 py-10">
+        <Alert variant="destructive">
+          <ShieldCheckIcon />
+          <AlertTitle>Acesso restrito</AlertTitle>
+          <AlertDescription>
+            O dashboard administrativo so pode ser acessado por contas admin no web.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon" variant="inset">
@@ -70,13 +85,13 @@ export function AdminLayout() {
             </div>
             <div className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
               <span className="text-sm font-semibold">Pricely</span>
-              <span className="text-xs text-sidebar-foreground/70">Área administrativa</span>
+              <span className="text-xs text-sidebar-foreground/70">Area administrativa</span>
             </div>
           </Link>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Navegação</SidebarGroupLabel>
+            <SidebarGroupLabel>Navegacao</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {adminNav.map((item) => (
@@ -101,13 +116,13 @@ export function AdminLayout() {
         <SidebarFooter>
           <div className="flex items-center gap-3 rounded-lg border border-sidebar-border p-2">
             <Avatar className="size-8">
-              <AvatarFallback>AD</AvatarFallback>
+              <AvatarFallback>
+                {currentUser.displayName.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
             </Avatar>
             <div className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
-              <span className="text-sm font-medium">Admin Pricely</span>
-              <span className="text-xs text-sidebar-foreground/70">
-                {profileSnapshot.receiptsShared} contribuições hoje
-              </span>
+              <span className="text-sm font-medium">{currentUser.displayName}</span>
+              <span className="text-xs text-sidebar-foreground/70">{currentUser.email}</span>
             </div>
           </div>
         </SidebarFooter>
@@ -120,7 +135,7 @@ export function AdminLayout() {
             <div className="flex flex-col gap-0.5">
               <span className="text-sm font-medium">Dashboard restrito a administradores</span>
               <span className="text-xs text-muted-foreground">
-                métricas rastreáveis, filas e revisão de catálogo
+                Metricas rastreaveis, filas e revisao de catalogo
               </span>
             </div>
           </div>
@@ -131,7 +146,7 @@ export function AdminLayout() {
               </Badge>
             ))}
             <Button asChild size="sm" variant="outline">
-              <Link to="/">Voltar para o público</Link>
+              <Link to="/">Voltar para o publico</Link>
             </Button>
           </div>
         </header>
@@ -143,4 +158,3 @@ export function AdminLayout() {
     </SidebarProvider>
   );
 }
-

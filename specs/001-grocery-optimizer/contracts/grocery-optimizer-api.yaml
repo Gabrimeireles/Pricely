@@ -8,9 +8,12 @@ info:
     management workflows.
 servers:
   - url: http://localhost:3000
+security:
+  - bearerAuth: []
 paths:
   /auth/register:
     post:
+      security: []
       summary: Register a shared user account
       requestBody:
         required: true
@@ -27,6 +30,7 @@ paths:
                 $ref: '#/components/schemas/AuthSession'
   /auth/login:
     post:
+      security: []
       summary: Authenticate a shared user account
       requestBody:
         required: true
@@ -53,6 +57,7 @@ paths:
                 $ref: '#/components/schemas/UserAccount'
   /regions:
     get:
+      security: []
       summary: List public regions visible in selectors
       responses:
         '200':
@@ -65,6 +70,7 @@ paths:
                   $ref: '#/components/schemas/PublicRegion'
   /regions/{regionId}/offers:
     get:
+      security: []
       summary: List active offers for a visible region
       parameters:
         - $ref: '#/components/parameters/RegionId'
@@ -77,11 +83,46 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ProductOffer'
-  /products/{productId}:
+  /catalog-products/search:
     get:
-      summary: Fetch a product detail view
+      security: []
+      summary: Search generic comparable products for shopper list entry
       parameters:
-        - $ref: '#/components/parameters/ProductId'
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching generic products returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CatalogProduct'
+  /catalog-products/{catalogProductId}/variants:
+    get:
+      security: []
+      summary: List concrete branded variants for one generic product
+      parameters:
+        - $ref: '#/components/parameters/CatalogProductId'
+      responses:
+        '200':
+          description: Variants returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductVariant'
+  /catalog-products/{catalogProductId}:
+    get:
+      security: []
+      summary: Fetch a generic product detail view with variants and current offers
+      parameters:
+        - $ref: '#/components/parameters/CatalogProductId'
       responses:
         '200':
           description: Product detail returned
@@ -89,11 +130,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductDetail'
-  /products/{productId}/offers:
+  /catalog-products/{catalogProductId}/offers:
     get:
-      summary: Fetch active establishment prices for one product
+      security: []
+      summary: Fetch active establishment prices for one generic product across variants
       parameters:
-        - $ref: '#/components/parameters/ProductId'
+        - $ref: '#/components/parameters/CatalogProductId'
       responses:
         '200':
           description: Product offers returned
@@ -310,9 +352,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Establishment'
-  /admin/products:
+  /admin/catalog-products:
     get:
-      summary: List canonical products for admin management
+      summary: List generic comparable products for admin management
       responses:
         '200':
           description: Products returned
@@ -321,9 +363,9 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Product'
+                  $ref: '#/components/schemas/CatalogProduct'
     post:
-      summary: Create a product
+      summary: Create a generic comparable product
       requestBody:
         required: true
         content:
@@ -336,12 +378,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
-  /admin/products/{productId}:
+                $ref: '#/components/schemas/CatalogProduct'
+  /admin/catalog-products/{catalogProductId}:
     patch:
-      summary: Update product metadata
+      summary: Update generic comparable product metadata
       parameters:
-        - $ref: '#/components/parameters/ProductId'
+        - $ref: '#/components/parameters/CatalogProductId'
       requestBody:
         required: true
         content:
@@ -354,7 +396,56 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/CatalogProduct'
+  /admin/product-variants:
+    get:
+      summary: List concrete branded product variants for admin management
+      responses:
+        '200':
+          description: Variants returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductVariant'
+    post:
+      summary: Create a product variant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductVariantRequest'
+      responses:
+        '201':
+          description: Variant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductVariant'
+  /admin/product-variants/{productVariantId}:
+    patch:
+      summary: Update a product variant
+      parameters:
+        - name: productVariantId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductVariantRequest'
+      responses:
+        '200':
+          description: Variant updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductVariant'
   /admin/offers:
     get:
       summary: List product offers for admin management
@@ -413,6 +504,11 @@ paths:
                 items:
                   $ref: '#/components/schemas/ProcessingJob'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
     RegionId:
       name: regionId
@@ -420,8 +516,8 @@ components:
       required: true
       schema:
         type: string
-    ProductId:
-      name: productId
+    CatalogProductId:
+      name: catalogProductId
       in: path
       required: true
       schema:
@@ -497,9 +593,11 @@ components:
           enum: [active, suspended]
     PublicRegion:
       type: object
-      required: [id, name, stateCode, implantationStatus, activeEstablishmentCount]
+      required: [id, slug, name, stateCode, implantationStatus, activeEstablishmentCount]
       properties:
         id:
+          type: string
+        slug:
           type: string
         name:
           type: string
@@ -538,7 +636,7 @@ components:
           type: string
         isActive:
           type: boolean
-    Product:
+    CatalogProduct:
       type: object
       required: [id, name, slug, category, isActive]
       properties:
@@ -550,25 +648,53 @@ components:
           type: string
         category:
           type: string
-        brandHint:
-          type: string
         defaultUnit:
+          type: string
+        imageUrl:
+          type: string
+        isActive:
+          type: boolean
+    ProductVariant:
+      type: object
+      required: [id, catalogProductId, displayName, isActive]
+      properties:
+        id:
+          type: string
+        catalogProductId:
+          type: string
+        slug:
+          type: string
+        displayName:
+          type: string
+        brandName:
+          type: string
+        variantLabel:
+          type: string
+        packageLabel:
+          type: string
+        imageUrl:
           type: string
         isActive:
           type: boolean
     ProductOffer:
       type: object
       required:
-        [id, productId, establishmentId, displayName, packageLabel, priceAmount, availabilityStatus, confidenceLevel, observedAt, isActive]
+        [id, catalogProductId, productVariantId, establishmentId, displayName, packageLabel, priceAmount, availabilityStatus, confidenceLevel, observedAt, isActive]
       properties:
         id:
           type: string
-        productId:
+        catalogProductId:
+          type: string
+        productVariantId:
           type: string
         establishmentId:
           type: string
         establishment:
           $ref: '#/components/schemas/Establishment'
+        catalogProduct:
+          $ref: '#/components/schemas/CatalogProduct'
+        productVariant:
+          $ref: '#/components/schemas/ProductVariant'
         displayName:
           type: string
         packageLabel:
@@ -593,10 +719,14 @@ components:
           type: boolean
     ProductDetail:
       type: object
-      required: [product, offers]
+      required: [catalogProduct, variants, offers]
       properties:
-        product:
-          $ref: '#/components/schemas/Product'
+        catalogProduct:
+          $ref: '#/components/schemas/CatalogProduct'
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariant'
         offers:
           type: array
           items:
@@ -633,8 +763,17 @@ components:
       properties:
         requestedName:
           type: string
-        productId:
+        catalogProductId:
           type: string
+        lockedProductVariantId:
+          type: string
+        brandPreferenceMode:
+          type: string
+          enum: [any, preferred, exact]
+        preferredBrandNames:
+          type: array
+          items:
+            type: string
         quantity:
           type: number
         unitLabel:
@@ -645,13 +784,19 @@ components:
       allOf:
         - $ref: '#/components/schemas/ShoppingListItemInput'
         - type: object
-          required: [id, resolutionStatus]
+          required: [id, resolutionStatus, purchaseStatus]
           properties:
             id:
               type: string
             resolutionStatus:
               type: string
               enum: [unresolved, matched, partial, missing]
+            purchaseStatus:
+              type: string
+              enum: [pending, purchased]
+            purchasedAt:
+              type: string
+              format: date-time
     ShoppingList:
       type: object
       required: [id, name, status, items]
@@ -846,9 +991,9 @@ components:
           type: string
         category:
           type: string
-        brandHint:
-          type: string
         defaultUnit:
+          type: string
+        imageUrl:
           type: string
     UpdateProductRequest:
       type: object
@@ -857,17 +1002,54 @@ components:
           type: string
         category:
           type: string
-        brandHint:
-          type: string
         defaultUnit:
+          type: string
+        imageUrl:
+          type: string
+        isActive:
+          type: boolean
+    CreateProductVariantRequest:
+      type: object
+      required: [catalogProductId, displayName]
+      properties:
+        catalogProductId:
+          type: string
+        slug:
+          type: string
+        displayName:
+          type: string
+        brandName:
+          type: string
+        variantLabel:
+          type: string
+        packageLabel:
+          type: string
+        imageUrl:
+          type: string
+        isActive:
+          type: boolean
+    UpdateProductVariantRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+        brandName:
+          type: string
+        variantLabel:
+          type: string
+        packageLabel:
+          type: string
+        imageUrl:
           type: string
         isActive:
           type: boolean
     CreateProductOfferRequest:
       type: object
-      required: [productId, establishmentId, displayName, packageLabel, priceAmount, availabilityStatus, confidenceLevel, observedAt]
+      required: [catalogProductId, productVariantId, establishmentId, displayName, packageLabel, priceAmount, availabilityStatus, confidenceLevel, observedAt]
       properties:
-        productId:
+        catalogProductId:
+          type: string
+        productVariantId:
           type: string
         establishmentId:
           type: string
@@ -896,6 +1078,12 @@ components:
     UpdateProductOfferRequest:
       type: object
       properties:
+        catalogProductId:
+          type: string
+        productVariantId:
+          type: string
+        establishmentId:
+          type: string
         displayName:
           type: string
         packageLabel:

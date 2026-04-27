@@ -8,6 +8,7 @@ class ApiEnvironment {
 
   static const String authBasePath = '/auth';
   static const String regionsBasePath = '/regions';
+  static const String shoppingListsPath = '/shopping-lists';
 
   static const String loginPath = '$authBasePath/login';
   static const String registerPath = '$authBasePath/register';

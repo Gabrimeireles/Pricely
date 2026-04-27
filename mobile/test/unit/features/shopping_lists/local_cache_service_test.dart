@@ -9,7 +9,10 @@ void main() {
   test('persists shopping list drafts and optimization results', () async {
     final cacheService = LocalCacheService(InMemoryKeyValueStore());
     final draft = ShoppingListDraft(
+      id: 'list-1',
       title: 'Feira',
+      regionId: 'sao-paulo-sp',
+      lastMode: 'global_full',
       items: const <ShoppingListItemDraft>[
         ShoppingListItemDraft(id: '1', name: 'Banana', quantity: 6, unit: 'un'),
       ],
@@ -17,6 +20,7 @@ void main() {
     final result = OptimizationResult(
       shoppingListTitle: 'Feira',
       generatedAt: DateTime.parse('2026-04-05T12:00:00.000Z'),
+      status: 'completed',
       totalCost: 29.9,
       estimatedSavings: 4.2,
       unavailableItems: const <String>['Cafe'],

@@ -3,9 +3,11 @@ export const OPTIMIZATION_QUEUE = 'OPTIMIZATION_QUEUE';
 
 export interface ReceiptProcessingJob {
   receiptRecordId: string;
+  processingJobId: string;
 }
 
 export interface OptimizationJob {
   shoppingListId: string;
-  optimizationResultId: string;
+  optimizationRunId: string;
+  processingJobId: string;
 }

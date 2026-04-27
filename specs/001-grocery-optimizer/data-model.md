@@ -65,47 +65,73 @@
   - `cnpj` must be unique
   - `brandName`, `regionId`, and `cityName` must be present
 
-## Product
+## CatalogProduct
 
-- **Purpose**: Canonical supermarket catalog item used for comparison and optimization.
+- **Purpose**: Generic comparable grocery item chosen first by shoppers before any brand
+  restriction is applied.
 - **Fields**:
   - `id`: Unique identifier
   - `slug`: Stable identifier
-  - `name`: Canonical product name
+  - `name`: Generic comparable name, such as `Arroz tipo 1 1kg`
   - `category`: Grocery category
-  - `brandHint`: Optional common brand reference
   - `defaultUnit`: Typical unit or package family
-  - `isActive`: Whether the product is visible for new offers and optimization
+  - `imageUrl`: Optional representative image
+  - `isActive`: Whether the product is visible for search and optimization
   - `createdAt`: Creation timestamp
   - `updatedAt`: Last mutation timestamp
 - **Relationships**:
-  - Has many `ProductAlias`
-  - Has many `ProductOffer`
+  - Has many `CatalogProductAlias`
+  - Has many `ProductVariant`
   - Has many `ShoppingListItem`
 - **Validation Rules**:
-  - `slug` and `name` must be unique enough for catalog management
+  - `slug` must be unique
+  - `name` should remain generic enough to compare variants fairly
 
-## ProductAlias
+## CatalogProductAlias
 
-- **Purpose**: Maps noisy or variant names to a canonical product.
+- **Purpose**: Maps noisy or generic user/receipt text to a base comparable product.
 - **Fields**:
   - `id`: Unique identifier
-  - `productId`: Parent product reference
+  - `catalogProductId`: Parent base product reference
   - `alias`: Variant text
   - `sourceType`: `rule`, `admin`, `receipt`
   - `confidenceScore`: Alias confidence
   - `createdAt`: Creation timestamp
 - **Relationships**:
-  - Belongs to `Product`
+  - Belongs to `CatalogProduct`
 - **Validation Rules**:
   - `alias` must not silently promote low-confidence equivalence to confirmed truth
 
-## ProductOffer
+## ProductVariant
 
-- **Purpose**: Current establishment-specific offer for one canonical product.
+- **Purpose**: Specific branded or packaging-level variant that can actually be sold and
+  priced by establishments.
 - **Fields**:
   - `id`: Unique identifier
-  - `productId`: Parent product reference
+  - `catalogProductId`: Parent base product reference
+  - `slug`: Stable identifier
+  - `displayName`: Specific name such as `Arroz Tipo 1 Camil 1kg`
+  - `brandName`: Optional but preferred brand
+  - `variantLabel`: Optional line, type, or flavor detail
+  - `packageLabel`: Packaging context such as `1 kg`
+  - `imageUrl`: Optional real product image
+  - `isActive`: Whether the variant is available for offers and selection
+  - `createdAt`: Creation timestamp
+  - `updatedAt`: Last mutation timestamp
+- **Relationships**:
+  - Belongs to `CatalogProduct`
+  - Has many `ProductOffer`
+- **Validation Rules**:
+  - `catalogProductId` and `displayName` are required
+  - Variants should remain specific enough for real-world shelf differentiation
+
+## ProductOffer
+
+- **Purpose**: Current establishment-specific offer for one concrete product variant.
+- **Fields**:
+  - `id`: Unique identifier
+  - `catalogProductId`: Parent base product reference
+  - `productVariantId`: Parent variant reference
   - `establishmentId`: Parent establishment reference
   - `displayName`: Public product label for this offer
   - `packageLabel`: Unit or package context
@@ -120,11 +146,12 @@
   - `isActive`: Whether this current offer is eligible for public and optimization use
   - `updatedAt`: Last mutation timestamp
 - **Relationships**:
-  - Belongs to `Product`
+  - Belongs to `CatalogProduct`
+  - Belongs to `ProductVariant`
   - Belongs to `Establishment`
 - **Validation Rules**:
-  - `productId`, `establishmentId`, `priceAmount`, and `observedAt` are required for
-    active offers
+  - `catalogProductId`, `productVariantId`, `establishmentId`, `priceAmount`, and
+    `observedAt` are required for active offers
   - Inactive establishments must not produce public-active offers
 
 ## ShoppingList
@@ -151,21 +178,30 @@
 - **Fields**:
   - `id`: Unique identifier
   - `shoppingListId`: Parent list reference
-  - `productId`: Optional matched product reference
+  - `catalogProductId`: Optional chosen base product reference
+  - `lockedProductVariantId`: Optional exact chosen variant reference
+  - `brandPreferenceMode`: `any`, `preferred`, `exact`
+  - `preferredBrandNames`: Optional accepted brands
   - `requestedName`: Raw user text
   - `quantity`: Requested quantity
   - `unitLabel`: Optional unit label
   - `notes`: Optional user note
+  - `purchaseStatus`: `pending`, `purchased`
+  - `purchasedAt`: Optional in-store completion timestamp
   - `resolutionStatus`: `unresolved`, `matched`, `partial`, `missing`
   - `createdAt`: Creation timestamp
   - `updatedAt`: Last mutation timestamp
 - **Relationships**:
   - Belongs to `ShoppingList`
-  - May belong to `Product`
+  - May belong to `CatalogProduct`
+  - May belong to `ProductVariant`
   - Has many `OptimizationSelection`
 - **Validation Rules**:
   - `requestedName` must be present
   - `quantity` must be positive when provided
+  - `exact` brand preference requires `lockedProductVariantId`
+  - `preferred` brand preference should include one or more preferred brand names when
+    the user actually constrained the choice
 
 ## OptimizationRun
 
@@ -256,6 +292,7 @@
 - `Establishment.isActive`: `true <-> false`
 - `ShoppingList.status`: `draft -> ready -> archived`
 - `ShoppingListItem.resolutionStatus`: `unresolved -> matched | partial | missing`
+- `ShoppingListItem.purchaseStatus`: `pending -> purchased`
 - `OptimizationRun.status`: `queued -> running -> completed | failed`
 - `ProcessingJob.status`: `queued -> running -> completed | failed | retrying`
 - `ReceiptRecord.parseStatus`: `queued -> parsed | partial | failed`

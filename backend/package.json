@@ -12,7 +12,7 @@
     "db:push": "prisma db push",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:seed": "prisma db seed",
+    "db:seed": "node prisma/seed.js",
     "db:studio": "prisma studio",
     "lint": "eslint \"src/**/*.ts\"",
     "format": "prettier --write \"src/**/*.ts\"",
@@ -32,7 +32,6 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "dotenv": "^16.6.1",
-    "mongodb": "^6.13.0",
     "nestjs-pino": "^4.4.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -42,6 +41,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
+    "@nestjs/testing": "^11.0.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.2",
@@ -53,14 +53,17 @@
     "prettier": "^3.4.2",
     "prisma": "^6.7.0",
     "supertest": "^7.1.4",
-    "ts-node": "^10.9.2",
     "ts-jest": "^29.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.20.0",
-    "@nestjs/testing": "^11.0.0"
+    "typescript-eslint": "^8.20.0"
   },
   "jest": {
-    "moduleFileExtensions": ["js", "json", "ts"],
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
     "rootDir": ".",
     "testRegex": "test/.*\\.spec\\.ts$",
     "transform": {
@@ -71,7 +74,9 @@
         }
       ]
     },
-    "collectCoverageFrom": ["src/**/*.(t|j)s"],
+    "collectCoverageFrom": [
+      "src/**/*.(t|j)s"
+    ],
     "coverageDirectory": "coverage",
     "testEnvironment": "node"
   }

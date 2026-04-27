@@ -44,9 +44,15 @@ export interface RegionalOffer {
 export interface ShoppingListItem {
   id: string;
   name: string;
+  catalogProductId?: string;
+  lockedProductVariantId?: string;
+  brandPreferenceMode?: 'any' | 'preferred' | 'exact';
+  preferredBrandNames?: string[];
+  imageUrl?: string;
   quantity: number;
   unitLabel: string;
   note?: string;
+  purchaseStatus?: 'pending' | 'purchased';
   status: 'resolved' | 'partial' | 'missing';
 }
 
@@ -107,4 +113,3 @@ export interface AdminMetric {
   value: string;
   support: string;
 }
-

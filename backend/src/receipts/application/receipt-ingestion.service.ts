@@ -8,10 +8,10 @@ import {
 } from '../../common/queue/queue.tokens';
 import { toSlug } from '../../common/utils/slug.util';
 import { ProductMatchService } from '../../catalog/application/product-match.service';
+import { ProcessingJobsService } from '../../processing/application/processing-jobs.service';
 import { type ReceiptRecordEntity } from '../domain/receipt-record.entity';
 import { ReceiptRecordRepository } from '../infrastructure/receipt-record.repository';
 import { ReceiptParserService } from './receipt-parser.service';
-import { StoreOfferRepository } from '../../stores/infrastructure/store-offer.repository';
 
 @Injectable()
 export class ReceiptIngestionService {
@@ -21,7 +21,7 @@ export class ReceiptIngestionService {
     private readonly receiptParserService: ReceiptParserService,
     private readonly productMatchService: ProductMatchService,
     private readonly receiptRecordRepository: ReceiptRecordRepository,
-    private readonly storeOfferRepository: StoreOfferRepository,
+    private readonly processingJobsService: ProcessingJobsService,
     @Inject(RECEIPT_PROCESSING_QUEUE)
     private readonly receiptProcessingQueue: Queue<ReceiptProcessingJob>,
   ) {}
@@ -67,25 +67,23 @@ export class ReceiptIngestionService {
     };
 
     await this.receiptRecordRepository.create(record);
-    await Promise.all(
-      record.lineItems.map((lineItem) =>
-        this.storeOfferRepository.upsert({
-          id: `offer_${record.storeId}_${lineItem.normalizedName}_${lineItem.packageSize || 'default'}`,
-          storeId: record.storeId,
-          storeName: record.storeName,
-          canonicalName: lineItem.normalizedName,
-          displayName: lineItem.rawProductName,
-          price: lineItem.unitPrice,
-          quantityContext: lineItem.packageSize,
-          availabilityStatus: 'available',
-          confidenceScore: lineItem.matchConfidence,
-          sourceReceiptLineItemId: lineItem.id,
-          observedAt: record.purchaseDate || record.createdAt,
-        }),
-      ),
-    );
+    const processingJob = await this.processingJobsService.createQueuedJob({
+      queueName: 'receipt-processing',
+      jobType: 'receipt_processing',
+      resourceType: 'receipt_record',
+      resourceId: receiptRecordId,
+    });
     await this.receiptProcessingQueue.add('receipt-processing', {
       receiptRecordId,
+      processingJobId: processingJob.id,
+    }, {
+      attempts: 3,
+      backoff: {
+        type: 'fixed',
+        delay: 2000,
+      },
+      removeOnComplete: 100,
+      removeOnFail: 100,
     });
 
     this.logger.log(

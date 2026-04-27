@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { CatalogModule } from '../catalog/catalog.module';
+import { ProcessingModule } from '../processing/processing.module';
 import { StoresModule } from '../stores/stores.module';
 import { ReceiptsController } from './api/receipts.controller';
 import { ReceiptIngestionService } from './application/receipt-ingestion.service';
@@ -8,7 +9,7 @@ import { ReceiptParserService } from './application/receipt-parser.service';
 import { ReceiptRecordRepository } from './infrastructure/receipt-record.repository';
 
 @Module({
-  imports: [CatalogModule, StoresModule],
+  imports: [CatalogModule, StoresModule, ProcessingModule],
   controllers: [ReceiptsController],
   providers: [
     ReceiptParserService,

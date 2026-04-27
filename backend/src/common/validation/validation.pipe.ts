@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   type ValidationError,
   ValidationPipe,
   type ValidationPipeOptions,
@@ -19,7 +20,10 @@ export class AppValidationPipe extends ValidationPipe {
       whitelist: true,
       transform: true,
       forbidUnknownValues: true,
-      exceptionFactory: (errors) => formatErrors(errors),
+      exceptionFactory: (errors) =>
+        new BadRequestException({
+          message: formatErrors(errors),
+        }),
       ...options,
     });
   }

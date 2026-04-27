@@ -6,6 +6,7 @@ void main() {
     expect(ApiEnvironment.baseUrl, isNotEmpty);
     expect(ApiEnvironment.authBasePath, '/auth');
     expect(ApiEnvironment.regionsBasePath, '/regions');
+    expect(ApiEnvironment.shoppingListsPath, '/shopping-lists');
     expect(ApiEnvironment.loginPath, '/auth/login');
     expect(ApiEnvironment.profilePath, '/auth/me');
   });
