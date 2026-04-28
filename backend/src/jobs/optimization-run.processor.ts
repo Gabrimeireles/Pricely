@@ -5,6 +5,7 @@ import { ShoppingListsService } from '../lists/application/shopping-lists.servic
 import { MultiMarketOptimizerService } from '../optimization/domain/multi-market-optimizer.service';
 import { PrismaService } from '../persistence/prisma.service';
 import { StoreOfferRepository } from '../stores/infrastructure/store-offer.repository';
+import { OptimizationRunRepository } from '../optimization/infrastructure/optimization-run.repository';
 
 @Injectable()
 export class OptimizationRunProcessor {
@@ -15,12 +16,13 @@ export class OptimizationRunProcessor {
     private readonly shoppingListsService: ShoppingListsService,
     private readonly storeOfferRepository: StoreOfferRepository,
     private readonly multiMarketOptimizerService: MultiMarketOptimizerService,
+    private readonly optimizationRunRepository: OptimizationRunRepository,
   ) {}
 
   async process(optimizationRunId: string): Promise<void> {
-    const optimizationRun = await this.prisma.optimizationRun.findUnique({
-      where: { id: optimizationRunId },
-    });
+    const optimizationRun = await this.optimizationRunRepository.findById(
+      optimizationRunId,
+    );
 
     if (!optimizationRun) {
       this.logger.warn(`Optimization run ${optimizationRunId} was queued but could not be found`);

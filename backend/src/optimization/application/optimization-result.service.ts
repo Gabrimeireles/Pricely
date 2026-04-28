@@ -13,6 +13,7 @@ import {
 import { ProcessingJobsService } from '../../processing/application/processing-jobs.service';
 import { PrismaService } from '../../persistence/prisma.service';
 import { ShoppingListsService } from '../../lists/application/shopping-lists.service';
+import { OptimizationRunRepository } from '../infrastructure/optimization-run.repository';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -25,6 +26,7 @@ export class OptimizationResultService {
     private readonly prisma: PrismaService,
     private readonly shoppingListsService: ShoppingListsService,
     private readonly processingJobsService: ProcessingJobsService,
+    private readonly optimizationRunRepository: OptimizationRunRepository,
     @Inject(OPTIMIZATION_QUEUE)
     private readonly optimizationQueue: Queue<OptimizationJob>,
   ) {}
@@ -62,17 +64,13 @@ export class OptimizationResultService {
       resourceId: shoppingListId,
     });
 
-    const optimizationRun = await this.prisma.optimizationRun.create({
-      data: {
-        shoppingListId,
-        userId,
-        mode: request.mode,
-        regionId,
-        preferredEstablishmentId: request.preferredEstablishmentId ?? null,
-        jobId: processingJob.id,
-        status: 'queued',
-        coverageStatus: 'none',
-      },
+    const optimizationRun = await this.optimizationRunRepository.createQueuedRun({
+      shoppingListId,
+      userId,
+      mode: request.mode,
+      regionId,
+      preferredEstablishmentId: request.preferredEstablishmentId ?? null,
+      jobId: processingJob.id,
     });
 
     await this.optimizationQueue.add('optimization-generated', {
@@ -99,32 +97,15 @@ export class OptimizationResultService {
       shoppingListId,
       mode: request.mode,
       status: 'queued',
-      queuedAt: optimizationRun.createdAt.toISOString(),
+      queuedAt: optimizationRun.createdAt,
     };
   }
 
   async getLatest(userId: string, shoppingListId: string): Promise<OptimizationResult> {
-    const latest = await this.prisma.optimizationRun.findFirst({
-      where: {
-        shoppingListId,
-        userId,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        optimizationSelections: {
-          include: {
-            shoppingListItem: true,
-            productOffer: {
-              include: {
-                establishment: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const latest = await this.optimizationRunRepository.findLatestForUser(
+      userId,
+      shoppingListId,
+    );
 
     if (!latest) {
       throw new NotFoundException(

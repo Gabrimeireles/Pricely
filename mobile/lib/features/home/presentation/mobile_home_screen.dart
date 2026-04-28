@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
 import '../../auth/application/auth_controller.dart';
@@ -9,6 +9,7 @@ import '../../receipts/application/receipt_flow_controller.dart';
 import '../../receipts/domain/receipt_submission.dart';
 import '../../shared/data/pricely_backend_gateway.dart';
 import '../../shopping_lists/application/shopping_list_controller.dart';
+import '../../shopping_lists/presentation/shopping_list_screen.dart';
 
 class MobileHomeScreen extends StatefulWidget {
   const MobileHomeScreen({
@@ -62,11 +63,10 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
             onOpenList: () => setState(() => _currentIndex = 1),
             onOpenResults: () => setState(() => _currentIndex = 2),
           ),
-          _ShoppingListTab(
+          ShoppingListScreen(
             authController: widget.authController,
             controller: widget.shoppingListController,
-            onOpenAuth: () =>
-                Navigator.of(context).pushNamed(AppRouter.authRoute),
+            optimizationController: widget.optimizationController,
           ),
           _OptimizationTab(
             authController: widget.authController,
@@ -166,15 +166,15 @@ class _HomeTab extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       user == null
-                          ? 'Preços com contexto real'
-                          : 'Olá, ${user.displayName}',
+                          ? 'Precos com contexto real'
+                          : 'Ola, ${user.displayName}',
                       style: theme.textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 6),
                     Text(
                       user == null
-                          ? 'Veja ofertas por região, monte sua lista e sincronize tudo na mesma conta.'
-                          : 'Sua conta é a mesma no web e no mobile. Ajuste a região e acompanhe as melhores ofertas do dia.',
+                          ? 'Veja ofertas por cidade, monte sua lista e sincronize tudo na mesma conta.'
+                          : 'Sua conta e a mesma no web e no mobile. Ajuste a cidade e acompanhe as melhores ofertas do dia.',
                       style: theme.textTheme.bodyMedium,
                     ),
                   ],
@@ -226,8 +226,8 @@ class _HomeTab extends StatelessWidget {
                     ),
                     _SignalChip(
                       label: region == null
-                          ? 'Sem região carregada'
-                          : '${region.name} • ${region.activeEstablishmentCount} lojas',
+                          ? 'Sem cidade carregada'
+                          : '${region.name} · ${region.activeEstablishmentCount} lojas',
                       foreground: Colors.white,
                       background: Colors.white24,
                     ),
@@ -253,7 +253,7 @@ class _HomeTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('Escolha sua região', style: theme.textTheme.titleLarge),
+                Text('Escolha sua cidade', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: region?.slug,
@@ -268,17 +268,17 @@ class _HomeTab extends StatelessWidget {
                       .toList(),
                   onChanged: discoveryController.selectRegion,
                   decoration: const InputDecoration(
-                    labelText: 'Região ativa',
+                    labelText: 'Cidade ativa',
                   ),
                 ),
                 if (region != null) ...<Widget>[
                   const SizedBox(height: 12),
                   Text(
                     region.activeEstablishmentCount == 0
-                        ? 'Ainda não temos estabelecimentos ativos nessa região. Você pode trocar de região ou começar a contribuir com recibos.'
+                        ? 'Ainda nao temos estabelecimentos ativos nessa cidade. Voce pode trocar de cidade ou comecar a contribuir com recibos.'
                         : region.offerCoverageStatus == 'collecting_data'
-                            ? 'A região já está aberta, mas a cobertura ainda está sendo populada. Os preços podem ser parciais.'
-                            : 'Região com ofertas disponíveis e estabelecimentos ativos.',
+                            ? 'A cidade ja esta aberta, mas a cobertura ainda esta sendo populada. Os precos podem ser parciais.'
+                            : 'Cidade com ofertas disponiveis e estabelecimentos ativos.',
                   ),
                 ],
               ],
@@ -299,7 +299,7 @@ class _HomeTab extends StatelessWidget {
               Expanded(
                 child: _ActionCard(
                   title: 'Resultado',
-                  description: 'Veja Local, Global único e Global completo.',
+                  description: 'Veja Local, Global unico e Global completo.',
                   icon: Icons.auto_graph_outlined,
                   onTap: onOpenResults,
                 ),
@@ -311,7 +311,7 @@ class _HomeTab extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: Text(
-                  'Ofertas por região',
+                  'Ofertas por cidade',
                   style: theme.textTheme.titleLarge,
                 ),
               ),
@@ -339,7 +339,7 @@ class _HomeTab extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
               ),
               child: const Text(
-                'Sem ofertas suficientes nesta região no momento.',
+                'Sem ofertas suficientes nesta cidade no momento.',
               ),
             )
           else
@@ -349,13 +349,91 @@ class _HomeTab extends StatelessWidget {
                   .map(
                     (offer) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: _OfferCard(offer: offer),
+                      child: _OfferCard(
+                        offer: offer,
+                        onTap: () => _showOfferDetail(
+                          context,
+                          discoveryController,
+                          offer.id,
+                        ),
+                      ),
                     ),
                   )
                   .toList(),
             ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showOfferDetail(
+    BuildContext context,
+    MarketDiscoveryController discoveryController,
+    String offerId,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return FutureBuilder<PublicOfferDetail>(
+          future: discoveryController.fetchOfferDetail(offerId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (snapshot.hasError || !snapshot.hasData) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('Nao foi possivel carregar o detalhe da oferta agora.'),
+              );
+            }
+
+            final detail = snapshot.data!;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    detail.productName,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(detail.category),
+                  const SizedBox(height: 16),
+                  _OfferDetailRow(
+                    title: 'Melhor oferta agora',
+                    offer: detail.activeOffer,
+                  ),
+                  if (detail.alternativeOffers.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Outras lojas',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 10),
+                    ...detail.alternativeOffers.map(
+                      (offer) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _OfferDetailRow(
+                          title: offer.storeName,
+                          offer: offer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -910,73 +988,127 @@ class _ProfileTab extends StatelessWidget {
 }
 
 class _OfferCard extends StatelessWidget {
-  const _OfferCard({required this.offer});
+  const _OfferCard({
+    required this.offer,
+    required this.onTap,
+  });
 
   final PublicOfferSummary offer;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            if (offer.imageUrl != null && offer.imageUrl!.isNotEmpty) ...<Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  offer.imageUrl!,
+                  width: double.infinity,
+                  height: 172,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(offer.displayName, style: theme.textTheme.titleLarge),
+                      const SizedBox(height: 4),
+                      Text('${offer.storeName} · ${offer.neighborhood}'),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF487500),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    _formatCurrency(offer.priceAmount),
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(color: const Color(0xFFB5FF56)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(offer.packageLabel),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: <Widget>[
+                _SignalChip(
+                  label: offer.sourceLabel,
+                  foreground: const Color(0xFF005C55),
+                  background: const Color(0xFFEBF6F1),
+                ),
+                _SignalChip(
+                  label: offer.confidenceLevel == 'high'
+                      ? 'Alta confiança'
+                      : offer.confidenceLevel == 'medium'
+                          ? 'Confiança média'
+                          : 'Baixa confiança',
+                  foreground: const Color(0xFF003EA8),
+                  background: const Color(0xFFDDE7FF),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OfferDetailRow extends StatelessWidget {
+  const _OfferDetailRow({
+    required this.title,
+    required this.offer,
+  });
+
+  final String title;
+  final PublicOfferSummary offer;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFFF1F4F2),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(offer.productName, style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 4),
-                    Text('${offer.storeName} • ${offer.neighborhood}'),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF487500),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  _formatCurrency(offer.priceAmount),
-                  style: theme.textTheme.labelLarge
-                      ?.copyWith(color: const Color(0xFFB5FF56)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(offer.packageLabel),
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text(offer.displayName),
+          const SizedBox(height: 4),
+          Text('${offer.storeName} · ${offer.neighborhood}'),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: <Widget>[
-              _SignalChip(
-                label: offer.sourceLabel,
-                foreground: const Color(0xFF005C55),
-                background: const Color(0xFFEBF6F1),
-              ),
-              _SignalChip(
-                label: offer.confidenceLevel == 'high'
-                    ? 'Alta confiança'
-                    : offer.confidenceLevel == 'medium'
-                        ? 'Confiança média'
-                        : 'Baixa confiança',
-                foreground: const Color(0xFF003EA8),
-                background: const Color(0xFFDDE7FF),
-              ),
-            ],
-          ),
+          Text(_formatCurrency(offer.priceAmount)),
         ],
       ),
     );

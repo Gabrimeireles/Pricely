@@ -194,6 +194,37 @@ export class ShoppingListRepository {
     return this.toEntity(updated, data.lastMode ?? existing.lastMode);
   }
 
+  async updateItemPurchaseStatus(
+    shoppingListId: string,
+    userId: string,
+    itemId: string,
+    purchaseStatus: 'pending' | 'purchased',
+  ): Promise<ShoppingListEntity | null> {
+    const existing = await this.findByIdForUser(shoppingListId, userId);
+
+    if (!existing) {
+      return null;
+    }
+
+    await this.prisma.shoppingListItem.updateMany({
+      where: {
+        id: itemId,
+        shoppingListId,
+      },
+      data: {
+        purchaseStatus,
+        purchasedAt: purchaseStatus === 'purchased' ? new Date() : null,
+      },
+    });
+
+    const updated = await this.prisma.shoppingList.findUnique({
+      where: { id: shoppingListId },
+      include: shoppingListInclude,
+    });
+
+    return updated ? this.toEntity(updated, existing.lastMode) : null;
+  }
+
   private toEntity(
     record: ShoppingListRecord,
     fallbackMode: 'local' | 'global_unique' | 'global_full' = 'global_full',

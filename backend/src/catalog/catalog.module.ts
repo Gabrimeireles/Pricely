@@ -6,6 +6,7 @@ import { ProductMatchRepository } from './infrastructure/product-match.repositor
 import { ProductMatchService } from './application/product-match.service';
 import { ProductNormalizerService } from './application/product-normalizer.service';
 import { PublicCatalogService } from './application/public-catalog.service';
+import { CatalogProductsService } from './application/catalog-products.service';
 
 @Module({
   imports: [PrismaModule],
@@ -14,6 +15,7 @@ import { PublicCatalogService } from './application/public-catalog.service';
     ProductMatchRepository,
     ProductMatchService,
     PublicCatalogService,
+    CatalogProductsService,
   ],
   controllers: [PublicCatalogController],
   exports: [
@@ -21,6 +23,7 @@ import { PublicCatalogService } from './application/public-catalog.service';
     ProductMatchService,
     ProductMatchRepository,
     PublicCatalogService,
+    CatalogProductsService,
   ],
 })
 export class CatalogModule {}

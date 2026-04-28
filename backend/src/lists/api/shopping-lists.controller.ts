@@ -7,6 +7,7 @@ import { ShoppingListsService } from '../application/shopping-lists.service';
 import { AddShoppingListItemsDto } from './dto/add-shopping-list-items.dto';
 import { CreateShoppingListDto } from './dto/create-shopping-list.dto';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
+import { UpdateShoppingListItemStatusDto } from './dto/update-shopping-list-item-status.dto';
 
 @Controller('shopping-lists')
 @UseGuards(JwtAuthGuard)
@@ -55,5 +56,20 @@ export class ShoppingListsController {
     @Body() body: AddShoppingListItemsDto,
   ) {
     return this.shoppingListsService.addItems(user.sub, shoppingListId, body.items);
+  }
+
+  @Patch(':shoppingListId/items/:itemId/purchase-status')
+  async updateItemPurchaseStatus(
+    @CurrentUser() user: JwtUserPayload,
+    @Param('shoppingListId') shoppingListId: string,
+    @Param('itemId') itemId: string,
+    @Body() body: UpdateShoppingListItemStatusDto,
+  ) {
+    return this.shoppingListsService.updateItemPurchaseStatus(
+      user.sub,
+      shoppingListId,
+      itemId,
+      body.purchaseStatus,
+    );
   }
 }

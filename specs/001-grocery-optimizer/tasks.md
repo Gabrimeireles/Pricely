@@ -54,7 +54,7 @@ replanned backend.
 - [X] T007 [P] Introduce shared request logging, correlation IDs, and severity-oriented error mapping in `backend/src/common/logging/`, `backend/src/common/errors/`, and `backend/src/common/validation/`
 - [X] T008 [P] Add queue-backed processing job persistence and BullMQ worker wiring in `backend/src/common/queue/`, `backend/src/processing/`, and `backend/src/jobs/`
 - [X] T009 Create core relational entities and Prisma mappings for accounts, regions, establishments, products, offers, lists, optimization runs, and jobs in `backend/prisma/schema.prisma`
-- [~] T010 [P] Refresh shared backend contracts for auth, regions, offers, lists, and optimization runs in `backend/src/common/contracts/`
+- [X] T010 [P] Refresh shared backend contracts for auth, regions, offers, lists, and optimization runs in `backend/src/common/contracts/`
 - [X] T011 [P] Add backend migration and seed workflow for baseline admin/customer accounts and demo catalog in `backend/prisma/` and `backend/package.json`
 - [X] T012 [P] Add foundational backend integration coverage for auth, Prisma persistence, and queued job state transitions in `backend/test/integration/`
 - [X] T013 [P] Add frontend shared API client structure for authenticated public/admin requests in `web/src/app/`, `mobile/lib/core/networking/`, and related shared files
@@ -73,17 +73,17 @@ run optimization from one channel, and fetch the resulting run from the other.
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Add backend unit tests for auth session handling and list ownership rules in `backend/test/unit/auth/` and `backend/test/unit/lists/`
+- [X] T014 [P] [US1] Add backend unit tests for auth session handling and list ownership rules in `backend/test/unit/auth/` and `backend/test/unit/lists/`
 - [X] T015 [P] [US1] Add backend integration tests for shared auth, list persistence, and optimization run queuing in `backend/test/integration/auth/`, `backend/test/integration/lists/`, and `backend/test/integration/optimization/`
 - [X] T016 [P] [US1] Add API contract tests for auth, shopping list, and optimization-run endpoints in `backend/test/contract/grocery-optimizer-api.contract.spec.ts`
-- [~] T017 [P] [US1] Add mobile tests for shared account sign-in, saved lists, and latest optimization access in `mobile/test/unit/features/auth/`, `mobile/test/widget/features/shopping_lists/`, and `mobile/test/widget/features/optimization/`
-- [~] T018 [P] [US1] Add web tests for sign-in, list routes, and optimization-run retrieval in `web/test/public/`
+- [X] T017 [P] [US1] Add mobile tests for shared account sign-in, saved lists, and latest optimization access in `mobile/test/unit/features/auth/`, `mobile/test/widget/features/shopping_lists/`, and `mobile/test/widget/features/optimization/`
+- [X] T018 [P] [US1] Add web tests for sign-in, list routes, and optimization-run retrieval in `web/test/public/`
 
 ### Implementation for User Story 1
 
 - [X] T019 [P] [US1] Implement user account persistence and auth services in `backend/src/users/` and `backend/src/auth/`
 - [X] T020 [P] [US1] Refactor shopping list persistence to PostgreSQL/Prisma in `backend/src/lists/domain/`, `backend/src/lists/infrastructure/`, and `backend/src/lists/application/`
-- [~] T021 [US1] Implement optimization-run aggregate and repository in `backend/src/optimization/domain/`, `backend/src/optimization/infrastructure/`, and `backend/src/processing/`
+- [X] T021 [US1] Implement optimization-run aggregate and repository in `backend/src/optimization/domain/`, `backend/src/optimization/infrastructure/`, and `backend/src/processing/`
 - [X] T022 [US1] Implement auth, profile, shopping list, and optimization-run API endpoints in `backend/src/auth/api/`, `backend/src/users/api/`, `backend/src/lists/api/`, and `backend/src/optimization/api/`
 - [X] T023 [US1] Implement optimization-job enqueueing and result retrieval services in `backend/src/optimization/application/` and `backend/src/jobs/`
 - [X] T024 [P] [US1] Implement Flutter shared auth, persisted lists, and optimization-run polling flow in `mobile/lib/features/auth/`, `mobile/lib/features/shopping_lists/`, and `mobile/lib/features/optimization/`
@@ -116,12 +116,12 @@ multiple establishment prices.
 ### Implementation for User Story 2
 
 - [X] T033 [P] [US2] Implement region persistence, activation rules, and query services in `backend/src/regions/`
-- [~] T034 [P] [US2] Implement establishment persistence with branch-level identity and active-state handling in `backend/src/establishments/`
-- [~] T035 [P] [US2] Implement canonical product and alias persistence in `backend/src/catalog/`
+- [X] T034 [P] [US2] Implement establishment persistence with branch-level identity and active-state handling in `backend/src/establishments/`
+- [X] T035 [P] [US2] Implement canonical product and alias persistence in `backend/src/catalog/`
 - [X] T036 [P] [US2] Implement current product offer persistence and active-offer queries in `backend/src/pricing/`
 - [X] T037 [US2] Implement public region, regional-offer, and product-detail endpoints in `backend/src/regions/api/`, `backend/src/catalog/api/`, and `backend/src/pricing/api/`
 - [X] T038 [US2] Implement web public region selector, active-store count handling, offer explorer, and product detail modal against backend data in `web/src/public/`, `web/src/app/`, and `web/src/routes/`
-- [~] T039 [US2] Implement mobile region selector and public offer browsing against backend data in `mobile/lib/features/regions/` and `mobile/lib/features/offers/`
+- [X] T039 [US2] Implement mobile region selector and public offer browsing against backend data in `mobile/lib/features/regions/` and `mobile/lib/features/offers/`
 - [X] T040 [US2] Add logging and diagnostics for region filtering, zero-store results, and product-offer reads in `backend/src/regions/`, `backend/src/pricing/`, and `backend/src/common/logging/`
 
 **Checkpoint**: Public region and product-offer discovery work independently of admin
@@ -147,7 +147,7 @@ update regions, establishments, products, and offers from the dashboard.
 ### Implementation for User Story 3
 
 - [X] T045 [P] [US3] Implement admin metrics aggregation services in `backend/src/admin/application/` and `backend/src/admin/domain/`
-- [~] T046 [P] [US3] Implement admin CRUD services for regions, establishments, products, and offers in `backend/src/admin/application/`, `backend/src/regions/`, `backend/src/establishments/`, `backend/src/catalog/`, and `backend/src/pricing/`
+- [X] T046 [P] [US3] Implement admin CRUD services for regions, establishments, products, and offers in `backend/src/admin/application/`, `backend/src/regions/`, `backend/src/establishments/`, `backend/src/catalog/`, and `backend/src/pricing/`
 - [X] T047 [US3] Implement admin API controllers, DTOs, and role guards in `backend/src/admin/api/`, `backend/src/regions/api/`, `backend/src/establishments/api/`, `backend/src/catalog/api/`, and `backend/src/pricing/api/`
 - [X] T048 [US3] Connect the web admin dashboard to live backend metrics and CRUD endpoints in `web/src/dashboard/`, `web/src/app/`, and `web/src/routes/`
 - [X] T049 [US3] Add dashboard states for empty metrics, activation toggles, and CRUD validation errors in `web/src/dashboard/` and `web/src/components/`
@@ -201,19 +201,19 @@ visual system, replacing temporary layouts and mock product presentation.
 
 ### Tests for Stitch Realignment
 
-- [ ] T063 [P] Add web tests for admin information architecture, city selector counts, and richer list-item rendering in `web/test/dashboard/` and `web/test/public/`
-- [ ] T064 [P] Add mobile widget tests for city selection, catalog-backed list item search, purchased-state toggles, and richer list cards in `mobile/test/widget/features/regions/`, `mobile/test/widget/features/shopping_lists/`, and `mobile/test/widget/features/offers/`
+- [X] T063 [P] Add web tests for admin information architecture, city selector counts, and richer list-item rendering in `web/test/dashboard/` and `web/test/public/`
+- [X] T064 [P] Add mobile widget tests for city selection, catalog-backed list item search, purchased-state toggles, and richer list cards in `mobile/test/widget/features/regions/`, `mobile/test/widget/features/shopping_lists/`, and `mobile/test/widget/features/offers/`
 
 ### Implementation for Stitch Realignment
 
-- [ ] T065 [P] Extend the product and offer data model for real images, richer brand/package specificity, and catalog-backed shopper search in `backend/prisma/schema.prisma`, `backend/src/catalog/`, and `backend/src/pricing/`
-- [ ] T066 [P] Implement backend APIs for product media, catalog-backed list item lookup, city-aware selectors, and shopper purchased-state persistence in `backend/src/catalog/api/`, `backend/src/lists/api/`, `backend/src/regions/api/`, and `backend/src/users/api/`
-- [ ] T067 [P] Refactor the web public header, city selector, supported cities view, and create-list flow to be city-first, count-aware, and free of mock product images in `web/src/public/`, `web/src/app/`, and `web/src/routes/`
-- [ ] T068 [P] Rebuild the web shopping-list, optimization, and in-store checklist views with product images, item cards, purchased-state handling, and clearer processing states in `web/src/public/`, `web/src/components/`, and `web/src/routes/`
-- [ ] T069 [P] Split the admin dashboard into dedicated overview, regions, establishments, products, offers, and list-operations views with richer charts and visual KPIs in `web/src/dashboard/`, `web/src/routes/`, and `web/src/components/`
-- [ ] T070 [P] Rebuild the mobile home, city selection, product browsing, and list flows to match the Stitch direction with real product imagery and city-first behavior in `mobile/lib/features/home/`, `mobile/lib/features/regions/`, `mobile/lib/features/offers/`, and `mobile/lib/features/shopping_lists/`
-- [ ] T071 [P] Add mobile and web in-store shopping mode so users can mark items as bought without requiring optimization, with synced persistence through the backend in `backend/src/lists/`, `web/src/public/`, and `mobile/lib/features/shopping_lists/`
-- [ ] T072 [P] Audit and replace temporary/mock product imagery and placeholder offer art with real catalog assets or neutral non-product fallbacks in `web/src/`, `mobile/lib/`, `backend/prisma/seed.*`, and related asset/config files
+- [X] T065 [P] Extend the product and offer data model for real images, richer brand/package specificity, and catalog-backed shopper search in `backend/prisma/schema.prisma`, `backend/src/catalog/`, and `backend/src/pricing/`
+- [X] T066 [P] Implement backend APIs for product media, catalog-backed list item lookup, city-aware selectors, and shopper purchased-state persistence in `backend/src/catalog/api/`, `backend/src/lists/api/`, `backend/src/regions/api/`, and `backend/src/users/api/`
+- [X] T067 [P] Refactor the web public header, city selector, supported cities view, and create-list flow to be city-first, count-aware, and free of mock product images in `web/src/public/`, `web/src/app/`, and `web/src/routes/`
+- [X] T068 [P] Rebuild the web shopping-list, optimization, and in-store checklist views with product images, item cards, purchased-state handling, and clearer processing states in `web/src/public/`, `web/src/components/`, and `web/src/routes/`
+- [X] T069 [P] Split the admin dashboard into dedicated overview, regions, establishments, products, offers, and list-operations views with richer charts and visual KPIs in `web/src/dashboard/`, `web/src/routes/`, and `web/src/components/`
+- [X] T070 [P] Rebuild the mobile home, city selection, product browsing, and list flows to match the Stitch direction with real product imagery and city-first behavior in `mobile/lib/features/home/`, `mobile/lib/features/regions/`, `mobile/lib/features/offers/`, and `mobile/lib/features/shopping_lists/`
+- [X] T071 [P] Add mobile and web in-store shopping mode so users can mark items as bought without requiring optimization, with synced persistence through the backend in `backend/src/lists/`, `web/src/public/`, and `mobile/lib/features/shopping_lists/`
+- [X] T072 [P] Audit and replace temporary/mock product imagery and placeholder offer art with real catalog assets or neutral non-product fallbacks in `web/src/`, `mobile/lib/`, `backend/prisma/seed.*`, and related asset/config files
 
 ---
 
@@ -225,7 +225,7 @@ web, and mobile.
 
 ### Tests for Base Product + Brand Preference
 
-- [~] T073 [P] Add backend unit and integration tests for base-product search, variant filtering, and optimization behavior under `any`, `preferred`, and `exact` brand modes in `backend/test/unit/catalog/`, `backend/test/unit/optimization/`, and `backend/test/integration/catalog/`
+- [X] T073 [P] Add backend unit and integration tests for base-product search, variant filtering, and optimization behavior under `any`, `preferred`, and `exact` brand modes in `backend/test/unit/catalog/`, `backend/test/unit/optimization/`, and `backend/test/integration/catalog/`
 - [X] T074 [P] Add web and mobile tests for generic product search, brand-preference modal flows, and checklist behavior in `web/test/public/`, `web/test/dashboard/`, and `mobile/test/widget/features/shopping_lists/`
 
 ### Implementation for Base Product + Brand Preference

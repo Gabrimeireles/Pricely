@@ -2,20 +2,20 @@ import { OptimizationRunProcessor } from '../../../src/jobs/optimization-run.pro
 
 describe('OptimizationRunProcessor', () => {
   it('ignores missing optimization runs', async () => {
-    const prisma = {
-      optimizationRun: {
-        findUnique: jest.fn().mockResolvedValue(null),
-      },
-    };
+    const prisma = {};
     const shoppingListsService = { getById: jest.fn() };
     const storeOfferRepository = { findByCanonicalNames: jest.fn() };
     const multiMarketOptimizerService = { optimize: jest.fn() };
+    const optimizationRunRepository = {
+      findById: jest.fn().mockResolvedValue(null),
+    };
 
     const processor = new OptimizationRunProcessor(
       prisma as never,
       shoppingListsService as never,
       storeOfferRepository as never,
       multiMarketOptimizerService as never,
+      optimizationRunRepository as never,
     );
 
     await expect(processor.process('missing-run')).resolves.toBeUndefined();
@@ -75,12 +75,21 @@ describe('OptimizationRunProcessor', () => {
         ],
       }),
     };
+    const optimizationRunRepository = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'run-1',
+        userId: 'user-1',
+        shoppingListId: 'list-1',
+        mode: 'global_full',
+      }),
+    };
 
     const processor = new OptimizationRunProcessor(
       prisma as never,
       shoppingListsService as never,
       storeOfferRepository as never,
       multiMarketOptimizerService as never,
+      optimizationRunRepository as never,
     );
 
     await processor.process('run-1');

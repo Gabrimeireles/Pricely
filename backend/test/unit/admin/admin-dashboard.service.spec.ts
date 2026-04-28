@@ -59,7 +59,13 @@ describe('AdminDashboardService', () => {
       },
     };
 
-    const service = new AdminDashboardService(prisma as never);
+    const service = new AdminDashboardService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
 
     await expect(service.getMetrics()).resolves.toEqual({
       activeUsers: 12,
@@ -129,20 +135,25 @@ describe('AdminDashboardService', () => {
 
   it('persists region activation changes through the admin mutation surface', async () => {
     const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
-    const prisma = {
-      region: {
-        create: jest.fn().mockResolvedValue({
-          id: 'region-1',
-          slug: 'campinas-sp',
-        }),
-        update: jest.fn().mockResolvedValue({
-          id: 'region-1',
-          implantationStatus: 'active',
-        }),
-      },
+    const prisma = {};
+    const regionsAdminService = {
+      create: jest.fn().mockResolvedValue({
+        id: 'region-1',
+        slug: 'campinas-sp',
+      }),
+      update: jest.fn().mockResolvedValue({
+        id: 'region-1',
+        implantationStatus: 'active',
+      }),
     };
 
-    const service = new AdminDashboardService(prisma as never);
+    const service = new AdminDashboardService(
+      prisma as never,
+      regionsAdminService as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
 
     await service.createRegion({
       slug: 'campinas-sp',
@@ -154,15 +165,14 @@ describe('AdminDashboardService', () => {
       implantationStatus: 'active',
     });
 
-    expect(prisma.region.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+    expect(regionsAdminService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
         slug: 'campinas-sp',
         implantationStatus: 'activating',
       }),
-    });
-    expect(prisma.region.update).toHaveBeenCalledWith({
-      where: { id: 'region-1' },
-      data: { implantationStatus: 'active' },
+    );
+    expect(regionsAdminService.update).toHaveBeenCalledWith('region-1', {
+      implantationStatus: 'active',
     });
     expect(logSpy).toHaveBeenCalledWith('Admin created region campinas-sp (region-1)');
     expect(logSpy).toHaveBeenCalledWith('Admin updated region region-1');

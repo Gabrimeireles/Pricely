@@ -1,5 +1,6 @@
 import { PublicLayout } from '@/public/public-shell';
 import {
+  ChecklistPage,
   CitiesPage,
   LandingPage,
   ListEditorPage,
@@ -48,9 +49,12 @@ export const publicRoute = {
       element: <ListEditorPage />,
     },
     {
+      path: 'listas/:listId/checklist',
+      element: <ChecklistPage />,
+    },
+    {
       path: 'otimizacao/:listId',
       element: <OptimizationPage />,
     },
   ],
 };
-

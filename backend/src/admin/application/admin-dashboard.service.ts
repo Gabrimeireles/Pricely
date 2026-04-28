@@ -1,12 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { CatalogProductsService } from '../../catalog/application/catalog-products.service';
+import { EstablishmentsService } from '../../establishments/application/establishments.service';
 import { PrismaService } from '../../persistence/prisma.service';
+import { OfferManagementService } from '../../pricing/application/offer-management.service';
+import { RegionsAdminService } from '../../regions/application/regions-admin.service';
 
 @Injectable()
 export class AdminDashboardService {
   private readonly logger = new Logger(AdminDashboardService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly regionsAdminService: RegionsAdminService,
+    private readonly establishmentsService: EstablishmentsService,
+    private readonly catalogProductsService: CatalogProductsService,
+    private readonly offerManagementService: OfferManagementService,
+  ) {}
 
   async getMetrics() {
     const [
@@ -132,26 +142,7 @@ export class AdminDashboardService {
   }
 
   async listRegions() {
-    const regions = await this.prisma.region.findMany({
-      orderBy: [{ publicSortOrder: 'asc' }, { name: 'asc' }],
-      include: {
-        _count: {
-          select: {
-            establishments: true,
-          },
-        },
-      },
-    });
-
-    return regions.map((region) => ({
-      id: region.id,
-      slug: region.slug,
-      name: region.name,
-      stateCode: region.stateCode,
-      implantationStatus: region.implantationStatus,
-      publicSortOrder: region.publicSortOrder,
-      establishmentsCount: region._count.establishments,
-    }));
+    return this.regionsAdminService.list();
   }
 
   async createRegion(input: {
@@ -161,15 +152,7 @@ export class AdminDashboardService {
     implantationStatus: 'active' | 'activating' | 'inactive';
     publicSortOrder?: number;
   }) {
-    const created = await this.prisma.region.create({
-      data: {
-        slug: input.slug,
-        name: input.name,
-        stateCode: input.stateCode,
-        implantationStatus: input.implantationStatus,
-        publicSortOrder: input.publicSortOrder ?? 0,
-      },
-    });
+    const created = await this.regionsAdminService.create(input);
 
     this.logger.log(`Admin created region ${created.slug} (${created.id})`);
 
@@ -186,10 +169,7 @@ export class AdminDashboardService {
       publicSortOrder: number;
     }>,
   ) {
-    const updated = await this.prisma.region.update({
-      where: { id },
-      data: input,
-    });
+    const updated = await this.regionsAdminService.update(id, input);
 
     this.logger.log(`Admin updated region ${id}`);
 
@@ -197,12 +177,7 @@ export class AdminDashboardService {
   }
 
   async listEstablishments() {
-    return this.prisma.establishment.findMany({
-      include: {
-        region: true,
-      },
-      orderBy: [{ cityName: 'asc' }, { unitName: 'asc' }],
-    });
+    return this.establishmentsService.list();
   }
 
   async createEstablishment(input: {
@@ -214,12 +189,7 @@ export class AdminDashboardService {
     regionId: string;
     isActive?: boolean;
   }) {
-    const created = await this.prisma.establishment.create({
-      data: {
-        ...input,
-        isActive: input.isActive ?? true,
-      },
-    });
+    const created = await this.establishmentsService.create(input);
 
     this.logger.log(`Admin created establishment ${created.id} for region ${input.regionId}`);
 
@@ -238,10 +208,7 @@ export class AdminDashboardService {
       isActive: boolean;
     }>,
   ) {
-    const updated = await this.prisma.establishment.update({
-      where: { id },
-      data: input,
-    });
+    const updated = await this.establishmentsService.update(id, input);
 
     this.logger.log(`Admin updated establishment ${id}`);
 
@@ -249,21 +216,7 @@ export class AdminDashboardService {
   }
 
   async listProducts() {
-    return this.prisma.catalogProduct.findMany({
-      include: {
-        aliases: true,
-        productVariants: {
-          where: { isActive: true },
-          orderBy: [{ brandName: 'asc' }, { displayName: 'asc' }],
-        },
-        _count: {
-          select: {
-            productOffers: true,
-          },
-        },
-      },
-      orderBy: [{ name: 'asc' }],
-    });
+    return this.catalogProductsService.listProducts();
   }
 
   async createProduct(input: {
@@ -274,28 +227,7 @@ export class AdminDashboardService {
     imageUrl?: string;
     alias?: string;
   }) {
-    const created = await this.prisma.catalogProduct.create({
-      data: {
-        slug: input.slug,
-        name: input.name,
-        category: input.category,
-        defaultUnit: input.defaultUnit,
-        imageUrl: input.imageUrl,
-        isActive: true,
-        aliases: input.alias
-          ? {
-              create: {
-                alias: input.alias,
-                sourceType: 'admin',
-                confidenceScore: 1,
-              },
-            }
-          : undefined,
-      },
-      include: {
-        aliases: true,
-      },
-    });
+    const created = await this.catalogProductsService.createProduct(input);
 
     this.logger.log(`Admin created catalog product ${created.id} (${created.slug})`);
 
@@ -313,13 +245,7 @@ export class AdminDashboardService {
       isActive: boolean;
     }>,
   ) {
-    const updated = await this.prisma.catalogProduct.update({
-      where: { id },
-      data: input,
-      include: {
-        aliases: true,
-      },
-    });
+    const updated = await this.catalogProductsService.updateProduct(id, input);
 
     this.logger.log(`Admin updated catalog product ${id}`);
 
@@ -345,12 +271,7 @@ export class AdminDashboardService {
     imageUrl?: string;
     isActive?: boolean;
   }) {
-    const created = await this.prisma.productVariant.create({
-      data: {
-        ...input,
-        isActive: input.isActive ?? true,
-      },
-    });
+    const created = await this.catalogProductsService.createVariant(input);
 
     this.logger.log(`Admin created product variant ${created.id} for catalog product ${input.catalogProductId}`);
 
@@ -370,10 +291,7 @@ export class AdminDashboardService {
       isActive: boolean;
     }>,
   ) {
-    const updated = await this.prisma.productVariant.update({
-      where: { id },
-      data: input,
-    });
+    const updated = await this.catalogProductsService.updateVariant(id, input);
 
     this.logger.log(`Admin updated product variant ${id}`);
 
@@ -381,18 +299,7 @@ export class AdminDashboardService {
   }
 
   async listOffers() {
-    return this.prisma.productOffer.findMany({
-      include: {
-        catalogProduct: true,
-        productVariant: true,
-        establishment: {
-          include: {
-            region: true,
-          },
-        },
-      },
-      orderBy: [{ observedAt: 'desc' }],
-    });
+    return this.offerManagementService.list();
   }
 
   async createOffer(input: {
@@ -409,23 +316,7 @@ export class AdminDashboardService {
     observedAt?: string;
     isActive?: boolean;
   }) {
-    const created = await this.prisma.productOffer.create({
-      data: {
-        catalogProductId: input.catalogProductId,
-        productVariantId: input.productVariantId,
-        establishmentId: input.establishmentId,
-        displayName: input.displayName,
-        packageLabel: input.packageLabel,
-        priceAmount: input.priceAmount,
-        currencyCode: 'BRL',
-        availabilityStatus: input.availabilityStatus,
-        confidenceLevel: input.confidenceLevel,
-        sourceType: input.sourceType ?? 'admin',
-        sourceReference: input.sourceReference,
-        observedAt: input.observedAt ? new Date(input.observedAt) : new Date(),
-        isActive: input.isActive ?? true,
-      },
-    });
+    const created = await this.offerManagementService.create(input);
 
     this.logger.log(`Admin created product offer ${created.id} for variant ${input.productVariantId}`);
 
@@ -449,13 +340,7 @@ export class AdminDashboardService {
       isActive: boolean;
     }>,
   ) {
-    const updated = await this.prisma.productOffer.update({
-      where: { id },
-      data: {
-        ...input,
-        observedAt: input.observedAt ? new Date(input.observedAt) : undefined,
-      },
-    });
+    const updated = await this.offerManagementService.update(id, input);
 
     this.logger.log(`Admin updated product offer ${id}`);
 

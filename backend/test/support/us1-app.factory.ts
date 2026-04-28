@@ -105,6 +105,32 @@ class InMemoryShoppingListRepository {
     this.lists.set(id, existing);
   }
 
+  async updateItemPurchaseStatus(
+    shoppingListId: string,
+    userId: string,
+    itemId: string,
+    purchaseStatus: 'pending' | 'purchased',
+  ) {
+    const existing = this.lists.get(shoppingListId);
+    if (!existing || existing.userId !== userId) {
+      return null;
+    }
+
+    existing.items = existing.items.map((item: any) =>
+      item.id === itemId
+        ? {
+            ...item,
+            purchaseStatus,
+            purchasedAt:
+              purchaseStatus === 'purchased' ? new Date().toISOString() : undefined,
+          }
+        : item,
+    );
+    existing.updatedAt = new Date().toISOString();
+    this.lists.set(shoppingListId, existing);
+    return structuredClone(existing);
+  }
+
   findItemById(itemId: string) {
     for (const list of this.lists.values()) {
       const item = list.items.find((entry: any) => entry.id === itemId);

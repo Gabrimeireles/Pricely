@@ -79,6 +79,10 @@ class MarketDiscoveryController extends ChangeNotifier {
     await loadInitialData();
   }
 
+  Future<PublicOfferDetail> fetchOfferDetail(String offerId) {
+    return _backendGateway.fetchOfferDetail(offerId);
+  }
+
   Future<void> _loadOffersForSelectedRegion() async {
     final regionSlug = _selectedRegionSlug;
     if (regionSlug == null) {

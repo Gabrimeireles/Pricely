@@ -10,6 +10,8 @@ export interface SupportedCity {
   id: string;
   name: string;
   stateCode: string;
+  activeStoreCount: number;
+  coverageStatus: 'live' | 'collecting_data';
   regionLabel: string;
   status: 'supported' | 'pilot' | 'soon';
   stores: string[];

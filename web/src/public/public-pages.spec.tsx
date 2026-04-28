@@ -23,6 +23,8 @@ vi.mock('@/app/pricely-context', () => ({
         id: 'campinas-sp',
         name: 'Campinas',
         stateCode: 'SP',
+        activeStoreCount: 0,
+        coverageStatus: 'collecting_data',
         regionLabel: '0 estabelecimentos ativos',
         status: 'pilot',
         stores: [],
@@ -32,6 +34,8 @@ vi.mock('@/app/pricely-context', () => ({
         id: 'sao-paulo-sp',
         name: 'Sao Paulo',
         stateCode: 'SP',
+        activeStoreCount: 2,
+        coverageStatus: 'live',
         regionLabel: '2 estabelecimentos ativos',
         status: 'supported',
         stores: [],
@@ -77,7 +81,7 @@ describe('public pages', () => {
         element?.textContent?.includes('SP') == true,
       ),
     ).toBeTruthy();
-    expect(screen.getByText('0 estabelecimentos ativos')).toBeTruthy();
+    expect(screen.getByText(/0 estabelecimentos ativos/)).toBeTruthy();
     expect(screen.getByText('Piloto')).toBeTruthy();
   });
 

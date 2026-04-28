@@ -144,4 +144,105 @@ void main() {
 
     expect(controller.draft.items.single.purchaseStatus, 'purchased');
   });
+
+  test('syncs purchased state through the backend when the list is persisted', () async {
+    final cacheService = LocalCacheService(InMemoryKeyValueStore());
+    await cacheService.saveAuthToken('token-123');
+
+    final backendGateway = PricelyBackendGateway(
+      HttpApiClient(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/auth/me')) {
+            return http.Response(
+              jsonEncode(<String, dynamic>{
+                'id': 'user-1',
+                'email': 'cliente@pricely.app',
+                'displayName': 'Cliente Pricely',
+                'role': 'customer',
+                'profileStats': <String, dynamic>{
+                  'shoppingListsCount': 1,
+                  'totalEstimatedSavings': 0,
+                  'completedOptimizationRuns': 0,
+                  'contributionsCount': 0,
+                  'receiptSubmissionsCount': 0,
+                  'offerReportsCount': 0,
+                },
+              }),
+              200,
+            );
+          }
+
+          if (request.url.path.endsWith('/shopping-lists')) {
+            return http.Response(
+              jsonEncode(<dynamic>[
+                <String, dynamic>{
+                  'id': 'list-1',
+                  'name': 'Compra mensal',
+                  'preferredRegionId': 'sao-paulo-sp',
+                  'lastMode': 'global_full',
+                  'items': <dynamic>[
+                    <String, dynamic>{
+                      'id': 'item-1',
+                      'requestedName': 'Arroz tipo 1 1kg',
+                      'quantity': 1,
+                      'unitLabel': 'un',
+                      'purchaseStatus': 'pending',
+                      'resolutionStatus': 'matched',
+                    },
+                  ],
+                  'createdAt': '2026-04-28T12:00:00.000Z',
+                  'updatedAt': '2026-04-28T12:00:00.000Z',
+                },
+              ]),
+              200,
+            );
+          }
+
+          if (request.url.path.endsWith('/shopping-lists/list-1/items/item-1/purchase-status')) {
+            final payload = jsonDecode(request.body) as Map<String, dynamic>;
+            return http.Response(
+              jsonEncode(<String, dynamic>{
+                'id': 'list-1',
+                'name': 'Compra mensal',
+                'preferredRegionId': 'sao-paulo-sp',
+                'lastMode': 'global_full',
+                'items': <dynamic>[
+                  <String, dynamic>{
+                    'id': 'item-1',
+                    'requestedName': 'Arroz tipo 1 1kg',
+                    'quantity': 1,
+                    'unitLabel': 'un',
+                    'purchaseStatus': payload['purchaseStatus'],
+                    'resolutionStatus': 'matched',
+                  },
+                ],
+                'createdAt': '2026-04-28T12:00:00.000Z',
+                'updatedAt': '2026-04-28T12:05:00.000Z',
+              }),
+              200,
+            );
+          }
+
+          return http.Response('{}', 200);
+        }),
+      ),
+    );
+    final authController = AuthController(
+      cacheService: cacheService,
+      backendGateway: backendGateway,
+    );
+    await authController.bootstrap();
+
+    final controller = ShoppingListController(
+      cacheService: cacheService,
+      authController: authController,
+      backendGateway: backendGateway,
+    );
+
+    await controller.loadDraft();
+    await controller.togglePurchased('item-1');
+
+    expect(controller.draft.id, 'list-1');
+    expect(controller.draft.items.single.purchaseStatus, 'purchased');
+  });
 }
