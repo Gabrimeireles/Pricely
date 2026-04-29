@@ -13,7 +13,11 @@ describe('PostgreSQL relation regression integration', () => {
         .get('/regions/sao-paulo-sp/offers')
         .expect(200);
 
-      expect(offersResponse.body.offers[0]).toEqual(
+      const cafeOffer = offersResponse.body.offers.find(
+        (offer: { id: string }) => offer.id === 'offer-test-1',
+      );
+
+      expect(cafeOffer).toEqual(
         expect.objectContaining({
           id: 'offer-test-1',
           catalogProductId: 'product-test-1',

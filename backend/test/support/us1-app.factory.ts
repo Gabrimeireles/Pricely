@@ -174,6 +174,12 @@ class InMemoryProductMatchRepository {
 class InMemoryStoreOfferRepository {
   private readonly offers = new Map<string, any>();
 
+  constructor(seedOffers: any[] = []) {
+    for (const offer of seedOffers) {
+      this.offers.set(offer.id, structuredClone(offer));
+    }
+  }
+
   async upsert(offer: any) {
     this.offers.set(offer.id, structuredClone(offer));
     return structuredClone(offer);
@@ -182,6 +188,19 @@ class InMemoryStoreOfferRepository {
   async findByCanonicalNames(canonicalNames: string[]) {
     return Array.from(this.offers.values())
       .filter((offer) => canonicalNames.includes(offer.canonicalName))
+      .map((offer) => structuredClone(offer));
+  }
+
+  async findByListItems(items: Array<{ catalogProductId?: string; normalizedName?: string }>) {
+    const catalogProductIds = new Set(items.map((item) => item.catalogProductId).filter(Boolean));
+    const canonicalNames = new Set(items.map((item) => item.normalizedName).filter(Boolean));
+
+    return Array.from(this.offers.values())
+      .filter(
+        (offer) =>
+          (offer.catalogProductId && catalogProductIds.has(offer.catalogProductId)) ||
+          canonicalNames.has(offer.canonicalName),
+      )
       .map((offer) => structuredClone(offer));
   }
 
@@ -220,6 +239,15 @@ class PrismaUserAccountMock {
   ];
   private readonly catalogProducts = [
     {
+      id: 'product-test-arroz',
+      slug: 'arroz-tipo-1-5kg',
+      name: 'Arroz tipo 1 5kg',
+      category: 'mercearia',
+      defaultUnit: '5 kg',
+      imageUrl: null,
+      isActive: true,
+    },
+    {
       id: 'product-test-1',
       slug: 'cafe-torrado-500g',
       name: 'Cafe torrado',
@@ -230,6 +258,17 @@ class PrismaUserAccountMock {
     },
   ];
   private readonly productVariants = [
+    {
+      id: 'variant-test-arroz',
+      catalogProductId: 'product-test-arroz',
+      slug: 'arroz-tipo-1-5kg-seed-5kg',
+      displayName: 'Arroz tipo 1 5kg',
+      brandName: null,
+      variantLabel: null,
+      packageLabel: '5 kg',
+      imageUrl: null,
+      isActive: true,
+    },
     {
       id: 'variant-test-1',
       catalogProductId: 'product-test-1',
@@ -243,6 +282,22 @@ class PrismaUserAccountMock {
     },
   ];
   private readonly productOffers = [
+    {
+      id: 'offer-test-arroz',
+      catalogProductId: 'product-test-arroz',
+      productVariantId: 'variant-test-arroz',
+      establishmentId: 'est-test-1',
+      displayName: 'Arroz tipo 1 5kg',
+      packageLabel: '5 kg',
+      priceAmount: 22.9,
+      currencyCode: 'BRL',
+      availabilityStatus: 'available',
+      confidenceLevel: 'high',
+      sourceType: 'seed',
+      sourceReference: 'Seed local',
+      observedAt: new Date('2026-04-26T10:00:00Z'),
+      isActive: true,
+    },
     {
       id: 'offer-test-1',
       catalogProductId: 'product-test-1',
@@ -796,7 +851,40 @@ export async function createUs1TestApp(): Promise<{
   };
   const shoppingListRepository = new InMemoryShoppingListRepository();
   const productMatchRepository = new InMemoryProductMatchRepository();
-  const storeOfferRepository = new InMemoryStoreOfferRepository();
+  const storeOfferRepository = new InMemoryStoreOfferRepository([
+    {
+      id: 'offer-test-arroz',
+      catalogProductId: 'product-test-arroz',
+      productVariantId: 'variant-test-arroz',
+      canonicalName: 'arroz tipo 1 5kg',
+      displayName: 'Arroz tipo 1 5kg',
+      price: 22.9,
+      quantityContext: '5 kg',
+      availabilityStatus: 'available',
+      confidenceScore: 0.95,
+      sourceReceiptLineItemId: 'Seed local',
+      observedAt: new Date('2026-04-26T10:00:00Z').toISOString(),
+      storeId: 'est-test-1',
+      storeName: 'Unidade Pinheiros',
+      neighborhood: 'Pinheiros',
+    },
+    {
+      id: 'offer-test-1',
+      catalogProductId: 'product-test-1',
+      productVariantId: 'variant-test-1',
+      canonicalName: 'cafe torrado',
+      displayName: 'Cafe Pilao 500g',
+      price: 15.9,
+      quantityContext: '500 g',
+      availabilityStatus: 'available',
+      confidenceScore: 0.95,
+      sourceReceiptLineItemId: 'Painel admin',
+      observedAt: new Date('2026-04-26T10:00:00Z').toISOString(),
+      storeId: 'est-test-1',
+      storeName: 'Unidade Pinheiros',
+      neighborhood: 'Pinheiros',
+    },
+  ]);
   const userAccountMock = new PrismaUserAccountMock(
     shoppingListRepository,
     storeOfferRepository,
