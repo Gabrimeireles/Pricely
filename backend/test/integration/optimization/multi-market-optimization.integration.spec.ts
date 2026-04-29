@@ -4,14 +4,17 @@ import { createUs1TestApp } from '../../support/us1-app.factory';
 
 describe('Multi-market optimization integration', () => {
   it('creates a list, ingests receipts, and returns the cheapest valid plan', async () => {
-    const { app, queues } = await createUs1TestApp();
+    const { app, queues, auth } = await createUs1TestApp();
 
     try {
+      const session = await auth.registerCustomer();
+
       const listResponse = await request(app.getHttpServer())
         .post('/shopping-lists')
+        .set('Authorization', `Bearer ${session.accessToken}`)
         .send({
           name: 'Weekly groceries',
-          mode: 'multi_market',
+          lastMode: 'global_full',
         })
         .expect(201);
 
@@ -19,6 +22,7 @@ describe('Multi-market optimization integration', () => {
 
       await request(app.getHttpServer())
         .post(`/shopping-lists/${shoppingListId}/items`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
         .send({
           items: [
             { requestedName: 'Arroz Branco tp1 5kg', quantity: 1 },
@@ -51,21 +55,25 @@ describe('Multi-market optimization integration', () => {
 
       const optimizationResponse = await request(app.getHttpServer())
         .post(`/shopping-lists/${shoppingListId}/optimize`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
         .send({
-          mode: 'multi_market',
+          mode: 'global_full',
         })
         .expect(201);
 
-      expect(optimizationResponse.body.coverageStatus).toBe('complete');
-      expect(optimizationResponse.body.totalEstimatedCost).toBe(40.88);
-      expect(optimizationResponse.body.selections).toHaveLength(2);
+      expect(optimizationResponse.body.status).toBe('queued');
+      expect(optimizationResponse.body.jobId).toEqual(expect.any(String));
       expect(queues.optimizationQueue.add).toHaveBeenCalledTimes(1);
 
       const latestResponse = await request(app.getHttpServer())
         .get(`/shopping-lists/${shoppingListId}/optimizations/latest`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
         .expect(200);
 
       expect(latestResponse.body.id).toBe(optimizationResponse.body.id);
+      expect(latestResponse.body.coverageStatus).toBe('complete');
+      expect(latestResponse.body.totalEstimatedCost).toBe(40.88);
+      expect(latestResponse.body.selections).toHaveLength(2);
       expect(latestResponse.body.explanationSummary).toEqual(expect.any(String));
     } finally {
       await app.close();

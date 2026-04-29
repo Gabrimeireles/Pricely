@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
@@ -15,17 +16,34 @@ class ShoppingListItemInputDto implements ShoppingListItemInput {
   requestedName!: string;
 
   @IsOptional()
+  @IsString()
+  catalogProductId?: string;
+
+  @IsOptional()
+  @IsString()
+  lockedProductVariantId?: string;
+
+  @IsOptional()
+  @IsString()
+  brandPreferenceMode?: 'any' | 'preferred' | 'exact';
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  preferredBrandNames?: string[];
+
+  @IsOptional()
+  @IsIn(['pending', 'purchased'])
+  purchaseStatus?: 'pending' | 'purchased';
+
+  @IsOptional()
   @IsNumber()
   @Min(0.0001)
   quantity?: number;
 
   @IsOptional()
   @IsString()
-  unit?: string;
-
-  @IsOptional()
-  @IsString()
-  preferredBrand?: string;
+  unitLabel?: string;
 
   @IsOptional()
   @IsString()

@@ -1,10 +1,12 @@
 import { AdminLayout } from '@/dashboard/admin-shell';
 import {
+  AdminEstablishmentsPage,
   AdminCatalogPage,
   AdminListsPage,
+  AdminOffersPage,
   AdminOverviewPage,
-  AdminPricesPage,
   AdminQueuePage,
+  AdminRegionsPage,
 } from '@/dashboard/dashboard-pages';
 
 export const dashboardRoute = {
@@ -16,12 +18,20 @@ export const dashboardRoute = {
       element: <AdminOverviewPage />,
     },
     {
-      path: 'precos',
-      element: <AdminPricesPage />,
+      path: 'regioes',
+      element: <AdminRegionsPage />,
     },
     {
-      path: 'catalogo',
+      path: 'estabelecimentos',
+      element: <AdminEstablishmentsPage />,
+    },
+    {
+      path: 'produtos',
       element: <AdminCatalogPage />,
+    },
+    {
+      path: 'ofertas',
+      element: <AdminOffersPage />,
     },
     {
       path: 'listas',
@@ -30,6 +40,14 @@ export const dashboardRoute = {
     {
       path: 'fila',
       element: <AdminQueuePage />,
+    },
+    {
+      path: 'precos',
+      element: <AdminOffersPage />,
+    },
+    {
+      path: 'catalogo',
+      element: <AdminCatalogPage />,
     },
   ],
 };

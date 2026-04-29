@@ -5,6 +5,10 @@ export type StoreOfferAvailabilityStatus =
 
 export interface StoreOfferEntity {
   id: string;
+  catalogProductId?: string;
+  productVariantId?: string;
+  brandName?: string;
+  variantName?: string;
   storeId: string;
   storeName: string;
   canonicalName: string;

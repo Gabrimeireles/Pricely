@@ -116,6 +116,7 @@ class DemoGroceryWorkflowGateway {
     return OptimizationResult(
       shoppingListTitle: draft.title,
       generatedAt: DateTime.now(),
+      status: 'completed',
       totalCost: totalCost,
       estimatedSavings: estimatedSavings,
       unavailableItems: unavailableItems,

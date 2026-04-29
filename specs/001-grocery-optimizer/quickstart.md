@@ -7,24 +7,32 @@ regional catalog queries, reusable shopping lists, optimization jobs, and admin 
 
 ## Prerequisites
 
-- Local PostgreSQL instance running
-- Local Redis instance running
-- NestJS backend dependencies installed
-- Prisma migrations available locally
+- Docker Desktop or Docker Engine available for local orchestration
+- NestJS backend dependencies installed when running services outside Docker
 - Flutter SDK installed and device or emulator available
-- Web application dependencies installed
-- Feature branch `001-grocery-optimizer` checked out
+- Web application dependencies installed when running services outside Docker
+- Repository dependencies installed in `backend/`, `web/`, and `mobile/`
+
+## Container Setup
+
+1. Start the full local stack with `docker compose up --build`.
+2. Wait for PostgreSQL, Redis, backend, and web to report healthy or
+   started states.
+3. Confirm the following endpoints are reachable from the host machine:
+   - `http://localhost:3000` for the backend API
+   - `http://localhost:5173` for the web app
+4. Use `docker compose down` to stop the stack.
+5. Use `docker compose down -v` when you need to reset PostgreSQL and Redis data.
 
 ## Backend Setup
 
-1. Start PostgreSQL and Redis locally.
-2. Configure backend environment values for PostgreSQL, Redis, JWT/session secrets, and
-   app settings.
-3. Apply Prisma migrations and seed minimal data for one admin, one customer, one
-   active region, and a small offer catalog.
-4. Start the NestJS API locally.
-5. Start the BullMQ worker process if it runs separately from the API.
-6. Confirm the backend can connect to PostgreSQL and Redis and exposes both public and
+1. Configure backend environment values for PostgreSQL, Redis,
+   JWT/session secrets, and app settings when running outside Docker.
+2. Apply Prisma migrations or `db push` and seed minimal data for one admin, one customer,
+   one active region, and a small offer catalog.
+3. Start the NestJS API locally if not using Docker.
+4. Start the BullMQ worker process if it runs separately from the API.
+5. Confirm the backend can connect to PostgreSQL and Redis and exposes both public and
    admin API surfaces.
 
 ## Mobile Setup
@@ -75,3 +83,30 @@ regional catalog queries, reusable shopping lists, optimization jobs, and admin 
 - Product detail data can explain where each price comes from
 - Admin CRUD can control the catalog and operating regions
 - Logs and job states make processing failures actionable
+
+## Validation Record
+
+Validated on `2026-04-27` with the current local stack:
+
+1. `docker compose down -v`
+2. `docker compose up --build -d`
+3. `cd backend && npm run lint && npm run build && npm test -- --runInBand`
+4. `cd web && npm run lint && npm run build && npm test`
+5. `cd mobile && flutter analyze && flutter test && flutter build apk --debug`
+6. Smoke requests executed successfully for:
+   - `POST /auth/register`
+   - `POST /auth/login`
+   - `GET /regions`
+   - `GET /regions/:slug/offers`
+   - `GET /offers/:offerId`
+   - `POST /shopping-lists`
+   - `POST /shopping-lists/:id/items`
+   - `POST /shopping-lists/:id/optimize`
+   - `GET /shopping-lists/:id/optimizations/latest`
+   - `GET /admin/metrics`
+   - `GET /admin/processing-jobs`
+   - `GET /admin/queue-health`
+
+Known gap after this validation:
+
+- The MVP is functional, but admin CRUD depth, richer public/mobile coverage, and final polish tasks still remain before release sign-off.

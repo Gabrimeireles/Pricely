@@ -1,20 +1,26 @@
 import { Module } from '@nestjs/common';
 
+import { AuthModule } from '../auth/auth.module';
 import { ListsModule } from '../lists/lists.module';
+import { ProcessingModule } from '../processing/processing.module';
 import { StoresModule } from '../stores/stores.module';
 import { OptimizationController } from './api/optimization.controller';
 import { OptimizationResultService } from './application/optimization-result.service';
 import { MultiMarketOptimizerService } from './domain/multi-market-optimizer.service';
-import { OptimizationResultRepository } from './infrastructure/optimization-result.repository';
+import { OptimizationRunRepository } from './infrastructure/optimization-run.repository';
 
 @Module({
-  imports: [ListsModule, StoresModule],
+  imports: [AuthModule, ListsModule, StoresModule, ProcessingModule],
   controllers: [OptimizationController],
   providers: [
     MultiMarketOptimizerService,
     OptimizationResultService,
-    OptimizationResultRepository,
+    OptimizationRunRepository,
   ],
-  exports: [OptimizationResultService, MultiMarketOptimizerService, OptimizationResultRepository],
+  exports: [
+    OptimizationResultService,
+    MultiMarketOptimizerService,
+    OptimizationRunRepository,
+  ],
 })
 export class OptimizationModule {}

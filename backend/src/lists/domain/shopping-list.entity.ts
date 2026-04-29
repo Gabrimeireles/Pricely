@@ -1,30 +1,36 @@
 import { type OptimizationMode } from '../../common/contracts';
 
-export type ShoppingListStatus = 'draft' | 'ready' | 'optimized' | 'stale';
+export type ShoppingListStatus = 'draft' | 'ready' | 'archived';
 export type ShoppingListResolutionStatus =
   | 'unresolved'
   | 'matched'
-  | 'partially_matched'
-  | 'unavailable';
+  | 'partial'
+  | 'missing';
 
 export interface ShoppingListItemEntity {
   id: string;
+  catalogProductId?: string;
+  lockedProductVariantId?: string;
+  brandPreferenceMode: 'any' | 'preferred' | 'exact';
+  preferredBrandNames: string[];
+  imageUrl?: string;
   requestedName: string;
   normalizedName?: string;
   quantity?: number;
-  unit?: string;
-  preferredBrand?: string;
+  unitLabel?: string;
   notes?: string;
+  purchaseStatus: 'pending' | 'purchased';
+  purchasedAt?: string;
   resolutionStatus: ShoppingListResolutionStatus;
 }
 
 export interface ShoppingListEntity {
   id: string;
+  userId: string;
   name: string;
-  mode: OptimizationMode;
-  preferredStoreId?: string;
-  locationHint?: string;
+  preferredRegionId?: string;
   status: ShoppingListStatus;
+  lastMode: OptimizationMode;
   items: ShoppingListItemEntity[];
   createdAt: string;
   updatedAt: string;

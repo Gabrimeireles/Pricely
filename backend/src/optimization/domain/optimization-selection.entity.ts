@@ -1,14 +1,20 @@
 import { type OptimizationMode } from '../../common/contracts';
 
-export type CoverageStatus = 'complete' | 'partial';
-export type SelectionStatus = 'selected' | 'unavailable' | 'unresolved';
+export type CoverageStatus = 'complete' | 'partial' | 'none';
+export type SelectionStatus = 'selected' | 'missing' | 'review';
 
 export interface OptimizationSelectionEntity {
   id: string;
   shoppingListItemId: string;
-  storeOfferId?: string;
-  selectionStatus: SelectionStatus;
+  productOfferId?: string;
+  shoppingListItemName: string;
+  establishmentName?: string;
+  establishmentNeighborhood?: string;
   estimatedCost?: number;
+  priceAmount?: number;
+  sourceLabel?: string;
+  observedAt?: string;
+  selectionStatus: SelectionStatus;
   confidenceNotice?: string;
 }
 
@@ -16,11 +22,12 @@ export interface OptimizationResultEntity {
   id: string;
   shoppingListId: string;
   mode: OptimizationMode;
-  recommendedStoreId?: string;
-  totalEstimatedCost: number;
-  savingsComparedToAlternative?: number;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  totalEstimatedCost?: number;
+  estimatedSavings?: number;
   coverageStatus: CoverageStatus;
-  generatedAt: string;
+  createdAt: string;
+  completedAt?: string;
   explanationSummary?: string;
   selections: OptimizationSelectionEntity[];
 }

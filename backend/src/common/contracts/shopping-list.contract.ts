@@ -1,39 +1,47 @@
-export type OptimizationMode =
-  | 'multi_market'
-  | 'local_market'
-  | 'global_store';
+export type OptimizationMode = 'local' | 'global_unique' | 'global_full';
 
 export interface ShoppingListItemInput {
   requestedName: string;
+  catalogProductId?: string;
+  lockedProductVariantId?: string;
+  brandPreferenceMode?: 'any' | 'preferred' | 'exact';
+  preferredBrandNames?: string[];
+  purchaseStatus?: 'pending' | 'purchased';
   quantity?: number;
-  unit?: string;
-  preferredBrand?: string;
+  unitLabel?: string;
   notes?: string;
 }
 
 export interface CreateShoppingListRequest {
   name: string;
-  mode: OptimizationMode;
-  preferredStoreId?: string;
-  locationHint?: string;
+  preferredRegionId?: string;
+  lastMode?: OptimizationMode;
 }
 
-export interface ShoppingListItem extends ShoppingListItemInput {
+export interface ShoppingListItem {
   id: string;
+  catalogProductId?: string;
+  lockedProductVariantId?: string;
+  brandPreferenceMode: 'any' | 'preferred' | 'exact';
+  preferredBrandNames: string[];
+  imageUrl?: string;
+  requestedName: string;
   normalizedName?: string;
-  resolutionStatus:
-    | 'unresolved'
-    | 'matched'
-    | 'partially_matched'
-    | 'unavailable';
+  quantity?: number;
+  unitLabel?: string;
+  notes?: string;
+  purchaseStatus: 'pending' | 'purchased';
+  purchasedAt?: string;
+  resolutionStatus: 'unresolved' | 'matched' | 'partial' | 'missing';
 }
 
 export interface ShoppingList {
   id: string;
   name: string;
-  mode: OptimizationMode;
-  preferredStoreId?: string;
-  locationHint?: string;
-  status: 'draft' | 'ready' | 'optimized' | 'stale';
+  preferredRegionId?: string;
+  status: 'draft' | 'ready' | 'archived';
+  lastMode: OptimizationMode;
   items: ShoppingListItem[];
+  createdAt: string;
+  updatedAt: string;
 }

@@ -10,6 +10,8 @@ export interface SupportedCity {
   id: string;
   name: string;
   stateCode: string;
+  activeStoreCount: number;
+  coverageStatus: 'live' | 'collecting_data';
   regionLabel: string;
   status: 'supported' | 'pilot' | 'soon';
   stores: string[];
@@ -44,9 +46,15 @@ export interface RegionalOffer {
 export interface ShoppingListItem {
   id: string;
   name: string;
+  catalogProductId?: string;
+  lockedProductVariantId?: string;
+  brandPreferenceMode?: 'any' | 'preferred' | 'exact';
+  preferredBrandNames?: string[];
+  imageUrl?: string;
   quantity: number;
   unitLabel: string;
   note?: string;
+  purchaseStatus?: 'pending' | 'purchased';
   status: 'resolved' | 'partial' | 'missing';
 }
 
@@ -107,4 +115,3 @@ export interface AdminMetric {
   value: string;
   support: string;
 }
-
