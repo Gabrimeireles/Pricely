@@ -108,7 +108,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         Text(
                           _isRegister
                               ? 'Use a mesma conta no mobile e no web para listas, economia estimada e historico.'
-                              : 'Acesse sua conta compartilhada para sincronizar listas e rodar a otimizacao no backend.',
+                              : 'Acesse a conta compartilhada para sincronizar listas, cidade e resultados de otimizacao.',
                           style: theme.textTheme.bodyLarge
                               ?.copyWith(color: Colors.white70),
                         ),
@@ -119,7 +119,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           children: const <Widget>[
                             _HeroChip(label: 'Conta unica'),
                             _HeroChip(label: 'Listas sincronizadas'),
-                            _HeroChip(label: 'Economia com evidencia'),
+                            _HeroChip(label: 'Cidade e economia'),
                           ],
                         ),
                       ],
@@ -225,4 +225,3 @@ class _HeroChip extends StatelessWidget {
     );
   }
 }
-

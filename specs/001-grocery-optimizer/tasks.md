@@ -240,6 +240,28 @@ web, and mobile.
 
 ---
 
+## Phase 9: UX Flow Polish and Stitch Fidelity Hardening
+
+**Purpose**: Eliminate UX friction found in the post-release audit, fix PT-BR copy
+quality regressions, and align web/mobile/admin flows more closely with the intended
+Stitch direction while preserving the validated backend behavior.
+
+### Tests for UX Flow Polish
+
+- [X] T082 [P] Add regression tests for PT-BR copy, city-count rendering, step-based list creation, and optimization mode cards in `web/test/public/`, `web/test/dashboard/`, and `mobile/test/widget/features/`
+- [X] T083 [P] Add mobile/widget tests for consolidated list flow, offer-detail sheet, and visual state rendering in `mobile/test/widget/features/home/`, `mobile/test/widget/features/shopping_lists/`, and `mobile/test/widget/features/optimization/`
+
+### Implementation for UX Flow Polish
+
+- [X] T084 [P] Fix broken PT-BR copy, encoding artifacts, and inconsistent labels across web and mobile surfaces in `web/src/`, `mobile/lib/`, `README.md`, and related tests
+- [X] T085 [P] Refactor the web public journey so landing, city selection, list creation, and optimization use clearer staged flows, stronger visual hierarchy, and explicit trade-off communication in `web/src/public/`, `web/src/routes/`, and `web/src/app/`
+- [X] T086 [P] Upgrade the web admin overview with richer KPI hierarchy, chart-like summaries, clearer operational grouping, and cleaner region/establishment/catalog management flows in `web/src/dashboard/`, `web/src/routes/`, and `web/src/components/`
+- [X] T087 [P] Consolidate the mobile shopping-list flow into a single source of truth, remove dead/duplicated surfaces, and align home/list/result styling with the Stitch direction in `mobile/lib/features/home/`, `mobile/lib/features/shopping_lists/`, and `mobile/lib/features/optimization/`
+- [X] T088 [P] Improve mobile and web offer-detail, checklist, and in-store shopping views with stronger product/store context, purchased-state clarity, and better fallback handling for images and empty states in `web/src/public/`, `mobile/lib/features/home/`, `mobile/lib/features/optimization/`, and `mobile/lib/features/shopping_lists/`
+- [X] T089 [P] Add final smoke and release-readiness validation for the polished UX flows in `web/test/`, `mobile/test/`, `backend/test/`, `docs/local-development.md`, and `specs/001-grocery-optimizer/quickstart.md`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

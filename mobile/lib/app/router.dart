@@ -43,8 +43,7 @@ class AppRouter {
           builder: (_) => Scaffold(
             appBar: AppBar(title: const Text('Dashboard')),
             body: const Center(
-              child:
-                  Text('Métricas administrativas continuam restritas ao web.'),
+              child: Text('Metricas administrativas continuam restritas ao web.'),
             ),
           ),
         );

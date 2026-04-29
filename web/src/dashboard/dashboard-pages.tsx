@@ -124,7 +124,7 @@ export function AdminOverviewPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Visao geral operacional</h1>
         <p className="text-muted-foreground">
-          O dashboard administrativo agora consome metricas reais do backend.
+          O dashboard administrativo consolida cidade, catalogo, filas e uso real do produto.
         </p>
       </div>
 
@@ -186,8 +186,8 @@ export function AdminOverviewPage() {
 
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>Leituras rapidas</CardTitle>
-            <CardDescription>Painel de apoio para cidade, catalogo e processamento.</CardDescription>
+            <CardTitle>Sinais do dia</CardTitle>
+            <CardDescription>Resumo rapido para identificar onde a operacao esta apertando.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             <div className="rounded-lg border border-border/70 bg-[#ECFDF5] p-4">
@@ -202,9 +202,68 @@ export function AdminOverviewPage() {
               <div className="text-sm text-[#C2410C]">Jobs aguardando</div>
               <div className="mt-2 text-2xl font-semibold text-[#9A3412]">{data.queuedJobs}</div>
             </div>
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm text-muted-foreground">Prioridade operacional</div>
+                  <div className="mt-2 text-base font-medium">
+                    {queuePressure >= 60
+                      ? 'Fila pressionada'
+                      : catalogRatio < 40
+                        ? 'Catalogo com pouca cobertura'
+                        : completionRatio < 40
+                          ? 'Listas com baixa conclusao'
+                          : 'Operacao estavel'}
+                  </div>
+                </div>
+                <Badge variant={queuePressure >= 60 ? 'destructive' : 'secondary'}>
+                  {queuePressure >= 60 ? 'Atencao' : 'Ok'}
+                </Badge>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-border/70 bg-card/90 shadow-sm">
+        <CardHeader>
+          <CardTitle>Painel comparativo</CardTitle>
+          <CardDescription>
+            Leitura lado a lado para volume de usuarios, listas, ofertas e filas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-4">
+          {[
+            ['Usuarios ativos', data.activeUsers, '#0F766E'],
+            ['Listas criadas', data.shoppingListsCount, '#2563EB'],
+            ['Ofertas ativas', data.activeOffers, '#84CC16'],
+            ['Jobs em fila', data.queuedJobs, '#F97316'],
+          ].map(([label, rawValue, color]) => {
+            const value = Number(rawValue);
+            return (
+              <div key={String(label)} className="grid gap-2 rounded-lg border border-border/70 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <span className="text-lg font-semibold">{value}</span>
+                </div>
+                <div className="flex h-24 items-end gap-2">
+                  {[0.25, 0.45, 0.65, 0.85, 1].map((ratio, index) => (
+                    <div key={`${label}-${index}`} className="flex-1 rounded-md bg-muted">
+                      <div
+                        className="rounded-md"
+                        style={{
+                          backgroundColor: String(color),
+                          height: `${Math.max(12, Math.min(100, (value / maxMetric) * 100 * ratio))}%`,
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
 
       {isEmptyState ? (
         <Alert>

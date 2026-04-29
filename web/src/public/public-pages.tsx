@@ -96,6 +96,27 @@ function describeBrandRule(item: {
   return 'Qualquer marca';
 }
 
+const optimizationModeCopy: Record<
+  OptimizationModeId,
+  { title: string; summary: string; tradeoff: string }
+> = {
+  local: {
+    title: 'Local',
+    summary: 'Prioriza concluir a compra com o menor deslocamento possivel.',
+    tradeoff: 'Menos paradas, mesmo que o total nao seja o menor da regiao.',
+  },
+  global_unique: {
+    title: 'Global unico',
+    summary: 'Procura a melhor loja unica para equilibrar cobertura e preco.',
+    tradeoff: 'Evita dividir a compra, mas pode ficar acima do menor custo total.',
+  },
+  global_full: {
+    title: 'Global completo',
+    summary: 'Busca o menor custo total item a item na cidade selecionada.',
+    tradeoff: 'Pode exigir mais de uma parada para capturar a melhor economia.',
+  },
+};
+
 function freshnessBadge(level: FreshnessLevel) {
   if (level === 'fresh') {
     return <Badge className="bg-lime-100 text-lime-900 hover:bg-lime-100">Atualizado hoje</Badge>;
@@ -347,11 +368,11 @@ export function LandingPage() {
             </Badge>
             <div className="flex flex-col gap-4">
               <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-                Decida onde comprar melhor com evidencia real.
+                Decida sua compra por cidade, lista e preco observado.
               </h1>
               <p className="max-w-2xl text-lg text-muted-foreground">
-                O Pricely cruza lista de compras, ofertas e preco observado para mostrar o que
-                vale a pena agora na sua regiao.
+                Escolha a cidade ativa, monte a lista com produtos reais e compare os tres
+                modos de otimizacao sem perder o historico entre web e mobile.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -383,7 +404,9 @@ export function LandingPage() {
             <Card size="sm">
               <CardHeader>
                 <CardTitle>Cidade ativa</CardTitle>
-                <CardDescription>{city.name}</CardDescription>
+                <CardDescription>
+                  {city.name} - {city.activeStoreCount} estabelecimentos ativos
+                </CardDescription>
               </CardHeader>
             </Card>
           </div>
@@ -396,6 +419,36 @@ export function LandingPage() {
             src={resolveProductImage()}
           />
         </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>1. Escolha a cidade</CardTitle>
+            <CardDescription>
+              Mostramos somente cidades ativas ou em ativacao, sempre com a contagem atual
+              de estabelecimentos ativos.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>2. Monte a lista</CardTitle>
+            <CardDescription>
+              Selecione um produto comparavel primeiro e, se quiser, refine depois por marca
+              ou variante.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>3. Compare os modos</CardTitle>
+            <CardDescription>
+              Local, Global unico e Global completo deixam claro o trade-off entre deslocamento
+              e economia.
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
@@ -455,9 +508,9 @@ export function OffersPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Ofertas por regiao</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Ofertas por cidade</h1>
         <p className="text-muted-foreground">
-          {city.name}. Ofertas publicas ficam visiveis com origem, frescor e confianca.
+          {city.name}. Ofertas publicas mostram loja, frescor, confianca e detalhe completo do item.
         </p>
       </div>
 
@@ -581,7 +634,7 @@ export function OfferDetailPage() {
               {formatCurrency(offer.activeOffer.priceAmount)}
             </div>
             <p className="text-sm text-muted-foreground">
-              Preco observado em {offer.region.name} com evidencia rastreavel.
+          Preco observado em {offer.region.name} com evidencia rastreavel.
             </p>
             <div className="rounded-lg border border-border/70 p-4 text-sm text-muted-foreground">
               Ultima atualizacao: {formatDateTime(offer.activeOffer.observedAt)}
@@ -591,7 +644,7 @@ export function OfferDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Precos do produto na regiao</CardTitle>
+            <CardTitle>Precos do produto na cidade</CardTitle>
             <CardDescription>
               Compare estabelecimentos, horarios e fonte antes de decidir.
             </CardDescription>
@@ -842,7 +895,7 @@ export function ChecklistPage() {
             <div className="flex flex-col gap-2">
               <h1 className="text-3xl font-semibold tracking-tight">Checklist de compra</h1>
               <p className="text-muted-foreground">
-                {list.name} · {getCityById(list.cityId).name}. Marque os itens conforme a compra acontece no mercado.
+                {list.name} - {getCityById(list.cityId).name}. Marque os itens conforme a compra acontece no mercado.
               </p>
             </div>
             <Button asChild variant="outline">
@@ -863,7 +916,7 @@ export function ChecklistPage() {
               const checked = item.purchaseStatus === 'purchased';
 
               return (
-                <Card key={item.id}>
+                <Card key={item.id} className={checked ? 'border-lime-300' : 'border-border/70'}>
                   <CardContent className="flex items-center gap-4 p-4">
                     <input
                       checked={checked}
@@ -882,7 +935,7 @@ export function ChecklistPage() {
                     <div className="flex-1">
                       <div className="font-medium">{item.name}</div>
                       <div className="text-sm text-muted-foreground">
-                        {item.quantity} {item.unitLabel} · {describeBrandRule(item)}
+                        {item.quantity} {item.unitLabel} - {describeBrandRule(item)}
                       </div>
                       {item.note ? (
                         <div className="text-sm text-muted-foreground">{item.note}</div>
@@ -991,7 +1044,7 @@ export function ListEditorPage() {
   }, [draftName]);
 
   const addItem = () => {
-    if (!draftName.trim()) {
+    if (!draftName.trim() || !selectedCatalogProduct) {
       return;
     }
 
@@ -1090,7 +1143,7 @@ export function ListEditorPage() {
               {editingList ? 'Editar lista' : 'Nova lista'}
             </h1>
             <p className="text-muted-foreground">
-              Salve a lista sem processar ou otimize agora. O mesmo conteudo aparece no mobile.
+              Monte a lista em etapas. Salve sem processar ou siga direto para a otimizacao.
             </p>
           </div>
           <Button disabled={isSaving} type="submit">
@@ -1100,7 +1153,10 @@ export function ListEditorPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Configuracao</CardTitle>
+            <CardTitle>1. Defina o contexto da compra</CardTitle>
+            <CardDescription>
+              A cidade vira o contexto da comparacao. A lista continua sincronizada com a conta.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <Field>
@@ -1117,7 +1173,7 @@ export function ListEditorPage() {
               >
                 {cities.map((city) => (
                   <option key={city.id} value={city.id}>
-                    {city.name} · {city.activeStoreCount} estabelecimentos
+                    {city.name} - {city.activeStoreCount} estabelecimentos ativos
                   </option>
                 ))}
               </select>
@@ -1127,9 +1183,10 @@ export function ListEditorPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Itens da compra</CardTitle>
+            <CardTitle>2. Adicione itens reais da sua compra</CardTitle>
             <CardDescription>
-              O nome pode ser bruto. O backend vai normalizar e tentar casar com o catalogo.
+              Pesquise o produto base, revise a regra de marca e adicione o item so quando o
+              catalogo comparavel estiver definido.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -1185,7 +1242,9 @@ export function ListEditorPage() {
                     value={selectedCatalogProduct?.id ?? ''}
                   >
                     <option value="">
-                      {isSearchingCatalog ? 'Buscando no catalogo...' : 'Selecione um produto comparavel'}
+                      {isSearchingCatalog
+                        ? 'Buscando no catalogo...'
+                        : 'Selecione um produto comparavel'}
                     </option>
                     {catalogResults.map((product) => (
                       <option key={product.id} value={product.id}>
@@ -1212,6 +1271,15 @@ export function ListEditorPage() {
                         Configurar marca
                       </Button>
                     </div>
+                  ) : draftName.trim().length >= 2 ? (
+                    <Alert>
+                      <AlertCircleIcon />
+                      <AlertTitle>Selecione um produto base</AlertTitle>
+                      <AlertDescription>
+                        A lista agora trabalha primeiro com produto comparavel e so depois com
+                        preferencia de marca.
+                      </AlertDescription>
+                    </Alert>
                   ) : null}
                 </div>
               </Field>
@@ -1225,7 +1293,12 @@ export function ListEditorPage() {
                 />
               </Field>
               <div className="md:col-span-3">
-                <Button onClick={addItem} type="button" variant="outline">
+                <Button
+                  disabled={!selectedCatalogProduct}
+                  onClick={addItem}
+                  type="button"
+                  variant="outline"
+                >
                   Adicionar item
                 </Button>
               </div>
@@ -1338,6 +1411,16 @@ export function ListEditorPage() {
           </DialogContent>
         </Dialog>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>3. Salve agora ou otimize depois</CardTitle>
+            <CardDescription>
+              A mesma lista pode ser reutilizada quantas vezes voce quiser. O modo de
+              otimizacao pode ser escolhido no passo seguinte.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
         {error ? (
           <Alert variant="destructive">
             <ShieldAlertIcon />
@@ -1396,7 +1479,7 @@ export function OptimizationPage() {
             <div className="flex flex-col gap-2">
               <h1 className="text-3xl font-semibold tracking-tight">Resultado da otimizacao</h1>
               <p className="text-muted-foreground">
-                {list.name} · {getCityById(list.cityId).name}. O processamento roda no backend para garantir consistencia.
+                {list.name} - {getCityById(list.cityId).name}. O processamento roda no backend para garantir consistencia.
               </p>
             </div>
             <Button asChild variant="outline">
@@ -1408,19 +1491,32 @@ export function OptimizationPage() {
             <CardHeader>
               <CardTitle>Escolha o modo</CardTitle>
               <CardDescription>
-                Voce pode reprocessar a mesma lista quantas vezes quiser sem perder o historico.
+                Cada modo comunica um trade-off diferente entre deslocamento, cobertura e menor total.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-wrap gap-3">
+            <CardContent className="grid gap-3 lg:grid-cols-3">
               {optimizationModes.map((mode) => (
-                <Button
+                <button
                   key={mode.id}
+                  className={`grid gap-3 rounded-lg border p-4 text-left transition-colors ${
+                    activeMode === mode.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border/70 bg-card hover:border-primary/50'
+                  }`}
                   disabled={isRunning}
                   onClick={() => handleRun(mode.id)}
-                  variant={activeMode === mode.id ? 'default' : 'outline'}
+                  type="button"
                 >
-                  {isRunning && activeMode === mode.id ? 'Processando...' : mode.label}
-                </Button>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium">{optimizationModeCopy[mode.id].title}</span>
+                    {activeMode === mode.id ? <BadgeCheckIcon className="text-primary" /> : null}
+                  </div>
+                  <p className="text-sm text-muted-foreground">{optimizationModeCopy[mode.id].summary}</p>
+                  <p className="text-xs text-muted-foreground">{optimizationModeCopy[mode.id].tradeoff}</p>
+                  <span className="text-sm font-medium">
+                    {isRunning && activeMode === mode.id ? 'Processando...' : 'Usar este modo'}
+                  </span>
+                </button>
               ))}
             </CardContent>
           </Card>
@@ -1577,4 +1673,3 @@ export function OptimizationPage() {
     </RequireAuthentication>
   );
 }
-

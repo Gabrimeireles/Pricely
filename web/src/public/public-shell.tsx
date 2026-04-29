@@ -20,7 +20,7 @@ function AppLogo() {
       </div>
       <div className="flex flex-col gap-0.5">
         <span className="text-sm font-semibold tracking-tight">Pricely</span>
-        <span className="text-xs text-muted-foreground">economia com evidencia real</span>
+        <span className="text-xs text-muted-foreground">economia com contexto real</span>
       </div>
     </Link>
   );
@@ -30,8 +30,7 @@ const linkClassName = ({ isActive }: { isActive: boolean }) =>
   isActive ? 'text-foreground' : 'text-muted-foreground transition-colors hover:text-foreground';
 
 export function PublicLayout() {
-  const { cityId, cities, currentUser, isAuthenticated, setCityId, signOut } =
-    usePricely();
+  const { cityId, cities, currentUser, isAuthenticated, setCityId, signOut } = usePricely();
   const activeCity = cities.find((city) => city.id === cityId) ?? cities[0];
 
   return (
@@ -60,7 +59,7 @@ export function PublicLayout() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Select onValueChange={setCityId} value={cityId}>
-              <SelectTrigger className="w-full sm:w-[280px]">
+              <SelectTrigger className="w-full sm:w-[320px]">
                 <MapPinIcon />
                 <SelectValue placeholder="Escolha sua cidade" />
               </SelectTrigger>
@@ -68,7 +67,7 @@ export function PublicLayout() {
                 <SelectGroup>
                   {cities.map((city) => (
                     <SelectItem key={city.id} value={city.id}>
-                      {city.name} · {city.activeStoreCount}
+                      {city.name} - {city.activeStoreCount} estabelecimentos ativos
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -114,7 +113,7 @@ export function PublicLayout() {
             <div className="flex flex-col gap-1">
               <span className="text-sm font-medium">Cidade ativa</span>
               <span className="text-sm text-muted-foreground">
-                {activeCity.name} · {activeCity.activeStoreCount} estabelecimentos ativos
+                {activeCity.name} - {activeCity.activeStoreCount} estabelecimentos ativos
               </span>
             </div>
           </div>
