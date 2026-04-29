@@ -79,4 +79,75 @@ describe('Multi-market optimization integration', () => {
       await app.close();
     }
   });
+
+  it('returns a complete optimization result for a catalog-backed item selected from a live public offer', async () => {
+    const { app, auth } = await createUs1TestApp();
+
+    try {
+      const session = await auth.registerCustomer('catalog-backed@pricely.local');
+
+      const offersResponse = await request(app.getHttpServer())
+        .get('/regions/sao-paulo-sp/offers')
+        .expect(200);
+
+      const arrozOffer = offersResponse.body.offers.find(
+        (offer: { productName: string }) => offer.productName === 'Arroz tipo 1 5kg',
+      );
+
+      expect(arrozOffer).toBeDefined();
+
+      const listResponse = await request(app.getHttpServer())
+        .post('/shopping-lists')
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          name: 'Catalog-backed groceries',
+          lastMode: 'global_full',
+          regionSlug: 'sao-paulo-sp',
+        })
+        .expect(201);
+
+      const shoppingListId = listResponse.body.id as string;
+
+      await request(app.getHttpServer())
+        .post(`/shopping-lists/${shoppingListId}/items`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          items: [
+            {
+              requestedName: 'Arroz',
+              quantity: 1,
+              catalogProductId: arrozOffer.catalogProductId,
+              brandPreferenceMode: 'any',
+            },
+          ],
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/shopping-lists/${shoppingListId}/optimize`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          mode: 'global_full',
+        })
+        .expect(201);
+
+      const latestResponse = await request(app.getHttpServer())
+        .get(`/shopping-lists/${shoppingListId}/optimizations/latest`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .expect(200);
+
+      expect(latestResponse.body.coverageStatus).toBe('complete');
+      expect(latestResponse.body.totalEstimatedCost).toBe(22.9);
+      expect(latestResponse.body.selections).toHaveLength(1);
+      expect(latestResponse.body.selections[0]).toEqual(
+        expect.objectContaining({
+          shoppingListItemName: 'Arroz',
+          selectionStatus: 'selected',
+          establishmentName: 'Unidade Pinheiros',
+        }),
+      );
+    } finally {
+      await app.close();
+    }
+  });
 });
