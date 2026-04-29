@@ -144,6 +144,7 @@ void main() {
 
     expect(find.text('Compra mensal'), findsWidgets);
     expect(find.text('Cliente Pricely'), findsOneWidget);
+    expect(find.text('2. Escolha um produto comparavel'), findsOneWidget);
 
     await tester.enterText(find.widgetWithText(TextField, 'Produto'), 'Leite');
     await tester.pumpAndSettle();

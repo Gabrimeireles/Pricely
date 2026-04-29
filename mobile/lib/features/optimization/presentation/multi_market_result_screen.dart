@@ -60,7 +60,7 @@ class MultiMarketResultScreen extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     const Text(
-                      'Nenhum resultado salvo ainda. Rode a otimizacao para processar sua lista no backend.',
+                      'Nenhum resultado salvo ainda. Rode a otimizacao para comparar lojas, cobertura e menor total.',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
@@ -118,6 +118,10 @@ class MultiMarketResultView extends StatelessWidget {
                 Text('Total otimizado: ${_formatCurrency(result.totalCost)}'),
                 Text(
                   'Economia estimada: ${_formatCurrency(result.estimatedSavings)}',
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Compare produto, regra de marca, loja sugerida e subtotal por parada.',
                 ),
               ],
             ),
