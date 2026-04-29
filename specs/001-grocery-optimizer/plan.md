@@ -1,6 +1,6 @@
 # Implementation Plan: Grocery Shopping Optimizer
 
-**Branch**: `001-grocery-optimizer` | **Date**: 2026-04-25 | **Spec**: [spec.md](D:/Pricely/specs/001-grocery-optimizer/spec.md)
+**Branch**: `001-grocery-optimizer` | **Date**: 2026-04-25 | **Spec**: [spec.md](./spec.md)
 **Input**: Replanned feature specification from `/specs/001-grocery-optimizer/spec.md`
 
 ## Summary

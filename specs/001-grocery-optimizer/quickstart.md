@@ -1,99 +1,99 @@
-# Quickstart: Grocery Shopping Optimizer
+# Quickstart: Otimizador de compras
 
-## Goal
+## Objetivo
 
-Validate the replanned local stack for PostgreSQL, Redis, queue workers, shared auth,
-regional catalog queries, reusable shopping lists, optimization jobs, and admin CRUD.
+Validar a stack local replanejada com PostgreSQL, Redis, workers de fila,
+autenticacao compartilhada, consultas de catalogo por cidade, listas reutilizaveis,
+jobs de otimizacao e CRUD administrativo.
 
-## Prerequisites
+## Pre-requisitos
 
-- Docker Desktop or Docker Engine available for local orchestration
-- NestJS backend dependencies installed when running services outside Docker
-- Flutter SDK installed and device or emulator available
-- Web application dependencies installed when running services outside Docker
-- Repository dependencies installed in `backend/`, `web/`, and `mobile/`
+- Docker Desktop ou Docker Engine para orquestracao local
+- Dependencias do backend instaladas para execucao fora do Docker
+- Flutter SDK instalado com dispositivo ou emulador disponivel
+- Dependencias do web instaladas para execucao fora do Docker
+- Dependencias instaladas em `backend/`, `web/` e `mobile/`
 
-## Container Setup
+## Setup com containers
 
-1. Start the full local stack with `docker compose up --build`.
-2. Wait for PostgreSQL, Redis, backend, and web to report healthy or
-   started states.
-3. Confirm the following endpoints are reachable from the host machine:
-   - `http://localhost:3000` for the backend API
-   - `http://localhost:5173` for the web app
-4. Use `docker compose down` to stop the stack.
-5. Use `docker compose down -v` when you need to reset PostgreSQL and Redis data.
+1. Suba a stack local completa com `docker compose up --build`.
+2. Aguarde PostgreSQL, Redis, backend e web ficarem prontos.
+3. Confirme acesso aos endpoints:
+   - `http://localhost:3000` para a API
+   - `http://localhost:5173` para o web
+4. Use `docker compose down` para parar a stack.
+5. Use `docker compose down -v` quando precisar resetar PostgreSQL e Redis.
 
-## Backend Setup
+## Setup do backend
 
-1. Configure backend environment values for PostgreSQL, Redis,
-   JWT/session secrets, and app settings when running outside Docker.
-2. Apply Prisma migrations or `db push` and seed minimal data for one admin, one customer,
-   one active region, and a small offer catalog.
-3. Start the NestJS API locally if not using Docker.
-4. Start the BullMQ worker process if it runs separately from the API.
-5. Confirm the backend can connect to PostgreSQL and Redis and exposes both public and
-   admin API surfaces.
+1. Configure ambiente para PostgreSQL, Redis, segredos JWT/sessao e demais ajustes.
+2. Aplique migrations do Prisma ou `db push` e rode o seed minimo com:
+   - um admin
+   - um customer
+   - uma cidade ativa
+   - um catalogo pequeno de ofertas
+3. Inicie a API NestJS localmente se nao estiver usando Docker.
+4. Inicie o worker BullMQ se ele estiver separado da API.
+5. Confirme conectividade com PostgreSQL e Redis e exposicao das rotas publicas e admin.
 
-## Mobile Setup
+## Setup do mobile
 
-1. Configure the Flutter app to point to the local backend environment.
-2. Sign in with a shared account.
-3. Confirm the app can load regions, saved lists, and latest optimization runs for that
-   account.
+1. Configure o aplicativo Flutter para apontar para o backend local.
+2. Entre com uma conta compartilhada.
+3. Confirme carregamento de cidades, listas salvas e ultimo resultado de otimizacao.
 
-## Web Setup
+## Setup do web
 
-1. Configure the Vite/React app to point to the local backend environment.
-2. Start the public web app locally.
-3. Confirm the public region selector lists visible regions with active establishment
-   counts.
-4. Confirm the admin dashboard is accessible only with an admin-capable account.
+1. Configure o web para apontar para o backend local.
+2. Inicie a aplicacao web localmente.
+3. Confirme que o seletor de cidades mostra cidades visiveis com contagem de
+   estabelecimentos ativos.
+4. Confirme que o dashboard admin so abre para contas com permissao administrativa.
 
-## Manual Verification Flow
+## Fluxo manual de verificacao
 
-1. Create one customer account and one admin account.
-2. Sign in with the same customer account on mobile and web.
-3. Create a shopping list on one surface and confirm it appears on the other.
-4. Request a new optimization run for the saved list and verify:
-   - The backend returns a queued processing state quickly
-   - A processing job is created
-   - The completed result can be fetched later
-5. Query visible regions and verify:
-   - Regions marked `inactive` do not appear publicly
-   - Each visible region returns an active establishment count
-   - A visible zero-store region can still be shown with count `0`
-6. Browse offers in a region and open product details. Verify the product detail payload
-   includes multiple store prices when available.
-7. Sign in as admin on web and verify:
-   - Overview metrics load
-   - Regions can be activated/deactivated
-   - Establishments can be created or disabled
-   - Products and offers can be created or edited
-8. Trigger a failure case for an optimization job and verify:
-   - The failure is visible in logs
-   - The processing job tracks the failure state
-   - Admin diagnostics can expose the issue
+1. Crie uma conta customer e uma conta admin.
+2. Entre com a mesma conta customer no mobile e no web.
+3. Crie uma lista em uma superficie e confirme que ela aparece na outra.
+4. Solicite uma nova otimizacao da lista salva e verifique:
+   - o backend responde rapidamente com estado enfileirado
+   - um processing job e criado
+   - o resultado final pode ser consultado depois
+5. Consulte as cidades visiveis e valide:
+   - cidades `inactive` nao aparecem publicamente
+   - cada cidade visivel retorna quantidade de estabelecimentos ativos
+   - uma cidade visivel com `0` estabelecimentos continua aparecendo
+6. Navegue por ofertas de uma cidade e abra o detalhe do produto. Valide que o payload
+   inclui multiplos precos por estabelecimento quando houver.
+7. Entre como admin no web e valide:
+   - metricas da visao geral carregam
+   - cidades podem ser ativadas e desativadas
+   - estabelecimentos podem ser criados ou desativados
+   - produtos e ofertas podem ser criados ou editados
+8. Force uma falha em um job de otimizacao e valide:
+   - a falha aparece nos logs
+   - o processing job registra o estado de falha
+   - o diagnostico admin consegue expor o problema
 
-## Expected Outcomes
+## Resultado esperado
 
-- Shared accounts work consistently across mobile and web
-- Optimization remains backend-owned and queue-backed
-- Public region selection obeys implantation and active-store rules
-- Product detail data can explain where each price comes from
-- Admin CRUD can control the catalog and operating regions
-- Logs and job states make processing failures actionable
+- contas compartilhadas funcionam entre mobile e web
+- a otimizacao continua sendo responsabilidade do backend e da fila
+- a selecao publica de cidades respeita regras de implantacao e contagem ativa
+- o detalhe de produto explica de onde veio cada preco
+- o CRUD admin controla catalogo e cidades operacionais
+- logs e estados de job tornam falhas acionaveis
 
-## Validation Record
+## Registro de validacao
 
-Validated on `2026-04-27` with the current local stack:
+Validado em `2026-04-27` com a stack local atual:
 
 1. `docker compose down -v`
 2. `docker compose up --build -d`
 3. `cd backend && npm run lint && npm run build && npm test -- --runInBand`
 4. `cd web && npm run lint && npm run build && npm test`
 5. `cd mobile && flutter analyze && flutter test && flutter build apk --debug`
-6. Smoke requests executed successfully for:
+6. Smoke executado com sucesso para:
    - `POST /auth/register`
    - `POST /auth/login`
    - `GET /regions`
@@ -107,6 +107,7 @@ Validated on `2026-04-27` with the current local stack:
    - `GET /admin/processing-jobs`
    - `GET /admin/queue-health`
 
-Known gap after this validation:
+## Observacao
 
-- The MVP is functional, but admin CRUD depth, richer public/mobile coverage, and final polish tasks still remain before release sign-off.
+O MVP esta funcional, mas ainda exige revisao final de produto e operacao antes de um
+sign-off definitivo de release.

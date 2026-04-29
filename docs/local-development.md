@@ -1,117 +1,118 @@
-# Local Development
+# Desenvolvimento local
 
-## Overview
+## Visao geral
 
-The project is organized into three application surfaces:
+O projeto esta dividido em tres superficies principais:
 
-- `backend/` for the NestJS API
-- `mobile/` for the Flutter app
-- `web/` for the Vite + React landing page and admin dashboard
+- `backend/` para a API NestJS
+- `mobile/` para o aplicativo Flutter
+- `web/` para a aplicacao React/Vite
 
-Infrastructure assets live under `infra/terraform/`.
+Os artefatos de infraestrutura ficam em `infra/terraform/`.
 
-## Local Services
+## Servicos locais
 
-The current baseline assumes these local services are available during development:
+A base atual assume estes servicos durante o desenvolvimento local:
 
-- PostgreSQL on `127.0.0.1:5432`
-- Redis on `127.0.0.1:6379`
+- PostgreSQL em `127.0.0.1:5432`
+- Redis em `127.0.0.1:6379`
 
-These defaults are documented in [backend/.env.example](/E:/Gabriel/Pricely/backend/.env.example)
-and [web/.env.example](/E:/Gabriel/Pricely/web/.env.example).
+Esses valores padrao estao documentados em:
 
-## Backend Setup
+- [backend/.env.example](../backend/.env.example)
+- [web/.env.example](../web/.env.example)
 
-1. Copy `backend/.env.example` to `backend/.env`.
-2. Install dependencies in `backend/`.
-3. Start the NestJS application once the bootstrap entrypoint is added in later tasks.
+## Configuracao do backend
 
-Current default values:
+1. Copie `backend/.env.example` para `backend/.env`.
+2. Instale as dependencias em `backend/`.
+3. Inicie a aplicacao NestJS.
 
-- API port: `3000`
-- PostgreSQL database: `pricely`
-- Redis port: `6379`
-- JWT secret: local-only value from `backend/.env.example`
+Valores padrao atuais:
 
-## Docker Compose Setup
+- porta da API: `3000`
+- banco PostgreSQL: `pricely`
+- porta do Redis: `6379`
+- segredo JWT: valor local definido em `backend/.env.example`
 
-The repository now ships with [docker-compose.yml](/D:/Pricely/docker-compose.yml) for local
-development. It starts:
+## Configuracao com Docker Compose
 
-- `postgres` on `localhost:5433`
-- `redis` on `localhost:6380`
-- `backend` on `localhost:3000`
-- `web` on `localhost:5173`
+O repositorio inclui [docker-compose.yml](../docker-compose.yml) para desenvolvimento
+local. A stack sobe:
 
-Start the stack:
+- `postgres` em `localhost:5433`
+- `redis` em `localhost:6380`
+- `backend` em `localhost:3000`
+- `web` em `localhost:5173`
+
+Para iniciar:
 
 ```bash
 docker compose up --build
 ```
 
-Stop the stack:
+Para parar:
 
 ```bash
 docker compose down
 ```
 
-Reset database and Redis state:
+Para resetar PostgreSQL e Redis:
 
 ```bash
 docker compose down -v
 ```
 
-Notes:
+Observacoes:
 
-- The backend container runs `prisma generate`, `prisma db push --force-reset`, and
-  `prisma db seed` before starting Nest in development mode. This is intentionally local-dev
-  oriented so schema refactors do not leave the compose stack half-booted. It also means
-  the compose database is disposable and will be recreated on backend boot when the schema changes.
-- The current compose file is optimized for local development with bind mounts, not for production.
-- The browser-facing API URL used by the web container is `http://localhost:3000`.
-- Validation baseline on `2026-04-27`:
+- O container do backend executa `prisma generate`, `prisma db push --force-reset` e
+  `prisma db seed` antes de iniciar a API em modo de desenvolvimento.
+- A stack de compose e orientada a desenvolvimento local, com volumes montados e banco
+  descartavel quando necessario.
+- A URL de API usada pelo navegador e `http://localhost:3000`.
+- Validacao local de referencia em `2026-04-27`:
   - `docker compose up --build -d`
-  - backend `build`, `lint`, and tests green
-  - web `build`, `lint`, and tests green
-  - mobile `analyze`, `test`, and debug APK build green
-  - smoke flow validated for auth, public regions/offers, shopping lists, optimization, and admin metrics
+  - backend com `build`, `lint` e testes verdes
+  - web com `build`, `lint` e testes verdes
+  - mobile com `analyze`, `test` e `build apk --debug` verdes
+  - smoke validado para auth, cidades/ofertas publicas, listas, otimizacao e metricas admin
 
-## Web Setup
+## Configuracao do web
 
-1. Copy `web/.env.example` to `web/.env`.
-2. Install dependencies in `web/`.
-3. Run the Vite development server.
+1. Copie `web/.env.example` para `web/.env`.
+2. Instale as dependencias em `web/`.
+3. Inicie o servidor Vite.
 
-Current default values:
+Valores padrao atuais:
 
-- Web dev server: `5173`
-- Backend API base URL: `http://localhost:3000`
-- Auth base path: `/auth`
-- Public regions base path: `/regions`
+- servidor web local: `5173`
+- URL base da API: `http://localhost:3000`
+- base de autenticacao: `/auth`
+- base de cidades publicas: `/regions`
 
-## Mobile Setup
+## Configuracao do mobile
 
-1. Ensure Flutter stable with Dart 3 is installed.
-2. Install Flutter dependencies in `mobile/`.
-3. Run the app on an emulator or device.
+1. Garanta Flutter stable com Dart 3 instalado.
+2. Instale as dependencias em `mobile/`.
+3. Rode o app em emulador ou dispositivo.
 
-Current mobile defaults are centralized in
-[api_environment.dart](/D:/Pricely/mobile/lib/core/networking/api_environment.dart):
+Os valores padrao do mobile ficam centralizados em
+[api_environment.dart](../mobile/lib/core/networking/api_environment.dart):
 
-- API base URL: `http://10.0.2.2:3000`
-- Auth base path: `/auth`
-- Public regions base path: `/regions`
+- URL base da API: `http://10.0.2.2:3000`
+- base de autenticacao: `/auth`
+- base de cidades publicas: `/regions`
 
-Example override for a physical device or alternate host:
+Exemplo de override para dispositivo fisico ou host alternativo:
 
 ```bash
 flutter run --dart-define=PRICELY_API_BASE_URL=http://192.168.0.10:3000
 ```
 
-## Notes
+## Notas
 
-- Environment values should stay local-first for development unless a task explicitly
-  introduces hosted services.
-- Add new variables to the relevant `.env.example` file as backend and web features are
-  implemented.
-- Prisma is now the source of truth for relational schema and migrations in `backend/prisma/`.
+- Os valores de ambiente devem continuar local-first, salvo quando uma task pedir algo
+  hospedado explicitamente.
+- Novas variaveis devem ser refletidas nos respectivos `.env.example`.
+- O Prisma e a fonte de verdade para schema relacional e fluxo de banco em
+  `backend/prisma/`.

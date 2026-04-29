@@ -29,4 +29,5 @@ TypeScript on current NestJS LTS runtime; TypeScript on current Vite/React runti
 <!-- MANUAL ADDITIONS START -->
  - Default execution workflow: each task should complete the cycle `issue -> branch -> implementation -> validation -> commit -> PR` before moving to the next task, unless the plan explicitly groups tasks into a single delivery unit.
  - Branch workflow default: publish each task branch to the remote, merge task PRs into the current phase branch, and then open a phase PR from that phase branch into `homolog`.
+ - Issue-closing workflow: do not rely on `Closes #...` in task or phase PRs that target `homolog`; if automatic closure is required, the final PR into the default branch must carry the closing keywords.
 <!-- MANUAL ADDITIONS END -->

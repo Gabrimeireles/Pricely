@@ -1,8 +1,8 @@
 # Pricely
 
-Pricely e um app de economia em supermercado com a mesma conta no web e no mobile.
-O backend centraliza autenticacao, listas, otimizacao, regioes, ofertas publicas e
-dashboard admin.
+Pricely e um aplicativo para economia em supermercado com conta compartilhada entre
+web e mobile. O backend centraliza autenticacao, listas, otimizacao, cidades,
+ofertas publicas e dashboard administrativo.
 
 ## Stack atual
 
@@ -26,7 +26,7 @@ Com Docker:
 docker compose up --build
 ```
 
-Resetar banco e Redis:
+Para resetar banco e Redis:
 
 ```bash
 docker compose down -v
@@ -37,25 +37,25 @@ docker compose down -v
 - admin: `admin@pricely.local` / `admin-password`
 - customer: `customer@pricely.local` / `customer-password`
 
-Seed atual inclui:
+O seed atual inclui:
 
 - cidade `Sao Paulo - SP` com estabelecimento ativo
 - cidade `Campinas - SP` em ativacao com `0` estabelecimentos ativos
-- produtos demo de arroz e cafe
-- oferta publica demo para cafe
+- produtos de demonstracao para arroz e cafe
+- oferta publica de demonstracao para cafe
 
 ## Fluxos ja cobertos
 
 - login e cadastro compartilhados
 - listas salvas e reutilizaveis
-- otimizacao assíncrona com fila
+- otimizacao assincrona com fila
 - ofertas por cidade
 - detalhe de oferta
 - dashboard admin com metricas e CRUD basico
 
-## Comandos por app
+## Comandos por aplicacao
 
-Backend:
+### Backend
 
 ```bash
 cd backend
@@ -65,7 +65,7 @@ npm run build
 npm test -- --runInBand
 ```
 
-Web:
+### Web
 
 ```bash
 cd web
@@ -75,7 +75,7 @@ npm run build
 npm test
 ```
 
-Mobile:
+### Mobile
 
 ```bash
 cd mobile
@@ -86,6 +86,6 @@ flutter build apk --debug
 
 ## Referencias
 
-- [local development](D:/Pricely/docs/local-development.md)
-- [quickstart](D:/Pricely/specs/001-grocery-optimizer/quickstart.md)
-- [tasks](D:/Pricely/specs/001-grocery-optimizer/tasks.md)
+- [Desenvolvimento local](docs/local-development.md)
+- [Quickstart](specs/001-grocery-optimizer/quickstart.md)
+- [Tasks](specs/001-grocery-optimizer/tasks.md)

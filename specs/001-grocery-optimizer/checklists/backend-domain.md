@@ -3,7 +3,7 @@
 **Purpose**: Validate backend/domain requirement quality before refactoring the service
 to PostgreSQL and admin-aware flows  
 **Created**: 2026-04-25  
-**Feature**: [spec.md](D:/Pricely/specs/001-grocery-optimizer/spec.md)
+**Feature**: [spec.md](../spec.md)
 
 ## Requirement Completeness
 
