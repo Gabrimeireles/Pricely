@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../persistence/prisma.service';
 import { ProductNormalizerService } from '../../catalog/application/product-normalizer.service';
@@ -138,6 +139,89 @@ export class StoreOfferRepository {
         } satisfies StoreOfferEntity;
       })
       .filter((offer) => canonicalNames.includes(offer.canonicalName));
+  }
+
+  async findByListItems(
+    items: Array<{ catalogProductId?: string; normalizedName?: string }>,
+  ): Promise<StoreOfferEntity[]> {
+    const catalogProductIds = new Set(items.map((item) => item.catalogProductId).filter(Boolean));
+    const canonicalNames = new Set(items.map((item) => item.normalizedName).filter(Boolean));
+
+    if (catalogProductIds.size === 0 && canonicalNames.size === 0) {
+      return [];
+    }
+
+    const activeOffers = await this.prisma.productOffer.findMany({
+      where: {
+        isActive: true,
+        availabilityStatus: 'available',
+        OR: [
+          catalogProductIds.size > 0
+            ? { catalogProductId: { in: [...catalogProductIds] as string[] } }
+            : undefined,
+          canonicalNames.size > 0
+            ? {
+                catalogProduct: {
+                  isActive: true,
+                },
+              }
+            : undefined,
+        ].filter(Boolean) as Prisma.ProductOfferWhereInput[],
+        establishment: {
+          isActive: true,
+          region: {
+            implantationStatus: {
+              not: 'inactive',
+            },
+          },
+        },
+      },
+      include: {
+        catalogProduct: true,
+        productVariant: true,
+        establishment: true,
+      },
+    });
+
+    return activeOffers
+      .map((offer) => {
+        const normalizedProductName = this.productNormalizerService.normalize(
+          offer.catalogProduct.name,
+        ).canonicalName;
+
+        return {
+          id: offer.id,
+          catalogProductId: offer.catalogProductId,
+          productVariantId: offer.productVariantId,
+          brandName: offer.productVariant.brandName ?? undefined,
+          variantName: offer.productVariant.displayName,
+          storeId: offer.establishmentId,
+          storeName: offer.establishment.unitName,
+          canonicalName: normalizedProductName,
+          displayName: offer.displayName,
+          price: Number(offer.priceAmount),
+          quantityContext: offer.packageLabel,
+          availabilityStatus:
+            offer.availabilityStatus === 'available'
+              ? 'available'
+              : offer.availabilityStatus === 'unavailable'
+                ? 'unavailable'
+                : 'uncertain',
+          confidenceScore:
+            offer.confidenceLevel === 'high'
+              ? 0.95
+              : offer.confidenceLevel === 'medium'
+                ? 0.7
+                : 0.45,
+          sourceReceiptLineItemId: offer.sourceReference ?? offer.sourceType,
+          observedAt: offer.observedAt.toISOString(),
+        } satisfies StoreOfferEntity;
+      })
+      .filter(
+        (offer) =>
+          (offer.catalogProductId && catalogProductIds.has(offer.catalogProductId)) ||
+          canonicalNames.has(offer.canonicalName),
+      );
   }
 
   private async resolveEstablishment(offer: StoreOfferEntity) {

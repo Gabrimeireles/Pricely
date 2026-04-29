@@ -34,11 +34,7 @@ export class OptimizationRunProcessor {
       optimizationRun.shoppingListId,
     );
 
-    const canonicalNames = shoppingList.items
-      .map((item) => item.normalizedName)
-      .filter((value): value is string => Boolean(value));
-
-    const offers = await this.storeOfferRepository.findByCanonicalNames(canonicalNames);
+    const offers = await this.storeOfferRepository.findByListItems(shoppingList.items);
     const computed = this.multiMarketOptimizerService.optimize(
       shoppingList,
       offers,
