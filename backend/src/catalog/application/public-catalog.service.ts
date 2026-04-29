@@ -1,50 +1,25 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../persistence/prisma.service';
+import {
+  type CatalogProductDetailContract,
+  type CatalogProductSummary,
+  type CatalogProductVariantSummary,
+} from '../../common/contracts';
+import { CatalogProductsService } from './catalog-products.service';
 
 @Injectable()
 export class PublicCatalogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly catalogProductsService: CatalogProductsService,
+  ) {}
 
-  async searchCatalogProducts(query: string) {
-    const normalizedQuery = query.trim();
-
-    if (!normalizedQuery) {
-      return [];
-    }
-
-    return this.prisma.catalogProduct.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          { name: { contains: normalizedQuery, mode: 'insensitive' } },
-          { aliases: { some: { alias: { contains: normalizedQuery.toLowerCase() } } } },
-          {
-            productVariants: {
-              some: {
-                isActive: true,
-                OR: [
-                  { displayName: { contains: normalizedQuery, mode: 'insensitive' } },
-                  { brandName: { contains: normalizedQuery, mode: 'insensitive' } },
-                ],
-              },
-            },
-          },
-        ],
-      },
-      include: {
-        productVariants: {
-          where: { isActive: true },
-          orderBy: [{ brandName: 'asc' }, { displayName: 'asc' }],
-          take: 6,
-        },
-      },
-      orderBy: [{ name: 'asc' }],
-      take: 20,
-    });
+  async searchCatalogProducts(query: string): Promise<CatalogProductSummary[]> {
+    return this.catalogProductsService.searchCatalogProducts(query);
   }
 
-  async listVariants(catalogProductId: string) {
+  async listVariants(catalogProductId: string): Promise<CatalogProductVariantSummary[]> {
     const catalogProduct = await this.prisma.catalogProduct.findUnique({
       where: { id: catalogProductId },
       select: { id: true },
@@ -54,25 +29,16 @@ export class PublicCatalogService {
       throw new NotFoundException(`Catalog product ${catalogProductId} was not found`);
     }
 
-    return this.prisma.productVariant.findMany({
-      where: {
-        catalogProductId,
-        isActive: true,
-      },
-      orderBy: [{ brandName: 'asc' }, { displayName: 'asc' }],
-    });
+    const variants = await this.catalogProductsService.listVariants(catalogProductId);
+    return variants.filter((variant) => variant.isActive);
   }
 
-  async getCatalogProductDetail(catalogProductId: string) {
-    const catalogProduct = await this.prisma.catalogProduct.findUnique({
-      where: { id: catalogProductId },
-      include: {
-        productVariants: {
-          where: { isActive: true },
-          orderBy: [{ brandName: 'asc' }, { displayName: 'asc' }],
-        },
-      },
-    });
+  async getCatalogProductDetail(
+    catalogProductId: string,
+  ): Promise<CatalogProductDetailContract> {
+    const catalogProduct = await this.catalogProductsService.getCatalogProductDetail(
+      catalogProductId,
+    );
 
     if (!catalogProduct || !catalogProduct.isActive) {
       throw new NotFoundException(`Catalog product ${catalogProductId} was not found`);
@@ -104,11 +70,33 @@ export class PublicCatalogService {
     });
 
     return {
-      catalogProduct,
+      catalogProduct: {
+        id: catalogProduct.id,
+        slug: catalogProduct.slug,
+        name: catalogProduct.name,
+        category: catalogProduct.category,
+        defaultUnit: catalogProduct.defaultUnit,
+        imageUrl: catalogProduct.imageUrl,
+        isActive: catalogProduct.isActive,
+      },
       variants: catalogProduct.productVariants,
       offers: offers.map((offer) => ({
-        ...offer,
+        id: offer.id,
+        catalogProductId: offer.catalogProductId,
+        productVariantId: offer.productVariantId,
+        displayName: offer.displayName,
         priceAmount: Number(offer.priceAmount),
+        observedAt: offer.observedAt.toISOString(),
+        confidenceLevel: offer.confidenceLevel,
+        packageLabel: offer.packageLabel,
+        storeName: offer.establishment.unitName,
+        neighborhood: offer.establishment.neighborhood,
+        region: {
+          id: offer.establishment.region.id,
+          slug: offer.establishment.region.slug,
+          name: offer.establishment.region.name,
+          stateCode: offer.establishment.region.stateCode,
+        },
       })),
     };
   }

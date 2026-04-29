@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { EstablishmentsModule } from './establishments/establishments.module';
 import { JobsModule } from './jobs/jobs.module';
 import { ListsModule } from './lists/lists.module';
 import { LoggingModule } from './common/logging/logging.module';
@@ -21,6 +22,7 @@ import { StoresModule } from './stores/stores.module';
     QueueModule,
     ReceiptsModule,
     CatalogModule,
+    EstablishmentsModule,
     RegionsModule,
     ListsModule,
     StoresModule,

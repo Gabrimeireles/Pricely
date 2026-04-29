@@ -158,6 +158,21 @@ class PricelyBackendGateway {
     return _mapShoppingList(response);
   }
 
+  Future<ShoppingListDraft> updateShoppingListItemPurchaseStatus({
+    required String accessToken,
+    required String listId,
+    required String itemId,
+    required String purchaseStatus,
+  }) async {
+    final response = await _apiClient.patch<Map<String, dynamic>>(
+      '${ApiEnvironment.shoppingListsPath}/$listId/items/$itemId/purchase-status',
+      accessToken: accessToken,
+      body: <String, dynamic>{'purchaseStatus': purchaseStatus},
+    );
+
+    return _mapShoppingList(response);
+  }
+
   Future<OptimizationResult> runOptimization({
     required String accessToken,
     required String listId,
@@ -482,6 +497,7 @@ class PublicOfferSummary {
     required this.storeName,
     required this.neighborhood,
     required this.confidenceLevel,
+    this.imageUrl,
   });
 
   final String id;
@@ -495,6 +511,7 @@ class PublicOfferSummary {
   final String storeName;
   final String neighborhood;
   final String confidenceLevel;
+  final String? imageUrl;
 
   factory PublicOfferSummary.fromJson(Map<String, dynamic> json) {
     return PublicOfferSummary(
@@ -513,6 +530,7 @@ class PublicOfferSummary {
       storeName: json['storeName'] as String? ?? 'Loja',
       neighborhood: json['neighborhood'] as String? ?? '',
       confidenceLevel: json['confidenceLevel'] as String? ?? 'medium',
+      imageUrl: json['imageUrl'] as String?,
     );
   }
 }
@@ -559,6 +577,7 @@ class PublicOfferDetail {
           'storeName': activeOffer['storeName'] ?? 'Loja',
           'neighborhood': activeOffer['neighborhood'] ?? '',
           'confidenceLevel': activeOffer['confidenceLevel'] ?? 'medium',
+          'imageUrl': product['imageUrl'],
         },
       ),
       alternativeOffers: alternativeOffers
@@ -576,6 +595,7 @@ class PublicOfferDetail {
                 'storeName': entry['storeName'] ?? 'Loja',
                 'neighborhood': entry['neighborhood'] ?? '',
                 'confidenceLevel': entry['confidenceLevel'] ?? 'medium',
+                'imageUrl': product['imageUrl'],
               },
             ),
           )

@@ -18,6 +18,7 @@ import {
   runOptimization as runOptimizationRequest,
   signIn as signInRequest,
   signUp as signUpRequest,
+  updateShoppingListItemPurchaseStatus,
   type OptimizationResultApiResponse,
 } from './api';
 import { profileSnapshot, supportedCities } from './mock-data';
@@ -65,6 +66,11 @@ interface PricelyContextValue {
     }>;
   }) => Promise<ShoppingList>;
   optimizationResults: Record<string, OptimizationResultApiResponse | undefined>;
+  updateListItemPurchaseStatus: (
+    listId: string,
+    itemId: string,
+    purchaseStatus: 'pending' | 'purchased',
+  ) => Promise<ShoppingList>;
   runOptimization: (
     listId: string,
     mode: OptimizationModeId,
@@ -115,6 +121,8 @@ export function PricelyProvider({ children }: PropsWithChildren) {
             id: region.slug,
             name: region.name,
             stateCode: region.stateCode,
+            activeStoreCount: region.activeEstablishmentCount,
+            coverageStatus: region.offerCoverageStatus,
             regionLabel:
               region.offerCoverageStatus === 'live'
                 ? `${region.activeEstablishmentCount} estabelecimentos ativos`
@@ -332,6 +340,23 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         return mapped;
       },
       optimizationResults,
+      updateListItemPurchaseStatus: async (listId, itemId, purchaseStatus) => {
+        if (!token) {
+          throw new Error('Voce precisa entrar para atualizar o checklist.');
+        }
+
+        const updated = await updateShoppingListItemPurchaseStatus(
+          token,
+          listId,
+          itemId,
+          purchaseStatus,
+        );
+        const mapped = mapShoppingList(updated);
+        setLists((current) =>
+          current.map((entry) => (entry.id === mapped.id ? mapped : entry)),
+        );
+        return mapped;
+      },
       runOptimization: async (listId, mode) => {
         if (!token) {
           throw new Error('Você precisa entrar para otimizar uma lista.');

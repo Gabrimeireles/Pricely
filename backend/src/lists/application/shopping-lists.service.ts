@@ -127,6 +127,26 @@ export class ShoppingListsService {
     return list;
   }
 
+  async updateItemPurchaseStatus(
+    userId: string,
+    shoppingListId: string,
+    itemId: string,
+    purchaseStatus: 'pending' | 'purchased',
+  ): Promise<ShoppingListEntity> {
+    const updated = await this.shoppingListRepository.updateItemPurchaseStatus(
+      shoppingListId,
+      userId,
+      itemId,
+      purchaseStatus,
+    );
+
+    if (!updated) {
+      throw new NotFoundException(`Shopping list ${shoppingListId} not found`);
+    }
+
+    return updated;
+  }
+
   async replace(
     userId: string,
     id: string,

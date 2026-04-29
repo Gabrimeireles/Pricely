@@ -150,14 +150,46 @@ class ShoppingListController extends ChangeNotifier {
   }
 
   Future<void> togglePurchased(String itemId) async {
+    ShoppingListItemDraft? currentItem;
+    for (final item in _draft.items) {
+      if (item.id == itemId) {
+        currentItem = item;
+        break;
+      }
+    }
+    if (currentItem == null) {
+      return;
+    }
+
+    final nextStatus =
+        currentItem.purchaseStatus == 'purchased' ? 'pending' : 'purchased';
+    final accessToken = _authController.accessToken;
+
+    if (accessToken != null && _draft.id != null) {
+      try {
+        final updated = await _backendGateway.updateShoppingListItemPurchaseStatus(
+          accessToken: accessToken,
+          listId: _draft.id!,
+          itemId: itemId,
+          purchaseStatus: nextStatus,
+        );
+        _draft = updated;
+        _lists = _lists
+            .map((list) => list.id == updated.id ? updated : list)
+            .toList();
+        await _cacheService.saveShoppingListDraft(_draft);
+        notifyListeners();
+        return;
+      } catch (_) {
+        _errorMessage = 'Nao foi possivel atualizar o checklist.';
+      }
+    }
+
     _draft = _draft.copyWith(
       items: _draft.items
           .map(
             (item) => item.id == itemId
-                ? item.copyWith(
-                    purchaseStatus:
-                        item.purchaseStatus == 'purchased' ? 'pending' : 'purchased',
-                  )
+                ? item.copyWith(purchaseStatus: nextStatus)
                 : item,
           )
           .toList(),

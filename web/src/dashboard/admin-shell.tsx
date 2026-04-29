@@ -3,12 +3,13 @@ import {
   DatabaseZapIcon,
   LayoutDashboardIcon,
   ListChecksIcon,
+  MapPinnedIcon,
   PackageSearchIcon,
   ShieldCheckIcon,
+  StoreIcon,
   WorkflowIcon,
 } from 'lucide-react';
 
-import { adminMetrics } from '@/app/mock-data';
 import { usePricely } from '@/app/pricely-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -37,18 +38,28 @@ const adminNav = [
     icon: LayoutDashboardIcon,
   },
   {
-    to: '/dashboard/precos',
-    label: 'Precos e ofertas',
-    icon: DatabaseZapIcon,
+    to: '/dashboard/regioes',
+    label: 'Regioes',
+    icon: MapPinnedIcon,
   },
   {
-    to: '/dashboard/catalogo',
-    label: 'Catalogo',
+    to: '/dashboard/estabelecimentos',
+    label: 'Estabelecimentos',
+    icon: StoreIcon,
+  },
+  {
+    to: '/dashboard/produtos',
+    label: 'Produtos',
     icon: PackageSearchIcon,
   },
   {
+    to: '/dashboard/ofertas',
+    label: 'Ofertas',
+    icon: DatabaseZapIcon,
+  },
+  {
     to: '/dashboard/listas',
-    label: 'Listas',
+    label: 'Operacoes de listas',
     icon: ListChecksIcon,
   },
   {
@@ -135,16 +146,12 @@ export function AdminLayout() {
             <div className="flex flex-col gap-0.5">
               <span className="text-sm font-medium">Dashboard restrito a administradores</span>
               <span className="text-xs text-muted-foreground">
-                Metricas rastreaveis, filas e revisao de catalogo
+                Metricas rastreaveis, filas, catalogo e operacao da base
               </span>
             </div>
           </div>
           <div className="hidden items-center gap-2 md:flex">
-            {adminMetrics.slice(0, 2).map((metric) => (
-              <Badge key={metric.id} variant="secondary">
-                {metric.label}: {metric.value}
-              </Badge>
-            ))}
+            <Badge variant="secondary">Acesso admin</Badge>
             <Button asChild size="sm" variant="outline">
               <Link to="/">Voltar para o publico</Link>
             </Button>

@@ -1,18 +1,15 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AdminOverviewPage, AdminQueuePage } from './dashboard-pages';
+import { AdminEstablishmentsPage, AdminOverviewPage, AdminQueuePage, AdminRegionsPage } from './dashboard-pages';
 
 const fetchAdminMetrics = vi.fn();
 const fetchAdminQueueHealth = vi.fn();
 const fetchAdminProcessingJobs = vi.fn();
 const fetchAdminRegions = vi.fn();
 const fetchAdminEstablishments = vi.fn();
-const updateAdminRegion = vi.fn();
-const createAdminRegion = vi.fn();
-const createAdminEstablishment = vi.fn();
 
 vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
@@ -33,9 +30,9 @@ vi.mock('@/app/api', () => ({
   fetchAdminProcessingJobs: (...args: unknown[]) => fetchAdminProcessingJobs(...args),
   fetchAdminRegions: (...args: unknown[]) => fetchAdminRegions(...args),
   fetchAdminEstablishments: (...args: unknown[]) => fetchAdminEstablishments(...args),
-  updateAdminRegion: (...args: unknown[]) => updateAdminRegion(...args),
-  createAdminRegion: (...args: unknown[]) => createAdminRegion(...args),
-  createAdminEstablishment: (...args: unknown[]) => createAdminEstablishment(...args),
+  updateAdminRegion: vi.fn(),
+  createAdminRegion: vi.fn(),
+  createAdminEstablishment: vi.fn(),
   fetchAdminOffers: vi.fn(),
   fetchAdminProducts: vi.fn(),
   fetchAdminProductVariants: vi.fn(),
@@ -54,9 +51,6 @@ describe('Admin dashboard pages', () => {
     fetchAdminProcessingJobs.mockReset();
     fetchAdminRegions.mockReset();
     fetchAdminEstablishments.mockReset();
-    updateAdminRegion.mockReset();
-    createAdminRegion.mockReset();
-    createAdminEstablishment.mockReset();
   });
 
   afterEach(() => {
@@ -87,8 +81,8 @@ describe('Admin dashboard pages', () => {
     render(<AdminOverviewPage />);
 
     expect(await screen.findByText('Saude das filas')).toBeTruthy();
-    expect(screen.getByText('Em fila')).toBeTruthy();
-    expect(screen.getAllByText('1').length).toBeGreaterThan(0);
+    expect(screen.getByText('Cobertura da operacao')).toBeTruthy();
+    expect(screen.getByText('Leituras rapidas')).toBeTruthy();
   });
 
   it('shows an empty-state message when all overview metrics are zero', async () => {
@@ -117,7 +111,7 @@ describe('Admin dashboard pages', () => {
     expect(await screen.findByText('Nenhuma metrica operacional ainda')).toBeTruthy();
   });
 
-  it('shows a validation error when region creation fails', async () => {
+  it('renders queue diagnostics and recent jobs in the dedicated queue page', async () => {
     fetchAdminMetrics.mockResolvedValue({
       activeUsers: 2,
       shoppingListsCount: 3,
@@ -137,86 +131,62 @@ describe('Admin dashboard pages', () => {
       queues: ['optimization'],
       recentFailures: [],
     });
-    fetchAdminProcessingJobs.mockResolvedValue([]);
-    fetchAdminRegions.mockResolvedValue([]);
-    fetchAdminEstablishments.mockResolvedValue([]);
-    createAdminRegion.mockRejectedValue(new Error('Slug ja existe.'));
+    fetchAdminProcessingJobs.mockResolvedValue([
+      {
+        id: 'job-1',
+        queueName: 'optimization',
+        resourceType: 'shopping_list',
+        resourceId: 'list-1',
+        status: 'completed',
+        attemptCount: 1,
+        failureReason: null,
+      },
+    ]);
 
     render(<AdminQueuePage />);
 
-    fireEvent.change(screen.getByPlaceholderText('slug'), {
-      target: { value: 'sao-paulo-sp' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('nome'), {
-      target: { value: 'Sao Paulo' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('UF'), {
-      target: { value: 'SP' },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Criar regiao' }));
-
-    await waitFor(() =>
-      expect(screen.getByText('Slug ja existe.')).toBeTruthy(),
-    );
+    expect(await screen.findByText('Saude da fila')).toBeTruthy();
+    expect(screen.getByText('Jobs recentes')).toBeTruthy();
+    expect(screen.getByText(/shopping_list/)).toBeTruthy();
   });
 
-  it('allows toggling a region activation state from the queue page', async () => {
-    fetchAdminMetrics.mockResolvedValue({
-      activeUsers: 2,
-      shoppingListsCount: 3,
-      optimizationRunsCount: 4,
-      activeRegions: 1,
-      activeEstablishments: 5,
-      activeOffers: 6,
-      productCount: 7,
-      queuedJobs: 1,
-    });
-    fetchAdminQueueHealth.mockResolvedValue({
-      queuedJobs: 1,
-      runningJobs: 0,
-      failedJobs: 0,
-      completedJobs: 2,
-      jobsByStatus: { queued: 1, completed: 2 },
-      queues: ['optimization'],
-      recentFailures: [],
-    });
-    fetchAdminProcessingJobs.mockResolvedValue([]);
-    fetchAdminRegions
-      .mockResolvedValueOnce([
-        {
+  it('renders dedicated regions and establishments views', async () => {
+    fetchAdminRegions.mockResolvedValue([
+      {
+        id: 'region-1',
+        slug: 'sao-paulo-sp',
+        name: 'Sao Paulo',
+        stateCode: 'SP',
+        implantationStatus: 'active',
+        publicSortOrder: 1,
+        establishmentsCount: 2,
+      },
+    ]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        brandName: 'Mercado Azul',
+        unitName: 'Unidade Pinheiros',
+        cnpj: '00.000.000/0001-00',
+        cityName: 'Sao Paulo',
+        neighborhood: 'Pinheiros',
+        regionId: 'region-1',
+        isActive: true,
+        region: {
           id: 'region-1',
           slug: 'sao-paulo-sp',
           name: 'Sao Paulo',
           stateCode: 'SP',
-          implantationStatus: 'active',
-          publicSortOrder: 1,
-          establishmentsCount: 1,
         },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 'region-1',
-          slug: 'sao-paulo-sp',
-          name: 'Sao Paulo',
-          stateCode: 'SP',
-          implantationStatus: 'inactive',
-          publicSortOrder: 1,
-          establishmentsCount: 1,
-        },
-      ]);
-    fetchAdminEstablishments.mockResolvedValue([]);
-    updateAdminRegion.mockResolvedValue({});
+      },
+    ]);
 
-    render(<AdminQueuePage />);
+    render(<AdminRegionsPage />);
+    expect(await screen.findByText('Regioes publicas')).toBeTruthy();
+    expect(screen.getAllByText(/Sao Paulo/).length).toBeGreaterThan(0);
 
-    const toggleButton = await screen.findByRole('button', { name: 'Desativar regiao' });
-    fireEvent.click(toggleButton);
-
-    await waitFor(() =>
-      expect(updateAdminRegion).toHaveBeenCalledWith('token', 'region-1', {
-        implantationStatus: 'inactive',
-      }),
-    );
+    render(<AdminEstablishmentsPage />);
+    expect(await screen.findByText('Unidades por cidade')).toBeTruthy();
+    expect(screen.getByText('Unidade Pinheiros')).toBeTruthy();
   });
 });

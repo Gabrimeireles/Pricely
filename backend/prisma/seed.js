@@ -97,8 +97,6 @@ async function main() {
       name: 'Cafe torrado',
       category: 'mercearia',
       defaultUnit: 'un',
-      imageUrl:
-        'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80',
       isActive: true,
     },
   });
@@ -124,8 +122,6 @@ async function main() {
       displayName: 'Cafe Pilao 500g',
       brandName: 'Pilao',
       packageLabel: '500 g',
-      imageUrl:
-        'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80',
       isActive: true,
     },
   });

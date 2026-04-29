@@ -443,6 +443,22 @@ export async function replaceShoppingList(
   );
 }
 
+export async function updateShoppingListItemPurchaseStatus(
+  token: string,
+  listId: string,
+  itemId: string,
+  purchaseStatus: 'pending' | 'purchased',
+) {
+  return apiFetch<ShoppingListApiResponse>(
+    `/shopping-lists/${listId}/items/${itemId}/purchase-status`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ purchaseStatus }),
+    },
+    token,
+  );
+}
+
 export async function runOptimization(
   token: string,
   listId: string,

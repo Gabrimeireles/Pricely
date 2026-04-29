@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
 import '../../auth/application/auth_controller.dart';
@@ -344,17 +344,28 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       children: draft.items
                           .map(
                             (item) => ListTile(
-                              leading: item.imageUrl != null
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.network(
-                                        item.imageUrl!,
-                                        width: 52,
-                                        height: 52,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    )
-                                  : const Icon(Icons.shopping_basket_outlined),
+                              leading: SizedBox(
+                                width: 52,
+                                height: 52,
+                                child: item.imageUrl != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          item.imageUrl!,
+                                          width: 52,
+                                          height: 52,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => const DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              color: Color(0xFFE6F4F1),
+                                              borderRadius: BorderRadius.all(Radius.circular(8)),
+                                            ),
+                                            child: Icon(Icons.shopping_basket_outlined),
+                                          ),
+                                        ),
+                                      )
+                                    : const Icon(Icons.shopping_basket_outlined),
+                              ),
                               title: Text(item.name),
                               subtitle: Text(
                                 '${item.quantity} ${item.unit} - ${item.brandPreferenceMode == 'any' ? 'qualquer marca' : item.brandPreferenceMode == 'preferred' ? 'preferir ${item.preferredBrandNames.join(', ')}' : 'variante exata'}',
@@ -613,3 +624,4 @@ class _UnauthenticatedView extends StatelessWidget {
     );
   }
 }
+

@@ -36,14 +36,20 @@ void main() {
     );
   });
 
-  testWidgets('renders public offers for an active region', (tester) async {
+  testWidgets('renders active city offers and opens the offer detail sheet', (tester) async {
     final app = await _buildApp(preselectedRegionSlug: 'sao-paulo-sp');
 
     await tester.pumpWidget(app.widget);
     await tester.pumpAndSettle();
 
+    expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
     expect(find.textContaining('2 lojas'), findsOneWidget);
-    expect(find.textContaining('Regi'), findsWidgets);
+    expect(app.discoveryController.offers, hasLength(1));
+    expect(app.discoveryController.offers.single.productName, 'Cafe torrado');
+    final detail =
+        await app.discoveryController.fetchOfferDetail(app.discoveryController.offers.single.id);
+    expect(detail.productName, 'Cafe torrado');
+    expect(detail.alternativeOffers.single.storeName, 'Mercado Bairro');
   });
 }
 
@@ -109,6 +115,44 @@ Future<_MobileHomeHarness> _buildApp({
           );
         }
 
+        if (request.url.path == '/offers/offer-1') {
+          return http.Response(
+            jsonEncode(<String, dynamic>{
+              'id': 'offer-1',
+              'product': <String, dynamic>{
+                'id': 'product-1',
+                'name': 'Cafe torrado',
+                'category': 'Mercearia',
+                'imageUrl': null,
+              },
+              'activeOffer': <String, dynamic>{
+                'id': 'offer-1',
+                'displayName': 'Cafe torrado 500g',
+                'packageLabel': '500 g',
+                'priceAmount': 15.9,
+                'observedAt': '2026-04-27T10:00:00.000Z',
+                'sourceLabel': 'Painel admin',
+                'storeName': 'Mercado Centro',
+                'neighborhood': 'Centro',
+                'confidenceLevel': 'high',
+              },
+              'alternativeOffers': <dynamic>[
+                <String, dynamic>{
+                  'id': 'offer-2',
+                  'packageLabel': '500 g',
+                  'priceAmount': 16.4,
+                  'observedAt': '2026-04-27T10:10:00.000Z',
+                  'sourceLabel': 'Painel admin',
+                  'storeName': 'Mercado Bairro',
+                  'neighborhood': 'Pinheiros',
+                  'confidenceLevel': 'medium',
+                },
+              ],
+            }),
+            200,
+          );
+        }
+
         return http.Response('{}', 404);
       }),
     ),
@@ -152,11 +196,13 @@ Future<_MobileHomeHarness> _buildApp({
         receiptFlowController: receiptFlowController,
       ),
     ),
+    discoveryController,
   );
 }
 
 class _MobileHomeHarness {
-  const _MobileHomeHarness(this.widget);
+  const _MobileHomeHarness(this.widget, this.discoveryController);
 
   final Widget widget;
+  final MarketDiscoveryController discoveryController;
 }

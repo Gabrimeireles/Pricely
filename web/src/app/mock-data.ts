@@ -1,3 +1,5 @@
+import { neutralProductFallback } from './media';
+
 import type {
   AdminMetric,
   AdminQueueIssue,
@@ -36,6 +38,8 @@ export const supportedCities: SupportedCity[] = [
     id: 'sao-paulo-sp',
     name: 'São Paulo',
     stateCode: 'SP',
+    activeStoreCount: 3,
+    coverageStatus: 'live',
     regionLabel: 'Capital expandida',
     status: 'supported',
     stores: ['Atacadão Butantã', 'Assaí Jaguaré', 'Carrefour Pinheiros'],
@@ -45,6 +49,8 @@ export const supportedCities: SupportedCity[] = [
     id: 'campinas-sp',
     name: 'Campinas',
     stateCode: 'SP',
+    activeStoreCount: 2,
+    coverageStatus: 'live',
     regionLabel: 'Metropolitana',
     status: 'supported',
     stores: ['Pague Menos Centro', 'Savegnago Taquaral'],
@@ -54,6 +60,8 @@ export const supportedCities: SupportedCity[] = [
     id: 'belo-horizonte-mg',
     name: 'Belo Horizonte',
     stateCode: 'MG',
+    activeStoreCount: 1,
+    coverageStatus: 'collecting_data',
     regionLabel: 'Piloto assistido',
     status: 'pilot',
     stores: ['Supernosso Savassi', 'EPA Centro'],
@@ -63,6 +71,8 @@ export const supportedCities: SupportedCity[] = [
     id: 'curitiba-pr',
     name: 'Curitiba',
     stateCode: 'PR',
+    activeStoreCount: 0,
+    coverageStatus: 'collecting_data',
     regionLabel: 'Em preparação',
     status: 'soon',
     stores: ['Lançamento em breve'],
@@ -92,8 +102,7 @@ export const regionalOffers: RegionalOffer[] = [
         sourceType: 'nota',
       },
     ],
-    imageUrl:
-      'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: neutralProductFallback,
   },
   {
     id: 'offer-cafe-carrefour',
@@ -117,8 +126,7 @@ export const regionalOffers: RegionalOffer[] = [
         sourceType: 'panfleto',
       },
     ],
-    imageUrl:
-      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: neutralProductFallback,
   },
   {
     id: 'offer-arroz-atacadao',
@@ -142,8 +150,7 @@ export const regionalOffers: RegionalOffer[] = [
         sourceType: 'nota',
       },
     ],
-    imageUrl:
-      'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: neutralProductFallback,
   },
   {
     id: 'offer-feijao-savegnago',
@@ -166,8 +173,7 @@ export const regionalOffers: RegionalOffer[] = [
         sourceType: 'site',
       },
     ],
-    imageUrl:
-      'https://images.unsplash.com/photo-1515543904379-3d757afe72e3?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: neutralProductFallback,
   },
   {
     id: 'offer-leite-paguemenos',
@@ -190,8 +196,7 @@ export const regionalOffers: RegionalOffer[] = [
         sourceType: 'nota',
       },
     ],
-    imageUrl:
-      'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: neutralProductFallback,
   },
 ];
 
@@ -580,4 +585,3 @@ export function getOfferById(offerId: string) {
 export function getOptimizationScenarios(listId: string) {
   return optimizationScenariosByList[listId] ?? [];
 }
-

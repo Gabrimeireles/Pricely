@@ -89,6 +89,35 @@ export function AdminOverviewPage() {
     ['Jobs em fila', String(data.queuedJobs)],
   ];
   const isEmptyState = cards.every(([, value]) => value === '0');
+  const maxMetric = Math.max(
+    data.activeUsers,
+    data.shoppingListsCount,
+    data.optimizationRunsCount,
+    data.activeRegions,
+    data.activeEstablishments,
+    data.activeOffers,
+    data.productCount,
+    data.queuedJobs,
+    1,
+  );
+  const completionRatio = Math.min(
+    100,
+    Math.round((data.optimizationRunsCount / Math.max(data.shoppingListsCount, 1)) * 100),
+  );
+  const catalogRatio = Math.min(
+    100,
+    Math.round((data.activeOffers / Math.max(data.productCount, 1)) * 100),
+  );
+  const queuePressure = queueHealth
+    ? Math.min(
+        100,
+        Math.round(
+          ((queueHealth.queuedJobs + queueHealth.runningJobs) /
+            Math.max(queueHealth.completedJobs + queueHealth.failedJobs + queueHealth.queuedJobs + queueHealth.runningJobs, 1)) *
+            100,
+        ),
+      )
+    : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -101,13 +130,80 @@ export function AdminOverviewPage() {
 
       <div className="grid gap-4 lg:grid-cols-4">
         {cards.map(([label, value]) => (
-          <Card key={label}>
-            <CardHeader>
+          <Card key={label} className="border-border/70 bg-card/90 shadow-sm">
+            <CardHeader className="gap-3">
               <CardDescription>{label}</CardDescription>
-              <CardTitle>{value}</CardTitle>
+              <CardTitle className="text-3xl">{value}</CardTitle>
+              <div className="h-2 rounded-full bg-muted">
+                <div
+                  className="h-2 rounded-full bg-primary"
+                  style={{
+                    width: `${Math.max(14, Math.min(100, (Number(value) / maxMetric) * 100))}%`,
+                  }}
+                />
+              </div>
             </CardHeader>
           </Card>
         ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Cobertura da operacao</CardTitle>
+            <CardDescription>Leituras visuais para listas, catalogo e fila.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Listas processadas</span>
+                <span className="font-medium">{completionRatio}%</span>
+              </div>
+              <div className="h-3 rounded-full bg-muted">
+                <div className="h-3 rounded-full bg-[#0F766E]" style={{ width: `${completionRatio}%` }} />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Catalogo com oferta ativa</span>
+                <span className="font-medium">{catalogRatio}%</span>
+              </div>
+              <div className="h-3 rounded-full bg-muted">
+                <div className="h-3 rounded-full bg-[#2563EB]" style={{ width: `${catalogRatio}%` }} />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Pressao atual de fila</span>
+                <span className="font-medium">{queuePressure}%</span>
+              </div>
+              <div className="h-3 rounded-full bg-muted">
+                <div className="h-3 rounded-full bg-[#84CC16]" style={{ width: `${queuePressure}%` }} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Leituras rapidas</CardTitle>
+            <CardDescription>Painel de apoio para cidade, catalogo e processamento.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="rounded-lg border border-border/70 bg-[#ECFDF5] p-4">
+              <div className="text-sm text-[#166534]">Regioes ativas</div>
+              <div className="mt-2 text-2xl font-semibold text-[#14532D]">{data.activeRegions}</div>
+            </div>
+            <div className="rounded-lg border border-border/70 bg-[#EFF6FF] p-4">
+              <div className="text-sm text-[#1D4ED8]">Ofertas ativas</div>
+              <div className="mt-2 text-2xl font-semibold text-[#1E3A8A]">{data.activeOffers}</div>
+            </div>
+            <div className="rounded-lg border border-border/70 bg-[#FFF7ED] p-4">
+              <div className="text-sm text-[#C2410C]">Jobs aguardando</div>
+              <div className="mt-2 text-2xl font-semibold text-[#9A3412]">{data.queuedJobs}</div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {isEmptyState ? (
@@ -566,6 +662,233 @@ export function AdminCatalogPage() {
   );
 }
 
+export function AdminRegionsPage() {
+  const { data: regions, error, reload } = useAdminData<AdminRegionResponse[]>(fetchAdminRegions, []);
+  const { accessToken } = usePricely();
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    slug: '',
+    name: '',
+    stateCode: '',
+    implantationStatus: 'activating',
+    publicSortOrder: '0',
+  });
+
+  const handleCreate = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!accessToken) {
+      return;
+    }
+
+    try {
+      setMutationError(null);
+      await createAdminRegion(accessToken, {
+        ...form,
+        publicSortOrder: Number(form.publicSortOrder),
+      });
+      setForm({ slug: '', name: '', stateCode: '', implantationStatus: 'activating', publicSortOrder: '0' });
+      await reload();
+    } catch (createError) {
+      setMutationError(createError instanceof Error ? createError.message : 'Nao foi possivel criar a cidade.');
+    }
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+      <Card>
+        <CardHeader>
+          <CardTitle>Cidades e implantacao</CardTitle>
+          <CardDescription>Gerencie quais cidades aparecem para o usuario final.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {mutationError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Falha ao salvar</AlertTitle>
+              <AlertDescription>{mutationError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <form className="grid gap-3" onSubmit={handleCreate}>
+            <Input placeholder="slug" value={form.slug} onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))} />
+            <Input placeholder="nome da cidade" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
+            <Input placeholder="UF" value={form.stateCode} onChange={(event) => setForm((current) => ({ ...current, stateCode: event.target.value }))} />
+            <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={form.implantationStatus} onChange={(event) => setForm((current) => ({ ...current, implantationStatus: event.target.value }))}>
+              <option value="active">Ativa</option>
+              <option value="activating">Em ativacao</option>
+              <option value="inactive">Inativa</option>
+            </select>
+            <Input placeholder="ordem publica" value={form.publicSortOrder} onChange={(event) => setForm((current) => ({ ...current, publicSortOrder: event.target.value }))} />
+            <Button type="submit">Criar cidade</Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Regioes publicas</CardTitle>
+          <CardDescription>Cada cidade mostra quantos estabelecimentos ativos existem hoje.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {error ? (
+            <Alert variant="destructive">
+              <AlertTitle>Falha ao carregar cidades</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+          {regions.map((region) => (
+            <div key={region.id} className="rounded-lg border border-border/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-medium">{region.name} · {region.stateCode}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {region.slug} · {region.establishmentsCount} estabelecimentos ativos
+                  </div>
+                </div>
+                <Badge variant={region.implantationStatus === 'active' ? 'secondary' : 'outline'}>
+                  {region.implantationStatus === 'active' ? 'ativa' : region.implantationStatus === 'activating' ? 'em ativacao' : 'inativa'}
+                </Badge>
+              </div>
+              <div className="mt-3">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={async () => {
+                    if (!accessToken) {
+                      return;
+                    }
+                    await updateAdminRegion(accessToken, region.id, {
+                      implantationStatus: region.implantationStatus === 'active' ? 'inactive' : 'active',
+                    });
+                    await reload();
+                  }}
+                >
+                  {region.implantationStatus === 'active' ? 'Desativar cidade' : 'Ativar cidade'}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export function AdminEstablishmentsPage() {
+  const { data: regions } = useAdminData<AdminRegionResponse[]>(fetchAdminRegions, []);
+  const { data: establishments, error, reload } = useAdminData<AdminEstablishmentResponse[]>(fetchAdminEstablishments, []);
+  const { accessToken } = usePricely();
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [selectedRegionId, setSelectedRegionId] = useState('all');
+  const [form, setForm] = useState({
+    brandName: '',
+    unitName: '',
+    cnpj: '',
+    cityName: '',
+    neighborhood: '',
+    regionId: '',
+  });
+
+  const filtered = selectedRegionId === 'all'
+    ? establishments
+    : establishments.filter((entry) => entry.regionId === selectedRegionId);
+
+  const handleCreate = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!accessToken) {
+      return;
+    }
+
+    try {
+      setMutationError(null);
+      await createAdminEstablishment(accessToken, form);
+      setForm({
+        brandName: '',
+        unitName: '',
+        cnpj: '',
+        cityName: '',
+        neighborhood: '',
+        regionId: '',
+      });
+      await reload();
+    } catch (createError) {
+      setMutationError(createError instanceof Error ? createError.message : 'Nao foi possivel criar o estabelecimento.');
+    }
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+      <Card>
+        <CardHeader>
+          <CardTitle>Estabelecimentos</CardTitle>
+          <CardDescription>Cadastre unidade, CNPJ e cidade associada.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {mutationError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Falha ao salvar</AlertTitle>
+              <AlertDescription>{mutationError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <form className="grid gap-3" onSubmit={handleCreate}>
+            <Input placeholder="rede" value={form.brandName} onChange={(event) => setForm((current) => ({ ...current, brandName: event.target.value }))} />
+            <Input placeholder="nome da unidade" value={form.unitName} onChange={(event) => setForm((current) => ({ ...current, unitName: event.target.value }))} />
+            <Input placeholder="cnpj" value={form.cnpj} onChange={(event) => setForm((current) => ({ ...current, cnpj: event.target.value }))} />
+            <Input placeholder="cidade" value={form.cityName} onChange={(event) => setForm((current) => ({ ...current, cityName: event.target.value }))} />
+            <Input placeholder="bairro ou referencia" value={form.neighborhood} onChange={(event) => setForm((current) => ({ ...current, neighborhood: event.target.value }))} />
+            <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={form.regionId} onChange={(event) => setForm((current) => ({ ...current, regionId: event.target.value }))}>
+              <option value="">Cidade vinculada</option>
+              {regions.map((region) => (
+                <option key={region.id} value={region.id}>{region.name}</option>
+              ))}
+            </select>
+            <Button type="submit">Criar estabelecimento</Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Unidades por cidade</CardTitle>
+          <CardDescription>Filtre por cidade e acompanhe o status de ativacao das unidades.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={selectedRegionId} onChange={(event) => setSelectedRegionId(event.target.value)}>
+            <option value="all">Todas as cidades</option>
+            {regions.map((region) => (
+              <option key={region.id} value={region.id}>{region.name}</option>
+            ))}
+          </select>
+          {error ? (
+            <Alert variant="destructive">
+              <AlertTitle>Falha ao carregar estabelecimentos</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+          {filtered.map((entry) => (
+            <div key={entry.id} className="rounded-lg border border-border/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-medium">{entry.unitName}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {entry.brandName} · {entry.cityName} · {entry.neighborhood}
+                  </div>
+                </div>
+                <Badge variant={entry.isActive ? 'secondary' : 'outline'}>
+                  {entry.isActive ? 'ativo' : 'inativo'}
+                </Badge>
+              </div>
+              <div className="mt-2 text-sm text-muted-foreground">
+                {entry.cnpj}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export const AdminOffersPage = AdminPricesPage;
+
 export function AdminListsPage() {
   const { data: metrics } = useAdminData<AdminMetricsResponse | null>(fetchAdminMetrics, null);
   const { lists } = usePricely();
@@ -604,123 +927,13 @@ export function AdminQueuePage() {
   const { data: metrics } = useAdminData<AdminMetricsResponse | null>(fetchAdminMetrics, null);
   const { data: jobs } = useAdminData<AdminProcessingJobResponse[]>(fetchAdminProcessingJobs, []);
   const { data: queueHealth } = useAdminData<AdminQueueHealthResponse | null>(fetchAdminQueueHealth, null);
-  const { data: regions, reload } = useAdminData<AdminRegionResponse[]>(fetchAdminRegions, []);
-  const { data: establishments, reload: reloadEstablishments } = useAdminData<AdminEstablishmentResponse[]>(fetchAdminEstablishments, []);
-  const { accessToken } = usePricely();
-  const [mutationError, setMutationError] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    slug: '',
-    name: '',
-    stateCode: '',
-    implantationStatus: 'activating',
-    publicSortOrder: '0',
-  });
-  const [establishmentForm, setEstablishmentForm] = useState({
-    brandName: '',
-    unitName: '',
-    cnpj: '',
-    cityName: '',
-    neighborhood: '',
-    regionId: '',
-  });
-
-  const handleCreate = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!accessToken) {
-      return;
-    }
-
-    try {
-      setMutationError(null);
-      await createAdminRegion(accessToken, {
-        ...form,
-        publicSortOrder: Number(form.publicSortOrder),
-      });
-      setForm({ slug: '', name: '', stateCode: '', implantationStatus: 'activating', publicSortOrder: '0' });
-      await reload();
-    } catch (error) {
-      setMutationError(
-        error instanceof Error ? error.message : 'Nao foi possivel criar a regiao.',
-      );
-    }
-  };
-
-  const handleCreateEstablishment = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!accessToken) {
-      return;
-    }
-
-    try {
-      setMutationError(null);
-      await createAdminEstablishment(accessToken, establishmentForm);
-      setEstablishmentForm({
-        brandName: '',
-        unitName: '',
-        cnpj: '',
-        cityName: '',
-        neighborhood: '',
-        regionId: '',
-      });
-      await reloadEstablishments();
-    } catch (error) {
-      setMutationError(
-        error instanceof Error
-          ? error.message
-          : 'Nao foi possivel criar o estabelecimento.',
-      );
-    }
-  };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-      <Card>
+    <div className="grid gap-4 lg:grid-cols-[0.72fr_1.28fr]">
+      <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader>
-          <CardTitle>Regioes e estabelecimentos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {mutationError ? (
-            <Alert className="mb-4" variant="destructive">
-              <AlertTitle>Falha ao salvar</AlertTitle>
-              <AlertDescription>{mutationError}</AlertDescription>
-            </Alert>
-          ) : null}
-          <form className="grid gap-3" onSubmit={handleCreate}>
-            <Input placeholder="slug" value={form.slug} onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))} />
-            <Input placeholder="nome" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
-            <Input placeholder="UF" value={form.stateCode} onChange={(event) => setForm((current) => ({ ...current, stateCode: event.target.value }))} />
-            <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={form.implantationStatus} onChange={(event) => setForm((current) => ({ ...current, implantationStatus: event.target.value }))}>
-              <option value="active">active</option>
-              <option value="activating">activating</option>
-              <option value="inactive">inactive</option>
-            </select>
-            <Input placeholder="ordem publica" value={form.publicSortOrder} onChange={(event) => setForm((current) => ({ ...current, publicSortOrder: event.target.value }))} />
-            <Button type="submit">Criar regiao</Button>
-          </form>
-          <div className="my-4 h-px bg-border" />
-          <form className="grid gap-3" onSubmit={handleCreateEstablishment}>
-            <Input placeholder="brandName" value={establishmentForm.brandName} onChange={(event) => setEstablishmentForm((current) => ({ ...current, brandName: event.target.value }))} />
-            <Input placeholder="unitName" value={establishmentForm.unitName} onChange={(event) => setEstablishmentForm((current) => ({ ...current, unitName: event.target.value }))} />
-            <Input placeholder="cnpj" value={establishmentForm.cnpj} onChange={(event) => setEstablishmentForm((current) => ({ ...current, cnpj: event.target.value }))} />
-            <Input placeholder="cidade" value={establishmentForm.cityName} onChange={(event) => setEstablishmentForm((current) => ({ ...current, cityName: event.target.value }))} />
-            <Input placeholder="bairro" value={establishmentForm.neighborhood} onChange={(event) => setEstablishmentForm((current) => ({ ...current, neighborhood: event.target.value }))} />
-            <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={establishmentForm.regionId} onChange={(event) => setEstablishmentForm((current) => ({ ...current, regionId: event.target.value }))}>
-              <option value="">Regiao</option>
-              {regions.map((region) => (
-                <option key={region.id} value={region.id}>{region.name}</option>
-              ))}
-            </select>
-            <Button type="submit" variant="outline">Criar estabelecimento</Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Fila e regioes</CardTitle>
-          <CardDescription>
-            Jobs pendentes e estados de implantacao saem do backend real.
-          </CardDescription>
+          <CardTitle>Saude da fila</CardTitle>
+          <CardDescription>Jobs pendentes, falhas recentes e capacidade de processamento.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           {metrics ? (
@@ -741,72 +954,33 @@ export function AdminQueuePage() {
               </div>
             </div>
           ) : null}
-          {regions.map((region) => (
-            <div key={region.id} className="rounded-lg border border-border/70 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-medium">{region.name} · {region.stateCode}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {region.slug} · {region.establishmentsCount} estabelecimentos
-                  </div>
-                </div>
-                <Badge variant={region.implantationStatus === 'active' ? 'secondary' : 'outline'}>
-                  {region.implantationStatus}
-                </Badge>
+          {queueHealth ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-lg border border-border/70 bg-[#ECFDF5] p-4">
+                <div className="text-sm text-[#166534]">Concluidos</div>
+                <div className="mt-2 text-2xl font-semibold text-[#14532D]">{queueHealth.completedJobs}</div>
               </div>
-              <div className="mt-3">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={async () => {
-                    if (!accessToken) {
-                      return;
-                    }
+              <div className="rounded-lg border border-border/70 bg-[#EFF6FF] p-4">
+                <div className="text-sm text-[#1D4ED8]">Filas monitoradas</div>
+                <div className="mt-2 text-2xl font-semibold text-[#1E3A8A]">{queueHealth.queues.length}</div>
+              </div>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
 
-                    try {
-                      setMutationError(null);
-                      await updateAdminRegion(accessToken, region.id, {
-                        implantationStatus:
-                          region.implantationStatus === 'active' ? 'inactive' : 'active',
-                      });
-                      await reload();
-                    } catch (error) {
-                      setMutationError(
-                        error instanceof Error
-                          ? error.message
-                          : 'Nao foi possivel atualizar a regiao.',
-                      );
-                    }
-                  }}
-                >
-                  {region.implantationStatus === 'active' ? 'Desativar regiao' : 'Ativar regiao'}
-                </Button>
-              </div>
-            </div>
-          ))}
-          {establishments.slice(0, 6).map((entry) => (
-            <div key={entry.id} className="rounded-lg border border-border/70 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-medium">{entry.unitName}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {entry.cityName} · {entry.neighborhood}
-                  </div>
-                </div>
-                <Badge variant={entry.isActive ? 'secondary' : 'outline'}>
-                  {entry.isActive ? 'ativo' : 'inativo'}
-                </Badge>
-              </div>
-            </div>
-          ))}
+      <Card className="border-border/70 bg-card/90 shadow-sm">
+        <CardHeader>
+          <CardTitle>Jobs recentes</CardTitle>
+          <CardDescription>Recursos processados, tentativas e falhas persistidas.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
           {jobs.slice(0, 6).map((job) => (
             <div key={job.id} className="rounded-lg border border-border/70 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="font-medium">{job.resourceType} · {job.resourceId}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {job.queueName} · tentativa {job.attemptCount}
-                  </div>
+                  <div className="text-sm text-muted-foreground">{job.queueName} · tentativa {job.attemptCount}</div>
                 </div>
                 <Badge
                   variant={

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
 import '../application/auth_controller.dart';
@@ -107,8 +107,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         const SizedBox(height: 10),
                         Text(
                           _isRegister
-                              ? 'Use a mesma conta no mobile e no web para listas, economia estimada e histórico.'
-                              : 'Acesse sua conta compartilhada para sincronizar listas e rodar a otimização no backend.',
+                              ? 'Use a mesma conta no mobile e no web para listas, economia estimada e historico.'
+                              : 'Acesse sua conta compartilhada para sincronizar listas e rodar a otimizacao no backend.',
                           style: theme.textTheme.bodyLarge
                               ?.copyWith(color: Colors.white70),
                         ),
@@ -117,9 +117,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           spacing: 10,
                           runSpacing: 10,
                           children: const <Widget>[
-                            _HeroChip(label: 'Conta única'),
+                            _HeroChip(label: 'Conta unica'),
                             _HeroChip(label: 'Listas sincronizadas'),
-                            _HeroChip(label: 'Economia com evidência'),
+                            _HeroChip(label: 'Economia com evidencia'),
                           ],
                         ),
                       ],
@@ -136,7 +136,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          _isRegister ? 'Novo cadastro' : 'Acesso do usuário',
+                          _isRegister ? 'Novo cadastro' : 'Acesso do usuario',
                           style: theme.textTheme.titleLarge,
                         ),
                         const SizedBox(height: 18),
@@ -186,7 +186,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             });
                           },
                           child: Text(_isRegister
-                              ? 'Já tenho conta'
+                              ? 'Ja tenho conta'
                               : 'Criar conta nova'),
                         ),
                       ],
@@ -225,3 +225,4 @@ class _HeroChip extends StatelessWidget {
     );
   }
 }
+

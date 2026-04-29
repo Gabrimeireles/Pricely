@@ -7,6 +7,7 @@ import { StoresModule } from '../stores/stores.module';
 import { OptimizationController } from './api/optimization.controller';
 import { OptimizationResultService } from './application/optimization-result.service';
 import { MultiMarketOptimizerService } from './domain/multi-market-optimizer.service';
+import { OptimizationRunRepository } from './infrastructure/optimization-run.repository';
 
 @Module({
   imports: [AuthModule, ListsModule, StoresModule, ProcessingModule],
@@ -14,7 +15,12 @@ import { MultiMarketOptimizerService } from './domain/multi-market-optimizer.ser
   providers: [
     MultiMarketOptimizerService,
     OptimizationResultService,
+    OptimizationRunRepository,
   ],
-  exports: [OptimizationResultService, MultiMarketOptimizerService],
+  exports: [
+    OptimizationResultService,
+    MultiMarketOptimizerService,
+    OptimizationRunRepository,
+  ],
 })
 export class OptimizationModule {}

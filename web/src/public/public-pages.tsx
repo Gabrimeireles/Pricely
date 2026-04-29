@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import { formatCurrency, formatDateTime, formatFreshnessLabel } from '@/app/format';
+import { resolveProductImage } from '@/app/media';
 import {
   getCityById,
   optimizationModes,
@@ -308,16 +309,12 @@ export function LandingPage() {
         }
 
         setFeaturedOffers(
-          response.offers.slice(0, 3).map((offer, index) => ({
+          response.offers.slice(0, 3).map((offer) => ({
             id: offer.id,
             productName: offer.productName,
             storeName: offer.storeName,
             neighborhood: offer.neighborhood,
-            imageUrl: offer.imageUrl ?? [
-              'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=1200&q=80',
-              'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80',
-              'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=1200&q=80',
-            ][index % 3],
+            imageUrl: resolveProductImage(offer.imageUrl),
             freshness: 'fresh',
             confidence:
               offer.confidenceLevel === 'high'
@@ -396,7 +393,7 @@ export function LandingPage() {
           <img
             alt="Pessoa organizando compras no supermercado"
             className="h-full min-h-[360px] w-full object-cover"
-            src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80"
+            src={resolveProductImage()}
           />
         </div>
       </section>
@@ -471,7 +468,7 @@ export function OffersPage() {
               <img
                 alt={offer.productName}
                 className="h-full w-full object-cover"
-                src={offer.imageUrl ?? 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80'}
+                src={resolveProductImage(offer.imageUrl)}
               />
             </div>
             <CardHeader>
@@ -556,7 +553,7 @@ export function OfferDetailPage() {
           <img
             alt={offer.product.name}
             className="h-full w-full object-cover"
-            src={offer.product.imageUrl ?? 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80'}
+            src={resolveProductImage(offer.product.imageUrl)}
           />
         </div>
       </Card>
@@ -629,7 +626,7 @@ export function CitiesPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Cidades suportadas</h1>
         <p className="text-muted-foreground">
-          O app lista regioes com estabelecimentos ativos e mostra quando ainda estamos coletando cobertura.
+          Mostramos somente cidades ativas ou em ativação, com contagem explícita de estabelecimentos ativos.
         </p>
       </div>
 
@@ -642,19 +639,26 @@ export function CitiesPage() {
                   <CardTitle>
                     {city.name} · {city.stateCode}
                   </CardTitle>
-                  <CardDescription>{city.regionLabel}</CardDescription>
+                  <CardDescription>
+                    {city.activeStoreCount} estabelecimentos ativos ·{' '}
+                    {city.coverageStatus === 'live' ? 'cobertura ao vivo' : 'coletando dados'}
+                  </CardDescription>
                 </div>
                 {cityStatusBadge(city)}
               </div>
             </CardHeader>
             <CardContent className="grid gap-4 text-sm">
               <div>
-                <div className="font-medium">Estabelecimentos na regiao</div>
+                <div className="font-medium">Estabelecimentos suportados</div>
                 <div className="text-muted-foreground">{city.stores.join(', ')}</div>
               </div>
               <div>
-                <div className="font-medium">Bairros com cobertura</div>
-                <div className="text-muted-foreground">{city.neighborhoods.join(', ')}</div>
+                <div className="font-medium">Status da cidade</div>
+                <div className="text-muted-foreground">
+                  {city.activeStoreCount === 0
+                    ? 'Nenhum estabelecimento ativo no momento. Troque de cidade ou ajude a popular a cobertura.'
+                    : 'Cidade pronta para comparação pública de ofertas e uso em listas.'}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -759,7 +763,7 @@ export function ListsPage() {
                       <img
                         alt={list.items[0].name}
                         className="h-32 w-full object-cover"
-                        src={list.items[0].imageUrl}
+                        src={resolveProductImage(list.items[0].imageUrl)}
                       />
                     </div>
                   ) : null}
@@ -779,15 +783,121 @@ export function ListsPage() {
                   <Button asChild size="sm" variant="outline">
                     <Link to={`/listas/${list.id}`}>Editar</Link>
                   </Button>
-                  <Button asChild size="sm">
-                    <Link to={`/otimizacao/${list.id}`}>Otimizar</Link>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button asChild size="sm" variant="outline">
+                      <Link to={`/listas/${list.id}/checklist`}>Checklist</Link>
+                    </Button>
+                    <Button asChild size="sm">
+                      <Link to={`/otimizacao/${list.id}`}>Otimizar</Link>
+                    </Button>
+                  </div>
                 </CardFooter>
               </Card>
             ))}
           </div>
         )}
       </div>
+    </RequireAuthentication>
+  );
+}
+
+export function ChecklistPage() {
+  const { listId = '' } = useParams();
+  const { lists, updateListItemPurchaseStatus } = usePricely();
+  const [error, setError] = useState<string | null>(null);
+  const [pendingItemId, setPendingItemId] = useState<string | null>(null);
+  const list = lists.find((entry) => entry.id === listId);
+
+  const toggleItem = async (itemId: string, purchaseStatus: 'pending' | 'purchased') => {
+    setError(null);
+    setPendingItemId(itemId);
+
+    try {
+      await updateListItemPurchaseStatus(
+        listId,
+        itemId,
+        purchaseStatus === 'purchased' ? 'pending' : 'purchased',
+      );
+    } catch (toggleError) {
+      setError(toggleError instanceof Error ? toggleError.message : 'Nao foi possivel atualizar o checklist.');
+    } finally {
+      setPendingItemId(null);
+    }
+  };
+
+  return (
+    <RequireAuthentication
+      description="Entre para usar o checklist sincronizado durante a compra."
+      title="Checklist protegido"
+    >
+      {!list ? (
+        <Alert variant="destructive">
+          <ShieldAlertIcon />
+          <AlertTitle>Lista nao encontrada</AlertTitle>
+          <AlertDescription>Escolha uma lista valida para abrir o checklist.</AlertDescription>
+        </Alert>
+      ) : (
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <h1 className="text-3xl font-semibold tracking-tight">Checklist de compra</h1>
+              <p className="text-muted-foreground">
+                {list.name} · {getCityById(list.cityId).name}. Marque os itens conforme a compra acontece no mercado.
+              </p>
+            </div>
+            <Button asChild variant="outline">
+              <Link to={`/listas/${list.id}`}>Voltar para a lista</Link>
+            </Button>
+          </div>
+
+          {error ? (
+            <Alert variant="destructive">
+              <ShieldAlertIcon />
+              <AlertTitle>Falha no checklist</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="grid gap-4">
+            {list.items.map((item) => {
+              const checked = item.purchaseStatus === 'purchased';
+
+              return (
+                <Card key={item.id}>
+                  <CardContent className="flex items-center gap-4 p-4">
+                    <input
+                      checked={checked}
+                      className="h-5 w-5"
+                      disabled={pendingItemId === item.id}
+                      onChange={() => void toggleItem(item.id, item.purchaseStatus ?? 'pending')}
+                      type="checkbox"
+                    />
+                    {item.imageUrl ? (
+                      <img
+                        alt={item.name}
+                        className="h-16 w-16 rounded-lg border border-border/70 object-cover"
+                        src={resolveProductImage(item.imageUrl)}
+                      />
+                    ) : null}
+                    <div className="flex-1">
+                      <div className="font-medium">{item.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {item.quantity} {item.unitLabel} · {describeBrandRule(item)}
+                      </div>
+                      {item.note ? (
+                        <div className="text-sm text-muted-foreground">{item.note}</div>
+                      ) : null}
+                    </div>
+                    <Badge variant={checked ? 'secondary' : 'outline'}>
+                      {checked ? 'Comprado' : 'Pendente'}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </RequireAuthentication>
   );
 }
@@ -1007,7 +1117,7 @@ export function ListEditorPage() {
               >
                 {cities.map((city) => (
                   <option key={city.id} value={city.id}>
-                    {city.name} · {city.stateCode}
+                    {city.name} · {city.activeStoreCount} estabelecimentos
                   </option>
                 ))}
               </select>

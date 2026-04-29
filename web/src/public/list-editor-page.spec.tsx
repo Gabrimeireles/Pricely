@@ -16,6 +16,8 @@ vi.mock('@/app/pricely-context', () => ({
         id: 'sao-paulo-sp',
         name: 'Sao Paulo',
         stateCode: 'SP',
+        activeStoreCount: 1,
+        coverageStatus: 'live',
         regionLabel: '1 estabelecimentos ativos',
         status: 'supported',
         stores: [],
