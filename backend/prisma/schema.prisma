@@ -1,0 +1,355 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  customer
+  admin
+}
+
+enum UserStatus {
+  active
+  suspended
+}
+
+enum RegionStatus {
+  active
+  activating
+  inactive
+}
+
+enum OfferAvailabilityStatus {
+  available
+  unavailable
+  uncertain
+}
+
+enum OfferConfidenceLevel {
+  high
+  medium
+  low
+}
+
+enum ProductAliasSourceType {
+  rule
+  admin
+  receipt
+}
+
+enum ShoppingListStatus {
+  draft
+  ready
+  archived
+}
+
+enum ShoppingListItemResolutionStatus {
+  unresolved
+  matched
+  partial
+  missing
+}
+
+enum ShoppingListItemBrandPreferenceMode {
+  any
+  preferred
+  exact
+}
+
+enum ShoppingListItemPurchaseStatus {
+  pending
+  purchased
+}
+
+enum OptimizationMode {
+  local
+  global_unique
+  global_full
+}
+
+enum OptimizationRunStatus {
+  queued
+  running
+  completed
+  failed
+}
+
+enum OptimizationCoverageStatus {
+  complete
+  partial
+  none
+}
+
+enum OptimizationSelectionStatus {
+  selected
+  review
+  missing
+}
+
+enum ProcessingJobType {
+  optimization
+  receipt_processing
+}
+
+enum ProcessingJobStatus {
+  queued
+  running
+  completed
+  failed
+  retrying
+}
+
+enum ReceiptSourceType {
+  manual_entry
+  image_parse
+}
+
+enum ReceiptParseStatus {
+  queued
+  parsed
+  partial
+  failed
+}
+
+model UserAccount {
+  id               String            @id @default(uuid()) @db.Uuid
+  email            String            @unique
+  passwordHash     String
+  displayName      String
+  role             UserRole          @default(customer)
+  status           UserStatus        @default(active)
+  lastLoginAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  shoppingLists    ShoppingList[]
+  optimizationRuns OptimizationRun[]
+  receiptRecords   ReceiptRecord[]
+}
+
+model Region {
+  id              String          @id @default(uuid()) @db.Uuid
+  slug            String          @unique
+  name            String
+  stateCode       String          @db.VarChar(2)
+  countryCode     String          @default("BR") @db.VarChar(2)
+  implantationStatus RegionStatus @default(activating)
+  publicSortOrder Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  establishments  Establishment[]
+  shoppingLists   ShoppingList[]
+  optimizationRuns OptimizationRun[]
+}
+
+model Establishment {
+  id             String          @id @default(uuid()) @db.Uuid
+  brandName      String
+  unitName       String
+  cnpj           String          @unique
+  cityName       String
+  neighborhood   String
+  addressLine    String?
+  regionId       String          @db.Uuid
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  region         Region          @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  productOffers  ProductOffer[]
+  receiptRecords ReceiptRecord[]
+  preferredRuns  OptimizationRun[] @relation("PreferredEstablishment")
+
+  @@index([regionId, isActive])
+}
+
+model CatalogProduct {
+  id                String           @id @default(uuid()) @db.Uuid
+  slug              String           @unique
+  name              String
+  category          String
+  defaultUnit       String?
+  imageUrl          String?
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  aliases           CatalogProductAlias[]
+  productVariants   ProductVariant[]
+  productOffers     ProductOffer[]
+  shoppingListItems ShoppingListItem[]
+
+  @@unique([name, category, defaultUnit])
+}
+
+model CatalogProductAlias {
+  id              String                 @id @default(uuid()) @db.Uuid
+  catalogProductId String                @db.Uuid
+  alias           String
+  sourceType      ProductAliasSourceType
+  confidenceScore Decimal                @db.Decimal(5, 2)
+  createdAt       DateTime               @default(now())
+  catalogProduct  CatalogProduct         @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
+
+  @@unique([catalogProductId, alias])
+}
+
+model ProductVariant {
+  id                String           @id @default(uuid()) @db.Uuid
+  catalogProductId  String           @db.Uuid
+  slug              String           @unique
+  displayName       String
+  brandName         String?
+  variantLabel      String?
+  packageLabel      String?
+  imageUrl          String?
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  catalogProduct    CatalogProduct   @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
+  productOffers     ProductOffer[]
+  shoppingListItems ShoppingListItem[] @relation("LockedProductVariant")
+
+  @@index([catalogProductId, isActive])
+}
+
+model ProductOffer {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  catalogProductId   String                  @db.Uuid
+  productVariantId   String                  @db.Uuid
+  establishmentId    String                  @db.Uuid
+  displayName        String
+  packageLabel       String
+  priceAmount        Decimal                 @db.Decimal(10, 2)
+  currencyCode       String                  @default("BRL") @db.VarChar(3)
+  availabilityStatus OfferAvailabilityStatus
+  confidenceLevel    OfferConfidenceLevel
+  sourceType         String
+  sourceReference    String?
+  observedAt         DateTime
+  expiresAt          DateTime?
+  isActive           Boolean                 @default(true)
+  updatedAt          DateTime                @updatedAt
+  establishment      Establishment           @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  catalogProduct     CatalogProduct          @relation(fields: [catalogProductId], references: [id], onDelete: Restrict)
+  productVariant     ProductVariant          @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
+  optimizationSelections OptimizationSelection[]
+
+  @@index([catalogProductId, isActive, observedAt])
+  @@index([productVariantId, isActive, observedAt])
+  @@index([establishmentId, isActive])
+}
+
+model ShoppingList {
+  id                String           @id @default(uuid()) @db.Uuid
+  userId            String           @db.Uuid
+  name              String
+  preferredRegionId String?          @db.Uuid
+  status            ShoppingListStatus @default(draft)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  shoppingListItems ShoppingListItem[]
+  optimizationRuns  OptimizationRun[]
+  preferredRegion   Region?          @relation(fields: [preferredRegionId], references: [id], onDelete: SetNull)
+  user              UserAccount      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+}
+
+model ShoppingListItem {
+  id               String                          @id @default(uuid()) @db.Uuid
+  shoppingListId   String                          @db.Uuid
+  catalogProductId String?                         @db.Uuid
+  lockedProductVariantId String?                   @db.Uuid
+  brandPreferenceMode ShoppingListItemBrandPreferenceMode @default(any)
+  preferredBrandNames String[]                     @default([])
+  requestedName    String
+  quantity         Decimal?                        @db.Decimal(10, 2)
+  unitLabel        String?
+  notes            String?
+  purchaseStatus   ShoppingListItemPurchaseStatus  @default(pending)
+  purchasedAt      DateTime?
+  resolutionStatus ShoppingListItemResolutionStatus @default(unresolved)
+  createdAt        DateTime                        @default(now())
+  updatedAt        DateTime                        @updatedAt
+  optimizationSelections OptimizationSelection[]
+  catalogProduct   CatalogProduct?                 @relation(fields: [catalogProductId], references: [id], onDelete: SetNull)
+  lockedProductVariant ProductVariant?             @relation("LockedProductVariant", fields: [lockedProductVariantId], references: [id], onDelete: SetNull)
+  shoppingList     ShoppingList                    @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+
+  @@index([shoppingListId])
+  @@index([catalogProductId])
+  @@index([lockedProductVariantId])
+}
+
+model OptimizationRun {
+  id                       String                     @id @default(uuid()) @db.Uuid
+  shoppingListId           String                     @db.Uuid
+  userId                   String                     @db.Uuid
+  mode                     OptimizationMode
+  regionId                 String                     @db.Uuid
+  preferredEstablishmentId String?                    @db.Uuid
+  jobId                    String?                    @unique @db.Uuid
+  status                   OptimizationRunStatus      @default(queued)
+  totalEstimatedCost       Decimal?                   @db.Decimal(10, 2)
+  estimatedSavings         Decimal?                   @db.Decimal(10, 2)
+  coverageStatus           OptimizationCoverageStatus @default(none)
+  summary                  String?
+  createdAt                DateTime                   @default(now())
+  completedAt              DateTime?
+  optimizationSelections   OptimizationSelection[]
+  processingJob            ProcessingJob?             @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  preferredEstablishment   Establishment?             @relation("PreferredEstablishment", fields: [preferredEstablishmentId], references: [id], onDelete: SetNull)
+  region                   Region                     @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  shoppingList             ShoppingList               @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  user                     UserAccount                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([shoppingListId, createdAt])
+  @@index([status, createdAt])
+}
+
+model OptimizationSelection {
+  id                String                      @id @default(uuid()) @db.Uuid
+  optimizationRunId String                      @db.Uuid
+  shoppingListItemId String                     @db.Uuid
+  productOfferId    String?                     @db.Uuid
+  status            OptimizationSelectionStatus
+  estimatedCost     Decimal?                    @db.Decimal(10, 2)
+  confidenceNotice  String?
+  optimizationRun   OptimizationRun             @relation(fields: [optimizationRunId], references: [id], onDelete: Cascade)
+  productOffer      ProductOffer?               @relation(fields: [productOfferId], references: [id], onDelete: SetNull)
+  shoppingListItem  ShoppingListItem            @relation(fields: [shoppingListItemId], references: [id], onDelete: Cascade)
+
+  @@index([optimizationRunId])
+}
+
+model ProcessingJob {
+  id            String              @id @default(uuid()) @db.Uuid
+  queueName     String
+  jobType       ProcessingJobType
+  resourceType  String
+  resourceId    String
+  status        ProcessingJobStatus @default(queued)
+  attemptCount  Int                 @default(0)
+  failureReason String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  finishedAt    DateTime?
+  optimizationRun OptimizationRun?
+}
+
+model ReceiptRecord {
+  id              String            @id @default(uuid()) @db.Uuid
+  userId          String            @db.Uuid
+  establishmentId String            @db.Uuid
+  sourceType      ReceiptSourceType
+  parseStatus     ReceiptParseStatus @default(queued)
+  purchaseDate    DateTime?
+  rawReference    String?
+  createdAt       DateTime          @default(now())
+  establishment   Establishment     @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  user            UserAccount       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([establishmentId, createdAt])
+}

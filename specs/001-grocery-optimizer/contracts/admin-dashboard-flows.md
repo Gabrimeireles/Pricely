@@ -2,32 +2,53 @@
 
 ## Purpose
 
-Describe the main admin-facing workflows supported by the responsive web dashboard.
+Describe the restricted web workflows supported by the admin dashboard backend.
 
 ## Views
 
-### Price Overview
+### Overview Metrics
 
-- Show current known prices by item and store
-- Filter by store, item, date range, and confidence state
-- Highlight stale or low-confidence price data
+- Show active-user indicators, optimization throughput, queue health, catalog coverage,
+  and recent failures
+- Support summary cards and drill-down friendly payloads
+- Keep every metric traceable to backend records or processing events
 
-### Item Catalog View
+### Region Management
 
-- Show normalized items and linked aliases
-- Surface unresolved or low-confidence matches for review
-- Display latest observed store offers and source evidence
+- Show all regions including `inactive` ones
+- Show implantation status and count of active establishments
+- Allow activate, deactivate, and activating-state transitions
 
-### Shopping List View
+### Establishment Management
 
-- Show submitted shopping lists and latest optimization outcomes
-- Display optimization mode, total estimated cost, coverage, and missing items
-- Allow drill-down into selected item/store decisions
+- Show store units with brand, unit identity, city, neighborhood, region, CNPJ, and
+  `isActive`
+- Allow create, update, activate, and deactivate
+- Support filtering by region and active state
+
+### Product Catalog View
+
+- Show canonical products and linked aliases
+- Surface unresolved or low-confidence aliases for review
+- Allow create, update, activate, and deactivate
+
+### Product Offer Management
+
+- Show current price offers by product and establishment
+- Highlight stale, inactive, low-confidence, or unavailable entries
+- Allow create, update, activate, and deactivate
+
+### Shopping List and Optimization Visibility
+
+- Show submitted shopping lists, owners, last optimization mode, latest run state, total
+  estimated cost, and missing-item coverage
+- Allow drill-down into item-level optimization decisions
 
 ### Queue and Processing Health
 
-- Show receipt processing job status, retries, failures, and throughput summaries
-- Surface recent parsing and normalization errors with timestamps
+- Show optimization job status, retries, failures, and throughput summaries
+- Surface receipt-processing diagnostics when that capability is used
+- Provide timestamps, reasons, and related resource references
 
 ## UX Rules
 
@@ -36,3 +57,5 @@ Describe the main admin-facing workflows supported by the responsive web dashboa
   overwhelming the screen
 - Every metric or record shown in the dashboard should be traceable back to a backend
   source object or processing event
+- Admin CRUD screens must expose activation state explicitly rather than hiding inactive
+  records

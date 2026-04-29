@@ -1,15 +1,9 @@
 import { createBrowserRouter } from 'react-router-dom';
 
-import { DashboardHome } from '../dashboard/dashboard-home';
-import { MarketingHome } from '../marketing/marketing-home';
+import { dashboardRoute } from './dashboard';
+import { publicRoute } from './public';
 
 export const appRouter = createBrowserRouter([
-  {
-    path: '/',
-    element: <MarketingHome />,
-  },
-  {
-    path: '/dashboard',
-    element: <DashboardHome />,
-  },
+  publicRoute,
+  dashboardRoute,
 ]);

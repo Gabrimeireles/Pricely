@@ -1,9 +1,9 @@
-# Specification Quality Checklist: Grocery Shopping Optimizer
+# Checklist de qualidade da especificacao: Grocery Shopping Optimizer
 
 **Purpose**: Validate specification completeness and quality before proceeding to
 planning  
 **Created**: 2026-04-03  
-**Feature**: [spec.md](E:/Gabriel/Pricely/specs/001-grocery-optimizer/spec.md)
+**Feature**: [spec.md](../spec.md)
 
 ## Content Quality
 

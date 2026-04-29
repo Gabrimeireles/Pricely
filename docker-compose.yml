@@ -1,0 +1,84 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: pricely-postgres
+    environment:
+      POSTGRES_DB: pricely
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pricely-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pricely"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: pricely-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - pricely-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: pricely-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    working_dir: /app
+    environment:
+      PORT: 3000
+      APP_HOST: 0.0.0.0
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pricely
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_ACCESS_SECRET: changeme-local-secret
+      WEB_APP_URL: http://localhost:5173
+    command:
+      [
+        "sh",
+        "-lc",
+        "npm run db:generate && npx prisma db push --force-reset && npm run db:seed && npm run start:dev"
+      ]
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - pricely-backend-node-modules:/app/node_modules
+
+  web:
+    build:
+      context: ./web
+    container_name: pricely-web
+    depends_on:
+      backend:
+        condition: service_started
+    working_dir: /app
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./web:/app
+      - pricely-web-node-modules:/app/node_modules
+
+volumes:
+  pricely-postgres-data:
+  pricely-redis-data:
+  pricely-backend-node-modules:
+  pricely-web-node-modules:

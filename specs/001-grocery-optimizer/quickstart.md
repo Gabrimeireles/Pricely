@@ -1,81 +1,113 @@
-# Quickstart: Grocery Shopping Optimizer
+# Quickstart: Otimizador de compras
 
-## Goal
+## Objetivo
 
-Verify the end-to-end planning flow for receipt ingestion, product normalization,
-shopping optimization, landing-page delivery, and admin visibility using the agreed
-NestJS backend, Flutter mobile app, Vite/React web app, local MongoDB, Redis, and
-Terraform-aware project structure.
+Validar a stack local replanejada com PostgreSQL, Redis, workers de fila,
+autenticacao compartilhada, consultas de catalogo por cidade, listas reutilizaveis,
+jobs de otimizacao e CRUD administrativo.
 
-## Prerequisites
+## Pre-requisitos
 
-- Local MongoDB instance running
-- Local Redis instance running
-- NestJS backend dependencies installed
-- Flutter SDK installed and device or emulator available
-- Web application dependencies installed
-- Feature branch `001-grocery-optimizer` checked out
+- Docker Desktop ou Docker Engine para orquestracao local
+- Dependencias do backend instaladas para execucao fora do Docker
+- Flutter SDK instalado com dispositivo ou emulador disponivel
+- Dependencias do web instaladas para execucao fora do Docker
+- Dependencias instaladas em `backend/`, `web/` e `mobile/`
 
-## Backend Setup
+## Setup com containers
 
-1. Start MongoDB and Redis locally.
-2. Configure backend environment values for local database access, Redis access, and
-   app settings.
-3. Start the NestJS backend in local development mode.
-4. Start the backend worker process for BullMQ-backed jobs if separate from the API
-   process.
-5. Confirm the backend can connect to MongoDB and Redis and exposes the grocery
-   optimization API.
+1. Suba a stack local completa com `docker compose up --build`.
+2. Aguarde PostgreSQL, Redis, backend e web ficarem prontos.
+3. Confirme acesso aos endpoints:
+   - `http://localhost:3000` para a API
+   - `http://localhost:5173` para o web
+4. Use `docker compose down` para parar a stack.
+5. Use `docker compose down -v` quando precisar resetar PostgreSQL e Redis.
 
-## Mobile Setup
+## Setup do backend
 
-1. Configure the Flutter app to point to the local backend environment.
-2. Start the Flutter app on a simulator, emulator, or physical device.
-3. Confirm the app boots to the shopping list flow and can persist local draft data.
+1. Configure ambiente para PostgreSQL, Redis, segredos JWT/sessao e demais ajustes.
+2. Aplique migrations do Prisma ou `db push` e rode o seed minimo com:
+   - um admin
+   - um customer
+   - uma cidade ativa
+   - um catalogo pequeno de ofertas
+3. Inicie a API NestJS localmente se nao estiver usando Docker.
+4. Inicie o worker BullMQ se ele estiver separado da API.
+5. Confirme conectividade com PostgreSQL e Redis e exposicao das rotas publicas e admin.
 
-## Web Setup
+## Setup do mobile
 
-1. Configure the Vite/React app to point to the local backend environment.
-2. Start the web app in development mode.
-3. Confirm the landing page renders responsively on mobile and desktop widths.
-4. Confirm the admin dashboard loads and can retrieve item, price, and list views from
-   the backend.
+1. Configure o aplicativo Flutter para apontar para o backend local.
+2. Entre com uma conta compartilhada.
+3. Confirme carregamento de cidades, listas salvas e ultimo resultado de otimizacao.
 
-## Manual Verification Flow
+## Setup do web
 
-1. Create a new shopping list with at least five grocery items.
-2. Import or enter sample receipt data from at least two supermarkets.
-3. Confirm the receipt ingestion workflow enqueues background processing and surfaces
-   progress or status correctly.
-4. Verify receipt entries are parsed into structured products with prices, quantities,
-   stores, and dates.
-5. Review normalized product matches and confirm unresolved items are clearly flagged.
-6. Run Multi-Market Optimization and verify:
-   - Each resolved item uses the cheapest confirmed store offer
-   - Total estimated cost is shown
-   - Savings versus single-store alternatives are shown
-   - Store breakdown is displayed
-7. Run Local Optimization for a chosen store and verify:
-   - Recommendations are constrained to the selected store
-   - Missing items are surfaced clearly
-   - Total estimated cost is updated accordingly
-8. Run Global Store Optimization and verify:
-   - One best single store is highlighted
-   - Total estimated cost is shown
-   - Savings difference versus multi-market option is explained
-9. Open the admin dashboard and verify:
-   - Price history views load
-   - Item and list visibility is available for administration workflows
-   - Responsive layout remains usable on tablet and mobile widths
-10. Put the mobile app into a limited-connectivity or offline state and verify:
-   - Existing shopping lists remain accessible
-   - Recent optimization results remain viewable
-   - User actions that require sync provide clear feedback rather than silent failure
+1. Configure o web para apontar para o backend local.
+2. Inicie a aplicacao web localmente.
+3. Confirme que o seletor de cidades mostra cidades visiveis com contagem de
+   estabelecimentos ativos.
+4. Confirme que o dashboard admin so abre para contas com permissao administrativa.
 
-## Expected Outcomes
+## Fluxo manual de verificacao
 
-- No fabricated prices or availability appear in any optimization mode
-- Users can understand recommendation trade-offs without technical explanation
-- Optimization outputs remain responsive and consistent across flows
-- Parsing, normalization, queue, and optimization failures are observable and actionable
-- Landing page and admin dashboard remain responsive and mobile ready
+1. Crie uma conta customer e uma conta admin.
+2. Entre com a mesma conta customer no mobile e no web.
+3. Crie uma lista em uma superficie e confirme que ela aparece na outra.
+4. Solicite uma nova otimizacao da lista salva e verifique:
+   - o backend responde rapidamente com estado enfileirado
+   - um processing job e criado
+   - o resultado final pode ser consultado depois
+5. Consulte as cidades visiveis e valide:
+   - cidades `inactive` nao aparecem publicamente
+   - cada cidade visivel retorna quantidade de estabelecimentos ativos
+   - uma cidade visivel com `0` estabelecimentos continua aparecendo
+6. Navegue por ofertas de uma cidade e abra o detalhe do produto. Valide que o payload
+   inclui multiplos precos por estabelecimento quando houver.
+7. Entre como admin no web e valide:
+   - metricas da visao geral carregam
+   - cidades podem ser ativadas e desativadas
+   - estabelecimentos podem ser criados ou desativados
+   - produtos e ofertas podem ser criados ou editados
+8. Force uma falha em um job de otimizacao e valide:
+   - a falha aparece nos logs
+   - o processing job registra o estado de falha
+   - o diagnostico admin consegue expor o problema
+
+## Resultado esperado
+
+- contas compartilhadas funcionam entre mobile e web
+- a otimizacao continua sendo responsabilidade do backend e da fila
+- a selecao publica de cidades respeita regras de implantacao e contagem ativa
+- o detalhe de produto explica de onde veio cada preco
+- o CRUD admin controla catalogo e cidades operacionais
+- logs e estados de job tornam falhas acionaveis
+
+## Registro de validacao
+
+Validado em `2026-04-27` com a stack local atual:
+
+1. `docker compose down -v`
+2. `docker compose up --build -d`
+3. `cd backend && npm run lint && npm run build && npm test -- --runInBand`
+4. `cd web && npm run lint && npm run build && npm test`
+5. `cd mobile && flutter analyze && flutter test && flutter build apk --debug`
+6. Smoke executado com sucesso para:
+   - `POST /auth/register`
+   - `POST /auth/login`
+   - `GET /regions`
+   - `GET /regions/:slug/offers`
+   - `GET /offers/:offerId`
+   - `POST /shopping-lists`
+   - `POST /shopping-lists/:id/items`
+   - `POST /shopping-lists/:id/optimize`
+   - `GET /shopping-lists/:id/optimizations/latest`
+   - `GET /admin/metrics`
+   - `GET /admin/processing-jobs`
+   - `GET /admin/queue-health`
+
+## Observacao
+
+O MVP esta funcional, mas ainda exige revisao final de produto e operacao antes de um
+sign-off definitivo de release.

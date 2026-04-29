@@ -1,57 +1,118 @@
-# Local Development
+# Desenvolvimento local
 
-## Overview
+## Visao geral
 
-The project is organized into three application surfaces:
+O projeto esta dividido em tres superficies principais:
 
-- `backend/` for the NestJS API
-- `mobile/` for the Flutter app
-- `web/` for the Vite + React landing page and admin dashboard
+- `backend/` para a API NestJS
+- `mobile/` para o aplicativo Flutter
+- `web/` para a aplicacao React/Vite
 
-Infrastructure assets live under `infra/terraform/`.
+Os artefatos de infraestrutura ficam em `infra/terraform/`.
 
-## Local Services
+## Servicos locais
 
-The current baseline assumes these local services are available during development:
+A base atual assume estes servicos durante o desenvolvimento local:
 
-- MongoDB on `127.0.0.1:27017`
-- Redis on `127.0.0.1:6379`
+- PostgreSQL em `127.0.0.1:5432`
+- Redis em `127.0.0.1:6379`
 
-These defaults are documented in [backend/.env.example](/E:/Gabriel/Pricely/backend/.env.example)
-and [web/.env.example](/E:/Gabriel/Pricely/web/.env.example).
+Esses valores padrao estao documentados em:
 
-## Backend Setup
+- [backend/.env.example](../backend/.env.example)
+- [web/.env.example](../web/.env.example)
 
-1. Copy `backend/.env.example` to `backend/.env`.
-2. Install dependencies in `backend/`.
-3. Start the NestJS application once the bootstrap entrypoint is added in later tasks.
+## Configuracao do backend
 
-Current default values:
+1. Copie `backend/.env.example` para `backend/.env`.
+2. Instale as dependencias em `backend/`.
+3. Inicie a aplicacao NestJS.
 
-- API port: `3000`
-- MongoDB database: `pricely`
-- Redis port: `6379`
+Valores padrao atuais:
 
-## Web Setup
+- porta da API: `3000`
+- banco PostgreSQL: `pricely`
+- porta do Redis: `6379`
+- segredo JWT: valor local definido em `backend/.env.example`
 
-1. Copy `web/.env.example` to `web/.env`.
-2. Install dependencies in `web/`.
-3. Run the Vite development server.
+## Configuracao com Docker Compose
 
-Current default values:
+O repositorio inclui [docker-compose.yml](../docker-compose.yml) para desenvolvimento
+local. A stack sobe:
 
-- Web dev server: `5173`
-- Backend API base URL: `http://localhost:3000`
+- `postgres` em `localhost:5433`
+- `redis` em `localhost:6380`
+- `backend` em `localhost:3000`
+- `web` em `localhost:5173`
 
-## Mobile Setup
+Para iniciar:
 
-1. Ensure Flutter stable with Dart 3 is installed.
-2. Install Flutter dependencies in `mobile/`.
-3. Run the app on an emulator or device.
+```bash
+docker compose up --build
+```
 
-## Notes
+Para parar:
 
-- Environment values should stay local-first for development unless a task explicitly
-  introduces hosted services.
-- Add new variables to the relevant `.env.example` file as backend and web features are
-  implemented.
+```bash
+docker compose down
+```
+
+Para resetar PostgreSQL e Redis:
+
+```bash
+docker compose down -v
+```
+
+Observacoes:
+
+- O container do backend executa `prisma generate`, `prisma db push --force-reset` e
+  `prisma db seed` antes de iniciar a API em modo de desenvolvimento.
+- A stack de compose e orientada a desenvolvimento local, com volumes montados e banco
+  descartavel quando necessario.
+- A URL de API usada pelo navegador e `http://localhost:3000`.
+- Validacao local de referencia em `2026-04-27`:
+  - `docker compose up --build -d`
+  - backend com `build`, `lint` e testes verdes
+  - web com `build`, `lint` e testes verdes
+  - mobile com `analyze`, `test` e `build apk --debug` verdes
+  - smoke validado para auth, cidades/ofertas publicas, listas, otimizacao e metricas admin
+
+## Configuracao do web
+
+1. Copie `web/.env.example` para `web/.env`.
+2. Instale as dependencias em `web/`.
+3. Inicie o servidor Vite.
+
+Valores padrao atuais:
+
+- servidor web local: `5173`
+- URL base da API: `http://localhost:3000`
+- base de autenticacao: `/auth`
+- base de cidades publicas: `/regions`
+
+## Configuracao do mobile
+
+1. Garanta Flutter stable com Dart 3 instalado.
+2. Instale as dependencias em `mobile/`.
+3. Rode o app em emulador ou dispositivo.
+
+Os valores padrao do mobile ficam centralizados em
+[api_environment.dart](../mobile/lib/core/networking/api_environment.dart):
+
+- URL base da API: `http://10.0.2.2:3000`
+- base de autenticacao: `/auth`
+- base de cidades publicas: `/regions`
+
+Exemplo de override para dispositivo fisico ou host alternativo:
+
+```bash
+flutter run --dart-define=PRICELY_API_BASE_URL=http://192.168.0.10:3000
+```
+
+## Notas
+
+- Os valores de ambiente devem continuar local-first, salvo quando uma task pedir algo
+  hospedado explicitamente.
+- Novas variaveis devem ser refletidas nos respectivos `.env.example`.
+- O Prisma e a fonte de verdade para schema relacional e fluxo de banco em
+  `backend/prisma/`.
