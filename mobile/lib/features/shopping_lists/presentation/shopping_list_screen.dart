@@ -182,11 +182,29 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 controller: _titleController,
                 onChanged: widget.controller.updateTitle,
                 decoration: const InputDecoration(
-                  labelText: 'Nome da lista',
+                  labelText: '1. Nome da lista',
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      '2. Escolha um produto comparavel',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Pesquise o produto base primeiro. A preferencia de marca entra depois, se fizer sentido.',
+                    ),
+                    const SizedBox(height: 16),
               Row(
                 children: <Widget>[
                   Expanded(
@@ -279,6 +297,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () async {
+                    if (_selectedCatalogProductId == null) {
+                      return;
+                    }
+
                     CatalogProductSummary? selectedProduct;
                     for (final product in widget.controller.catalogResults) {
                       if (product.id == _selectedCatalogProductId) {
@@ -323,7 +345,14 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       _brandPreferenceMode = 'any';
                     });
                   },
-                  child: const Text('Adicionar item'),
+                  child: Text(
+                    _selectedCatalogProductId == null
+                        ? 'Escolha um produto base para adicionar'
+                        : 'Adicionar item',
+                  ),
+                ),
+              ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -332,7 +361,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   child: Padding(
                     padding: EdgeInsets.all(16),
                     child: Text(
-                      'Monte sua lista aqui. Ela sera salva no backend e pode ser otimizada depois quantas vezes voce quiser.',
+                      '3. Revise os itens adicionados. A lista sera salva no backend e pode ser reutilizada antes ou depois da otimizacao.',
                     ),
                   ),
                 )
@@ -624,4 +653,3 @@ class _UnauthenticatedView extends StatelessWidget {
     );
   }
 }
-

@@ -82,7 +82,8 @@ describe('Admin dashboard pages', () => {
 
     expect(await screen.findByText('Saude das filas')).toBeTruthy();
     expect(screen.getByText('Cobertura da operacao')).toBeTruthy();
-    expect(screen.getByText('Leituras rapidas')).toBeTruthy();
+    expect(screen.getByText('Sinais do dia')).toBeTruthy();
+    expect(screen.getByText('Painel comparativo')).toBeTruthy();
   });
 
   it('shows an empty-state message when all overview metrics are zero', async () => {

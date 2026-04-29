@@ -78,6 +78,10 @@ describe('ListEditorPage', () => {
       </MemoryRouter>,
     );
 
+    expect(screen.getByText('1. Defina o contexto da compra')).toBeTruthy();
+    expect(screen.getByText('2. Adicione itens reais da sua compra')).toBeTruthy();
+    expect(screen.getByText('3. Salve agora ou otimize depois')).toBeTruthy();
+
     fireEvent.change(screen.getByLabelText('Nome da lista'), {
       target: { value: 'Compra mensal' },
     });
@@ -96,6 +100,10 @@ describe('ListEditorPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Configurar marca' })).toBeTruthy(),
     );
+
+    expect(
+      (screen.getByRole('button', { name: 'Adicionar item' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
 
     fireEvent.click(screen.getByRole('button', { name: 'Configurar marca' }));
     fireEvent.change(screen.getByDisplayValue('Qualquer marca'), {

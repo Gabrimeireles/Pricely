@@ -173,8 +173,8 @@ class _HomeTab extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       user == null
-                          ? 'Veja ofertas por cidade, monte sua lista e sincronize tudo na mesma conta.'
-                          : 'Sua conta e a mesma no web e no mobile. Ajuste a cidade e acompanhe as melhores ofertas do dia.',
+                          ? 'Escolha a cidade ativa, veja ofertas do dia e monte sua lista com a mesma conta do web.'
+                          : 'Sua conta e a mesma no web e no mobile. Ajuste a cidade, monte a lista e acompanhe as melhores ofertas do dia.',
                       style: theme.textTheme.bodyMedium,
                     ),
                   ],
@@ -262,7 +262,7 @@ class _HomeTab extends StatelessWidget {
                         (entry) => DropdownMenuItem<String>(
                           value: entry.slug,
                           child: Text(
-                              '${entry.name} - ${entry.activeEstablishmentCount}'),
+                              '${entry.name} - ${entry.activeEstablishmentCount} estabelecimentos'),
                         ),
                       )
                       .toList(),
@@ -297,12 +297,12 @@ class _HomeTab extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _ActionCard(
-                  title: 'Resultado',
-                  description: 'Veja Local, Global unico e Global completo.',
-                  icon: Icons.auto_graph_outlined,
-                  onTap: onOpenResults,
-                ),
+                    child: _ActionCard(
+                      title: 'Resultado',
+                      description: 'Compare deslocamento, cobertura e menor total antes de comprar.',
+                      icon: Icons.auto_graph_outlined,
+                      onTap: onOpenResults,
+                    ),
               ),
             ],
           ),
@@ -406,6 +406,10 @@ class _HomeTab extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(detail.category),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Use este detalhe para comparar loja principal, alternativas e embalagem.',
+                  ),
                   const SizedBox(height: 16),
                   _OfferDetailRow(
                     title: 'Melhor oferta agora',
@@ -703,7 +707,7 @@ class _OptimizationTab extends StatelessWidget {
         Text('Resultados', style: theme.textTheme.headlineMedium),
         const SizedBox(height: 8),
         const Text(
-          'Compare os modos Local, Global único e Global completo usando a mesma lista salva.',
+          'Compare os modos Local, Global unico e Global completo usando a mesma lista salva.',
         ),
         const SizedBox(height: 18),
         Container(
@@ -716,6 +720,24 @@ class _OptimizationTab extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text('Modo ativo', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F4F2),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('Local: menos deslocamento.'),
+                    SizedBox(height: 6),
+                    Text('Global unico: melhor loja unica.'),
+                    SizedBox(height: 6),
+                    Text('Global completo: menor total, mesmo dividindo a compra.'),
+                  ],
+                ),
+              ),
               const SizedBox(height: 12),
               SegmentedButton<String>(
                 segments: const <ButtonSegment<String>>[
@@ -1107,6 +1129,8 @@ class _OfferDetailRow extends StatelessWidget {
           Text(offer.displayName),
           const SizedBox(height: 4),
           Text('${offer.storeName} · ${offer.neighborhood}'),
+          const SizedBox(height: 4),
+          Text('${offer.packageLabel} · ${offer.sourceLabel}'),
           const SizedBox(height: 8),
           Text(_formatCurrency(offer.priceAmount)),
         ],
