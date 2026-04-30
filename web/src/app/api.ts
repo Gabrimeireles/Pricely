@@ -9,6 +9,7 @@ type AuthSessionResponse = {
     email: string;
     displayName: string;
     role: 'customer' | 'admin';
+    preferredRegionSlug: string | null;
     profileStats: {
       totalEstimatedSavings: number;
       shoppingListsCount: number;
@@ -326,7 +327,12 @@ async function apiFetch<T>(
   token?: string | null,
 ): Promise<T> {
   const headers = new Headers(init.headers);
-  headers.set('Content-Type', 'application/json');
+  const isFormDataBody =
+    typeof FormData !== 'undefined' && init.body instanceof FormData;
+
+  if (!isFormDataBody) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
@@ -365,6 +371,17 @@ export async function signUp(
 
 export async function fetchMe(token: string) {
   return apiFetch<AuthSessionResponse['user']>('/auth/me', {}, token);
+}
+
+export async function updatePreferredRegion(token: string, regionSlug: string) {
+  return apiFetch<AuthSessionResponse['user']>(
+    '/auth/preferred-region',
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ regionSlug }),
+    },
+    token,
+  );
 }
 
 export async function fetchPublicRegions() {
@@ -608,6 +625,23 @@ export async function updateAdminProduct(
   );
 }
 
+export async function uploadAdminProductImage(
+  token: string,
+  id: string,
+  file: File,
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiFetch<AdminProductResponse>(
+    `/admin/catalog-products/${id}/image`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+    token,
+  );
+}
+
 export async function fetchAdminProductVariants(token: string) {
   return apiFetch<AdminProductVariantResponse[]>('/admin/product-variants', {}, token);
 }
@@ -636,6 +670,23 @@ export async function updateAdminProductVariant(
     {
       method: 'PATCH',
       body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function uploadAdminProductVariantImage(
+  token: string,
+  id: string,
+  file: File,
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiFetch<AdminProductVariantResponse>(
+    `/admin/product-variants/${id}/image`,
+    {
+      method: 'POST',
+      body: formData,
     },
     token,
   );
@@ -684,7 +735,7 @@ export function mapShoppingList(apiList: ShoppingListApiResponse): ShoppingList 
   return {
     id: apiList.id,
     name: apiList.name,
-    cityId: apiList.preferredRegionId ?? 'sao-paulo-sp',
+    cityId: apiList.preferredRegionId ?? '',
     lastMode: apiList.lastMode,
     updatedAt: apiList.updatedAt,
     expectedSavings: 0,

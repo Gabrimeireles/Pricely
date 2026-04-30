@@ -35,6 +35,7 @@ type StoredUser = {
   displayName: string;
   role: 'customer' | 'admin';
   status: 'active' | 'suspended';
+  preferredRegionId: string | null;
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -332,7 +333,7 @@ class PrismaUserAccountMock {
     }) => this.create(args),
     update: async (args: {
       where: { id: string };
-      data: Partial<Pick<StoredUser, 'lastLoginAt'>>;
+      data: Partial<Pick<StoredUser, 'lastLoginAt' | 'preferredRegionId'>>;
     }) => this.update(args),
     count: async ({ where }: { where?: { status?: string } }) =>
       [...this.users.values()].filter(
@@ -369,6 +370,7 @@ class PrismaUserAccountMock {
       displayName: args.data.displayName,
       role: args.data.role,
       status: args.data.status,
+      preferredRegionId: null,
       lastLoginAt: null,
       createdAt: now,
       updatedAt: now,
@@ -380,7 +382,7 @@ class PrismaUserAccountMock {
 
   private async update(args: {
     where: { id: string };
-    data: Partial<Pick<StoredUser, 'lastLoginAt'>>;
+    data: Partial<Pick<StoredUser, 'lastLoginAt' | 'preferredRegionId'>>;
   }): Promise<StoredUser> {
     const existing = this.users.get(args.where.id);
 
@@ -403,11 +405,26 @@ class PrismaUserAccountMock {
   }
 
   readonly region = {
-    findUnique: async ({ where }: { where: { id?: string; slug?: string } }) => {
+    findUnique: async ({
+      where,
+      select,
+    }: {
+      where: { id?: string; slug?: string };
+      select?: { id?: boolean; slug?: boolean };
+    }) => {
       const region =
         this.regions.find((entry) => entry.id === where.id || entry.slug === where.slug) ??
         null;
-      return region ? structuredClone(region) : null;
+      if (!region) {
+        return null;
+      }
+      if (select) {
+        return {
+          ...(select.id ? { id: region.id } : {}),
+          ...(select.slug ? { slug: region.slug } : {}),
+        };
+      }
+      return structuredClone(region);
     },
     findFirst: async () => structuredClone(this.regions[0]),
     count: async ({ where }: { where?: { implantationStatus?: string } }) =>
@@ -509,6 +526,14 @@ class PrismaUserAccountMock {
           ).length,
         },
       })),
+    findUnique: async ({ where }: { where: { id: string } }) => {
+      const product = this.catalogProducts.find((entry) => entry.id === where.id);
+      if (!product) {
+        return null;
+      }
+
+      return structuredClone(product);
+    },
     create: async ({ data }: { data: any }) => {
       const product = { id: crypto.randomUUID(), isActive: true, ...data };
       this.catalogProducts.push(product);
@@ -532,6 +557,10 @@ class PrismaUserAccountMock {
           this.catalogProducts.find((product) => product.id === entry.catalogProductId),
         ),
       })),
+    findUnique: async ({ where }: { where: { id: string } }) => {
+      const variant = this.productVariants.find((entry) => entry.id === where.id);
+      return variant ? structuredClone(variant) : null;
+    },
     create: async ({ data }: { data: any }) => {
       const variant = { id: crypto.randomUUID(), isActive: true, ...data };
       this.productVariants.push(variant);
@@ -839,7 +868,9 @@ export async function createUs1TestApp(): Promise<{
     optimizationQueue: QueueStub;
   };
   auth: {
-    registerCustomer: (email?: string) => Promise<{ accessToken: string }>;
+    registerCustomer: (
+      email?: string,
+    ) => Promise<{ accessToken: string; user: Record<string, unknown> }>;
   };
 }> {
   process.env.JWT_ACCESS_SECRET = 'test-jwt-secret';
@@ -958,6 +989,7 @@ export async function createUs1TestApp(): Promise<{
 
         return {
           accessToken: response.body.accessToken as string,
+          user: response.body.user as Record<string, unknown>,
         };
       },
     },

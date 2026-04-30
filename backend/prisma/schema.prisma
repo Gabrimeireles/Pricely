@@ -122,12 +122,14 @@ model UserAccount {
   displayName      String
   role             UserRole          @default(customer)
   status           UserStatus        @default(active)
+  preferredRegionId String?          @db.Uuid
   lastLoginAt      DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   shoppingLists    ShoppingList[]
   optimizationRuns OptimizationRun[]
   receiptRecords   ReceiptRecord[]
+  preferredRegion  Region?           @relation("UserPreferredRegion", fields: [preferredRegionId], references: [id], onDelete: SetNull)
 }
 
 model Region {
@@ -143,6 +145,7 @@ model Region {
   establishments  Establishment[]
   shoppingLists   ShoppingList[]
   optimizationRuns OptimizationRun[]
+  preferredByUsers UserAccount[]     @relation("UserPreferredRegion")
 }
 
 model Establishment {

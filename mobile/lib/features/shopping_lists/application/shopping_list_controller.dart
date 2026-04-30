@@ -198,12 +198,6 @@ class ShoppingListController extends ChangeNotifier {
   }
 
   Future<void> searchCatalog(String query) async {
-    if (query.trim().length < 2) {
-      _catalogResults = <CatalogProductSummary>[];
-      notifyListeners();
-      return;
-    }
-
     _catalogResults = await _backendGateway.searchCatalogProducts(query.trim());
     notifyListeners();
   }

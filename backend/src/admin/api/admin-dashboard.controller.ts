@@ -5,14 +5,23 @@ import {
   Param,
   Patch,
   Post,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { IsBoolean, IsIn, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
 import { RolesGuard } from '../../common/auth/roles.guard';
 import { AdminDashboardService } from '../application/admin-dashboard.service';
+
+type UploadedMediaFile = {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+};
 
 class CreateRegionDto {
   @IsString()
@@ -361,6 +370,15 @@ export class AdminDashboardController {
     return this.adminDashboardService.updateProduct(id, body);
   }
 
+  @Post('catalog-products/:id/image')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadCatalogProductImage(
+    @Param('id') id: string,
+    @UploadedFile() file: UploadedMediaFile,
+  ) {
+    return this.adminDashboardService.uploadCatalogProductImage(id, file);
+  }
+
   @Get('product-variants')
   async listProductVariants() {
     return this.adminDashboardService.listProductVariants();
@@ -377,6 +395,15 @@ export class AdminDashboardController {
     @Body() body: UpdateProductVariantDto,
   ) {
     return this.adminDashboardService.updateProductVariant(id, body);
+  }
+
+  @Post('product-variants/:id/image')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadProductVariantImage(
+    @Param('id') id: string,
+    @UploadedFile() file: UploadedMediaFile,
+  ) {
+    return this.adminDashboardService.uploadProductVariantImage(id, file);
   }
 
   @Get('offers')

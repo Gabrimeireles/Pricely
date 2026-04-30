@@ -25,6 +25,7 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
+backend/uploads/
 
 # Flutter / Dart
 .dart_tool/

@@ -108,6 +108,18 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updatePreferredRegion(String regionSlug) async {
+    if (_accessToken == null) {
+      return;
+    }
+
+    _currentUser = await _backendGateway.updatePreferredRegion(
+      accessToken: _accessToken!,
+      regionSlug: regionSlug,
+    );
+    notifyListeners();
+  }
+
   Future<void> signOut() async {
     _accessToken = null;
     _currentUser = null;

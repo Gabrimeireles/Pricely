@@ -40,9 +40,6 @@ class MarketDiscoveryController extends ChangeNotifier {
 
     try {
       _regions = await _backendGateway.fetchPublicRegions();
-      if (_regions.isNotEmpty) {
-        _selectedRegionSlug ??= _regions.first.slug;
-      }
 
       await _loadOffersForSelectedRegion();
     } catch (_) {
@@ -76,7 +73,20 @@ class MarketDiscoveryController extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    await loadInitialData();
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _regions = await _backendGateway.fetchPublicRegions();
+      await _loadOffersForSelectedRegion();
+    } catch (_) {
+      _errorMessage = 'Nao foi possivel carregar regioes e ofertas agora.';
+      _offers = <PublicOfferSummary>[];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<PublicOfferDetail> fetchOfferDetail(String offerId) {

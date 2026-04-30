@@ -262,6 +262,29 @@ Stitch direction while preserving the validated backend behavior.
 
 ---
 
+## Phase 10: Preferred City Persistence and Cross-Surface QoL
+
+**Purpose**: Persist the shopper's chosen city on the shared account, force city
+selection after login, improve list-creation clarity, and harden admin catalog UX
+for media, activation state, and theme visibility.
+
+### Tests for Preferred City and QoL
+
+- [X] T090 [P] Add backend unit, integration, and contract tests for persisted user city preference, city-update APIs, and product media upload in `backend/test/unit/users/`, `backend/test/integration/auth/`, `backend/test/integration/catalog/`, and `backend/test/contract/`
+- [X] T091 [P] Add web tests for post-login city-selection modal, landing copy changes, richer `/listas` account cards, save-vs-optimize actions, and live product-row filtering in `web/src/public/` and `web/src/dashboard/`
+- [X] T092 [P] Add mobile tests for required city onboarding after login, persisted city changes, and richer list-creation product picking in `mobile/test/widget/features/auth/`, `mobile/test/widget/features/regions/`, and `mobile/test/widget/features/shopping_lists/`
+
+### Implementation for Preferred City and QoL
+
+- [X] T093 [P] Persist preferred city on the shared user account, expose read/update APIs, and synchronize auth/profile contracts in `backend/prisma/schema.prisma`, `backend/src/users/`, `backend/src/auth/`, `backend/src/common/contracts/`, and related DTOs/controllers
+- [X] T094 [P] Implement backend product media upload/storage and admin-friendly activation metadata for products and variants in `backend/src/catalog/`, `backend/src/admin/`, `backend/src/common/`, and local media storage wiring
+- [X] T095 [P] Refactor the web public journey so authenticated users must choose a city when none is stored, landing copy highlights concrete value, `/listas` exposes account stats in cards, list creation uses richer card/table rows with live filtering, and users can choose between save-only or save-and-optimize in `web/src/public/`, `web/src/app/`, and `web/src/routes/`
+- [X] T096 [P] Refactor the web admin dashboard to use PT-BR labels for technical fields, add upload-driven product imagery, move variant activation into a dedicated visible active column, and add dark/light mode switching with stronger field contrast in `web/src/dashboard/`, `web/src/components/`, `web/src/app/`, and `web/src/index.css`
+- [X] T097 [P] Refactor the mobile auth/home/list flows so a logged-in user without a saved city lands on a dedicated city-selection screen, city changes persist to the backend, and list creation follows the richer comparable-product picker in `mobile/lib/features/auth/`, `mobile/lib/features/home/`, `mobile/lib/features/regions/`, and `mobile/lib/features/shopping_lists/`
+- [X] T098 [P] Run final cross-surface validation for preferred-city persistence, product media upload, web/mobile list creation, dashboard theme switching, and Docker-backed boot flows in `backend/test/`, `web/src/`, `mobile/test/`, `docs/local-development.md`, and smoke scripts
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

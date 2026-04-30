@@ -18,16 +18,33 @@ import 'package:pricely_mobile/features/shopping_lists/application/shopping_list
 import '../../../support/in_memory_key_value_store.dart';
 
 void main() {
+  testWidgets('forces city selection for authenticated users without a saved city', (
+    tester,
+  ) async {
+    final app = await _buildApp(
+      preselectedRegionSlug: null,
+      bootstrapToken: 'token-123',
+      preferredRegionSlug: null,
+    );
+
+    await tester.pumpWidget(app.widget);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Escolha sua cidade'), findsWidgets);
+    expect(find.textContaining('precisamos salvar sua cidade'), findsOneWidget);
+    expect(find.textContaining('Campinas · SP'), findsOneWidget);
+  });
+
   testWidgets('shows zero-store messaging for collecting regions', (
     tester,
   ) async {
-    final app = await _buildApp(preselectedRegionSlug: null);
+    final app = await _buildApp(preselectedRegionSlug: 'campinas-sp');
 
     await tester.pumpWidget(app.widget);
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('Ainda'),
+      find.textContaining('Ainda nao temos estabelecimentos ativos'),
       findsOneWidget,
     );
     expect(
@@ -55,10 +72,33 @@ void main() {
 
 Future<_MobileHomeHarness> _buildApp({
   required String? preselectedRegionSlug,
+  String? bootstrapToken,
+  String? preferredRegionSlug,
 }) async {
   final backendGateway = PricelyBackendGateway(
     HttpApiClient(
       client: MockClient((request) async {
+        if (request.url.path == '/auth/me') {
+          return http.Response(
+            jsonEncode(<String, dynamic>{
+              'id': 'user-1',
+              'email': 'cliente@pricely.app',
+              'displayName': 'Cliente Pricely',
+              'role': 'customer',
+              'preferredRegionSlug': preferredRegionSlug,
+              'profileStats': <String, dynamic>{
+                'shoppingListsCount': 2,
+                'totalEstimatedSavings': 18.9,
+                'completedOptimizationRuns': 1,
+                'contributionsCount': 0,
+                'receiptSubmissionsCount': 0,
+                'offerReportsCount': 0,
+              },
+            }),
+            200,
+          );
+        }
+
         if (request.url.path == '/regions') {
           return http.Response(
             jsonEncode(<dynamic>[
@@ -159,6 +199,9 @@ Future<_MobileHomeHarness> _buildApp({
   );
 
   final cacheService = LocalCacheService(InMemoryKeyValueStore());
+  if (bootstrapToken != null) {
+    await cacheService.saveAuthToken(bootstrapToken);
+  }
   final authController = AuthController(
     cacheService: cacheService,
     backendGateway: backendGateway,

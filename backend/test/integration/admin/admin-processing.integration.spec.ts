@@ -17,6 +17,7 @@ class AdminProcessingPrismaMock {
     displayName: 'Admin',
     role: 'admin',
     status: 'active',
+    preferredRegionId: null,
     lastLoginAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -50,6 +51,7 @@ class AdminProcessingPrismaMock {
       displayName: 'Admin',
       role: 'admin',
       status: 'active',
+      preferredRegionId: null,
       lastLoginAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -58,9 +60,19 @@ class AdminProcessingPrismaMock {
   };
 
   readonly shoppingList = { count: async () => 2 };
-  readonly optimizationRun = { count: async () => 3 };
+  readonly optimizationRun = {
+    count: async () => 3,
+    aggregate: async () => ({
+      _sum: {
+        estimatedSavings: 0,
+      },
+    }),
+  };
   readonly receiptRecord = { count: async () => 0 };
-  readonly region = { count: async () => 1 };
+  readonly region = {
+    count: async () => 1,
+    findUnique: async () => null,
+  };
   readonly establishment = { count: async () => 1 };
   readonly catalogProduct = { count: async () => 1 };
   readonly productOffer = { count: async () => 2 };

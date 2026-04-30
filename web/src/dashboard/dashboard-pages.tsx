@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+﻿import { useEffect, useState, type FormEvent } from 'react';
 
 import {
   type AdminEstablishmentResponse,
@@ -26,14 +26,18 @@ import {
   updateAdminProduct,
   updateAdminProductVariant,
   updateAdminRegion,
+  uploadAdminProductImage,
+  uploadAdminProductVariantImage,
 } from '@/app/api';
 import { formatCurrency, formatFreshnessLabel } from '@/app/format';
+import { resolveProductImage } from '@/app/media';
 import { usePricely } from '@/app/pricely-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 function useAdminData<T>(loader: (token: string) => Promise<T>, initialValue: T) {
@@ -489,12 +493,13 @@ export function AdminCatalogPage() {
   const { accessToken } = usePricely();
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
+  const [productImageFile, setProductImageFile] = useState<File | null>(null);
+  const [variantImageFile, setVariantImageFile] = useState<File | null>(null);
   const [form, setForm] = useState({
     slug: '',
     name: '',
     category: '',
     defaultUnit: '',
-    imageUrl: '',
     alias: '',
   });
   const [variantForm, setVariantForm] = useState({
@@ -504,7 +509,6 @@ export function AdminCatalogPage() {
     brandName: '',
     variantLabel: '',
     packageLabel: '',
-    imageUrl: '',
   });
 
   const handleCreate = async (event: FormEvent) => {
@@ -513,12 +517,15 @@ export function AdminCatalogPage() {
       return;
     }
 
-    if (editingProductId) {
-      await updateAdminProduct(accessToken, editingProductId, form);
-    } else {
-      await createAdminProduct(accessToken, form);
+    const savedProduct = editingProductId
+      ? await updateAdminProduct(accessToken, editingProductId, form)
+      : await createAdminProduct(accessToken, form);
+
+    if (productImageFile) {
+      await uploadAdminProductImage(accessToken, savedProduct.id, productImageFile);
     }
-    setForm({ slug: '', name: '', category: '', defaultUnit: '', imageUrl: '', alias: '' });
+    setForm({ slug: '', name: '', category: '', defaultUnit: '', alias: '' });
+    setProductImageFile(null);
     setEditingProductId(null);
     await reload();
   };
@@ -529,10 +536,12 @@ export function AdminCatalogPage() {
       return;
     }
 
-    if (editingVariantId) {
-      await updateAdminProductVariant(accessToken, editingVariantId, variantForm);
-    } else {
-      await createAdminProductVariant(accessToken, variantForm);
+    const savedVariant = editingVariantId
+      ? await updateAdminProductVariant(accessToken, editingVariantId, variantForm)
+      : await createAdminProductVariant(accessToken, variantForm);
+
+    if (variantImageFile) {
+      await uploadAdminProductVariantImage(accessToken, savedVariant.id, variantImageFile);
     }
     setVariantForm({
       catalogProductId: '',
@@ -541,8 +550,8 @@ export function AdminCatalogPage() {
       brandName: '',
       variantLabel: '',
       packageLabel: '',
-      imageUrl: '',
     });
+    setVariantImageFile(null);
     setEditingVariantId(null);
     await reloadVariants();
     await reload();
@@ -557,12 +566,12 @@ export function AdminCatalogPage() {
           </CardHeader>
           <CardContent>
             <form className="grid gap-3" onSubmit={handleCreate}>
-              <Input placeholder="slug" value={form.slug} onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))} />
-              <Input placeholder="nome" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
-              <Input placeholder="categoria" value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} />
-              <Input placeholder="unidade padrao" value={form.defaultUnit} onChange={(event) => setForm((current) => ({ ...current, defaultUnit: event.target.value }))} />
-              <Input placeholder="imagem do produto" value={form.imageUrl} onChange={(event) => setForm((current) => ({ ...current, imageUrl: event.target.value }))} />
-              <Input placeholder="alias inicial" value={form.alias} onChange={(event) => setForm((current) => ({ ...current, alias: event.target.value }))} />
+              <Input placeholder="Identificador da URL" value={form.slug} onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))} />
+              <Input placeholder="Nome do produto" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
+              <Input placeholder="Categoria" value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} />
+              <Input placeholder="Unidade padrão" value={form.defaultUnit} onChange={(event) => setForm((current) => ({ ...current, defaultUnit: event.target.value }))} />
+              <Input placeholder="Alias inicial" value={form.alias} onChange={(event) => setForm((current) => ({ ...current, alias: event.target.value }))} />
+              <Input accept="image/png,image/jpeg,image/webp" onChange={(event) => setProductImageFile(event.target.files?.[0] ?? null)} type="file" />
               <Button type="submit">{editingProductId ? 'Salvar produto' : 'Criar produto'}</Button>
             </form>
           </CardContent>
@@ -587,12 +596,12 @@ export function AdminCatalogPage() {
                   </option>
                 ))}
               </select>
-              <Input placeholder="slug da variante" value={variantForm.slug} onChange={(event) => setVariantForm((current) => ({ ...current, slug: event.target.value }))} />
-              <Input placeholder="nome exibido" value={variantForm.displayName} onChange={(event) => setVariantForm((current) => ({ ...current, displayName: event.target.value }))} />
-              <Input placeholder="marca" value={variantForm.brandName} onChange={(event) => setVariantForm((current) => ({ ...current, brandName: event.target.value }))} />
-              <Input placeholder="linha ou tipo" value={variantForm.variantLabel} onChange={(event) => setVariantForm((current) => ({ ...current, variantLabel: event.target.value }))} />
-              <Input placeholder="embalagem" value={variantForm.packageLabel} onChange={(event) => setVariantForm((current) => ({ ...current, packageLabel: event.target.value }))} />
-              <Input placeholder="imagem da variante" value={variantForm.imageUrl} onChange={(event) => setVariantForm((current) => ({ ...current, imageUrl: event.target.value }))} />
+              <Input placeholder="Identificador da URL da variante" value={variantForm.slug} onChange={(event) => setVariantForm((current) => ({ ...current, slug: event.target.value }))} />
+              <Input placeholder="Nome exibido" value={variantForm.displayName} onChange={(event) => setVariantForm((current) => ({ ...current, displayName: event.target.value }))} />
+              <Input placeholder="Marca" value={variantForm.brandName} onChange={(event) => setVariantForm((current) => ({ ...current, brandName: event.target.value }))} />
+              <Input placeholder="Linha ou tipo" value={variantForm.variantLabel} onChange={(event) => setVariantForm((current) => ({ ...current, variantLabel: event.target.value }))} />
+              <Input placeholder="Embalagem" value={variantForm.packageLabel} onChange={(event) => setVariantForm((current) => ({ ...current, packageLabel: event.target.value }))} />
+              <Input accept="image/png,image/jpeg,image/webp" onChange={(event) => setVariantImageFile(event.target.files?.[0] ?? null)} type="file" />
               <Button type="submit" variant="outline">{editingVariantId ? 'Salvar variante' : 'Criar variante'}</Button>
             </form>
           </CardContent>
@@ -623,11 +632,12 @@ export function AdminCatalogPage() {
                         <img
                           alt={product.name}
                           className="mb-3 h-24 w-24 rounded-lg border border-border/70 object-cover"
-                          src={previewImage}
+                          src={resolveProductImage(previewImage)}
                         />
                       ) : null}
                       <div className="font-medium">{product.name}</div>
                       <div className="text-sm text-muted-foreground">{product.category} - {product.defaultUnit ?? 'sem unidade padrao'}</div>
+                      <div className="text-xs text-muted-foreground">URL pública: {product.slug}</div>
                     </div>
                     <Badge variant="secondary">{product._count.productOffers} ofertas</Badge>
                   </div>
@@ -642,9 +652,9 @@ export function AdminCatalogPage() {
                           name: product.name,
                           category: product.category,
                           defaultUnit: product.defaultUnit ?? '',
-                          imageUrl: product.imageUrl ?? '',
                           alias: '',
                         });
+                        setProductImageFile(null);
                       }}
                     >
                       Editar produto
@@ -670,47 +680,59 @@ export function AdminCatalogPage() {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {productVariants.map((variant) => (
-                      <button
-                        key={variant.id}
-                        className="rounded-md border border-border bg-muted px-2 py-1 text-sm"
-                        type="button"
-                        onClick={() => {
-                          setEditingVariantId(variant.id);
-                          setVariantForm({
-                            catalogProductId: variant.catalogProductId,
-                            slug: variant.slug ?? '',
-                            displayName: variant.displayName,
-                            brandName: variant.brandName ?? '',
-                            variantLabel: variant.variantLabel ?? '',
-                            packageLabel: variant.packageLabel ?? '',
-                            imageUrl: variant.imageUrl ?? '',
-                          });
-                        }}
-                      >
-                        {variant.brandName ? `${variant.brandName} - ` : ''}{variant.displayName}
-                      </button>
+                      <div key={variant.id} className="min-w-[280px] rounded-lg border border-border/70 bg-muted/20 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <img
+                              alt={variant.displayName}
+                              className="h-12 w-12 rounded-lg border border-border/70 object-cover"
+                              src={resolveProductImage(variant.imageUrl)}
+                            />
+                            <div className="grid gap-1">
+                              <div className="text-sm font-medium">
+                                {variant.brandName ? `${variant.brandName} - ` : ''}{variant.displayName}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {variant.packageLabel ?? 'Sem embalagem'} · URL pública: {variant.slug ?? 'não definida'}
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingVariantId(variant.id);
+                              setVariantForm({
+                                catalogProductId: variant.catalogProductId,
+                                slug: variant.slug ?? '',
+                                displayName: variant.displayName,
+                                brandName: variant.brandName ?? '',
+                                variantLabel: variant.variantLabel ?? '',
+                                packageLabel: variant.packageLabel ?? '',
+                              });
+                              setVariantImageFile(null);
+                            }}
+                          >
+                            Editar
+                          </Button>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2">
+                          <span className="text-sm font-medium">Ativo</span>
+                          <Switch
+                            checked={variant.isActive}
+                            onCheckedChange={async (checked) => {
+                              if (!accessToken) {
+                                return;
+                              }
+                              await updateAdminProductVariant(accessToken, variant.id, { isActive: checked });
+                              await reloadVariants();
+                            }}
+                          />
+                        </div>
+                      </div>
                     ))}
                   </div>
-                  {productVariants.length > 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {productVariants.map((variant) => (
-                        <Button
-                          key={`${variant.id}-toggle`}
-                          size="sm"
-                          variant="ghost"
-                          onClick={async () => {
-                            if (!accessToken) {
-                              return;
-                            }
-                            await updateAdminProductVariant(accessToken, variant.id, { isActive: !variant.isActive });
-                            await reloadVariants();
-                          }}
-                        >
-                          {variant.isActive ? `Desativar ${variant.displayName}` : `Ativar ${variant.displayName}`}
-                        </Button>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
               );
             })
@@ -767,7 +789,7 @@ export function AdminRegionsPage() {
             </Alert>
           ) : null}
           <form className="grid gap-3" onSubmit={handleCreate}>
-            <Input placeholder="slug" value={form.slug} onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))} />
+            <Input placeholder="Identificador da URL" value={form.slug} onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))} />
             <Input placeholder="nome da cidade" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
             <Input placeholder="UF" value={form.stateCode} onChange={(event) => setForm((current) => ({ ...current, stateCode: event.target.value }))} />
             <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={form.implantationStatus} onChange={(event) => setForm((current) => ({ ...current, implantationStatus: event.target.value }))}>
@@ -799,11 +821,11 @@ export function AdminRegionsPage() {
                 <div>
                   <div className="font-medium">{region.name} · {region.stateCode}</div>
                   <div className="text-sm text-muted-foreground">
-                    {region.slug} · {region.establishmentsCount} estabelecimentos ativos
+                    URL pública: {region.slug} · {region.establishmentsCount} estabelecimentos ativos
                   </div>
                 </div>
                 <Badge variant={region.implantationStatus === 'active' ? 'secondary' : 'outline'}>
-                  {region.implantationStatus === 'active' ? 'ativa' : region.implantationStatus === 'activating' ? 'em ativacao' : 'inativa'}
+                  {region.implantationStatus === 'active' ? 'ativa' : region.implantationStatus === 'activating' ? 'em ativa?o' : 'inativa'}
                 </Badge>
               </div>
               <div className="mt-3">
@@ -1063,3 +1085,5 @@ export function AdminQueuePage() {
     </div>
   );
 }
+
+

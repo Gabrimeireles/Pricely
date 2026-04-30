@@ -14,7 +14,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Minha lista'), findsOneWidget);
+    expect(find.text('Precos com contexto real'), findsOneWidget);
   });
 }
 

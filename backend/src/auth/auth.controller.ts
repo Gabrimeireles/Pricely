@@ -4,12 +4,14 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdatePreferredRegionDto } from './dto/update-preferred-region.dto';
 import { CurrentUser } from '../common/auth/current-user.decorator';
 import { JwtAuthGuard } from '../common/auth/jwt-auth.guard';
 import { type JwtUserPayload } from './auth.types';
@@ -33,5 +35,14 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUser() user: JwtUserPayload) {
     return this.authService.getCurrentUser(user.sub);
+  }
+
+  @Patch('preferred-region')
+  @UseGuards(JwtAuthGuard)
+  async updatePreferredRegion(
+    @CurrentUser() user: JwtUserPayload,
+    @Body() body: UpdatePreferredRegionDto,
+  ) {
+    return this.authService.updatePreferredRegion(user.sub, body.regionSlug);
   }
 }

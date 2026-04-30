@@ -46,6 +46,18 @@ class PricelyBackendGateway {
     return AuthUser.fromJson(response);
   }
 
+  Future<AuthUser> updatePreferredRegion({
+    required String accessToken,
+    required String regionSlug,
+  }) async {
+    final response = await _apiClient.patch<Map<String, dynamic>>(
+      '/auth/preferred-region',
+      accessToken: accessToken,
+      body: <String, dynamic>{'regionSlug': regionSlug},
+    );
+    return AuthUser.fromJson(response);
+  }
+
   Future<List<PublicRegionSummary>> fetchPublicRegions() async {
     final response = await _apiClient.get<List<dynamic>>('/regions');
     return response
@@ -226,7 +238,7 @@ class PricelyBackendGateway {
     return ShoppingListDraft(
       id: json['id'] as String,
       title: json['name'] as String? ?? 'Minha lista',
-      regionId: json['preferredRegionId'] as String? ?? 'sao-paulo-sp',
+      regionId: json['preferredRegionId'] as String? ?? '',
       lastMode: json['lastMode'] as String? ?? 'global_full',
       items: items
           .map(
@@ -412,6 +424,7 @@ class AuthUser {
     required this.receiptSubmissionsCount,
     required this.offerReportsCount,
     required this.totalEstimatedSavings,
+    required this.preferredRegionSlug,
   });
 
   final String id;
@@ -424,6 +437,7 @@ class AuthUser {
   final int receiptSubmissionsCount;
   final int offerReportsCount;
   final double totalEstimatedSavings;
+  final String? preferredRegionSlug;
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     final profileStats =
@@ -446,6 +460,7 @@ class AuthUser {
           (profileStats['offerReportsCount'] as num? ?? 0).toInt(),
       totalEstimatedSavings:
           (profileStats['totalEstimatedSavings'] as num? ?? 0).toDouble(),
+      preferredRegionSlug: json['preferredRegionSlug'] as String?,
     );
   }
 }

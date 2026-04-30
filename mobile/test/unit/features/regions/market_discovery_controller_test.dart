@@ -80,6 +80,11 @@ void main() {
     await controller.loadInitialData();
 
     expect(controller.regions, hasLength(2));
+    expect(controller.selectedRegion, isNull);
+    expect(controller.offers, isEmpty);
+
+    await controller.selectRegion('campinas-sp');
+
     expect(controller.selectedRegion?.slug, 'campinas-sp');
     expect(controller.offers, isEmpty);
 

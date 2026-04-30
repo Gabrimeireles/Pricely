@@ -1,8 +1,17 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { MapPinIcon, ShieldCheckIcon, SparklesIcon } from 'lucide-react';
+import { MapPinIcon, MoonStarIcon, ShieldCheckIcon, SparklesIcon, SunMediumIcon } from 'lucide-react';
 
 import { usePricely } from '@/app/pricely-context';
+import { useTheme } from '@/app/theme-context';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -11,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 function AppLogo() {
   return (
@@ -30,8 +40,15 @@ const linkClassName = ({ isActive }: { isActive: boolean }) =>
   isActive ? 'text-foreground' : 'text-muted-foreground transition-colors hover:text-foreground';
 
 export function PublicLayout() {
-  const { cityId, cities, currentUser, isAuthenticated, setCityId, signOut } = usePricely();
-  const activeCity = cities.find((city) => city.id === cityId) ?? cities[0];
+  const { cityId, cities, currentUser, isAuthenticated, isBootstrapping, setCityId, signOut } =
+    usePricely();
+  const { theme, toggleTheme } = useTheme();
+  const activeCity = cityId ? cities.find((city) => city.id === cityId) ?? null : null;
+  const shouldRequireCitySelection =
+    isAuthenticated && !isBootstrapping && !cityId && cities.length > 0;
+  const citySummary = activeCity
+    ? `${activeCity.name} - ${activeCity.activeStoreCount} estabelecimentos ativos`
+    : 'Escolha uma cidade para carregar ofertas e listas com contexto local';
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.14),transparent_28%),radial-gradient(circle_at_85%_15%,rgba(37,99,235,0.10),transparent_22%),linear-gradient(180deg,#f8fafb_0%,#f3f8f6_48%,#eef7f8_100%)]">
@@ -58,7 +75,7 @@ export function PublicLayout() {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Select onValueChange={setCityId} value={cityId}>
+            <Select onValueChange={(value) => void setCityId(value)} value={cityId ?? ''}>
               <SelectTrigger className="w-full sm:w-[320px]">
                 <MapPinIcon />
                 <SelectValue placeholder="Escolha sua cidade" />
@@ -73,6 +90,12 @@ export function PublicLayout() {
                 </SelectGroup>
               </SelectContent>
             </Select>
+
+            <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/80 px-3 py-2">
+              <SunMediumIcon className="size-4 text-muted-foreground" />
+              <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
+              <MoonStarIcon className="size-4 text-muted-foreground" />
+            </div>
 
             {isAuthenticated ? (
               <>
@@ -102,9 +125,9 @@ export function PublicLayout() {
           <div className="flex items-start gap-3">
             <SparklesIcon className="mt-0.5 text-primary" />
             <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Mesma conta no mobile e no web</span>
+              <span className="text-sm font-medium">Sua compra continua de onde voce parou</span>
               <span className="text-sm text-muted-foreground">
-                Cidade, listas, economia acumulada e historico ficam sincronizados.
+                A cidade escolhida, as listas salvas e o checklist acompanham a mesma conta.
               </span>
             </div>
           </div>
@@ -112,9 +135,7 @@ export function PublicLayout() {
             <MapPinIcon className="mt-0.5 text-primary" />
             <div className="flex flex-col gap-1">
               <span className="text-sm font-medium">Cidade ativa</span>
-              <span className="text-sm text-muted-foreground">
-                {activeCity.name} - {activeCity.activeStoreCount} estabelecimentos ativos
-              </span>
+              <span className="text-sm text-muted-foreground">{citySummary}</span>
             </div>
           </div>
           <div className="flex items-start gap-3">
@@ -122,9 +143,11 @@ export function PublicLayout() {
             <div className="flex flex-col gap-1">
               <span className="text-sm font-medium">Cobertura visivel</span>
               <span className="text-sm text-muted-foreground">
-                {activeCity.coverageStatus === 'live'
+                {activeCity?.coverageStatus === 'live'
                   ? 'Ofertas com evidencia disponivel.'
-                  : 'Cidade ativa, ainda coletando dados de cobertura.'}
+                  : activeCity
+                    ? 'Cidade ativa, ainda coletando dados de cobertura.'
+                    : 'Selecione uma cidade para ver o nivel de cobertura.'}
               </span>
             </div>
           </div>
@@ -132,6 +155,37 @@ export function PublicLayout() {
 
         <Outlet />
       </main>
+
+      <Dialog open={shouldRequireCitySelection}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Escolha sua cidade para continuar</DialogTitle>
+            <DialogDescription>
+              A sua cidade fica salva na conta e pode ser trocada depois a qualquer momento.
+            </DialogDescription>
+          </DialogHeader>
+          <Select onValueChange={(value) => void setCityId(value)} value={cityId ?? ''}>
+            <SelectTrigger>
+              <MapPinIcon />
+              <SelectValue placeholder="Selecione uma cidade disponivel" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {cities.map((city) => (
+                  <SelectItem key={city.id} value={city.id}>
+                    {city.name} - {city.activeStoreCount} estabelecimentos ativos
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button disabled={!cityId} onClick={() => undefined} type="button">
+              Confirmado
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

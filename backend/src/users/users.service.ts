@@ -59,6 +59,17 @@ export class UsersService {
       throw new NotFoundException('Authenticated account was not found');
     }
 
+    const preferredRegion = user.preferredRegionId
+      ? await this.prisma.region.findUnique({
+          where: {
+            id: user.preferredRegionId,
+          },
+          select: {
+            slug: true,
+          },
+        })
+      : null;
+
     const [shoppingListsCount, completedOptimizationRuns, aggregatedOptimization, receiptSubmissionsCount] =
       await Promise.all([
         this.prisma.shoppingList.count({
@@ -84,14 +95,38 @@ export class UsersService {
         }),
       ]);
 
-    return this.toProfile(user, {
-      completedOptimizationRuns,
-      contributionsCount: receiptSubmissionsCount,
-      offerReportsCount: 0,
-      receiptSubmissionsCount,
-      shoppingListsCount,
-      totalEstimatedSavings: Number(aggregatedOptimization._sum.estimatedSavings ?? 0),
+    return this.toProfile(
+      user,
+      {
+        completedOptimizationRuns,
+        contributionsCount: receiptSubmissionsCount,
+        offerReportsCount: 0,
+        receiptSubmissionsCount,
+        shoppingListsCount,
+        totalEstimatedSavings: Number(aggregatedOptimization._sum.estimatedSavings ?? 0),
+      },
+      preferredRegion?.slug ?? null,
+    );
+  }
+
+  async updatePreferredRegionBySlug(id: string, regionSlug: string): Promise<UserProfile> {
+    const region = await this.prisma.region.findUnique({
+      where: { slug: regionSlug },
+      select: { id: true, slug: true },
     });
+
+    if (!region) {
+      throw new NotFoundException('Selected city was not found');
+    }
+
+    await this.prisma.userAccount.update({
+      where: { id },
+      data: {
+        preferredRegionId: region.id,
+      },
+    });
+
+    return this.getProfileById(id);
   }
 
   toProfile(
@@ -101,11 +136,13 @@ export class UsersService {
     displayName: string;
     role: 'customer' | 'admin';
     status: 'active' | 'suspended';
+    preferredRegionId?: string | null;
     lastLoginAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
     },
     stats: UserProfileStats = this.buildEmptyProfileStats(),
+    preferredRegionSlug: string | null = null,
   ): UserProfile {
     return {
       id: user.id,
@@ -113,6 +150,7 @@ export class UsersService {
       displayName: user.displayName,
       role: user.role,
       status: user.status,
+      preferredRegionSlug,
       lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
