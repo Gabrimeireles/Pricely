@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { CatalogProductsService } from '../../catalog/application/catalog-products.service';
+import { CatalogMediaService } from '../../catalog/application/catalog-media.service';
 import { EstablishmentsService } from '../../establishments/application/establishments.service';
 import { PrismaService } from '../../persistence/prisma.service';
 import { OfferManagementService } from '../../pricing/application/offer-management.service';
@@ -15,6 +16,7 @@ export class AdminDashboardService {
     private readonly regionsAdminService: RegionsAdminService,
     private readonly establishmentsService: EstablishmentsService,
     private readonly catalogProductsService: CatalogProductsService,
+    private readonly catalogMediaService: CatalogMediaService,
     private readonly offerManagementService: OfferManagementService,
   ) {}
 
@@ -252,6 +254,15 @@ export class AdminDashboardService {
     return updated;
   }
 
+  async uploadCatalogProductImage(
+    id: string,
+    file: { buffer: Buffer; mimetype: string; originalname: string },
+  ) {
+    const updated = await this.catalogMediaService.uploadCatalogProductImage(id, file);
+    this.logger.log(`Admin uploaded image for catalog product ${id}`);
+    return updated;
+  }
+
   async listProductVariants() {
     return this.prisma.productVariant.findMany({
       include: {
@@ -295,6 +306,15 @@ export class AdminDashboardService {
 
     this.logger.log(`Admin updated product variant ${id}`);
 
+    return updated;
+  }
+
+  async uploadProductVariantImage(
+    id: string,
+    file: { buffer: Buffer; mimetype: string; originalname: string },
+  ) {
+    const updated = await this.catalogMediaService.uploadProductVariantImage(id, file);
+    this.logger.log(`Admin uploaded image for product variant ${id}`);
     return updated;
   }
 

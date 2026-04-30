@@ -16,6 +16,25 @@ describe('AuthService', () => {
         createdAt: new Date('2026-04-27T10:00:00Z'),
         updatedAt: new Date('2026-04-27T10:00:00Z'),
       }),
+      getProfileById: jest.fn().mockResolvedValue({
+        id: 'user-1',
+        email: 'cliente@pricely.local',
+        displayName: 'Cliente Pricely',
+        role: 'customer',
+        status: 'active',
+        preferredRegionSlug: null,
+        lastLoginAt: null,
+        createdAt: '2026-04-27T10:00:00.000Z',
+        updatedAt: '2026-04-27T10:00:00.000Z',
+        profileStats: {
+          totalEstimatedSavings: 0,
+          shoppingListsCount: 0,
+          completedOptimizationRuns: 0,
+          contributionsCount: 0,
+          receiptSubmissionsCount: 0,
+          offerReportsCount: 0,
+        },
+      }),
       toProfile: jest.fn().mockReturnValue({
         id: 'user-1',
         email: 'cliente@pricely.local',
@@ -63,7 +82,7 @@ describe('AuthService', () => {
         passwordHash: expect.any(String),
       }),
     );
-    expect(usersService.toProfile).toHaveBeenCalled();
+    expect(usersService.getProfileById).toHaveBeenCalledWith('user-1');
   });
 
   it('rejects login when the password does not match', async () => {

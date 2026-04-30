@@ -103,4 +103,69 @@ void main() {
     expect(controller.currentUser?.role, 'admin');
     expect(await cacheService.loadAuthToken(), 'jwt-456');
   });
+
+  test('updates preferred region through the shared profile endpoint', () async {
+    final cacheService = LocalCacheService(InMemoryKeyValueStore());
+    await cacheService.saveAuthToken('jwt-789');
+
+    final backendGateway = PricelyBackendGateway(
+      HttpApiClient(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/auth/me')) {
+            return http.Response(
+              jsonEncode(<String, dynamic>{
+                'id': 'user-3',
+                'email': 'cliente@pricely.app',
+                'displayName': 'Cliente Pricely',
+                'role': 'customer',
+                'preferredRegionSlug': null,
+                'profileStats': <String, dynamic>{
+                  'shoppingListsCount': 1,
+                  'totalEstimatedSavings': 12.4,
+                  'completedOptimizationRuns': 1,
+                  'contributionsCount': 0,
+                  'receiptSubmissionsCount': 0,
+                  'offerReportsCount': 0,
+                },
+              }),
+              200,
+            );
+          }
+
+          if (request.url.path.endsWith('/auth/preferred-region')) {
+            return http.Response(
+              jsonEncode(<String, dynamic>{
+                'id': 'user-3',
+                'email': 'cliente@pricely.app',
+                'displayName': 'Cliente Pricely',
+                'role': 'customer',
+                'preferredRegionSlug': 'sao-paulo-sp',
+                'profileStats': <String, dynamic>{
+                  'shoppingListsCount': 1,
+                  'totalEstimatedSavings': 12.4,
+                  'completedOptimizationRuns': 1,
+                  'contributionsCount': 0,
+                  'receiptSubmissionsCount': 0,
+                  'offerReportsCount': 0,
+                },
+              }),
+              200,
+            );
+          }
+
+          return http.Response('{}', 404);
+        }),
+      ),
+    );
+
+    final controller = AuthController(
+      cacheService: cacheService,
+      backendGateway: backendGateway,
+    );
+
+    await controller.bootstrap();
+    await controller.updatePreferredRegion('sao-paulo-sp');
+
+    expect(controller.currentUser?.preferredRegionSlug, 'sao-paulo-sp');
+  });
 }

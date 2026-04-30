@@ -163,6 +163,32 @@ describe('Grocery optimizer API contract', () => {
         })
         .expect(201);
 
+      const meResponse = await request(app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${customer.accessToken}`)
+        .expect(200);
+
+      expect(meResponse.body).toEqual(
+        expect.objectContaining({
+          id: expect.any(String),
+          preferredRegionSlug: null,
+        }),
+      );
+
+      const preferredRegionResponse = await request(app.getHttpServer())
+        .patch('/auth/preferred-region')
+        .set('Authorization', `Bearer ${customer.accessToken}`)
+        .send({
+          regionSlug,
+        })
+        .expect(200);
+
+      expect(preferredRegionResponse.body).toEqual(
+        expect.objectContaining({
+          preferredRegionSlug: regionSlug,
+        }),
+      );
+
       const optimizationResponse = await request(app.getHttpServer())
         .post(`/shopping-lists/${shoppingListResponse.body.id}/optimize`)
         .set('Authorization', `Bearer ${customer.accessToken}`)
@@ -305,6 +331,22 @@ describe('Grocery optimizer API contract', () => {
         expect.objectContaining({
           id: expect.any(String),
           catalogProductId: createProductResponse.body.id,
+        }),
+      );
+
+      const uploadCatalogImageResponse = await request(app.getHttpServer())
+        .post(`/admin/catalog-products/${createProductResponse.body.id}/image`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .attach('file', Buffer.from('catalog-image'), {
+          filename: 'catalog.png',
+          contentType: 'image/png',
+        })
+        .expect(201);
+
+      expect(uploadCatalogImageResponse.body).toEqual(
+        expect.objectContaining({
+          id: createProductResponse.body.id,
+          imageUrl: expect.stringContaining('/media/catalog-products/'),
         }),
       );
 

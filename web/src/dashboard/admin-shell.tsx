@@ -11,10 +11,12 @@ import {
 } from 'lucide-react';
 
 import { usePricely } from '@/app/pricely-context';
+import { useTheme } from '@/app/theme-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import {
   Sidebar,
   SidebarContent,
@@ -71,6 +73,7 @@ const adminNav = [
 
 export function AdminLayout() {
   const { currentUser, isAuthenticated } = usePricely();
+  const { theme, toggleTheme } = useTheme();
 
   if (!isAuthenticated || currentUser?.role !== 'admin') {
     return (
@@ -151,6 +154,12 @@ export function AdminLayout() {
             </div>
           </div>
           <div className="hidden items-center gap-2 md:flex">
+            <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/80 px-3 py-2">
+              <span className="text-xs text-muted-foreground">
+                {theme === 'dark' ? 'Escuro' : 'Claro'}
+              </span>
+              <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
+            </div>
             <Badge variant="secondary">Acesso admin</Badge>
             <Button asChild size="sm" variant="outline">
               <Link to="/">Voltar para o publico</Link>
@@ -158,7 +167,7 @@ export function AdminLayout() {
           </div>
         </header>
 
-        <div className="flex flex-1 flex-col gap-6 px-4 py-6 lg:px-6">
+        <div className="flex flex-1 flex-col gap-6 bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.08),transparent_26%),radial-gradient(circle_at_85%_15%,rgba(37,99,235,0.06),transparent_22%)] px-4 py-6 lg:px-6">
           <Outlet />
         </div>
       </SidebarInset>

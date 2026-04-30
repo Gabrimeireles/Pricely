@@ -41,6 +41,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     _quantityController = TextEditingController(text: '1');
     _unitController = TextEditingController(text: 'un');
     _preferredBrandController = TextEditingController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.controller.searchCatalog('');
+    });
   }
 
   @override
@@ -104,6 +107,15 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         ]),
         builder: (context, _) {
           final draft = widget.controller.draft;
+          final preferredRegionSlug =
+              widget.authController.currentUser?.preferredRegionSlug;
+          if (preferredRegionSlug != null &&
+              preferredRegionSlug.isNotEmpty &&
+              draft.regionId.isEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              widget.controller.updateRegionId(preferredRegionSlug);
+            });
+          }
           _titleController.value = _titleController.value.copyWith(
             text: draft.title,
             selection: TextSelection.collapsed(offset: draft.title.length),
@@ -344,6 +356,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       _selectedVariantId = null;
                       _brandPreferenceMode = 'any';
                     });
+                    await widget.controller.searchCatalog('');
                   },
                   child: Text(
                     _selectedCatalogProductId == null

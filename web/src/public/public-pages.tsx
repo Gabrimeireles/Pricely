@@ -6,11 +6,12 @@ import {
   BadgeCheckIcon,
   ChevronRightIcon,
   LogInIcon,
+  MapPinIcon,
   ShieldAlertIcon,
 } from 'lucide-react';
 
 import { formatCurrency, formatDateTime, formatFreshnessLabel } from '@/app/format';
-import { resolveProductImage } from '@/app/media';
+import { landingHeroImage, resolveProductImage } from '@/app/media';
 import {
   getCityById,
   optimizationModes,
@@ -304,8 +305,8 @@ function AuthCard({
 }
 
 export function LandingPage() {
-  const { cityId, cities, currentUser, profile } = usePricely();
-  const city = cities.find((entry) => entry.id === cityId) ?? getCityById(cityId);
+  const { cityId, cities, currentUser } = usePricely();
+  const city = cityId ? cities.find((entry) => entry.id === cityId) ?? getCityById(cityId) : null;
   const [featuredOffers, setFeaturedOffers] = useState<
     Array<{
       id: string;
@@ -323,6 +324,11 @@ export function LandingPage() {
     let disposed = false;
 
     const load = async () => {
+      if (!cityId) {
+        setFeaturedOffers([]);
+        return;
+      }
+
       try {
         const response = await fetchRegionOffers(cityId);
         if (disposed) {
@@ -364,15 +370,15 @@ export function LandingPage() {
         <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card/85 p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-5">
             <Badge variant="secondary" className="w-fit">
-              mesma conta no mobile e no web
+              lista salva, cidade persistida e compra pronta no mercado
             </Badge>
             <div className="flex flex-col gap-4">
               <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
                 Decida sua compra por cidade, lista e preco observado.
               </h1>
               <p className="max-w-2xl text-lg text-muted-foreground">
-                Escolha a cidade ativa, monte a lista com produtos reais e compare os tres
-                modos de otimizacao sem perder o historico entre web e mobile.
+                Monte a lista no computador, continue no celular e chegue ao mercado com
+                a cidade certa, os produtos comparaveis definidos e a melhor estrategia de compra.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -391,21 +397,23 @@ export function LandingPage() {
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
             <Card size="sm">
               <CardHeader>
-                <CardTitle>Conta unica</CardTitle>
-                <CardDescription>Mesmo login em todas as superficies.</CardDescription>
+                <CardTitle>Continua do desktop ao corredor</CardTitle>
+                <CardDescription>Escolha a cidade uma vez, monte a lista no web e use o checklist no celular.</CardDescription>
               </CardHeader>
             </Card>
             <Card size="sm">
               <CardHeader>
-                <CardTitle>Economia estimada</CardTitle>
-                <CardDescription>{formatCurrency(profile.totalEstimatedSavings)} acumulados.</CardDescription>
+                <CardTitle>Lista reaproveitavel</CardTitle>
+                <CardDescription>Salve uma vez e reotimize depois quando os precos mudarem.</CardDescription>
               </CardHeader>
             </Card>
             <Card size="sm">
               <CardHeader>
-                <CardTitle>Cidade ativa</CardTitle>
+                <CardTitle>Cidade com contexto real</CardTitle>
                 <CardDescription>
-                  {city.name} - {city.activeStoreCount} estabelecimentos ativos
+                  {city
+                    ? `${city.name} - ${city.activeStoreCount} estabelecimentos ativos`
+                    : 'Escolha uma cidade para carregar cobertura e ofertas publicas'}
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -414,9 +422,9 @@ export function LandingPage() {
 
         <div className="relative overflow-hidden rounded-xl border border-border/70 shadow-sm">
           <img
-            alt="Pessoa organizando compras no supermercado"
+            alt="Visao geral do fluxo de compras por cidade no Pricely"
             className="h-full min-h-[360px] w-full object-cover"
-            src={resolveProductImage()}
+            src={landingHeroImage}
           />
         </div>
       </section>
@@ -452,7 +460,7 @@ export function LandingPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
-        {featuredOffers.map((offer) => (
+        {featuredOffers.length > 0 ? featuredOffers.map((offer) => (
           <Card key={offer.id} className="overflow-hidden">
             <div className="aspect-[16/9] overflow-hidden">
               <img alt={offer.productName} className="h-full w-full object-cover" src={offer.imageUrl} />
@@ -471,7 +479,17 @@ export function LandingPage() {
               <div className="text-2xl font-semibold">{formatCurrency(offer.price)}</div>
             </CardContent>
           </Card>
-        ))}
+        )) : (
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle>Escolha uma cidade para ver ofertas reais</CardTitle>
+              <CardDescription>
+                A vitrine publica depende da cidade selecionada. Depois disso mostramos produtos,
+                lojas, preco observado e confianca da informacao.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
       </section>
     </div>
   );
@@ -479,13 +497,18 @@ export function LandingPage() {
 
 export function OffersPage() {
   const { cityId, cities } = usePricely();
-  const city = cities.find((entry) => entry.id === cityId) ?? getCityById(cityId);
+  const city = cityId ? cities.find((entry) => entry.id === cityId) ?? getCityById(cityId) : null;
   const [offers, setOffers] = useState<RegionOffersApiResponse['offers']>([]);
 
   useEffect(() => {
     let disposed = false;
 
     const load = async () => {
+      if (!cityId) {
+        setOffers([]);
+        return;
+      }
+
       try {
         const response = await fetchRegionOffers(cityId);
         if (!disposed) {
@@ -510,9 +533,21 @@ export function OffersPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Ofertas por cidade</h1>
         <p className="text-muted-foreground">
-          {city.name}. Ofertas publicas mostram loja, frescor, confianca e detalhe completo do item.
+          {city
+            ? `${city.name}. Ofertas publicas mostram loja, frescor, confianca e detalhe completo do item.`
+            : 'Selecione uma cidade para carregar as ofertas publicas desta regiao.'}
         </p>
       </div>
+
+      {!cityId ? (
+        <Alert>
+          <MapPinIcon />
+          <AlertTitle>Escolha uma cidade primeiro</AlertTitle>
+          <AlertDescription>
+            A cidade define quais lojas e precos entram na vitrine publica.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         {offers.map((offer) => (
@@ -727,7 +762,7 @@ export function SignInPage() {
   return (
     <AuthCard
       ctaLabel="Entrar"
-      description="Use a mesma conta do mobile para acessar listas, otimizacoes e historico."
+      description="Entre para salvar sua cidade, reaproveitar listas e continuar a compra no celular."
       onSubmit={({ email, password }) => signIn(email, password)}
       title="Entrar no Pricely"
     />
@@ -740,7 +775,7 @@ export function SignUpPage() {
   return (
     <AuthCard
       ctaLabel="Criar conta"
-      description="Sua conta sera compartilhada entre web e mobile com o mesmo historico."
+      description="Crie uma conta para salvar sua cidade, sincronizar listas e usar checklist no mercado."
       includeDisplayName
       onSubmit={({ displayName, email, password }) =>
         signUp(email, password, displayName ?? 'Cliente Pricely')
@@ -751,7 +786,8 @@ export function SignUpPage() {
 }
 
 export function ListsPage() {
-  const { lists, profile } = usePricely();
+  const { cityId, currentUser, lists, profile } = usePricely();
+  const currentCity = cityId ? getCityById(cityId) : null;
 
   return (
     <RequireAuthentication
@@ -771,23 +807,38 @@ export function ListsPage() {
           </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
+        <div className="grid gap-4 lg:grid-cols-4">
+          <Card className="border-border/70 bg-card/90 shadow-sm">
+            <CardHeader>
+              <CardDescription>Conta ativa</CardDescription>
+              <CardTitle>{currentUser?.displayName ?? 'Minha conta'}</CardTitle>
+              <div className="text-sm text-muted-foreground">{currentUser?.email}</div>
+            </CardHeader>
+          </Card>
+          <Card className="border-border/70 bg-card/90 shadow-sm">
+            <CardHeader>
+              <CardDescription>Cidade salva</CardDescription>
+              <CardTitle>{currentCity ? `${currentCity.name} · ${currentCity.stateCode}` : 'Cidade pendente'}</CardTitle>
+              <div className="text-sm text-muted-foreground">
+                {currentCity
+                  ? `${currentCity.activeStoreCount} estabelecimentos ativos`
+                  : 'Escolha a cidade para carregar cobertura e ofertas'}
+              </div>
+            </CardHeader>
+          </Card>
+          <Card className="border-border/70 bg-card/90 shadow-sm">
             <CardHeader>
               <CardDescription>Listas criadas</CardDescription>
               <CardTitle>{profile.listsCreated}</CardTitle>
             </CardHeader>
           </Card>
-          <Card>
+          <Card className="border-border/70 bg-card/90 shadow-sm">
             <CardHeader>
-              <CardDescription>Economia estimada</CardDescription>
+              <CardDescription>Economia estimada acumulada</CardDescription>
               <CardTitle>{formatCurrency(profile.totalEstimatedSavings)}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardDescription>Contribuicoes</CardDescription>
-              <CardTitle>{profile.receiptsShared + profile.invalidPromotionReports}</CardTitle>
+              <div className="text-sm text-muted-foreground">
+                Visivel depois do login para refletir o uso real da conta.
+              </div>
             </CardHeader>
           </Card>
         </div>
@@ -803,7 +854,7 @@ export function ListsPage() {
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             {lists.map((list) => (
-              <Card key={list.id}>
+              <Card key={list.id} className="border-border/70 bg-card/90 shadow-sm">
                 <CardHeader>
                   <CardTitle>{list.name}</CardTitle>
                   <CardDescription>
@@ -981,7 +1032,7 @@ export function ListEditorPage() {
   const { cityId, cities, lists, preferredMode, saveList } = usePricely();
   const editingList = listId === 'nova' ? undefined : lists.find((entry) => entry.id === listId);
   const [name, setName] = useState(editingList?.name ?? '');
-  const [selectedCityId, setSelectedCityId] = useState(editingList?.cityId ?? cityId);
+  const [selectedCityId, setSelectedCityId] = useState(editingList?.cityId ?? cityId ?? '');
   const [mode, setMode] = useState<OptimizationModeId>(editingList?.lastMode ?? preferredMode);
   const [items, setItems] = useState<EditableListItem[]>(() => buildEditableItems(editingList));
   const [draftName, setDraftName] = useState('');
@@ -999,6 +1050,52 @@ export function ListEditorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
 
+  const persistList = async (optimizeAfterSave: boolean) => {
+    setError(null);
+
+    if (!selectedCityId) {
+      setError('Escolha a cidade da lista antes de salvar.');
+      return;
+    }
+
+    if (!name.trim()) {
+      setError('Defina um nome para a lista antes de salvar.');
+      return;
+    }
+
+    if (items.length === 0) {
+      setError('Adicione pelo menos um item antes de salvar a lista.');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const saved = await saveList({
+        id: editingList?.id,
+        name: name.trim(),
+        cityId: selectedCityId,
+        lastMode: mode,
+        items: items.map((item) => ({
+          name: item.name,
+          catalogProductId: item.catalogProductId,
+          lockedProductVariantId: item.lockedProductVariantId,
+          brandPreferenceMode: item.brandPreferenceMode,
+          preferredBrandNames: item.preferredBrandNames,
+          purchaseStatus: item.purchaseStatus,
+          quantity: item.quantity,
+          unitLabel: item.unitLabel,
+          note: item.note,
+        })),
+      });
+      navigate(optimizeAfterSave ? `/otimizacao/${saved.id}` : '/listas');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Nao foi possivel salvar a lista.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (!editingList) {
       return;
@@ -1014,11 +1111,6 @@ export function ListEditorPage() {
     let disposed = false;
 
     const loadCatalog = async () => {
-      if (draftName.trim().length < 2) {
-        setCatalogResults([]);
-        return;
-      }
-
       setIsSearchingCatalog(true);
       try {
         const results = await searchCatalogProducts(draftName.trim());
@@ -1043,17 +1135,18 @@ export function ListEditorPage() {
     };
   }, [draftName]);
 
-  const addItem = () => {
-    if (!draftName.trim() || !selectedCatalogProduct) {
+  const addItem = (product = selectedCatalogProduct) => {
+    if (!product) {
       return;
     }
 
+    const displayName = draftName.trim() || product.name;
     setItems((current) => [
       ...current,
       {
         id: `draft-${Date.now()}`,
-        name: draftName.trim(),
-        catalogProductId: selectedCatalogProduct?.id,
+        name: displayName,
+        catalogProductId: product.id,
         lockedProductVariantId: draftBrandPreferenceMode === 'exact' ? selectedVariantId || undefined : undefined,
         brandPreferenceMode: draftBrandPreferenceMode,
         preferredBrandNames:
@@ -1062,7 +1155,7 @@ export function ListEditorPage() {
             : [],
         imageUrl:
           selectedVariants.find((variant) => variant.id === selectedVariantId)?.imageUrl ??
-          selectedCatalogProduct?.imageUrl ??
+          product.imageUrl ??
           undefined,
         quantity: Number.isFinite(Number(draftQuantity)) ? Number(draftQuantity) : 1,
         unitLabel: draftUnit.trim() || 'un',
@@ -1102,33 +1195,7 @@ export function ListEditorPage() {
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
-    setIsSaving(true);
-
-    try {
-      const saved = await saveList({
-        id: editingList?.id,
-        name: name.trim(),
-        cityId: selectedCityId,
-        lastMode: mode,
-        items: items.map((item) => ({
-          name: item.name,
-          catalogProductId: item.catalogProductId,
-          lockedProductVariantId: item.lockedProductVariantId,
-          brandPreferenceMode: item.brandPreferenceMode,
-          preferredBrandNames: item.preferredBrandNames,
-          purchaseStatus: item.purchaseStatus,
-          quantity: item.quantity,
-          unitLabel: item.unitLabel,
-          note: item.note,
-        })),
-      });
-      navigate(`/otimizacao/${saved.id}`);
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Nao foi possivel salvar a lista.');
-    } finally {
-      setIsSaving(false);
-    }
+    await persistList(false);
   };
 
   return (
@@ -1146,12 +1213,26 @@ export function ListEditorPage() {
               Monte a lista em etapas. Salve sem processar ou siga direto para a otimizacao.
             </p>
           </div>
-          <Button disabled={isSaving} type="submit">
-            {isSaving ? 'Salvando...' : 'Salvar lista'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={isSaving || !selectedCityId || items.length === 0 || !name.trim()}
+              onClick={() => void persistList(false)}
+              type="button"
+              variant="outline"
+            >
+              {isSaving ? 'Salvando...' : 'Salvar'}
+            </Button>
+            <Button
+              disabled={isSaving || !selectedCityId || items.length === 0 || !name.trim()}
+              onClick={() => void persistList(true)}
+              type="button"
+            >
+              {isSaving ? 'Salvando...' : 'Salvar e otimizar'}
+            </Button>
+          </div>
         </div>
 
-        <Card>
+        <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
             <CardTitle>1. Defina o contexto da compra</CardTitle>
             <CardDescription>
@@ -1171,6 +1252,7 @@ export function ListEditorPage() {
                 onChange={(event) => setSelectedCityId(event.target.value)}
                 value={selectedCityId}
               >
+                <option value="">Selecione a cidade da lista</option>
                 {cities.map((city) => (
                   <option key={city.id} value={city.id}>
                     {city.name} - {city.activeStoreCount} estabelecimentos ativos
@@ -1181,16 +1263,15 @@ export function ListEditorPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
             <CardTitle>2. Adicione itens reais da sua compra</CardTitle>
             <CardDescription>
-              Pesquise o produto base, revise a regra de marca e adicione o item so quando o
-              catalogo comparavel estiver definido.
+              Digite o produto e filtre em tempo real. Se nao digitar nada, mostramos o catalogo completo.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid gap-3 rounded-lg border border-dashed border-border/70 p-4 md:grid-cols-[1.8fr_0.7fr_0.7fr]">
+            <div className="grid gap-3 rounded-lg border border-dashed border-border/70 bg-muted/20 p-4 md:grid-cols-[1.8fr_0.7fr_0.7fr]">
               <Field>
                 <FieldLabel htmlFor="draft-item-name">Produto</FieldLabel>
                 <Input
@@ -1221,66 +1302,95 @@ export function ListEditorPage() {
                 />
               </Field>
               <Field className="md:col-span-3">
-                <FieldLabel>Produto comparavel</FieldLabel>
-                <div className="grid gap-2">
-                  <select
-                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                    onChange={async (event) => {
-                      const product =
-                        catalogResults.find((entry) => entry.id === event.target.value) ?? null;
-                      setSelectedCatalogProduct(product);
-                      setSelectedVariantId('');
-
-                      if (!product) {
-                        setSelectedVariants([]);
-                        return;
-                      }
-
-                      const variants = await fetchCatalogProductVariants(product.id);
-                      setSelectedVariants(variants);
-                    }}
-                    value={selectedCatalogProduct?.id ?? ''}
-                  >
-                    <option value="">
-                      {isSearchingCatalog
-                        ? 'Buscando no catalogo...'
-                        : 'Selecione um produto comparavel'}
-                    </option>
-                    {catalogResults.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedCatalogProduct ? (
-                    <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 p-3 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-3">
-                        {selectedCatalogProduct.imageUrl ? (
-                          <img
-                            alt={selectedCatalogProduct.name}
-                            className="h-12 w-12 rounded-lg border border-border/70 object-cover"
-                            src={selectedCatalogProduct.imageUrl}
-                          />
-                        ) : null}
-                        <div className="grid gap-1">
-                          <span>Produto base: {selectedCatalogProduct.name}</span>
-                          <span>{describeBrandRule({ brandPreferenceMode: draftBrandPreferenceMode, preferredBrandNames: draftPreferredBrand.trim() ? [draftPreferredBrand.trim()] : [] })}</span>
-                        </div>
-                      </div>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setIsBrandDialogOpen(true)}>
-                        Configurar marca
-                      </Button>
-                    </div>
-                  ) : draftName.trim().length >= 2 ? (
-                    <Alert>
-                      <AlertCircleIcon />
-                      <AlertTitle>Selecione um produto base</AlertTitle>
-                      <AlertDescription>
-                        A lista agora trabalha primeiro com produto comparavel e so depois com
-                        preferencia de marca.
-                      </AlertDescription>
-                    </Alert>
-                  ) : null}
+                <FieldLabel>Produtos comparaveis</FieldLabel>
+                <div className="overflow-hidden rounded-lg border border-border/70">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead>Marca</TableHead>
+                        <TableHead>Quantidade</TableHead>
+                        <TableHead className="text-right">Adicionar</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {catalogResults.length === 0 && !isSearchingCatalog ? (
+                        <TableRow>
+                          <TableCell className="text-muted-foreground" colSpan={4}>
+                            Nenhum produto comparavel encontrado.
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                      {catalogResults.map((product) => {
+                        const isSelected = selectedCatalogProduct?.id === product.id;
+                        return (
+                          <TableRow key={product.id} className={isSelected ? 'bg-primary/5' : undefined}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <img
+                                  alt={product.name}
+                                  className="h-14 w-14 rounded-lg border border-border/70 object-cover"
+                                  src={resolveProductImage(product.imageUrl)}
+                                />
+                                <div className="grid gap-1">
+                                  <div className="font-medium">{product.name}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {product.category} · {product.defaultUnit ?? 'sem unidade padrao'}
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="grid gap-2">
+                                <span className="text-sm text-muted-foreground">
+                                  {isSelected
+                                    ? describeBrandRule({
+                                        brandPreferenceMode: draftBrandPreferenceMode,
+                                        preferredBrandNames: draftPreferredBrand.trim() ? [draftPreferredBrand.trim()] : [],
+                                      })
+                                    : 'Qualquer marca'}
+                                </span>
+                                <Button
+                                  onClick={async () => {
+                                    setSelectedCatalogProduct(product);
+                                    setSelectedVariantId('');
+                                    const variants = await fetchCatalogProductVariants(product.id);
+                                    setSelectedVariants(variants);
+                                    setIsBrandDialogOpen(true);
+                                  }}
+                                  size="sm"
+                                  type="button"
+                                  variant="outline"
+                                >
+                                  Configurar
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm text-muted-foreground">
+                                {draftQuantity} {draftUnit.trim() || 'un'}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                onClick={async () => {
+                                  setSelectedCatalogProduct(product);
+                                  if (selectedCatalogProduct?.id !== product.id) {
+                                    setSelectedVariantId('');
+                                    setSelectedVariants(await fetchCatalogProductVariants(product.id));
+                                  }
+                                  addItem(product);
+                                }}
+                                type="button"
+                              >
+                                Adicionar
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
               </Field>
               <Field className="md:col-span-3">
@@ -1292,16 +1402,6 @@ export function ListEditorPage() {
                   value={draftNote}
                 />
               </Field>
-              <div className="md:col-span-3">
-                <Button
-                  disabled={!selectedCatalogProduct}
-                  onClick={addItem}
-                  type="button"
-                  variant="outline"
-                >
-                  Adicionar item
-                </Button>
-              </div>
             </div>
 
             {items.length === 0 ? (
@@ -1325,7 +1425,7 @@ export function ListEditorPage() {
                         <img
                           alt={item.name}
                           className="h-16 w-16 rounded-lg border border-border/70 object-cover"
-                          src={item.imageUrl}
+                          src={resolveProductImage(item.imageUrl)}
                         />
                       ) : null}
                       <div className="grid gap-1">
@@ -1411,7 +1511,7 @@ export function ListEditorPage() {
           </DialogContent>
         </Dialog>
 
-        <Card>
+        <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
             <CardTitle>3. Salve agora ou otimize depois</CardTitle>
             <CardDescription>
@@ -1613,7 +1713,7 @@ export function OptimizationPage() {
                                 <img
                                   alt={selection.shoppingListItemName}
                                   className="h-14 w-14 rounded-lg border border-border/70 object-cover"
-                                  src={listItemsById.get(selection.shoppingListItemId)?.imageUrl}
+                                  src={resolveProductImage(listItemsById.get(selection.shoppingListItemId)?.imageUrl)}
                                 />
                               ) : null}
                               <div className="flex flex-col gap-1">

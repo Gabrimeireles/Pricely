@@ -15,6 +15,7 @@ type StoredUser = {
   displayName: string;
   role: 'customer' | 'admin';
   status: 'active' | 'suspended';
+  preferredRegionId: string | null;
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -57,6 +58,7 @@ class PrismaUserAccountMock {
       role: args.data.role,
       status: args.data.status,
       lastLoginAt: null,
+      preferredRegionId: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -67,7 +69,7 @@ class PrismaUserAccountMock {
 
   async update(args: {
     where: { id: string };
-    data: Partial<Pick<StoredUser, 'lastLoginAt' | 'displayName' | 'status'>>;
+    data: Partial<Pick<StoredUser, 'lastLoginAt' | 'displayName' | 'status' | 'preferredRegionId'>>;
   }): Promise<StoredUser> {
     const existing = this.users.get(args.where.id);
 
@@ -105,6 +107,16 @@ class PrismaUserAccountMock {
   readonly receiptRecord = {
     count: async () => 0,
   };
+
+  readonly region = {
+    findUnique: async ({ where }: { where: { id?: string; slug?: string } }) => {
+      if (where.id === 'region-test-1' || where.slug === 'sao-paulo-sp') {
+        return { id: 'region-test-1', slug: 'sao-paulo-sp' };
+      }
+
+      return null;
+    },
+  };
 }
 
 describe('Shared auth integration', () => {
@@ -124,6 +136,7 @@ describe('Shared auth integration', () => {
         shoppingList: userAccountMock.shoppingList,
         optimizationRun: userAccountMock.optimizationRun,
         receiptRecord: userAccountMock.receiptRecord,
+        region: userAccountMock.region,
       })
       .compile();
 

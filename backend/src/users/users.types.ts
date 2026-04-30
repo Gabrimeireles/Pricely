@@ -13,6 +13,7 @@ export interface UserProfile {
   displayName: string;
   role: 'customer' | 'admin';
   status: 'active' | 'suspended';
+  preferredRegionSlug: string | null;
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;

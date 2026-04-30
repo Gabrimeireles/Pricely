@@ -107,7 +107,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         const SizedBox(height: 10),
                         Text(
                           _isRegister
-                              ? 'Use a mesma conta no mobile e no web para listas, economia estimada e historico.'
+                              ? 'Use a mesma conta para salvar sua cidade, continuar listas e comprar com checklist no mercado.'
                               : 'Acesse a conta compartilhada para sincronizar listas, cidade e resultados de otimizacao.',
                           style: theme.textTheme.bodyLarge
                               ?.copyWith(color: Colors.white70),

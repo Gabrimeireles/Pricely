@@ -53,6 +53,22 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
         widget.receiptFlowController,
       ]),
       builder: (context, _) {
+        final user = widget.authController.currentUser;
+        if (user != null && (user.preferredRegionSlug == null || user.preferredRegionSlug!.isEmpty)) {
+          return _PreferredCityScreen(
+            authController: widget.authController,
+            discoveryController: widget.discoveryController,
+          );
+        }
+
+        if (user?.preferredRegionSlug != null &&
+            user!.preferredRegionSlug!.isNotEmpty &&
+            widget.discoveryController.selectedRegionSlug != user.preferredRegionSlug) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            widget.discoveryController.selectRegion(user.preferredRegionSlug);
+          });
+        }
+
         final pages = <Widget>[
           _HomeTab(
             authController: widget.authController,
@@ -130,6 +146,100 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
   }
 }
 
+class _PreferredCityScreen extends StatelessWidget {
+  const _PreferredCityScreen({
+    required this.authController,
+    required this.discoveryController,
+  });
+
+  final AuthController authController;
+  final MarketDiscoveryController discoveryController;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Escolha sua cidade'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: discoveryController.refresh,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          children: <Widget>[
+            Text(
+              'Antes de continuar, precisamos salvar sua cidade.',
+              style: theme.textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'A cidade fica persistida na sua conta e pode ser trocada depois quando voce quiser.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 20),
+            if (discoveryController.regions.isEmpty && !discoveryController.isLoading)
+              OutlinedButton(
+                onPressed: discoveryController.loadInitialData,
+                child: const Text('Carregar cidades disponíveis'),
+              ),
+            if (discoveryController.isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ...discoveryController.regions.map(
+              (region) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () async {
+                    await authController.updatePreferredRegion(region.slug);
+                    await discoveryController.selectRegion(region.slug);
+                  },
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                    ),
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: Text(
+                                '${region.name} · ${region.stateCode}',
+                                style: theme.textTheme.titleMedium,
+                              ),
+                            ),
+                            Text(
+                              '${region.activeEstablishmentCount} lojas',
+                              style: theme.textTheme.labelMedium,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          region.offerCoverageStatus == 'collecting_data'
+                              ? 'Cidade ativa, ainda coletando cobertura.'
+                              : 'Cidade com ofertas e estabelecimentos ativos.',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _HomeTab extends StatelessWidget {
   const _HomeTab({
     required this.authController,
@@ -173,8 +283,8 @@ class _HomeTab extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       user == null
-                          ? 'Escolha a cidade ativa, veja ofertas do dia e monte sua lista com a mesma conta do web.'
-                          : 'Sua conta e a mesma no web e no mobile. Ajuste a cidade, monte a lista e acompanhe as melhores ofertas do dia.',
+                          ? 'Escolha a cidade ativa, veja ofertas do dia e monte sua lista com continuidade entre web e mobile.'
+                          : 'Sua cidade fica salva na conta. Monte a lista, acompanhe ofertas e use o checklist direto no mercado.',
                       style: theme.textTheme.bodyMedium,
                     ),
                   ],
@@ -202,16 +312,19 @@ class _HomeTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  'Economia estimada',
+                  user == null ? 'Cidade e lista sincronizadas' : 'Economia estimada',
                   style: theme.textTheme.labelLarge
                       ?.copyWith(color: Colors.white70),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _formatCurrency(user?.totalEstimatedSavings ?? 0),
+                  user == null
+                      ? 'Escolha a cidade e continue no celular'
+                      : _formatCurrency(user.totalEstimatedSavings),
                   style: theme.textTheme.displaySmall?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
+                    fontSize: user == null ? 26 : null,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -266,7 +379,15 @@ class _HomeTab extends StatelessWidget {
                         ),
                       )
                       .toList(),
-                  onChanged: discoveryController.selectRegion,
+                  onChanged: (value) async {
+                    if (value == null) {
+                      return;
+                    }
+                    await discoveryController.selectRegion(value);
+                    if (authController.isAuthenticated) {
+                      await authController.updatePreferredRegion(value);
+                    }
+                  },
                   decoration: const InputDecoration(
                     labelText: 'Cidade ativa',
                   ),

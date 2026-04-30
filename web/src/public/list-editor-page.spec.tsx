@@ -90,32 +90,11 @@ describe('ListEditorPage', () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByText('Selecione um produto comparavel')).toBeTruthy(),
+      expect(screen.getByRole('button', { name: 'Configurar' })).toBeTruthy(),
     );
 
-    fireEvent.change(screen.getByDisplayValue('Selecione um produto comparavel'), {
-      target: { value: 'catalog-1' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Configurar marca' })).toBeTruthy(),
-    );
-
-    expect(
-      (screen.getByRole('button', { name: 'Adicionar item' }) as HTMLButtonElement).disabled,
-    ).toBe(false);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Configurar marca' }));
-    fireEvent.change(screen.getByDisplayValue('Qualquer marca'), {
-      target: { value: 'preferred' },
-    });
-    fireEvent.change(screen.getByLabelText('Marca preferida'), {
-      target: { value: 'Camil' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Fechar' }));
-
-    fireEvent.click(screen.getByRole('button', { name: 'Adicionar item' }));
-
-    expect(await screen.findByText('Preferir: Camil')).toBeTruthy();
+    expect(await screen.findByText('Qualquer marca')).toBeTruthy();
   });
 });

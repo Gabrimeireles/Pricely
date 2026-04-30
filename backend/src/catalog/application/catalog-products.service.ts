@@ -78,29 +78,30 @@ export class CatalogProductsService {
 
   async searchCatalogProducts(query: string) {
     const normalizedQuery = query.trim();
-
-    if (!normalizedQuery) {
-      return [];
-    }
+    const searchFilter = normalizedQuery
+      ? {
+          OR: [
+            { name: { contains: normalizedQuery, mode: 'insensitive' as const } },
+            { aliases: { some: { alias: { contains: normalizedQuery.toLowerCase() } } } },
+            {
+              productVariants: {
+                some: {
+                  isActive: true,
+                  OR: [
+                    { displayName: { contains: normalizedQuery, mode: 'insensitive' as const } },
+                    { brandName: { contains: normalizedQuery, mode: 'insensitive' as const } },
+                  ],
+                },
+              },
+            },
+          ],
+        }
+      : {};
 
     return this.prisma.catalogProduct.findMany({
       where: {
         isActive: true,
-        OR: [
-          { name: { contains: normalizedQuery, mode: 'insensitive' } },
-          { aliases: { some: { alias: { contains: normalizedQuery.toLowerCase() } } } },
-          {
-            productVariants: {
-              some: {
-                isActive: true,
-                OR: [
-                  { displayName: { contains: normalizedQuery, mode: 'insensitive' } },
-                  { brandName: { contains: normalizedQuery, mode: 'insensitive' } },
-                ],
-              },
-            },
-          },
-        ],
+        ...searchFilter,
       },
       include: {
         productVariants: {
@@ -110,7 +111,7 @@ export class CatalogProductsService {
         },
       },
       orderBy: [{ name: 'asc' }],
-      take: 20,
+      take: normalizedQuery ? 20 : 40,
     });
   }
 

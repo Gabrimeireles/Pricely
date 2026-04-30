@@ -56,12 +56,18 @@ export class AuthService {
     return this.usersService.getProfileById(userId);
   }
 
+  async updatePreferredRegion(userId: string, regionSlug: string) {
+    this.logger.log(`Updating preferred region for user ${userId} to ${regionSlug}`);
+    return this.usersService.updatePreferredRegionBySlug(userId, regionSlug);
+  }
+
   private async buildSession(user: {
     id: string;
     email: string;
     displayName: string;
     role: 'customer' | 'admin';
     status: 'active' | 'suspended';
+    preferredRegionId?: string | null;
     lastLoginAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
@@ -74,7 +80,7 @@ export class AuthService {
 
     return {
       accessToken: await this.jwtService.signAsync(payload),
-      user: this.usersService.toProfile(user),
+      user: await this.usersService.getProfileById(user.id),
     };
   }
 }

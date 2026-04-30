@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaModule } from '../persistence/prisma.module';
+import { CatalogMediaController } from './api/catalog-media.controller';
+import { CatalogMediaService } from './application/catalog-media.service';
 import { PublicCatalogController } from './api/public-catalog.controller';
 import { ProductMatchRepository } from './infrastructure/product-match.repository';
 import { ProductMatchService } from './application/product-match.service';
@@ -16,14 +18,16 @@ import { CatalogProductsService } from './application/catalog-products.service';
     ProductMatchService,
     PublicCatalogService,
     CatalogProductsService,
+    CatalogMediaService,
   ],
-  controllers: [PublicCatalogController],
+  controllers: [PublicCatalogController, CatalogMediaController],
   exports: [
     ProductNormalizerService,
     ProductMatchService,
     ProductMatchRepository,
     PublicCatalogService,
     CatalogProductsService,
+    CatalogMediaService,
   ],
 })
 export class CatalogModule {}

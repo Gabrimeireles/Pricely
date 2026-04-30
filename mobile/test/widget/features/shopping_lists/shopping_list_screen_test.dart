@@ -231,6 +231,21 @@ void main() {
             );
           }
 
+          if (request.url.path.contains('/catalog-products/search')) {
+            return http.Response(
+              jsonEncode(<dynamic>[
+                <String, dynamic>{
+                  'id': 'catalog-1',
+                  'name': 'Cafe torrado',
+                  'category': 'Mercearia',
+                  'defaultUnit': 'un',
+                  'imageUrl': 'https://example.com/cafe.jpg',
+                },
+              ]),
+              200,
+            );
+          }
+
           return http.Response('{}', 200);
         }),
       ),

@@ -18,6 +18,7 @@ import {
   runOptimization as runOptimizationRequest,
   signIn as signInRequest,
   signUp as signUpRequest,
+  updatePreferredRegion as updatePreferredRegionRequest,
   updateShoppingListItemPurchaseStatus,
   type OptimizationResultApiResponse,
 } from './api';
@@ -33,8 +34,8 @@ type SessionUser = {
 
 interface PricelyContextValue {
   accessToken: string | null;
-  cityId: string;
-  setCityId: (cityId: string) => void;
+  cityId: string | null;
+  setCityId: (cityId: string) => Promise<void>;
   cities: typeof supportedCities;
   lists: ShoppingList[];
   selectedListId: string;
@@ -92,7 +93,7 @@ function emptyProfile() {
 }
 
 export function PricelyProvider({ children }: PropsWithChildren) {
-  const [cityId, setCityId] = useState(supportedCities[0].id);
+  const [cityId, setCityIdState] = useState<string | null>(null);
   const [cities, setCities] = useState(supportedCities);
   const [lists, setLists] = useState<ShoppingList[]>([]);
   const [selectedListId, setSelectedListId] = useState('');
@@ -166,7 +167,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         }>;
 
         if (parsed.cityId) {
-          setCityId(parsed.cityId);
+          setCityIdState(parsed.cityId);
         }
         if (parsed.selectedListId) {
           setSelectedListId(parsed.selectedListId);
@@ -221,9 +222,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         });
         setLists(mappedLists);
         setSelectedListId((current) => current || mappedLists[0]?.id || '');
-        if (mappedLists[0]?.cityId) {
-          setCityId(mappedLists[0].cityId);
-        }
+        setCityIdState(user.preferredRegionSlug ?? null);
       } catch {
         if (!disposed) {
           window.localStorage.removeItem(TOKEN_KEY);
@@ -231,6 +230,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
           setLists([]);
           setProfile(emptyProfile());
           setCurrentUser(null);
+          setCityIdState(null);
         }
       } finally {
         if (!disposed) {
@@ -245,6 +245,23 @@ export function PricelyProvider({ children }: PropsWithChildren) {
       disposed = true;
     };
   }, [token]);
+
+  const setCityId = async (nextCityId: string) => {
+    setCityIdState(nextCityId);
+
+    if (!token) {
+      return;
+    }
+
+    const updatedUser = await updatePreferredRegionRequest(token, nextCityId);
+    setCurrentUser({
+      id: updatedUser.id,
+      email: updatedUser.email,
+      displayName: updatedUser.displayName,
+      role: updatedUser.role,
+    });
+    setProfile(mapProfile(updatedUser));
+  };
 
   const value = useMemo<PricelyContextValue>(
     () => ({
@@ -272,6 +289,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         });
         setProfile(mapProfile(session.user));
         setToken(session.accessToken);
+        setCityIdState(session.user.preferredRegionSlug ?? null);
       },
       signUp: async (email, password, displayName) => {
         const session = await signUpRequest(email, password, displayName);
@@ -284,6 +302,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         });
         setProfile(mapProfile(session.user));
         setToken(session.accessToken);
+        setCityIdState(session.user.preferredRegionSlug ?? null);
       },
       signOut: () => {
         window.localStorage.removeItem(TOKEN_KEY);
@@ -293,6 +312,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         setSelectedListId('');
         setOptimizationResults({});
         setProfile(emptyProfile());
+        setCityIdState(null);
       },
       saveList: async (input) => {
         if (!token) {

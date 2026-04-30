@@ -43,6 +43,13 @@ vi.mock('@/app/pricely-context', () => ({
   }),
 }));
 
+vi.mock('@/app/theme-context', () => ({
+  useTheme: () => ({
+    theme: 'light',
+    toggleTheme: vi.fn(),
+  }),
+}));
+
 vi.mock('@/components/ui/select', () => {
   const collectItems = (children: unknown): Array<{ value: string; label: string }> => {
     const items: Array<{ value: string; label: string }> = [];
