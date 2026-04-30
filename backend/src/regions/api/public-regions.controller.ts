@@ -10,4 +10,9 @@ export class PublicRegionsController {
   async list() {
     return this.publicRegionsService.listVisibleRegions();
   }
+
+  @Get('impact')
+  async impact() {
+    return this.publicRegionsService.getPublicImpact();
+  }
 }

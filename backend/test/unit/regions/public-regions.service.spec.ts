@@ -63,4 +63,29 @@ describe('PublicRegionsService', () => {
       'Public regions response contains 1 zero-store regions',
     );
   });
+
+  it('aggregates public savings impact for the landing page', async () => {
+    const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    const prisma = {
+      optimizationRun: {
+        aggregate: jest.fn().mockResolvedValue({
+          _sum: {
+            estimatedSavings: 912.8,
+          },
+        }),
+        count: jest.fn().mockResolvedValue(37),
+      },
+    };
+
+    const service = new PublicRegionsService(prisma as never);
+
+    await expect(service.getPublicImpact()).resolves.toEqual({
+      totalEstimatedSavings: 912.8,
+      optimizedListsCount: 37,
+    });
+
+    expect(logSpy).toHaveBeenCalledWith(
+      'Public impact requested: savings=912.8, optimizedLists=37',
+    );
+  });
 });

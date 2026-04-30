@@ -8,6 +8,11 @@ export interface PublicRegionContract {
   offerCoverageStatus: 'live' | 'collecting_data';
 }
 
+export interface PublicImpactContract {
+  totalEstimatedSavings: number;
+  optimizedListsCount: number;
+}
+
 export interface RegionalOffersContract {
   region: {
     id: string;

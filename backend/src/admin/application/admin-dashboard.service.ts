@@ -25,6 +25,7 @@ export class AdminDashboardService {
       activeUsers,
       shoppingListsCount,
       optimizationRunsCount,
+      aggregatedSavings,
       activeRegions,
       activeEstablishments,
       activeOffers,
@@ -37,6 +38,12 @@ export class AdminDashboardService {
       this.prisma.shoppingList.count(),
       this.prisma.optimizationRun.count({
         where: { status: 'completed' },
+      }),
+      this.prisma.optimizationRun.aggregate({
+        where: { status: 'completed' },
+        _sum: {
+          estimatedSavings: true,
+        },
       }),
       this.prisma.region.count({
         where: { implantationStatus: 'active' },
@@ -68,6 +75,7 @@ export class AdminDashboardService {
       activeOffers,
       productCount,
       queuedJobs,
+      globalEstimatedSavings: Number(aggregatedSavings._sum.estimatedSavings ?? 0),
     };
 
     this.logger.log(
@@ -141,6 +149,68 @@ export class AdminDashboardService {
     );
 
     return summary;
+  }
+
+  async listShoppingListAudits() {
+    const lists = await this.prisma.shoppingList.findMany({
+      orderBy: [{ updatedAt: 'desc' }],
+      take: 100,
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+          },
+        },
+        preferredRegion: {
+          select: {
+            name: true,
+            stateCode: true,
+          },
+        },
+        shoppingListItems: {
+          select: {
+            id: true,
+          },
+        },
+        optimizationRuns: {
+          orderBy: [{ createdAt: 'desc' }],
+          take: 1,
+        },
+      },
+    });
+
+    const projected = lists.map((list) => {
+      const latest = list.optimizationRuns[0];
+      return {
+        id: list.id,
+        name: list.name,
+        status: list.status,
+        updatedAt: list.updatedAt.toISOString(),
+        itemCount: list.shoppingListItems.length,
+        owner: list.user,
+        city: list.preferredRegion
+          ? `${list.preferredRegion.name} - ${list.preferredRegion.stateCode}`
+          : undefined,
+        latestOptimization: latest
+          ? {
+              id: latest.id,
+              mode: latest.mode,
+              status: latest.status,
+              estimatedSavings: Number(latest.estimatedSavings ?? 0),
+              totalEstimatedCost: Number(latest.totalEstimatedCost ?? 0),
+              coverageStatus: latest.coverageStatus,
+              createdAt: latest.createdAt.toISOString(),
+              completedAt: latest.completedAt?.toISOString(),
+            }
+          : null,
+      };
+    });
+
+    this.logger.log(`Admin shopping list audit requested: ${projected.length} lists returned`);
+
+    return projected;
   }
 
   async listRegions() {

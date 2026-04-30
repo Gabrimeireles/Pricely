@@ -44,7 +44,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('Ainda nao temos estabelecimentos ativos'),
+      find.textContaining('Ainda não temos estabelecimentos ativos'),
       findsOneWidget,
     );
     expect(

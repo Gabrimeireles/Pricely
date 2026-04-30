@@ -30,9 +30,11 @@ vi.mock('@/app/api', () => ({
   fetchAdminProcessingJobs: (...args: unknown[]) => fetchAdminProcessingJobs(...args),
   fetchAdminRegions: (...args: unknown[]) => fetchAdminRegions(...args),
   fetchAdminEstablishments: (...args: unknown[]) => fetchAdminEstablishments(...args),
+  fetchAdminShoppingLists: vi.fn(),
   updateAdminRegion: vi.fn(),
   createAdminRegion: vi.fn(),
   createAdminEstablishment: vi.fn(),
+  updateAdminEstablishment: vi.fn(),
   fetchAdminOffers: vi.fn(),
   fetchAdminProducts: vi.fn(),
   fetchAdminProductVariants: vi.fn(),
@@ -67,6 +69,7 @@ describe('Admin dashboard pages', () => {
       activeOffers: 6,
       productCount: 7,
       queuedJobs: 1,
+      globalEstimatedSavings: 35.2,
     });
     fetchAdminQueueHealth.mockResolvedValue({
       queuedJobs: 1,
@@ -96,6 +99,7 @@ describe('Admin dashboard pages', () => {
       activeOffers: 0,
       productCount: 0,
       queuedJobs: 0,
+      globalEstimatedSavings: 0,
     });
     fetchAdminQueueHealth.mockResolvedValue({
       queuedJobs: 0,
@@ -109,7 +113,7 @@ describe('Admin dashboard pages', () => {
 
     render(<AdminOverviewPage />);
 
-    expect(await screen.findByText('Nenhuma metrica operacional ainda')).toBeTruthy();
+    expect(await screen.findByText(/Nenhuma metrica operacional ainda/)).toBeTruthy();
   });
 
   it('renders queue diagnostics and recent jobs in the dedicated queue page', async () => {
@@ -122,6 +126,7 @@ describe('Admin dashboard pages', () => {
       activeOffers: 6,
       productCount: 7,
       queuedJobs: 1,
+      globalEstimatedSavings: 35.2,
     });
     fetchAdminQueueHealth.mockResolvedValue({
       queuedJobs: 1,
@@ -160,7 +165,7 @@ describe('Admin dashboard pages', () => {
         stateCode: 'SP',
         implantationStatus: 'active',
         publicSortOrder: 1,
-        establishmentsCount: 2,
+        activeEstablishmentsCount: 2,
       },
     ]);
     fetchAdminEstablishments.mockResolvedValue([
@@ -183,7 +188,7 @@ describe('Admin dashboard pages', () => {
     ]);
 
     render(<AdminRegionsPage />);
-    expect(await screen.findByText('Regioes publicas')).toBeTruthy();
+    expect(await screen.findByText('Cidades públicas')).toBeTruthy();
     expect(screen.getAllByText(/Sao Paulo/).length).toBeGreaterThan(0);
 
     render(<AdminEstablishmentsPage />);

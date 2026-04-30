@@ -59,6 +59,9 @@ class InMemoryShoppingListRepository {
       preferredRegionId: this.normalizePreferredRegion(input.preferredRegionId),
       status: 'draft',
       lastMode: input.lastMode ?? 'global_full',
+      latestEstimatedSavings: 0,
+      latestOptimizationStatus: undefined,
+      latestOptimizedAt: undefined,
       items: [],
       createdAt: now,
       updatedAt: now,
@@ -104,6 +107,41 @@ class InMemoryShoppingListRepository {
     existing.status = status;
     existing.updatedAt = new Date().toISOString();
     this.lists.set(id, existing);
+  }
+
+  async listAll() {
+    return Array.from(this.lists.values())
+      .sort(
+        (left, right) =>
+          new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+      )
+      .map((entry) => structuredClone(entry));
+  }
+
+  setOptimizationSummary(
+    shoppingListId: string,
+    summary: {
+      latestEstimatedSavings?: number | null;
+      latestOptimizationStatus?: string;
+      latestOptimizedAt?: string;
+    },
+  ) {
+    const existing = this.lists.get(shoppingListId);
+    if (!existing) {
+      return;
+    }
+
+    if (summary.latestEstimatedSavings !== undefined) {
+      existing.latestEstimatedSavings = Number(summary.latestEstimatedSavings ?? 0);
+    }
+    if (summary.latestOptimizationStatus !== undefined) {
+      existing.latestOptimizationStatus = summary.latestOptimizationStatus;
+    }
+    if (summary.latestOptimizedAt !== undefined) {
+      existing.latestOptimizedAt = summary.latestOptimizedAt;
+    }
+    existing.updatedAt = new Date().toISOString();
+    this.lists.set(shoppingListId, existing);
   }
 
   async updateItemPurchaseStatus(
@@ -736,6 +774,14 @@ class PrismaUserAccountMock {
         ...data,
       };
 
+      this.shoppingListRepository.setOptimizationSummary(updated.shoppingListId, {
+        latestEstimatedSavings: updated.estimatedSavings,
+        latestOptimizationStatus: updated.status,
+        latestOptimizedAt: updated.completedAt
+          ? new Date(updated.completedAt).toISOString()
+          : undefined,
+      });
+
       this.optimizationRuns.set(where.id, updated);
       return structuredClone(updated);
     },
@@ -842,6 +888,46 @@ class PrismaUserAccountMock {
       id: where.id,
       ...data,
     }),
+    findMany: async () => {
+      const lists = await this.shoppingListRepository.listAll();
+      return lists.map((list) => {
+        const user = this.users.get(list.userId) ?? null;
+        const preferredRegion = list.preferredRegionId
+          ? this.regions.find(
+              (region) =>
+                region.id === list.preferredRegionId || region.slug === list.preferredRegionId,
+            ) ?? null
+          : null;
+        const latestOptimization = [...this.optimizationRuns.values()]
+          .filter((run) => run.shoppingListId === list.id)
+          .sort(
+            (left, right) =>
+              new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+          )[0];
+
+        return {
+          id: list.id,
+          name: list.name,
+          status: list.status,
+          updatedAt: new Date(list.updatedAt),
+          user: user
+            ? {
+                id: user.id,
+                displayName: user.displayName,
+                email: user.email,
+              }
+            : null,
+          preferredRegion: preferredRegion
+            ? {
+                name: preferredRegion.name,
+                stateCode: preferredRegion.stateCode,
+              }
+            : null,
+          shoppingListItems: list.items.map((item: any) => ({ id: item.id })),
+          optimizationRuns: latestOptimization ? [structuredClone(latestOptimization)] : [],
+        };
+      });
+    },
     count: async ({ where }: { where?: { userId?: string } } = {}) =>
       where?.userId
         ? (await this.shoppingListRepository.listByUser(where.userId)).length

@@ -8,7 +8,14 @@ describe('AdminDashboardService', () => {
     const prisma = {
       userAccount: { count: jest.fn().mockResolvedValue(12) },
       shoppingList: { count: jest.fn().mockResolvedValue(24) },
-      optimizationRun: { count: jest.fn().mockResolvedValue(18) },
+      optimizationRun: {
+        count: jest.fn().mockResolvedValue(18),
+        aggregate: jest.fn().mockResolvedValue({
+          _sum: {
+            estimatedSavings: 321.45,
+          },
+        }),
+      },
       region: { count: jest.fn().mockResolvedValue(3) },
       establishment: { count: jest.fn().mockResolvedValue(17) },
       productOffer: { count: jest.fn().mockResolvedValue(42) },
@@ -57,10 +64,45 @@ describe('AdminDashboardService', () => {
           },
         ]),
       },
+      shoppingList: {
+        count: jest.fn().mockResolvedValue(24),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'list-1',
+            name: 'Compra mensal',
+            status: 'ready',
+            updatedAt: new Date('2026-04-27T10:05:00Z'),
+            user: {
+              id: 'user-1',
+              displayName: 'Cliente 1',
+              email: 'cliente1@pricely.local',
+            },
+            preferredRegion: {
+              id: 'region-1',
+              name: 'Sao Paulo',
+              stateCode: 'SP',
+            },
+            shoppingListItems: [{ id: 'item-1' }, { id: 'item-2' }],
+            optimizationRuns: [
+              {
+                id: 'run-1',
+                mode: 'global_full',
+                status: 'completed',
+                estimatedSavings: { toString: () => '18.50' },
+                totalEstimatedCost: { toString: () => '82.40' },
+                coverageStatus: 'complete',
+                createdAt: new Date('2026-04-27T10:04:00Z'),
+                completedAt: new Date('2026-04-27T10:05:00Z'),
+              },
+            ],
+          },
+        ]),
+      },
     };
 
     const service = new AdminDashboardService(
       prisma as never,
+      {} as never,
       {} as never,
       {} as never,
       {} as never,
@@ -76,6 +118,7 @@ describe('AdminDashboardService', () => {
       activeOffers: 42,
       productCount: 11,
       queuedJobs: 5,
+      globalEstimatedSavings: 321.45,
     });
 
     await expect(service.listProcessingJobs()).resolves.toEqual([
@@ -122,6 +165,27 @@ describe('AdminDashboardService', () => {
       ],
     });
 
+    await expect(service.listShoppingListAudits()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'list-1',
+        name: 'Compra mensal',
+        itemCount: 2,
+        owner: expect.objectContaining({
+          id: 'user-1',
+          displayName: 'Cliente 1',
+        }),
+        city: 'Sao Paulo - SP',
+        latestOptimization: expect.objectContaining({
+          id: 'run-1',
+          mode: 'global_full',
+          status: 'completed',
+          estimatedSavings: 18.5,
+          totalEstimatedCost: 82.4,
+          coverageStatus: 'complete',
+        }),
+      }),
+    ]);
+
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining('Admin metrics generated'),
     );
@@ -130,6 +194,9 @@ describe('AdminDashboardService', () => {
     );
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining('Admin queue health generated'),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Admin shopping list audit requested'),
     );
   });
 
@@ -150,6 +217,7 @@ describe('AdminDashboardService', () => {
     const service = new AdminDashboardService(
       prisma as never,
       regionsAdminService as never,
+      {} as never,
       {} as never,
       {} as never,
       {} as never,

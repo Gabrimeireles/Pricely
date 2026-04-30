@@ -4,9 +4,11 @@ import {
   LayoutDashboardIcon,
   ListChecksIcon,
   MapPinnedIcon,
+  MoonStarIcon,
   PackageSearchIcon,
   ShieldCheckIcon,
   StoreIcon,
+  SunMediumIcon,
   WorkflowIcon,
 } from 'lucide-react';
 
@@ -16,7 +18,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import {
   Sidebar,
   SidebarContent,
@@ -154,12 +155,16 @@ export function AdminLayout() {
             </div>
           </div>
           <div className="hidden items-center gap-2 md:flex">
-            <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/80 px-3 py-2">
-              <span className="text-xs text-muted-foreground">
-                {theme === 'dark' ? 'Escuro' : 'Claro'}
-              </span>
-              <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
-            </div>
+            <Button
+              aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              className="border-border/80 bg-card/90"
+              onClick={toggleTheme}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              {theme === 'dark' ? <SunMediumIcon className="size-4" /> : <MoonStarIcon className="size-4" />}
+            </Button>
             <Badge variant="secondary">Acesso admin</Badge>
             <Button asChild size="sm" variant="outline">
               <Link to="/">Voltar para o publico</Link>

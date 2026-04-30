@@ -48,7 +48,7 @@ export interface ShoppingListItem {
   name: string;
   catalogProductId?: string;
   lockedProductVariantId?: string;
-  brandPreferenceMode?: 'any' | 'preferred' | 'exact';
+  brandPreferenceMode?: 'any' | 'exact';
   preferredBrandNames?: string[];
   imageUrl?: string;
   quantity: number;

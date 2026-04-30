@@ -250,21 +250,6 @@ export class MultiMarketOptimizerService {
       );
     }
 
-    if (item.brandPreferenceMode === 'preferred') {
-      if (item.preferredBrandNames.length === 0) {
-        return offers;
-      }
-
-      const preferredBrands = new Set(
-        item.preferredBrandNames.map((brand) => brand.trim().toLowerCase()).filter(Boolean),
-      );
-      const preferredOffers = offers.filter((offer) =>
-        Boolean(offer.brandName && preferredBrands.has(offer.brandName.toLowerCase())),
-      );
-
-      return preferredOffers.length > 0 ? preferredOffers : offers;
-    }
-
     return offers;
   }
 }

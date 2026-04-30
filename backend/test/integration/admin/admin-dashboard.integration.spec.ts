@@ -15,6 +15,7 @@ type StoredUser = {
   displayName: string;
   role: 'customer' | 'admin';
   status: 'active' | 'suspended';
+  preferredRegionId?: string | null;
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -66,10 +67,42 @@ class AdminPrismaMock {
     count: async () => 2,
   };
 
-  readonly shoppingList = { count: async () => 4 };
+  readonly shoppingList = {
+    count: async () => 4,
+    findMany: async () => [
+      {
+        id: 'list-1',
+        name: 'Compra mensal',
+        status: 'ready',
+        updatedAt: new Date('2026-04-27T10:05:00Z'),
+        user: {
+          id: 'user-1',
+          displayName: 'Cliente 1',
+          email: 'cliente1@pricely.local',
+        },
+        preferredRegion: {
+          name: 'Sao Paulo',
+          stateCode: 'SP',
+        },
+        shoppingListItems: [{ id: 'item-1' }, { id: 'item-2' }],
+        optimizationRuns: [
+          {
+            id: 'run-1',
+            mode: 'global_full',
+            status: 'completed',
+            estimatedSavings: 18.5,
+            totalEstimatedCost: 82.4,
+            coverageStatus: 'complete',
+            createdAt: new Date('2026-04-27T10:04:00Z'),
+            completedAt: new Date('2026-04-27T10:05:00Z'),
+          },
+        ],
+      },
+    ],
+  };
   readonly optimizationRun = {
     count: async () => 7,
-    aggregate: async () => ({ _sum: { estimatedSavings: 0 } }),
+    aggregate: async () => ({ _sum: { estimatedSavings: 88.4 } }),
   };
   readonly receiptRecord = { count: async () => 0 };
   readonly processingJob = { count: async () => 3 };
@@ -184,8 +217,16 @@ describe('Admin dashboard integration', () => {
         activeUsers: 2,
         activeRegions: 1,
         activeOffers: 12,
+        globalEstimatedSavings: 88.4,
       }),
     );
+
+    const adminShoppingLists = await request(app.getHttpServer())
+      .get('/admin/shopping-lists')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(adminShoppingLists.body).toEqual(expect.any(Array));
 
     const createRegion = await request(app.getHttpServer())
       .post('/admin/regions')

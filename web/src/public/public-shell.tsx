@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 
 function AppLogo() {
   return (
@@ -91,11 +90,16 @@ export function PublicLayout() {
               </SelectContent>
             </Select>
 
-            <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/80 px-3 py-2">
-              <SunMediumIcon className="size-4 text-muted-foreground" />
-              <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
-              <MoonStarIcon className="size-4 text-muted-foreground" />
-            </div>
+            <Button
+              aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              className="border-border/80 bg-card/90"
+              onClick={toggleTheme}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              {theme === 'dark' ? <SunMediumIcon className="size-4" /> : <MoonStarIcon className="size-4" />}
+            </Button>
 
             {isAuthenticated ? (
               <>
@@ -121,34 +125,40 @@ export function PublicLayout() {
       </header>
 
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 py-8 lg:px-6 lg:py-10">
-        <div className="grid gap-3 rounded-xl border border-border/70 bg-card/80 p-4 shadow-sm sm:grid-cols-3">
-          <div className="flex items-start gap-3">
-            <SparklesIcon className="mt-0.5 text-primary" />
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Sua compra continua de onde voce parou</span>
-              <span className="text-sm text-muted-foreground">
-                A cidade escolhida, as listas salvas e o checklist acompanham a mesma conta.
-              </span>
+        <div className="grid gap-3 rounded-xl border border-border/70 bg-card/90 p-4 shadow-sm lg:grid-cols-3">
+          <div className="rounded-lg border border-border/70 bg-background/70 p-4">
+            <div className="flex items-start gap-3">
+              <SparklesIcon className="mt-0.5 shrink-0 text-primary" />
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="text-sm font-medium">Sua compra continua de onde você parou</span>
+                <span className="text-sm leading-6 text-muted-foreground">
+                  A cidade escolhida, as listas salvas e o checklist acompanham a mesma conta.
+                </span>
+              </div>
             </div>
           </div>
-          <div className="flex items-start gap-3">
-            <MapPinIcon className="mt-0.5 text-primary" />
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Cidade ativa</span>
-              <span className="text-sm text-muted-foreground">{citySummary}</span>
+          <div className="rounded-lg border border-border/70 bg-background/70 p-4">
+            <div className="flex items-start gap-3">
+              <MapPinIcon className="mt-0.5 shrink-0 text-primary" />
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="text-sm font-medium">Cidade ativa</span>
+                <span className="text-sm leading-6 text-muted-foreground">{citySummary}</span>
+              </div>
             </div>
           </div>
-          <div className="flex items-start gap-3">
-            <ShieldCheckIcon className="mt-0.5 text-primary" />
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Cobertura visivel</span>
-              <span className="text-sm text-muted-foreground">
-                {activeCity?.coverageStatus === 'live'
-                  ? 'Ofertas com evidencia disponivel.'
-                  : activeCity
-                    ? 'Cidade ativa, ainda coletando dados de cobertura.'
-                    : 'Selecione uma cidade para ver o nivel de cobertura.'}
-              </span>
+          <div className="rounded-lg border border-border/70 bg-background/70 p-4">
+            <div className="flex items-start gap-3">
+              <ShieldCheckIcon className="mt-0.5 shrink-0 text-primary" />
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="text-sm font-medium">Cobertura visível</span>
+                <span className="text-sm leading-6 text-muted-foreground">
+                  {activeCity?.coverageStatus === 'live'
+                    ? 'Ofertas com evidência disponível.'
+                    : activeCity
+                      ? 'Cidade ativa, ainda coletando dados de cobertura.'
+                      : 'Selecione uma cidade para ver o nível de cobertura.'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -167,7 +177,7 @@ export function PublicLayout() {
           <Select onValueChange={(value) => void setCityId(value)} value={cityId ?? ''}>
             <SelectTrigger>
               <MapPinIcon />
-              <SelectValue placeholder="Selecione uma cidade disponivel" />
+              <SelectValue placeholder="Selecione uma cidade disponível" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>

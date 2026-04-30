@@ -62,4 +62,33 @@ export class PublicRegionsService {
 
     return projectedRegions;
   }
+
+  async getPublicImpact() {
+    const [aggregatedSavings, optimizedListsCount] = await Promise.all([
+      this.prisma.optimizationRun.aggregate({
+        where: {
+          status: 'completed',
+        },
+        _sum: {
+          estimatedSavings: true,
+        },
+      }),
+      this.prisma.optimizationRun.count({
+        where: {
+          status: 'completed',
+        },
+      }),
+    ]);
+
+    const impact = {
+      totalEstimatedSavings: Number(aggregatedSavings._sum.estimatedSavings ?? 0),
+      optimizedListsCount,
+    };
+
+    this.logger.log(
+      `Public impact requested: savings=${impact.totalEstimatedSavings}, optimizedLists=${impact.optimizedListsCount}`,
+    );
+
+    return impact;
+  }
 }

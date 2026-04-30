@@ -69,7 +69,7 @@ describe('ListEditorPage', () => {
     vi.clearAllMocks();
   });
 
-  it('lets the user choose a base product and configure preferred brand in the dialog', async () => {
+  it('lets the user choose a base product and keep the default variant rule', async () => {
     render(
       <MemoryRouter initialEntries={['/listas/nova']}>
         <Routes>
@@ -95,6 +95,6 @@ describe('ListEditorPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
 
-    expect(await screen.findByText('Qualquer marca')).toBeTruthy();
+    expect(await screen.findByText('Qualquer variante')).toBeTruthy();
   });
 });

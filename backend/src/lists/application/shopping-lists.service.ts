@@ -73,9 +73,7 @@ export class ShoppingListsService {
         item.brandPreferenceMode ??
         (item.lockedProductVariantId
           ? 'exact'
-          : preferredBrandNames.length > 0
-            ? 'preferred'
-            : 'any');
+          : 'any');
 
       return {
         id: crypto.randomUUID(),
@@ -174,9 +172,7 @@ export class ShoppingListsService {
         item.brandPreferenceMode ??
         (item.lockedProductVariantId
           ? 'exact'
-          : preferredBrandNames.length > 0
-            ? 'preferred'
-            : 'any');
+          : 'any');
 
       return {
         id: crypto.randomUUID(),

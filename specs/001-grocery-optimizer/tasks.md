@@ -285,6 +285,29 @@ for media, activation state, and theme visibility.
 
 ---
 
+## Phase 11: Dashboard, Savings, and City-First List QoL
+
+**Purpose**: Tighten admin clarity, remove brand-preference ambiguity from list creation,
+surface user and platform savings more effectively, and improve city/list/dashboard polish
+across backend, web, and mobile.
+
+### Tests for Dashboard, Savings, and List QoL
+
+- [X] T099 [P] Add backend unit, integration, and contract tests for automatic active-establishment counting, list-history auditing payloads, queue diagnostics, savings aggregation, and variant-only item selection in `backend/test/unit/admin/`, `backend/test/unit/regions/`, `backend/test/integration/admin/`, `backend/test/integration/lists/`, and `backend/test/contract/`
+- [X] T100 [P] Add web tests for admin region/product/offer/list surfaces, city-first headers, aggregate-savings copy, variant selection tables, and save-vs-optimize actions in `web/src/dashboard/`, `web/src/public/`, and `web/src/routes/`
+- [X] T101 [P] Add mobile tests for city-first list creation, variant-only item selection, non-checklist new-list flow, and authenticated savings copy in `mobile/test/widget/features/home/`, `mobile/test/widget/features/shopping_lists/`, and `mobile/test/unit/features/optimization/`
+
+### Implementation for Dashboard, Savings, and List QoL
+
+- [X] T102 [P] Implement backend support for computed active-establishment counts, per-list optimization savings, user-level cumulative savings, global cumulative savings for landing, auditable list-processing history, and richer queue diagnostics in `backend/src/admin/`, `backend/src/lists/`, `backend/src/optimization/`, `backend/src/pricing/`, `backend/src/regions/`, and `backend/src/common/contracts/`
+- [X] T103 [P] Refactor web public header, landing hero, `/listas`, and list-creation flows to improve alignment, remove generic savings from pre-login surfaces, show authenticated savings copy correctly, use comparable-product rows with exact variant selection, and keep checklist only on checklist surfaces in `web/src/public/`, `web/src/app/`, `web/src/components/`, and `web/src/routes/`
+- [X] T104 [P] Refactor web admin regions, products, offers, list-operations, and queue-health views with PT-BR helper copy, stronger cards, icon-only theme toggle, upload affordances, variant activation columns, collapsible variant groups, city cards, list audit views, and expanded queue details in `web/src/dashboard/`, `web/src/components/`, and `web/src/app/`
+- [X] T105 [P] Refactor mobile list creation and authenticated account surfaces to remove preferred-brand free text, require exact variant selection or any-brand choice, keep checklist outside the new-list flow, and mirror the updated savings/account messaging in `mobile/lib/features/home/`, `mobile/lib/features/shopping_lists/`, and `mobile/lib/features/optimization/`
+- [X] T106 [P] Use Stitch-aligned component structure and visual hierarchy refinements for header, list cards, and admin cards without rebuilding entire screens in `docs/product/`, `web/src/public/`, `web/src/dashboard/`, and `mobile/lib/features/`
+- [X] T107 [P] Run final cross-surface validation for computed counts, savings aggregation, list auditing, queue-health diagnostics, and city-first list creation in `backend/test/`, `web/src/`, `mobile/test/`, `docs/local-development.md`, and Docker-backed smoke scripts
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

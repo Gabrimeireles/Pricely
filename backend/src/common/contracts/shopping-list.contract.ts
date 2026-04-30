@@ -4,7 +4,7 @@ export interface ShoppingListItemInput {
   requestedName: string;
   catalogProductId?: string;
   lockedProductVariantId?: string;
-  brandPreferenceMode?: 'any' | 'preferred' | 'exact';
+  brandPreferenceMode?: 'any' | 'exact';
   preferredBrandNames?: string[];
   purchaseStatus?: 'pending' | 'purchased';
   quantity?: number;
@@ -22,7 +22,7 @@ export interface ShoppingListItem {
   id: string;
   catalogProductId?: string;
   lockedProductVariantId?: string;
-  brandPreferenceMode: 'any' | 'preferred' | 'exact';
+  brandPreferenceMode: 'any' | 'exact';
   preferredBrandNames: string[];
   imageUrl?: string;
   requestedName: string;
@@ -41,6 +41,9 @@ export interface ShoppingList {
   preferredRegionId?: string;
   status: 'draft' | 'ready' | 'archived';
   lastMode: OptimizationMode;
+  latestEstimatedSavings: number;
+  latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
+  latestOptimizedAt?: string;
   items: ShoppingListItem[];
   createdAt: string;
   updatedAt: string;

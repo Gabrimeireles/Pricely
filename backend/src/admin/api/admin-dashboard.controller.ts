@@ -322,6 +322,11 @@ export class AdminDashboardController {
     return this.adminDashboardService.getQueueHealth();
   }
 
+  @Get('shopping-lists')
+  async listShoppingListAudits() {
+    return this.adminDashboardService.listShoppingListAudits();
+  }
+
   @Get('regions')
   async listRegions() {
     return this.adminDashboardService.listRegions();

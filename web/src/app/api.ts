@@ -27,12 +27,15 @@ type ShoppingListApiResponse = {
   preferredRegionId?: string;
   status: 'draft' | 'ready' | 'archived';
   lastMode: OptimizationModeId;
+  latestEstimatedSavings: number;
+  latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
+  latestOptimizedAt?: string;
   items: Array<{
     id: string;
     requestedName: string;
     catalogProductId?: string;
     lockedProductVariantId?: string;
-    brandPreferenceMode?: 'any' | 'preferred' | 'exact';
+    brandPreferenceMode?: 'any' | 'exact';
     preferredBrandNames?: string[];
     imageUrl?: string;
     quantity?: number;
@@ -88,6 +91,11 @@ type PublicRegionApiResponse = {
   implantationStatus: 'active' | 'activating' | 'inactive';
   activeEstablishmentCount: number;
   offerCoverageStatus: 'live' | 'collecting_data';
+};
+
+type PublicImpactResponse = {
+  totalEstimatedSavings: number;
+  optimizedListsCount: number;
 };
 
 type RegionOffersApiResponse = {
@@ -197,6 +205,7 @@ type AdminMetricsResponse = {
   activeOffers: number;
   productCount: number;
   queuedJobs: number;
+  globalEstimatedSavings: number;
 };
 
 type AdminProcessingJobResponse = {
@@ -234,7 +243,31 @@ type AdminRegionResponse = {
   stateCode: string;
   implantationStatus: 'active' | 'activating' | 'inactive';
   publicSortOrder: number;
-  establishmentsCount: number;
+  activeEstablishmentsCount: number;
+};
+
+type AdminShoppingListAuditResponse = {
+  id: string;
+  name: string;
+  status: string;
+  updatedAt: string;
+  itemCount: number;
+  owner: {
+    id: string;
+    displayName: string;
+    email: string;
+  };
+  city?: string;
+  latestOptimization?: {
+    id: string;
+    mode: OptimizationModeId;
+    status: string;
+    estimatedSavings: number;
+    totalEstimatedCost: number;
+    coverageStatus: string;
+    createdAt: string;
+    completedAt?: string;
+  } | null;
 };
 
 type AdminEstablishmentResponse = {
@@ -388,6 +421,10 @@ export async function fetchPublicRegions() {
   return apiFetch<PublicRegionApiResponse[]>('/regions');
 }
 
+export async function fetchPublicImpact() {
+  return apiFetch<PublicImpactResponse>('/regions/impact');
+}
+
 export async function fetchRegionOffers(regionSlug: string) {
   return apiFetch<RegionOffersApiResponse>(`/regions/${regionSlug}/offers`);
 }
@@ -441,7 +478,7 @@ export async function replaceShoppingList(
       requestedName: string;
       catalogProductId?: string;
       lockedProductVariantId?: string;
-      brandPreferenceMode?: 'any' | 'preferred' | 'exact';
+      brandPreferenceMode?: 'any' | 'exact';
       preferredBrandNames?: string[];
       purchaseStatus?: 'pending' | 'purchased';
       quantity?: number;
@@ -541,6 +578,10 @@ export async function fetchAdminQueueHealth(token: string) {
 
 export async function fetchAdminRegions(token: string) {
   return apiFetch<AdminRegionResponse[]>('/admin/regions', {}, token);
+}
+
+export async function fetchAdminShoppingLists(token: string) {
+  return apiFetch<AdminShoppingListAuditResponse[]>('/admin/shopping-lists', {}, token);
 }
 
 export async function createAdminRegion(token: string, input: Record<string, unknown>) {
@@ -738,7 +779,7 @@ export function mapShoppingList(apiList: ShoppingListApiResponse): ShoppingList 
     cityId: apiList.preferredRegionId ?? '',
     lastMode: apiList.lastMode,
     updatedAt: apiList.updatedAt,
-    expectedSavings: 0,
+    expectedSavings: apiList.latestEstimatedSavings ?? 0,
     items: apiList.items.map((item) => ({
       id: item.id,
       name: item.requestedName,
@@ -762,6 +803,7 @@ export function mapShoppingList(apiList: ShoppingListApiResponse): ShoppingList 
 }
 
 export type {
+  AdminShoppingListAuditResponse,
   AdminEstablishmentResponse,
   AdminMetricsResponse,
   AdminOfferResponse,
@@ -773,6 +815,7 @@ export type {
   OfferDetailApiResponse,
   OptimizationResultApiResponse,
   PublicRegionApiResponse,
+  PublicImpactResponse,
   ProductVariantResponse,
   RegionOffersApiResponse,
   CatalogProductSearchResponse,
