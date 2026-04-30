@@ -7,6 +7,7 @@ export interface AdminMetricsContract {
   activeOffers: number;
   productCount: number;
   queuedJobs: number;
+  globalEstimatedSavings: number;
 }
 
 export interface AdminQueueHealthContract {
@@ -21,4 +22,28 @@ export interface AdminQueueHealthContract {
     status: string;
     failureReason?: string | null;
   }>;
+}
+
+export interface AdminShoppingListAuditContract {
+  id: string;
+  name: string;
+  status: 'draft' | 'ready' | 'archived';
+  updatedAt: string;
+  itemCount: number;
+  owner: {
+    id: string;
+    displayName: string;
+    email: string;
+  };
+  city?: string;
+  latestOptimization: {
+    id: string;
+    mode: 'local' | 'global_unique' | 'global_full';
+    status: 'queued' | 'running' | 'completed' | 'failed';
+    estimatedSavings: number;
+    totalEstimatedCost: number;
+    coverageStatus: 'complete' | 'partial' | 'none';
+    createdAt: string;
+    completedAt?: string;
+  } | null;
 }

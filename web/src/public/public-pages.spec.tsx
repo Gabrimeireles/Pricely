@@ -107,7 +107,7 @@ describe('public pages', () => {
     expect(await screen.findByText('Ofertas por cidade')).toBeTruthy();
     expect(
       screen.getByText(
-        'Campinas. Ofertas publicas mostram loja, frescor, confianca e detalhe completo do item.',
+        'Campinas. Ofertas públicas mostram loja, frescor, confiança e detalhe completo do item.',
       ),
     ).toBeTruthy();
   });
@@ -174,7 +174,7 @@ describe('public pages', () => {
         element?.textContent?.includes('Centro') == true,
       ),
     ).toBeTruthy();
-    expect(screen.getByText('Precos do produto na cidade')).toBeTruthy();
+    expect(screen.getByText('Preços do produto na cidade')).toBeTruthy();
     expect(screen.getByText('Mercado Sul')).toBeTruthy();
   });
 });

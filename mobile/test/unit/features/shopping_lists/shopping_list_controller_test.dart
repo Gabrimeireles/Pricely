@@ -68,7 +68,7 @@ void main() {
     expect(restoredDraft?.items.single.quantity, 2);
   });
 
-  test('stores brand preference metadata and toggles purchased state', () async {
+  test('stores exact variant metadata and toggles purchased state', () async {
     final cacheService = LocalCacheService(InMemoryKeyValueStore());
     final backendGateway = PricelyBackendGateway(
       HttpApiClient(
@@ -129,7 +129,7 @@ void main() {
       catalogProductId: 'catalog-1',
       lockedProductVariantId: 'variant-1',
       brandPreferenceMode: 'exact',
-      preferredBrandNames: const <String>['Camil'],
+      preferredBrandNames: const <String>[],
       imageUrl: 'https://example.com/arroz-camil.jpg',
       quantity: 1,
       unit: 'un',

@@ -12,7 +12,11 @@ export class RegionsAdminService {
       include: {
         _count: {
           select: {
-            establishments: true,
+            establishments: {
+              where: {
+                isActive: true,
+              },
+            },
           },
         },
       },
@@ -25,7 +29,7 @@ export class RegionsAdminService {
       stateCode: region.stateCode,
       implantationStatus: region.implantationStatus,
       publicSortOrder: region.publicSortOrder,
-      establishmentsCount: region._count.establishments,
+      activeEstablishmentsCount: region._count.establishments,
     }));
   }
 

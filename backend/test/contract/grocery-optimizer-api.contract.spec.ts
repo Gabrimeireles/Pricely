@@ -27,6 +27,7 @@ describe('Grocery optimizer API contract', () => {
           preferredRegionId: 'sao-paulo-sp',
           status: 'draft',
           lastMode: 'global_full',
+          latestEstimatedSavings: 0,
           items: expect.any(Array),
         }),
       );
@@ -114,6 +115,17 @@ describe('Grocery optimizer API contract', () => {
       );
 
       const regionSlug = regionsResponse.body[0].slug as string;
+
+      const publicImpactResponse = await request(app.getHttpServer())
+        .get('/regions/impact')
+        .expect(200);
+
+      expect(publicImpactResponse.body).toEqual(
+        expect.objectContaining({
+          totalEstimatedSavings: expect.any(Number),
+          optimizedListsCount: expect.any(Number),
+        }),
+      );
 
       const regionalOffersResponse = await request(app.getHttpServer())
         .get(`/regions/${regionSlug}/offers`)
@@ -236,7 +248,28 @@ describe('Grocery optimizer API contract', () => {
           activeOffers: expect.any(Number),
           productCount: expect.any(Number),
           queuedJobs: expect.any(Number),
+          globalEstimatedSavings: expect.any(Number),
         }),
+      );
+
+      const adminListsResponse = await request(app.getHttpServer())
+        .get('/admin/shopping-lists')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(adminListsResponse.body).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: expect.any(String),
+            name: expect.any(String),
+            itemCount: expect.any(Number),
+            owner: expect.objectContaining({
+              id: expect.any(String),
+              email: expect.any(String),
+            }),
+            latestOptimization: expect.anything(),
+          }),
+        ]),
       );
 
       const createRegionResponse = await request(app.getHttpServer())

@@ -19,7 +19,7 @@ class MultiMarketResultScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Resultado da otimizacao'),
+        title: const Text('Resultado da otimização'),
       ),
       body: AnimatedBuilder(
         animation: controller,
@@ -60,7 +60,7 @@ class MultiMarketResultScreen extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     const Text(
-                      'Nenhum resultado salvo ainda. Rode a otimizacao para comparar lojas, cobertura e menor total.',
+                      'Nenhum resultado salvo ainda. Rode a otimização para comparar lojas, cobertura e menor total.',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
@@ -162,7 +162,7 @@ class MultiMarketResultView extends StatelessWidget {
                               : null,
                           title: Text(selection.itemName),
                           subtitle: Text(
-                            '${selection.quantity} ${selection.unit} - ${_brandRuleLabel(draftItem)} - confianca ${selection.confidenceLabel}',
+                            '${selection.quantity} ${selection.unit} - ${_brandRuleLabel(draftItem)} - confiança ${selection.confidenceLabel}',
                           ),
                           trailing: Text(_formatCurrency(selection.subtotal)),
                         );
@@ -210,14 +210,11 @@ class MultiMarketResultView extends StatelessWidget {
 
   String _brandRuleLabel(ShoppingListItemDraft? item) {
     if (item == null || item.brandPreferenceMode == 'any') {
-      return 'qualquer marca';
+      return 'qualquer variante';
     }
     if (item.brandPreferenceMode == 'exact') {
       return 'variante exata';
     }
-    if (item.preferredBrandNames.isEmpty) {
-      return 'preferir marca';
-    }
-    return 'preferir ${item.preferredBrandNames.join(', ')}';
+    return 'qualquer variante';
   }
 }

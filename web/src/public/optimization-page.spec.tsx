@@ -50,13 +50,13 @@ describe('OptimizationPage', () => {
 
     expect(screen.getByText('Escolha o modo')).toBeTruthy();
     expect(screen.getByText('Local')).toBeTruthy();
-    expect(screen.getByText('Global unico')).toBeTruthy();
+    expect(screen.getByText('Global único')).toBeTruthy();
     expect(screen.getByText('Global completo')).toBeTruthy();
     expect(
-      screen.getByText('Prioriza concluir a compra com o menor deslocamento possivel.'),
+      screen.getByText('Prioriza concluir a compra com o menor deslocamento possível.'),
     ).toBeTruthy();
     expect(
-      screen.getByText('Procura a melhor loja unica para equilibrar cobertura e preco.'),
+      screen.getByText('Procura a melhor loja única para equilibrar cobertura e preço.'),
     ).toBeTruthy();
     expect(
       screen.getByText('Busca o menor custo total item a item na cidade selecionada.'),

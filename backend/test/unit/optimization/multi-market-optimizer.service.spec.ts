@@ -202,33 +202,6 @@ describe('MultiMarketOptimizerService', () => {
     expect(result.selections[1]?.establishmentName).toBe('Mercado A');
   });
 
-  it('falls back from preferred brands when no preferred brand exists', () => {
-    const list = createList();
-    list.items[0] = {
-      ...list.items[0],
-      brandPreferenceMode: 'preferred',
-      preferredBrandNames: ['Camil'],
-    };
-
-    const result = service.optimize(list, [
-      createOffer({
-        id: 'offer-a1',
-        catalogProductId: 'product-arroz',
-        brandName: 'Tio Joao',
-        storeId: 'store-a',
-        storeName: 'Mercado A',
-        canonicalName: 'arroz',
-        displayName: 'Arroz A',
-        price: 9,
-        sourceReceiptLineItemId: 'src-a1',
-        observedAt: new Date().toISOString(),
-      }),
-    ], 'global_full');
-
-    expect(result.selections[0]?.selectionStatus).toBe('selected');
-    expect(result.selections[0]?.establishmentName).toBe('Mercado A');
-  });
-
   it('enforces exact variant selection when a locked variant is required', () => {
     const list = createList();
     list.items[0] = {

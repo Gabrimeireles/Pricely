@@ -11,7 +11,7 @@ export interface ShoppingListItemEntity {
   id: string;
   catalogProductId?: string;
   lockedProductVariantId?: string;
-  brandPreferenceMode: 'any' | 'preferred' | 'exact';
+  brandPreferenceMode: 'any' | 'exact';
   preferredBrandNames: string[];
   imageUrl?: string;
   requestedName: string;
@@ -31,6 +31,9 @@ export interface ShoppingListEntity {
   preferredRegionId?: string;
   status: ShoppingListStatus;
   lastMode: OptimizationMode;
+  latestEstimatedSavings: number;
+  latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
+  latestOptimizedAt?: string;
   items: ShoppingListItemEntity[];
   createdAt: string;
   updatedAt: string;

@@ -238,13 +238,20 @@ export class ShoppingListRepository {
       preferredRegionId: record.preferredRegion?.slug ?? undefined,
       status: record.status,
       lastMode: latestRun?.mode ?? fallbackMode,
+      latestEstimatedSavings:
+        latestRun?.estimatedSavings !== null && latestRun?.estimatedSavings !== undefined
+          ? Number(latestRun.estimatedSavings)
+          : 0,
+      latestOptimizationStatus: latestRun?.status,
+      latestOptimizedAt: latestRun?.completedAt?.toISOString(),
       createdAt: record.createdAt.toISOString(),
       updatedAt: record.updatedAt.toISOString(),
       items: record.shoppingListItems.map((item) => ({
         id: item.id,
         catalogProductId: item.catalogProductId ?? undefined,
         lockedProductVariantId: item.lockedProductVariantId ?? undefined,
-        brandPreferenceMode: item.brandPreferenceMode,
+        brandPreferenceMode:
+          item.brandPreferenceMode === 'exact' ? 'exact' : 'any',
         preferredBrandNames: item.preferredBrandNames,
         imageUrl:
           item.lockedProductVariant?.imageUrl ??

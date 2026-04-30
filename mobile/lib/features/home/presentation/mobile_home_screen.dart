@@ -174,7 +174,7 @@ class _PreferredCityScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'A cidade fica persistida na sua conta e pode ser trocada depois quando voce quiser.',
+              'A cidade fica persistida na sua conta e pode ser trocada depois quando você quiser.',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 20),
@@ -276,8 +276,8 @@ class _HomeTab extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       user == null
-                          ? 'Precos com contexto real'
-                          : 'Ola, ${user.displayName}',
+                          ? 'Preços com contexto real'
+                          : 'Olá, ${user.displayName}',
                       style: theme.textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 6),
@@ -396,10 +396,10 @@ class _HomeTab extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     region.activeEstablishmentCount == 0
-                        ? 'Ainda nao temos estabelecimentos ativos nessa cidade. Voce pode trocar de cidade ou comecar a contribuir com recibos.'
+                        ? 'Ainda não temos estabelecimentos ativos nessa cidade. Você pode trocar de cidade ou começar a contribuir com recibos.'
                         : region.offerCoverageStatus == 'collecting_data'
-                            ? 'A cidade ja esta aberta, mas a cobertura ainda esta sendo populada. Os precos podem ser parciais.'
-                            : 'Cidade com ofertas disponiveis e estabelecimentos ativos.',
+                            ? 'A cidade já está aberta, mas a cobertura ainda está sendo populada. Os preços podem ser parciais.'
+                            : 'Cidade com ofertas disponíveis e estabelecimentos ativos.',
                   ),
                 ],
               ],
@@ -510,7 +510,7 @@ class _HomeTab extends StatelessWidget {
             if (snapshot.hasError || !snapshot.hasData) {
               return const Padding(
                 padding: EdgeInsets.all(24),
-                child: Text('Nao foi possivel carregar o detalhe da oferta agora.'),
+                child: Text('Não foi possível carregar o detalhe da oferta agora.'),
               );
             }
 

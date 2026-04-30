@@ -27,7 +27,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   late final TextEditingController _itemController;
   late final TextEditingController _quantityController;
   late final TextEditingController _unitController;
-  late final TextEditingController _preferredBrandController;
   String? _selectedCatalogProductId;
   String? _selectedVariantId;
   String _brandPreferenceMode = 'any';
@@ -40,7 +39,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     _itemController = TextEditingController();
     _quantityController = TextEditingController(text: '1');
     _unitController = TextEditingController(text: 'un');
-    _preferredBrandController = TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.controller.searchCatalog('');
     });
@@ -52,7 +50,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     _itemController.dispose();
     _quantityController.dispose();
     _unitController.dispose();
-    _preferredBrandController.dispose();
     super.dispose();
   }
 
@@ -209,12 +206,12 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      '2. Escolha um produto comparavel',
+                      '2. Escolha um produto comparável',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Pesquise o produto base primeiro. A preferencia de marca entra depois, se fizer sentido.',
+                      'Pesquise o produto base primeiro. Depois você pode manter qualquer variante ou travar uma variante exata.',
                     ),
                     const SizedBox(height: 16),
               Row(
@@ -275,7 +272,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                     }
                   },
                   decoration: const InputDecoration(
-                    labelText: 'Produto comparavel',
+                    labelText: 'Produto comparável',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -337,10 +334,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                               ? _selectedVariantId
                               : null,
                       brandPreferenceMode: _brandPreferenceMode,
-                      preferredBrandNames: _brandPreferenceMode == 'preferred' &&
-                              _preferredBrandController.text.trim().isNotEmpty
-                          ? <String>[_preferredBrandController.text.trim()]
-                          : const <String>[],
+                      preferredBrandNames: const <String>[],
                       imageUrl: selectedVariant?.imageUrl ?? selectedProduct?.imageUrl,
                       quantity: int.tryParse(_quantityController.text) ?? 1,
                       unit: _unitController.text.trim().isEmpty
@@ -350,7 +344,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                     _itemController.clear();
                     _quantityController.text = '1';
                     _unitController.text = 'un';
-                    _preferredBrandController.clear();
                     setState(() {
                       _selectedCatalogProductId = null;
                       _selectedVariantId = null;
@@ -374,7 +367,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   child: Padding(
                     padding: EdgeInsets.all(16),
                     child: Text(
-                      '3. Revise os itens adicionados. A lista sera salva no backend e pode ser reutilizada antes ou depois da otimizacao.',
+                      '3. Revise os itens adicionados. A lista será salva no backend e pode ser reutilizada antes ou depois da otimização.',
                     ),
                   ),
                 )
@@ -382,10 +375,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(8),
-                    child: Column(
-                      children: draft.items
-                          .map(
-                            (item) => ListTile(
+                child: Column(
+                  children: draft.items
+                      .map(
+                        (item) => ListTile(
                               leading: SizedBox(
                                 width: 52,
                                 height: 52,
@@ -410,17 +403,12 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                               ),
                               title: Text(item.name),
                               subtitle: Text(
-                                '${item.quantity} ${item.unit} - ${item.brandPreferenceMode == 'any' ? 'qualquer marca' : item.brandPreferenceMode == 'preferred' ? 'preferir ${item.preferredBrandNames.join(', ')}' : 'variante exata'}',
+                                '${item.quantity} ${item.unit} - ${item.brandPreferenceMode == 'exact' ? 'variante exata' : 'qualquer variante'}',
                               ),
                               trailing: Wrap(
                                 spacing: 4,
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: <Widget>[
-                                  Checkbox(
-                                    value: item.purchaseStatus == 'purchased',
-                                    onChanged: (_) =>
-                                        widget.controller.togglePurchased(item.id),
-                                  ),
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline),
                                     onPressed: () =>
@@ -499,13 +487,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
           : 'variante exata selecionada';
     }
 
-    if (_brandPreferenceMode == 'preferred') {
-      return _preferredBrandController.text.trim().isEmpty
-          ? 'preferir marca'
-          : 'preferir ${_preferredBrandController.text.trim()}';
-    }
-
-    return 'qualquer marca';
+    return 'qualquer variante';
   }
 
   Future<void> _openBrandPreferenceSheet() async {
@@ -514,7 +496,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     }
 
     String tempMode = _brandPreferenceMode;
-    String tempPreferredBrand = _preferredBrandController.text;
     String? tempVariantId = _selectedVariantId;
 
     await showModalBottomSheet<void>(
@@ -539,11 +520,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                     items: const <DropdownMenuItem<String>>[
                       DropdownMenuItem<String>(
                         value: 'any',
-                        child: Text('Qualquer marca'),
-                      ),
-                      DropdownMenuItem<String>(
-                        value: 'preferred',
-                        child: Text('Preferir marca'),
+                        child: Text('Qualquer variante'),
                       ),
                       DropdownMenuItem<String>(
                         value: 'exact',
@@ -555,23 +532,11 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                         tempMode = value ?? 'any';
                       });
                     },
-                    decoration: const InputDecoration(
-                      labelText: 'Regra de marca',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  if (tempMode == 'preferred') ...<Widget>[
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: TextEditingController(text: tempPreferredBrand)
-                        ..selection = TextSelection.collapsed(offset: tempPreferredBrand.length),
-                      onChanged: (value) => tempPreferredBrand = value,
                       decoration: const InputDecoration(
-                        labelText: 'Marca preferida',
+                        labelText: 'Regra de marca',
                         border: OutlineInputBorder(),
                       ),
                     ),
-                  ],
                   if (tempMode == 'exact' && widget.controller.variantResults.isNotEmpty) ...<Widget>[
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
@@ -606,7 +571,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       onPressed: () {
                         setState(() {
                           _brandPreferenceMode = tempMode;
-                          _preferredBrandController.text = tempPreferredBrand;
                           _selectedVariantId = tempVariantId;
                         });
                         Navigator.of(sheetContext).pop();
@@ -644,12 +608,12 @@ class _UnauthenticatedView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'Economia com evidencia real',
+                'Economia com evidência real',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 12),
               const Text(
-                'Entre para sincronizar suas listas entre mobile e web, salvar compras mensais e rodar a otimizacao no backend.',
+                'Entre para sincronizar suas listas entre mobile e web, salvar compras mensais e rodar a otimização no backend.',
               ),
               const SizedBox(height: 20),
               SizedBox(

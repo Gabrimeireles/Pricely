@@ -58,7 +58,7 @@ interface PricelyContextValue {
       name: string;
       catalogProductId?: string;
       lockedProductVariantId?: string;
-      brandPreferenceMode?: 'any' | 'preferred' | 'exact';
+      brandPreferenceMode?: 'any' | 'exact';
       preferredBrandNames?: string[];
       purchaseStatus?: 'pending' | 'purchased';
       quantity: number;

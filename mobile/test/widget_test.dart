@@ -14,7 +14,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Precos com contexto real'), findsOneWidget);
+    expect(find.text('Preços com contexto real'), findsOneWidget);
   });
 }
 
