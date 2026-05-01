@@ -75,7 +75,16 @@ void main() {
                   'name': 'Leite integral 1L',
                   'category': 'Laticinios',
                   'defaultUnit': 'un',
-                  'imageUrl': 'https://example.com/leite.jpg',
+                  'imageUrl': null,
+                  'productVariants': <dynamic>[
+                    <String, dynamic>{
+                      'id': 'variant-1',
+                      'catalogProductId': 'catalog-2',
+                      'displayName': 'Leite Integral 1L',
+                      'brandName': 'Italac',
+                      'imageUrl': 'https://example.com/leite-italac.jpg',
+                    },
+                  ],
                 },
               ]),
               200,

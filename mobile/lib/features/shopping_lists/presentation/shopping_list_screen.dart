@@ -31,6 +31,40 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   String? _selectedVariantId;
   String _brandPreferenceMode = 'any';
 
+  String? _catalogProductPreviewImage(CatalogProductSummary? product) {
+    if (product == null) {
+      return null;
+    }
+
+    if (product.imageUrl != null && product.imageUrl!.isNotEmpty) {
+      return product.imageUrl;
+    }
+
+    for (final variant in product.productVariants) {
+      if (variant.imageUrl != null && variant.imageUrl!.isNotEmpty) {
+        return variant.imageUrl;
+      }
+    }
+
+    return null;
+  }
+
+  String? _selectedVariantLabel() {
+    if (_selectedVariantId == null || _selectedVariantId!.isEmpty) {
+      return null;
+    }
+
+    for (final variant in widget.controller.variantResults) {
+      if (variant.id == _selectedVariantId) {
+        return variant.brandName != null && variant.brandName!.isNotEmpty
+            ? '${variant.brandName} · ${variant.displayName}'
+            : variant.displayName;
+      }
+    }
+
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -327,7 +361,12 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                     }
 
                     await widget.controller.addItem(
-                      name: _itemController.text,
+                      name: _brandPreferenceMode == 'exact' && selectedVariant != null
+                          ? ((selectedVariant.brandName != null &&
+                                  selectedVariant.brandName!.isNotEmpty)
+                              ? '${selectedVariant.brandName} · ${selectedVariant.displayName}'
+                              : selectedVariant.displayName)
+                          : selectedProduct?.name ?? _itemController.text,
                       catalogProductId: _selectedCatalogProductId,
                       lockedProductVariantId:
                           _brandPreferenceMode == 'exact'
@@ -335,7 +374,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                               : null,
                       brandPreferenceMode: _brandPreferenceMode,
                       preferredBrandNames: const <String>[],
-                      imageUrl: selectedVariant?.imageUrl ?? selectedProduct?.imageUrl,
+                      imageUrl: selectedVariant?.imageUrl ??
+                          _catalogProductPreviewImage(selectedProduct),
                       quantity: int.tryParse(_quantityController.text) ?? 1,
                       unit: _unitController.text.trim().isEmpty
                           ? 'un'
@@ -367,7 +407,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   child: Padding(
                     padding: EdgeInsets.all(16),
                     child: Text(
-                      '3. Revise os itens adicionados. A lista será salva no backend e pode ser reutilizada antes ou depois da otimização.',
+                      '3. Revise os itens adicionados. A lista fica salva na sua conta e pode ser reutilizada antes ou depois da otimização.',
                     ),
                   ),
                 )
@@ -403,7 +443,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                               ),
                               title: Text(item.name),
                               subtitle: Text(
-                                '${item.quantity} ${item.unit} - ${item.brandPreferenceMode == 'exact' ? 'variante exata' : 'qualquer variante'}',
+                                '${item.quantity} ${item.unit} - ${item.brandPreferenceMode == 'exact' ? 'variante exata: ${item.name}' : 'qualquer variante'}',
                               ),
                               trailing: Wrap(
                                 spacing: 4,
@@ -484,7 +524,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     if (_brandPreferenceMode == 'exact') {
       return _selectedVariantId == null || _selectedVariantId!.isEmpty
           ? 'variante exata pendente'
-          : 'variante exata selecionada';
+          : 'variante exata: ${_selectedVariantLabel() ?? 'selecionada'}';
     }
 
     return 'qualquer variante';
@@ -613,7 +653,7 @@ class _UnauthenticatedView extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Entre para sincronizar suas listas entre mobile e web, salvar compras mensais e rodar a otimização no backend.',
+                'Entre para sincronizar suas listas entre mobile e web, salvar compras mensais e rodar a otimização da sua compra.',
               ),
               const SizedBox(height: 20),
               SizedBox(

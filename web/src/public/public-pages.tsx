@@ -82,12 +82,16 @@ type EditableListItem = {
   note?: string;
 };
 
+function getCatalogProductPreviewImage(product: CatalogProductSearchResponse) {
+  return product.imageUrl ?? product.productVariants.find((variant) => variant.imageUrl)?.imageUrl;
+}
+
 function describeBrandRule(item: {
   brandPreferenceMode?: 'any' | 'exact';
   preferredBrandNames?: string[];
-}) {
+}, exactVariantName?: string) {
   if (item.brandPreferenceMode === 'exact') {
-    return 'Variante exata selecionada';
+    return exactVariantName ? `Variante exata: ${exactVariantName}` : 'Variante exata selecionada';
   }
 
   return 'Qualquer variante';
@@ -127,10 +131,10 @@ function freshnessBadge(level: FreshnessLevel) {
 
 function confidenceBadge(level: ConfidenceLevel) {
   if (level === 'alta') {
-    return <Badge className="bg-sky-100 text-sky-900 hover:bg-sky-100">Confianca alta</Badge>;
+    return <Badge className="bg-sky-100 text-sky-900 hover:bg-sky-100">Confiança alta</Badge>;
   }
   if (level === 'media') {
-    return <Badge variant="secondary">Confianca media</Badge>;
+    return <Badge variant="secondary">Confiança média</Badge>;
   }
 
   return <Badge variant="destructive">Revisar</Badge>;
@@ -138,7 +142,7 @@ function confidenceBadge(level: ConfidenceLevel) {
 
 function cityStatusBadge(city: SupportedCity) {
   if (city.status === 'supported') {
-    return <Badge className="bg-lime-100 text-lime-900 hover:bg-lime-100">Disponivel</Badge>;
+    return <Badge className="bg-lime-100 text-lime-900 hover:bg-lime-100">Disponível</Badge>;
   }
   if (city.status === 'pilot') {
     return <Badge variant="secondary">Piloto</Badge>;
@@ -174,7 +178,7 @@ function RequireAuthentication({
       <Card>
         <CardHeader>
           <CardTitle>Carregando sua conta</CardTitle>
-          <CardDescription>Validando sessao e sincronizando listas.</CardDescription>
+          <CardDescription>Validando sessão e sincronizando listas.</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -483,7 +487,7 @@ export function LandingPage() {
           <CardHeader>
             <CardTitle>3. Compare os modos</CardTitle>
             <CardDescription>
-              Local, Global único e Global completo deixam claro o trade-off entre deslocamento
+              Local, Global único e Global completo deixam claro o equilíbrio entre deslocamento
               e economia.
             </CardDescription>
           </CardHeader>
@@ -1013,7 +1017,7 @@ export function ChecklistPage() {
                     <div className="flex-1">
                       <div className="font-medium">{item.name}</div>
                       <div className="text-sm text-muted-foreground">
-                        {item.quantity} {item.unitLabel} - {describeBrandRule(item)}
+                        {item.quantity} {item.unitLabel} - {describeBrandRule(item, item.brandPreferenceMode === 'exact' ? item.name : undefined)}
                       </div>
                       {item.note ? (
                         <div className="text-sm text-muted-foreground">{item.note}</div>
@@ -1075,6 +1079,10 @@ export function ListEditorPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
+  const selectedVariant = selectedVariants.find((variant) => variant.id === selectedVariantId);
+  const selectedExactVariantLabel = selectedVariant
+    ? `${selectedVariant.brandName ? `${selectedVariant.brandName} · ` : ''}${selectedVariant.displayName}`
+    : undefined;
 
   const persistList = async (optimizeAfterSave: boolean) => {
     setError(null);
@@ -1166,7 +1174,6 @@ export function ListEditorPage() {
       return;
     }
 
-    const selectedVariant = selectedVariants.find((variant) => variant.id === selectedVariantId);
     const displayName =
       draftBrandPreferenceMode === 'exact' && selectedVariant
         ? `${selectedVariant.brandName ? `${selectedVariant.brandName} · ` : ''}${selectedVariant.displayName}`
@@ -1182,7 +1189,7 @@ export function ListEditorPage() {
         preferredBrandNames: [],
         imageUrl:
           selectedVariant?.imageUrl ??
-          product.imageUrl ??
+          getCatalogProductPreviewImage(product) ??
           undefined,
         quantity: Number.isFinite(Number(draftQuantity)) ? Number(draftQuantity) : 1,
         unitLabel: draftUnit.trim() || 'un',
@@ -1343,12 +1350,12 @@ export function ListEditorPage() {
                                 <img
                                   alt={product.name}
                                   className="h-14 w-14 rounded-lg border border-border/70 object-cover"
-                                  src={resolveProductImage(product.imageUrl)}
+                                  src={resolveProductImage(getCatalogProductPreviewImage(product))}
                                 />
                                 <div className="grid gap-1">
                                   <div className="font-medium">{product.name}</div>
                                   <div className="text-xs text-muted-foreground">
-                                    {product.category} · {product.defaultUnit ?? 'sem unidade padrao'}
+                                    {product.category} · {product.defaultUnit ?? 'sem unidade padrão'}
                                   </div>
                                 </div>
                               </div>
@@ -1360,7 +1367,7 @@ export function ListEditorPage() {
                                     ? describeBrandRule({
                                         brandPreferenceMode: draftBrandPreferenceMode,
                                         preferredBrandNames: [],
-                                      })
+                                      }, selectedExactVariantLabel)
                                     : 'Qualquer variante'}
                                 </span>
                                 <Button
@@ -1407,7 +1414,7 @@ export function ListEditorPage() {
                 </div>
               </Field>
               <Field className="md:col-span-3">
-                <FieldLabel htmlFor="draft-item-note">Observacao opcional</FieldLabel>
+                <FieldLabel htmlFor="draft-item-note">Observação opcional</FieldLabel>
                 <Textarea
                   id="draft-item-note"
                   onChange={(event) => setDraftNote(event.target.value)}
@@ -1439,7 +1446,7 @@ export function ListEditorPage() {
                           {item.quantity} - {item.unitLabel}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {describeBrandRule(item)}
+                          {describeBrandRule(item, item.brandPreferenceMode === 'exact' ? item.name : undefined)}
                         </div>
                       {item.note ? <div className="text-sm text-muted-foreground">{item.note}</div> : null}
                       </div>
@@ -1556,7 +1563,7 @@ export function OptimizationPage() {
 
   return (
     <RequireAuthentication
-      description="Entre para processar sua lista no backend e manter os resultados sincronizados."
+      description="Entre para processar sua lista e manter os resultados sincronizados."
       title="Otimização protegida"
     >
       {!list ? (
@@ -1571,7 +1578,7 @@ export function OptimizationPage() {
             <div className="flex flex-col gap-2">
               <h1 className="text-3xl font-semibold tracking-tight">Resultado da otimização</h1>
               <p className="text-muted-foreground">
-                {list.name} - {getCityById(list.cityId).name}. O processamento roda no backend para garantir consistência.
+                {list.name} - {getCityById(list.cityId).name}. Compare o melhor total, a cobertura e a economia estimada da sua compra.
               </p>
             </div>
             <Button asChild variant="outline">
@@ -1583,7 +1590,7 @@ export function OptimizationPage() {
             <CardHeader>
               <CardTitle>Escolha o modo</CardTitle>
               <CardDescription>
-                Cada modo comunica um trade-off diferente entre deslocamento, cobertura e menor total.
+                Cada modo comunica um equilíbrio diferente entre deslocamento, cobertura e menor total.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 lg:grid-cols-3">
@@ -1631,7 +1638,7 @@ export function OptimizationPage() {
                   <p>
                   {isStaleProcessing
                     ? 'A lista ainda está sendo processada. Atualize novamente em instantes se o resultado não aparecer.'
-                    : 'O backend aceitou a lista e está calculando o melhor resultado agora.'}
+                    : 'Sua lista está sendo comparada com os preços disponíveis agora.'}
                   </p>
                   {isStaleProcessing ? (
                     <Button
@@ -1679,7 +1686,7 @@ export function OptimizationPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Decisoes por item</CardTitle>
+                  <CardTitle>Decisões por item</CardTitle>
                   <CardDescription>
                     Cada item mostra loja, preço, origem e status de confiança.
                   </CardDescription>
@@ -1690,9 +1697,9 @@ export function OptimizationPage() {
                       <TableRow>
                         <TableHead>Item</TableHead>
                         <TableHead>Loja</TableHead>
-                        <TableHead>Preco</TableHead>
+                        <TableHead>Preço</TableHead>
                         <TableHead>Origem</TableHead>
-                        <TableHead>Atualizacao</TableHead>
+                        <TableHead>Atualização</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1716,6 +1723,9 @@ export function OptimizationPage() {
                                       brandPreferenceMode: 'any',
                                       preferredBrandNames: [],
                                     },
+                                    listItemsById.get(selection.shoppingListItemId)?.brandPreferenceMode === 'exact'
+                                      ? listItemsById.get(selection.shoppingListItemId)?.name
+                                      : undefined,
                                   )}
                                 </span>
                                 {selection.confidenceNotice ? (

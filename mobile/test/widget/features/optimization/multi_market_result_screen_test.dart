@@ -26,6 +26,12 @@ void main() {
       authController: authController,
       backendGateway: backendGateway,
     );
+    await shoppingListController.addItem(
+      name: 'Camil · Arroz',
+      brandPreferenceMode: 'exact',
+      quantity: 1,
+      unit: 'pct',
+    );
 
     final result = OptimizationResult(
       shoppingListTitle: 'Lista da semana',
@@ -40,7 +46,7 @@ void main() {
           subtotal: 34.2,
           selections: <OptimizationSelection>[
             OptimizationSelection(
-              itemName: 'Arroz',
+              itemName: 'Camil · Arroz',
               storeName: 'Mercado Azul',
               quantity: 1,
               unit: 'pct',
@@ -83,6 +89,7 @@ void main() {
     expect(find.text('Mercado Azul'), findsOneWidget);
     expect(find.text('Super Verde'), findsOneWidget);
     expect(find.textContaining('Economia estimada'), findsOneWidget);
+    expect(find.textContaining('variante exata: Camil · Arroz'), findsOneWidget);
     expect(find.text('- Leite vegetal'), findsOneWidget);
   });
 }

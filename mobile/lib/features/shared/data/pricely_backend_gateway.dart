@@ -347,6 +347,7 @@ class CatalogProductSummary {
     required this.category,
     this.defaultUnit,
     this.imageUrl,
+    this.productVariants = const <ProductVariantSummary>[],
   });
 
   final String id;
@@ -354,6 +355,7 @@ class CatalogProductSummary {
   final String category;
   final String? defaultUnit;
   final String? imageUrl;
+  final List<ProductVariantSummary> productVariants;
 
   factory CatalogProductSummary.fromJson(Map<String, dynamic> json) {
     return CatalogProductSummary(
@@ -362,6 +364,10 @@ class CatalogProductSummary {
       category: json['category'] as String? ?? 'geral',
       defaultUnit: json['defaultUnit'] as String?,
       imageUrl: json['imageUrl'] as String?,
+      productVariants: (json['productVariants'] as List<dynamic>? ?? <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(ProductVariantSummary.fromJson)
+          .toList(),
     );
   }
 }
