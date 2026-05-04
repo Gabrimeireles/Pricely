@@ -28,6 +28,7 @@ vi.mock('@/app/api', () => ({
   fetchAdminMetrics: (...args: unknown[]) => fetchAdminMetrics(...args),
   fetchAdminQueueHealth: (...args: unknown[]) => fetchAdminQueueHealth(...args),
   fetchAdminProcessingJobs: (...args: unknown[]) => fetchAdminProcessingJobs(...args),
+  fetchAdminProcessingJobDetail: vi.fn(),
   fetchAdminRegions: (...args: unknown[]) => fetchAdminRegions(...args),
   fetchAdminEstablishments: (...args: unknown[]) => fetchAdminEstablishments(...args),
   fetchAdminShoppingLists: vi.fn(),
