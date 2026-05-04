@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-grocery-optimizer`  
 **Created**: 2026-04-03  
-**Updated**: 2026-04-25  
+**Updated**: 2026-05-04
 **Status**: Draft  
 **Input**: Replanned backend and product scope for a grocery optimization platform with
 shared customer/admin accounts, regional catalog activation, store-level pricing,
@@ -259,6 +259,33 @@ job-aware APIs without client-side optimization logic.
 - **FR-039**: Admin list operations MUST include queue state, list ownership, and
   detail inspection for troubleshooting inconsistencies from a dedicated operational
   view.
+- **FR-040**: The system MUST support monetization entitlements that distinguish free,
+  premium, trialing, past-due, cancelled, and admin-adjusted access states.
+- **FR-041**: Free optimization access MUST be represented through an auditable token
+  ledger rather than a mutable counter, including grants, consumption, refunds,
+  expiration, and administrative adjustments.
+- **FR-042**: Optimization-token consumption MUST be idempotent for retried requests
+  and MUST refund or release tokens when a run fails before producing a user-visible
+  result.
+- **FR-043**: Premium users MUST be able to run optimizations without consuming free
+  tokens, subject to explicit fair-use and abuse controls.
+- **FR-044**: Billing integration MUST synchronize subscription and payment states into
+  the entitlement model through idempotent payment event processing.
+- **FR-045**: User-facing monetization UI MUST show token balance, premium status,
+  exhausted-token states, and upgrade options without hiding first-run product value.
+- **FR-046**: Optimization explanations MUST include selected offers, rejected
+  alternatives, constraints, savings comparisons, infeasible items, and data-quality
+  warnings when such data affects the result.
+- **FR-047**: Receipt-derived offer updates MUST pass contribution-quality checks before
+  changing current offers or granting optimization-token rewards.
+- **FR-048**: Admins MUST be able to inspect receipt-derived offer candidates,
+  suspicious submissions, billing/entitlement state, and token adjustments from support
+  surfaces.
+- **FR-049**: Release workflows MUST include backend, web, and mobile validation gates
+  before production/payment-related releases.
+- **FR-050**: Security validation MUST cover authentication, role boundaries, payment
+  webhooks, SQL injection, HTML injection, token double-spend, and admin privilege
+  escalation.
 
 ### Non-Functional Requirements
 
@@ -277,6 +304,14 @@ job-aware APIs without client-side optimization logic.
   dependencies.
 - **NFR-007**: The system MUST support future catalog growth, more regions, more store
   units, and more optimization runs without redefining the core data relationships.
+- **NFR-008**: Billing and token-ledger operations MUST be auditable and reversible
+  through explicit ledger or event records.
+- **NFR-009**: Optimization runs MUST remain explainable enough for shopper trust and
+  admin troubleshooting even as solver complexity increases.
+- **NFR-010**: Payment, entitlement, receipt-reward, and admin support flows MUST emit
+  structured diagnostics that can be correlated with user-facing failures.
+- **NFR-011**: Security and release gates MUST be automated where feasible and
+  documented where manual review remains required.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -300,6 +335,17 @@ job-aware APIs without client-side optimization logic.
   processing.
 - **Receipt Record**: Optional persisted translated receipt data for ingestion-based
   pricing workflows, excluding QR-code online lookup in the MVP.
+- **User Entitlement**: Current monetization access state for a user account, including
+  free, premium, trialing, past-due, cancelled, and administrative override cases.
+- **Optimization Token Ledger Entry**: Append-only record of token grants, consumption,
+  refunds, expiration, and manual adjustments used to derive token balance.
+- **Subscription Event**: Idempotently processed billing event that can update user
+  entitlement state.
+- **Optimization Explanation**: Persisted explanation data for selected offers,
+  rejected alternatives, constraints, infeasible items, savings comparisons, and data
+  confidence.
+- **Receipt Contribution Review**: Trust and moderation state for receipt-derived offer
+  candidates and any associated token reward decision.
 
 ## Success Criteria *(mandatory)*
 
@@ -320,6 +366,18 @@ job-aware APIs without client-side optimization logic.
 - **SC-006**: Dashboard metrics provide enough operational visibility for admins to
   identify queue failures, stale catalog coverage, and basic user activity without
   inspecting raw database records directly.
+- **SC-007**: Free users cannot spend more optimization tokens than their ledger-derived
+  balance, including during retry or concurrent optimization requests.
+- **SC-008**: Failed optimization runs that do not produce a user-visible result do not
+  permanently reduce the user's available free-token balance.
+- **SC-009**: Premium entitlement changes are reflected in optimization access and
+  user-facing status after the relevant billing event is processed once.
+- **SC-010**: Standard optimization results expose enough explanation detail for a user
+  or admin to identify why a store or offer was selected or rejected.
+- **SC-011**: Receipt-derived offer changes and token rewards can be traced to a
+  contribution-quality decision before they affect shopper-facing prices or balances.
+- **SC-012**: Release candidates for payment or token-reward behavior include automated
+  security and end-to-end validation covering the affected user and admin journeys.
 
 ## Assumptions
 

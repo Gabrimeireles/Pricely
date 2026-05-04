@@ -262,6 +262,46 @@ while sharing auth and domain contracts.
 - Keep sponsored retailer monetization separate from organic cheapest-result ranking
   unless clearly labeled.
 
+### Phase 19: Subscription Billing and Payment Operations
+
+- Add billing contracts only after internal entitlements and the token ledger are
+  stable.
+- Integrate checkout, webhook, subscription status, cancellation, refund, and failed
+  payment states with idempotent event processing.
+- Keep admin support diagnostics available for entitlement source, subscription state,
+  and recent billing events.
+- Keep mobile upgrade messaging compatible with app-store policies before enabling
+  web-routed payment flows.
+
+### Phase 20: Advanced Optimization Engine and Explainability
+
+- Formalize optimization objectives, constraints, tie-breakers, infeasibility behavior,
+  and promotional-price treatment.
+- Separate candidate generation, constraint solving, scoring, and explanation building
+  inside backend optimization services.
+- Persist and expose selected offers, rejected alternatives, savings comparisons,
+  constraints, and confidence warnings for shopper and admin views.
+- Add bounded runtime checks for standard list sizes before increasing solver
+  complexity.
+
+### Phase 21: Receipt Intelligence, Contribution Quality, and Anti-Abuse
+
+- Treat receipt ingestion as a trust-scored contribution pipeline before it can update
+  current offers or reward optimization tokens.
+- Detect duplicate receipts, conflicting prices, implausible discounts, and repeated
+  suspicious submissions.
+- Add admin review queues for receipt-derived offers and token reward decisions.
+- Connect receipt rewards to the token ledger only after contribution scoring passes.
+
+### Phase 22: Security, QA, and Release Hardening
+
+- Add requirements-quality, API security, web injection, mobile privacy, and E2E
+  release gates before broader production/payment rollout.
+- Cover auth, RBAC, payment webhooks, SQL injection, HTML injection, token double-spend,
+  admin privilege boundaries, and rollback readiness.
+- Document release checks for seed reset, payment sandbox, observability, incident
+  triage, and rollback.
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
