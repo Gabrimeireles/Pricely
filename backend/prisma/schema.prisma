@@ -225,6 +225,8 @@ model ProductOffer {
   displayName        String
   packageLabel       String
   priceAmount        Decimal                 @db.Decimal(10, 2)
+  basePriceAmount    Decimal?                @db.Decimal(10, 2)
+  promotionalPriceAmount Decimal?            @db.Decimal(10, 2)
   currencyCode       String                  @default("BRL") @db.VarChar(3)
   availabilityStatus OfferAvailabilityStatus
   confidenceLevel    OfferConfidenceLevel
@@ -242,6 +244,7 @@ model ProductOffer {
   @@index([catalogProductId, isActive, observedAt])
   @@index([productVariantId, isActive, observedAt])
   @@index([establishmentId, isActive])
+  @@index([productVariantId, establishmentId, isActive])
 }
 
 model ShoppingList {
@@ -319,6 +322,9 @@ model OptimizationSelection {
   productOfferId    String?                     @db.Uuid
   status            OptimizationSelectionStatus
   estimatedCost     Decimal?                    @db.Decimal(10, 2)
+  comparisonPriceAmount Decimal?                 @db.Decimal(10, 2)
+  regionalAveragePriceAmount Decimal?            @db.Decimal(10, 2)
+  savingsVsComparison Decimal?                   @db.Decimal(10, 2)
   confidenceNotice  String?
   optimizationRun   OptimizationRun             @relation(fields: [optimizationRunId], references: [id], onDelete: Cascade)
   productOffer      ProductOffer?               @relation(fields: [productOfferId], references: [id], onDelete: SetNull)

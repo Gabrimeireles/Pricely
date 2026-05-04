@@ -86,6 +86,12 @@ export class PublicCatalogService {
         productVariantId: offer.productVariantId,
         displayName: offer.displayName,
         priceAmount: Number(offer.priceAmount),
+        basePriceAmount:
+          offer.basePriceAmount !== null ? Number(offer.basePriceAmount) : Number(offer.priceAmount),
+        promotionalPriceAmount:
+          offer.promotionalPriceAmount !== null
+            ? Number(offer.promotionalPriceAmount)
+            : undefined,
         observedAt: offer.observedAt.toISOString(),
         confidenceLevel: offer.confidenceLevel,
         packageLabel: offer.packageLabel,

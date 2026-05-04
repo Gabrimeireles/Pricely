@@ -143,6 +143,18 @@ export class OptimizationResultService {
           selection.productOffer?.priceAmount !== undefined
             ? Number(selection.productOffer.priceAmount)
             : undefined,
+        comparisonPriceAmount:
+          selection.comparisonPriceAmount !== null
+            ? Number(selection.comparisonPriceAmount)
+            : undefined,
+        regionalAveragePriceAmount:
+          selection.regionalAveragePriceAmount !== null
+            ? Number(selection.regionalAveragePriceAmount)
+            : undefined,
+        savingsVsComparison:
+          selection.savingsVsComparison !== null
+            ? Number(selection.savingsVsComparison)
+            : undefined,
         sourceLabel: selection.productOffer?.sourceReference ?? undefined,
         observedAt: selection.productOffer?.observedAt.toISOString(),
         selectionStatus:

@@ -69,6 +69,30 @@ describe('ReceiptParserService', () => {
     expect(result.confidenceScore).toBeLessThan(0.95);
   });
 
+  it('keeps original and promotional prices when a receipt line has a discount', () => {
+    const input: ReceiptIngestionRequest = {
+      storeName: 'Mercado Centro',
+      items: [
+        {
+          rawProductName: 'Arroz Camil tipo 1 5kg',
+          quantity: 1,
+          unitPrice: 18.99,
+          originalUnitPrice: 20.99,
+          promotionalUnitPrice: 18.99,
+        },
+      ],
+    };
+
+    const result = service.parse(input);
+
+    expect(result.items[0]).toMatchObject({
+      unitPrice: 18.99,
+      originalUnitPrice: 20.99,
+      promotionalUnitPrice: 18.99,
+      lineTotal: 18.99,
+    });
+  });
+
   it('fails when no valid structured lines can be extracted', () => {
     const input: ReceiptIngestionRequest = {
       storeName: '   ',

@@ -11,6 +11,8 @@ export interface ParsedReceiptLineItem {
   normalizedName: string;
   quantity: number;
   unitPrice: number;
+  originalUnitPrice?: number;
+  promotionalUnitPrice?: number;
   currency: string;
   packageSize?: string;
   lineTotal: number;
@@ -86,14 +88,28 @@ export class ReceiptParserService {
     const normalized = this.productNormalizerService.normalize(rawProductName);
     const currency = item.currency?.trim() || 'BRL';
 
+    const originalUnitPrice =
+      item.originalUnitPrice && item.originalUnitPrice > 0
+        ? item.originalUnitPrice
+        : item.unitPrice;
+    const promotionalUnitPrice =
+      item.promotionalUnitPrice &&
+      item.promotionalUnitPrice > 0 &&
+      item.promotionalUnitPrice < originalUnitPrice
+        ? item.promotionalUnitPrice
+        : undefined;
+    const effectiveUnitPrice = promotionalUnitPrice ?? item.unitPrice;
+
     return {
       rawProductName,
       normalizedName: normalized.canonicalName,
       quantity,
-      unitPrice: item.unitPrice,
+      unitPrice: effectiveUnitPrice,
+      originalUnitPrice,
+      promotionalUnitPrice,
       currency,
       packageSize: item.packageSize ?? normalized.sizeDescriptor,
-      lineTotal: Number((quantity * item.unitPrice).toFixed(2)),
+      lineTotal: Number((quantity * effectiveUnitPrice).toFixed(2)),
       matchConfidence: normalized.confidenceScore,
     };
   }

@@ -107,6 +107,67 @@ describe('MultiMarketOptimizerService', () => {
 
     expect(result.selections.every((selection) => selection.establishmentName === 'Mercado B')).toBe(true);
     expect(result.totalEstimatedCost).toBe(17);
+    expect(result.estimatedSavings).toBe(4);
+    expect(result.selections[0]).toEqual(
+      expect.objectContaining({
+        comparisonPriceAmount: 10,
+        regionalAveragePriceAmount: 9,
+        savingsVsComparison: 2,
+      }),
+    );
+  });
+
+  it('calculates savings against the same variant in another establishment', () => {
+    const list = createList();
+    list.items = [
+      {
+        ...list.items[0],
+        catalogProductId: 'product-arroz',
+        lockedProductVariantId: 'variant-camil',
+        brandPreferenceMode: 'exact',
+      },
+    ];
+
+    const result = service.optimize(
+      list,
+      [
+        createOffer({
+          id: 'offer-store-1',
+          catalogProductId: 'product-arroz',
+          productVariantId: 'variant-camil',
+          storeId: 'store-1',
+          storeName: 'Estabelecimento 1',
+          canonicalName: 'arroz',
+          displayName: 'Arroz Camil 5kg',
+          price: 20.99,
+          sourceReceiptLineItemId: 'src-1',
+          observedAt: new Date().toISOString(),
+        }),
+        createOffer({
+          id: 'offer-store-2',
+          catalogProductId: 'product-arroz',
+          productVariantId: 'variant-camil',
+          storeId: 'store-2',
+          storeName: 'Estabelecimento 2',
+          canonicalName: 'arroz',
+          displayName: 'Arroz Camil 5kg',
+          price: 19.99,
+          sourceReceiptLineItemId: 'src-2',
+          observedAt: new Date().toISOString(),
+        }),
+      ],
+      'global_full',
+    );
+
+    expect(result.selections[0]).toEqual(
+      expect.objectContaining({
+        establishmentName: 'Estabelecimento 2',
+        priceAmount: 19.99,
+        comparisonPriceAmount: 20.99,
+        savingsVsComparison: 1,
+      }),
+    );
+    expect(result.estimatedSavings).toBe(1);
   });
 
   it('concentrates selection in one store in global_unique mode', () => {

@@ -25,6 +25,16 @@ class ReceiptLineItemInputDto {
   unitPrice!: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0.0001)
+  originalUnitPrice?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0.0001)
+  promotionalUnitPrice?: number;
+
+  @IsOptional()
   @IsString()
   currency?: string;
 
