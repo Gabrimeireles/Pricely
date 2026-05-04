@@ -317,6 +317,11 @@ export class AdminDashboardController {
     return this.adminDashboardService.listProcessingJobs();
   }
 
+  @Get('processing-jobs/:id')
+  async getProcessingJobDetail(@Param('id') id: string) {
+    return this.adminDashboardService.getProcessingJobDetail(id);
+  }
+
   @Get('queue-health')
   async queueHealth() {
     return this.adminDashboardService.getQueueHealth();

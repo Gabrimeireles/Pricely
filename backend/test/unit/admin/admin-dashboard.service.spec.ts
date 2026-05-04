@@ -22,6 +22,66 @@ describe('AdminDashboardService', () => {
       catalogProduct: { count: jest.fn().mockResolvedValue(11) },
       processingJob: {
         count: jest.fn().mockResolvedValue(5),
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'job-1',
+          queueName: 'optimization',
+          jobType: 'optimization',
+          resourceType: 'shopping_list',
+          resourceId: 'list-1',
+          status: 'completed',
+          attemptCount: 1,
+          failureReason: null,
+          createdAt: new Date('2026-04-27T10:00:00Z'),
+          updatedAt: new Date('2026-04-27T10:05:00Z'),
+          finishedAt: new Date('2026-04-27T10:05:00Z'),
+          optimizationRun: {
+            id: 'run-1',
+            mode: 'global_full',
+            status: 'completed',
+            totalEstimatedCost: { toString: () => '82.40' },
+            estimatedSavings: { toString: () => '18.50' },
+            coverageStatus: 'complete',
+            summary: 'Selected cheapest comparable offers.',
+            createdAt: new Date('2026-04-27T10:00:00Z'),
+            completedAt: new Date('2026-04-27T10:05:00Z'),
+            user: {
+              id: 'user-1',
+              displayName: 'Cliente 1',
+              email: 'cliente1@pricely.local',
+            },
+            shoppingList: {
+              id: 'list-1',
+              name: 'Compra mensal',
+            },
+            optimizationSelections: [
+              {
+                id: 'selection-1',
+                shoppingListItemId: 'item-1',
+                status: 'selected',
+                estimatedCost: { toString: () => '19.99' },
+                confidenceNotice: null,
+                shoppingListItem: {
+                  requestedName: 'Arroz',
+                },
+                productOffer: {
+                  id: 'offer-1',
+                  displayName: 'Arroz Camil',
+                  priceAmount: { toString: () => '19.99' },
+                  sourceReference: 'NFCe 1',
+                  sourceType: 'receipt',
+                  observedAt: new Date('2026-04-27T09:00:00Z'),
+                  productVariant: {
+                    displayName: 'Arroz Camil 5kg',
+                  },
+                  establishment: {
+                    unitName: 'Mercado Centro',
+                    neighborhood: 'Centro',
+                  },
+                },
+              },
+            ],
+          },
+        }),
         findMany: jest.fn().mockResolvedValue([
           {
             id: 'job-1',
@@ -35,6 +95,22 @@ describe('AdminDashboardService', () => {
             createdAt: new Date('2026-04-27T10:00:00Z'),
             updatedAt: new Date('2026-04-27T10:01:00Z'),
             finishedAt: null,
+            optimizationRun: {
+              id: 'run-1',
+              mode: 'global_full',
+              status: 'queued',
+              createdAt: new Date('2026-04-27T10:00:00Z'),
+              completedAt: null,
+              user: {
+                id: 'user-1',
+                displayName: 'Cliente 1',
+                email: 'cliente1@pricely.local',
+              },
+              shoppingList: {
+                id: 'list-1',
+                name: 'Compra mensal',
+              },
+            },
           },
           {
             id: 'job-2',
@@ -48,6 +124,7 @@ describe('AdminDashboardService', () => {
             createdAt: new Date('2026-04-27T09:00:00Z'),
             updatedAt: new Date('2026-04-27T09:01:00Z'),
             finishedAt: new Date('2026-04-27T09:01:00Z'),
+            optimizationRun: null,
           },
           {
             id: 'job-3',
@@ -61,6 +138,7 @@ describe('AdminDashboardService', () => {
             createdAt: new Date('2026-04-27T08:00:00Z'),
             updatedAt: new Date('2026-04-27T08:01:00Z'),
             finishedAt: null,
+            optimizationRun: null,
           },
         ]),
       },
@@ -127,6 +205,16 @@ describe('AdminDashboardService', () => {
         queueName: 'optimization',
         status: 'queued',
         createdAt: '2026-04-27T10:00:00.000Z',
+        owner: expect.objectContaining({
+          id: 'user-1',
+        }),
+        shoppingList: expect.objectContaining({
+          id: 'list-1',
+        }),
+        optimizationRun: expect.objectContaining({
+          id: 'run-1',
+          mode: 'global_full',
+        }),
       }),
       expect.objectContaining({
         id: 'job-2',
@@ -139,6 +227,33 @@ describe('AdminDashboardService', () => {
         failureReason: 'timeout',
       }),
     ]);
+
+    await expect(service.getProcessingJobDetail('job-1')).resolves.toEqual(
+      expect.objectContaining({
+        id: 'job-1',
+        owner: expect.objectContaining({
+          id: 'user-1',
+        }),
+        shoppingList: expect.objectContaining({
+          id: 'list-1',
+        }),
+        optimizationRun: expect.objectContaining({
+          id: 'run-1',
+          mode: 'global_full',
+          totalEstimatedCost: 82.4,
+          estimatedSavings: 18.5,
+          selections: [
+            expect.objectContaining({
+              shoppingListItemName: 'Arroz',
+              offer: expect.objectContaining({
+                establishmentName: 'Mercado Centro',
+                priceAmount: 19.99,
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
 
     await expect(service.getQueueHealth()).resolves.toEqual({
       queuedJobs: 2,

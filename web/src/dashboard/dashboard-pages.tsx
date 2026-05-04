@@ -1,11 +1,14 @@
 ﻿import { useEffect, useState, type FormEvent } from 'react';
 
+import { useParams } from 'react-router-dom';
+
 import { ChevronDownIcon, ChevronUpIcon, ImageUpIcon, InfoIcon } from 'lucide-react';
 
 import {
   type AdminEstablishmentResponse,
   type AdminMetricsResponse,
   type AdminOfferResponse,
+  type AdminProcessingJobDetailResponse,
   type AdminProcessingJobResponse,
   type AdminProductResponse,
   type AdminProductVariantResponse,
@@ -20,6 +23,7 @@ import {
   fetchAdminEstablishments,
   fetchAdminMetrics,
   fetchAdminOffers,
+  fetchAdminProcessingJobDetail,
   fetchAdminProcessingJobs,
   fetchAdminProducts,
   fetchAdminProductVariants,
@@ -1266,10 +1270,148 @@ export function AdminQueuePage() {
               {job.failureReason ? (
                 <div className="mt-2 text-sm text-muted-foreground">{job.failureReason}</div>
               ) : null}
+              <div className="mt-3 grid gap-1 text-sm text-muted-foreground">
+                {job.owner ? <span>user_id: {job.owner.id}</span> : null}
+                {job.shoppingList ? <span>lista: {job.shoppingList.name}</span> : null}
+                {job.optimizationRun ? (
+                  <span>
+                    run {job.optimizationRun.id} · modo {job.optimizationRun.mode} · solicitado {formatFreshnessLabel(job.createdAt)}
+                  </span>
+                ) : null}
+                {job.finishedAt ? <span>completed: {formatFreshnessLabel(job.finishedAt)}</span> : null}
+              </div>
+              <div className="mt-3">
+                <Button asChild size="sm" variant="outline">
+                  <a href={`/dashboard/fila/${job.id}`} rel="noreferrer" target="_blank">
+                    Go to link
+                  </a>
+                </Button>
+              </div>
             </div>
           ))}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+export function AdminQueueDetailPage() {
+  const { jobId = '' } = useParams();
+  const loader = (token: string) => fetchAdminProcessingJobDetail(token, jobId);
+  const { data: job, error } = useAdminData<AdminProcessingJobDetailResponse | null>(
+    loader,
+    null,
+  );
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Falha ao carregar job</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!job) {
+    return <Card><CardHeader><CardTitle>Carregando job</CardTitle></CardHeader></Card>;
+  }
+
+  return (
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Detalhe do job</CardTitle>
+          <CardDescription>
+            {job.queueName} · {job.jobType} · tentativa {job.attemptCount}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">job_id</div>
+            <div className="mt-1 font-medium">{job.id}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">status</div>
+            <div className="mt-1 font-medium">{job.status}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">resource</div>
+            <div className="mt-1 font-medium">{job.resourceType} · {job.resourceId}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">owner</div>
+            <div className="mt-1 font-medium">{job.owner ? `${job.owner.displayName} · ${job.owner.id}` : 'Sem owner vinculado'}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">solicitado</div>
+            <div className="mt-1 font-medium">{formatFreshnessLabel(job.createdAt)}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">completed</div>
+            <div className="mt-1 font-medium">{job.finishedAt ? formatFreshnessLabel(job.finishedAt) : 'Ainda sem conclusão'}</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {job.optimizationRun ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Otimização</CardTitle>
+            <CardDescription>
+              run {job.optimizationRun.id} · modo {job.optimizationRun.mode} · {job.optimizationRun.coverageStatus}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-border/70 p-4">
+                <div className="text-sm text-muted-foreground">Custo total</div>
+                <div className="mt-1 text-xl font-semibold">{formatCurrency(job.optimizationRun.totalEstimatedCost)}</div>
+              </div>
+              <div className="rounded-lg border border-border/70 p-4">
+                <div className="text-sm text-muted-foreground">Economia</div>
+                <div className="mt-1 text-xl font-semibold">{formatCurrency(job.optimizationRun.estimatedSavings)}</div>
+              </div>
+              <div className="rounded-lg border border-border/70 p-4">
+                <div className="text-sm text-muted-foreground">Lista</div>
+                <div className="mt-1 text-xl font-semibold">{job.shoppingList?.name ?? job.resourceId}</div>
+              </div>
+            </div>
+            {job.optimizationRun.summary ? (
+              <Alert>
+                <InfoIcon />
+                <AlertTitle>Resumo do thinking</AlertTitle>
+                <AlertDescription>{job.optimizationRun.summary}</AlertDescription>
+              </Alert>
+            ) : null}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Decisão</TableHead>
+                  <TableHead>Loja</TableHead>
+                  <TableHead>Preço</TableHead>
+                  <TableHead>Fonte</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {job.optimizationRun.selections.map((selection) => (
+                  <TableRow key={selection.id}>
+                    <TableCell>{selection.shoppingListItemName}</TableCell>
+                    <TableCell>{selection.status}</TableCell>
+                    <TableCell>
+                      {selection.offer
+                        ? `${selection.offer.establishmentName} · ${selection.offer.neighborhood}`
+                        : 'Sem oferta selecionada'}
+                    </TableCell>
+                    <TableCell>{formatCurrency(selection.offer?.priceAmount ?? selection.estimatedCost)}</TableCell>
+                    <TableCell>{selection.offer?.sourceLabel ?? selection.confidenceNotice ?? 'Sem fonte'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }
