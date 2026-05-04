@@ -139,7 +139,9 @@ export function PricelyProvider({ children }: PropsWithChildren) {
           })),
         );
       } catch {
-        setCities(supportedCities);
+        if (!disposed) {
+          setCities(supportedCities);
+        }
       }
     };
 

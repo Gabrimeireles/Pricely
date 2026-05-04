@@ -241,6 +241,27 @@ while sharing auth and domain contracts.
 - Plan Terraform modules for future production infrastructure without blocking local MVP
   delivery.
 
+### Phase 17: CI Workflow Reliability and Security
+
+- Treat GitHub Actions failures as production-blocking regressions for `homolog`.
+- Inspect real Actions logs before changing workflow YAML.
+- Keep workflow permissions minimal and avoid agentic/AI actions on untrusted events.
+- Preserve backend and web quality gates as build, lint, and test.
+- Add mobile CI only after Flutter setup is explicit and stable in the runner.
+
+### Phase 18: Monetization and Entitlements
+
+- Use a hybrid freemium model: free optimization tokens, premium unlimited
+  optimizations with fair-use controls, and optional future token packs.
+- Model optimization tokens as an append-only ledger with idempotent consume/refund
+  semantics instead of a mutable counter.
+- Keep savings claims tied to real latest-completed-per-list savings so repeated
+  optimizations do not inflate value.
+- Plan Stripe subscription and credit-based billing integration after internal
+  entitlement rules are testable.
+- Keep sponsored retailer monetization separate from organic cheapest-result ranking
+  unless clearly labeled.
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
