@@ -944,6 +944,30 @@ export function AdminRegionsPage() {
                   {region.implantationStatus === 'active' ? 'Desativar cidade' : 'Ativar cidade'}
                 </Button>
               </div>
+              {region.establishments.length > 0 ? (
+                <div className="mt-4 grid gap-2">
+                  {region.establishments.map((establishment) => (
+                    <div
+                      key={establishment.id}
+                      className="grid gap-2 rounded-lg border border-border/70 bg-background/80 p-3 md:grid-cols-[1fr_auto]"
+                    >
+                      <div>
+                        <div className="text-sm font-medium">{establishment.unitName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {establishment.brandName} · {establishment.neighborhood} · {establishment.isActive ? 'ativo' : 'inativo'}
+                        </div>
+                      </div>
+                      <Badge variant="secondary">
+                        {establishment.auditedProductsCount} produtos auditados
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-4 rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+                  Nenhum estabelecimento vinculado a esta cidade ainda.
+                </div>
+              )}
             </div>
           ))}
         </CardContent>
