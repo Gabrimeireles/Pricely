@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Pricely PostgreSQL",
+      "Group": "Pricely",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "pricely",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "PassFile": "/tmp/pgpass"
+    }
+  }
+}

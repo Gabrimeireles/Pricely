@@ -195,6 +195,52 @@ while sharing auth and domain contracts.
    preselect current city when available, allow manual override, and remove default
    optimization-mode choice from list creation.
 
+## Next Phase Planning
+
+### Phase 12: Account List Sync and Real User Metrics
+
+- Keep saved city, shopping lists, checklist state, and optimization mode consistent
+  across web and mobile sessions for the same account.
+- Keep catalog search results visible in list creation, using the product field only
+  as a filter.
+- Compute user savings from the latest completed optimization per list so repeated
+  optimization does not inflate the account total.
+
+### Phase 13: Offer Price Model and Store Comparisons
+
+- Extend offers with base/original price and promotional price so receipts can capture
+  discounted and non-discounted values.
+- Compare identical variants across establishments in the same city/region and expose
+  the monetary difference to shopper-facing UI.
+- Show promotional price treatment in UI, including crossed original price and savings
+  versus other stores or regional average when enough data exists.
+
+### Phase 14: Queue, Health, and Optimization Auditability
+
+- Enrich processing jobs with list owner, request/completion timestamps, optimization
+  mode, run id, job id, and attempt semantics.
+- Add a detailed operations view for a run with selected offers, rejected alternatives,
+  calculations, comparisons, and decision trace.
+- Clarify repeated completed jobs for the same list as separate optimization runs unless
+  they share the same processing job attempt chain.
+
+### Phase 15: Cities, Seed Data, and Local Infra
+
+- Expand city admin screens with establishments and audited product counts per store.
+- Keep Docker Compose useful for local operations by including PgAdmin connected to the
+  development PostgreSQL service.
+- Evolve seed data with multiple real-like variants, images, establishments, and price
+  comparison cases.
+
+### Phase 16: Observability, Deployment, and Infrastructure Planning
+
+- Standardize application logging with Pino patterns across existing backend modules and
+  new modules.
+- Plan Sentry integration for backend/web/mobile exception telemetry.
+- Plan Railway deployment topology for API, worker, PostgreSQL, Redis, and web hosting.
+- Plan Terraform modules for future production infrastructure without blocking local MVP
+  delivery.
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
