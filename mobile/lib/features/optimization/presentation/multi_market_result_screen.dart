@@ -213,7 +213,7 @@ class MultiMarketResultView extends StatelessWidget {
       return 'qualquer variante';
     }
     if (item.brandPreferenceMode == 'exact') {
-      return 'variante exata';
+      return 'variante exata: ${item.name}';
     }
     return 'qualquer variante';
   }

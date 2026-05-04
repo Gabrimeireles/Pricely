@@ -39,7 +39,7 @@ describe('OptimizationPage', () => {
     vi.clearAllMocks();
   });
 
-  it('renders explicit trade-off cards for all optimization modes', () => {
+  it('renders explicit mode guidance without technical backend copy', () => {
     render(
       <MemoryRouter initialEntries={['/otimizacao/list-1']}>
         <Routes>
@@ -53,6 +53,9 @@ describe('OptimizationPage', () => {
     expect(screen.getByText('Global único')).toBeTruthy();
     expect(screen.getByText('Global completo')).toBeTruthy();
     expect(
+      screen.getByText('Compra mensal - São Paulo. Compare o melhor total, a cobertura e a economia estimada da sua compra.'),
+    ).toBeTruthy();
+    expect(
       screen.getByText('Prioriza concluir a compra com o menor deslocamento possível.'),
     ).toBeTruthy();
     expect(
@@ -61,5 +64,6 @@ describe('OptimizationPage', () => {
     expect(
       screen.getByText('Busca o menor custo total item a item na cidade selecionada.'),
     ).toBeTruthy();
+    expect(screen.queryByText(/backend/i)).toBeNull();
   });
 });

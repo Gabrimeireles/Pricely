@@ -8,28 +8,30 @@ import { ListEditorPage } from './public-pages';
 
 const saveList = vi.fn();
 
+const mockPricelyState = {
+  cityId: 'sao-paulo-sp',
+  cities: [
+    {
+      id: 'sao-paulo-sp',
+      name: 'Sao Paulo',
+      stateCode: 'SP',
+      activeStoreCount: 1,
+      coverageStatus: 'live',
+      regionLabel: '1 estabelecimentos ativos',
+      status: 'supported',
+      stores: [],
+      neighborhoods: [],
+    },
+  ],
+  lists: [] as Array<Record<string, unknown>>,
+  preferredMode: 'global_full',
+  saveList,
+  isAuthenticated: true,
+  isBootstrapping: false,
+};
+
 vi.mock('@/app/pricely-context', () => ({
-  usePricely: () => ({
-    cityId: 'sao-paulo-sp',
-    cities: [
-      {
-        id: 'sao-paulo-sp',
-        name: 'Sao Paulo',
-        stateCode: 'SP',
-        activeStoreCount: 1,
-        coverageStatus: 'live',
-        regionLabel: '1 estabelecimentos ativos',
-        status: 'supported',
-        stores: [],
-        neighborhoods: [],
-      },
-    ],
-    lists: [],
-    preferredMode: 'global_full',
-    saveList,
-    isAuthenticated: true,
-    isBootstrapping: false,
-  }),
+  usePricely: () => mockPricelyState,
 }));
 
 vi.mock('@/app/api', () => ({
@@ -40,8 +42,16 @@ vi.mock('@/app/api', () => ({
       name: 'Arroz tipo 1 1kg',
       category: 'Mercearia',
       defaultUnit: 'un',
-      imageUrl: 'https://example.com/arroz.jpg',
-      productVariants: [],
+      imageUrl: null,
+      productVariants: [
+        {
+          id: 'variant-1',
+          displayName: 'Arroz Tipo 1 1kg',
+          brandName: 'Camil',
+          packageLabel: 'Pacote 1kg',
+          imageUrl: 'https://example.com/arroz-camil.jpg',
+        },
+      ],
     },
   ]),
   fetchCatalogProductVariants: vi.fn(async () => [
@@ -63,6 +73,7 @@ describe('ListEditorPage', () => {
   beforeEach(() => {
     saveList.mockReset();
     saveList.mockResolvedValue({ id: 'list-1' });
+    mockPricelyState.lists = [];
   });
 
   afterEach(() => {
@@ -93,8 +104,47 @@ describe('ListEditorPage', () => {
       expect(screen.getByRole('button', { name: 'Configurar' })).toBeTruthy(),
     );
 
+    const searchImage = screen.getByAltText('Arroz tipo 1 1kg') as HTMLImageElement;
+    expect(searchImage.src).toContain('https://example.com/arroz-camil.jpg');
+
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
 
     expect(await screen.findByText('Qualquer variante')).toBeTruthy();
+  });
+
+  it('renders the exact variant name for existing list items', async () => {
+    mockPricelyState.lists = [
+      {
+        id: 'list-1',
+        name: 'Compra mensal',
+        cityId: 'sao-paulo-sp',
+        lastMode: 'global_full',
+        items: [
+          {
+            id: 'item-1',
+            name: 'Camil · Arroz Tipo 1 1kg',
+            catalogProductId: 'catalog-1',
+            lockedProductVariantId: 'variant-1',
+            brandPreferenceMode: 'exact',
+            preferredBrandNames: [],
+            imageUrl: 'https://example.com/arroz-camil.jpg',
+            quantity: 1,
+            unitLabel: 'un',
+            purchaseStatus: 'pending',
+          },
+        ],
+      },
+    ];
+
+    render(
+      <MemoryRouter initialEntries={['/listas/list-1']}>
+        <Routes>
+          <Route path="/listas/:listId" element={<ListEditorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Camil · Arroz Tipo 1 1kg')).toBeTruthy();
+    expect(await screen.findByText('Variante exata: Camil · Arroz Tipo 1 1kg')).toBeTruthy();
   });
 });
