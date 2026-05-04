@@ -138,6 +138,11 @@ describe('public pages', () => {
         displayName: 'Cafe Pilao 500g',
         packageLabel: '500 g',
         priceAmount: 15.9,
+        basePriceAmount: 18.9,
+        promotionalPriceAmount: 15.9,
+        regionalAveragePriceAmount: 16.15,
+        comparisonPriceAmount: 16.4,
+        savingsVsComparison: 0.5,
         observedAt: '2026-04-27T10:00:00.000Z',
         sourceLabel: 'Painel admin',
         storeName: 'Mercado Centro',
@@ -151,6 +156,7 @@ describe('public pages', () => {
           neighborhood: 'Cambuí',
           packageLabel: '500 g',
           priceAmount: 16.4,
+          basePriceAmount: 16.4,
           observedAt: '2026-04-27T09:00:00.000Z',
           sourceLabel: 'Painel admin',
           confidenceLevel: 'medium',
@@ -175,6 +181,8 @@ describe('public pages', () => {
       ),
     ).toBeTruthy();
     expect(screen.getByText('Preços do produto na cidade')).toBeTruthy();
+    expect(screen.getByText('R$ 18,90')).toBeTruthy();
+    expect(screen.getByText(/Economize R\$ 0,50/)).toBeTruthy();
     expect(screen.getByText('Mercado Sul')).toBeTruthy();
   });
 });

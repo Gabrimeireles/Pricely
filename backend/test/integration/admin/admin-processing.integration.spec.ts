@@ -68,6 +68,11 @@ class AdminProcessingPrismaMock {
       },
     }),
   };
+  readonly $queryRaw = jest.fn().mockResolvedValue([
+    {
+      totalEstimatedSavings: 0,
+    },
+  ]);
   readonly receiptRecord = { count: async () => 0 };
   readonly region = {
     count: async () => 1,

@@ -1,11 +1,14 @@
 ﻿import { useEffect, useState, type FormEvent } from 'react';
 
+import { useParams } from 'react-router-dom';
+
 import { ChevronDownIcon, ChevronUpIcon, ImageUpIcon, InfoIcon } from 'lucide-react';
 
 import {
   type AdminEstablishmentResponse,
   type AdminMetricsResponse,
   type AdminOfferResponse,
+  type AdminProcessingJobDetailResponse,
   type AdminProcessingJobResponse,
   type AdminProductResponse,
   type AdminProductVariantResponse,
@@ -20,6 +23,7 @@ import {
   fetchAdminEstablishments,
   fetchAdminMetrics,
   fetchAdminOffers,
+  fetchAdminProcessingJobDetail,
   fetchAdminProcessingJobs,
   fetchAdminProducts,
   fetchAdminProductVariants,
@@ -328,6 +332,8 @@ export function AdminPricesPage() {
     displayName: '',
     packageLabel: '',
     priceAmount: '',
+    basePriceAmount: '',
+    promotionalPriceAmount: '',
   });
   const productVariants = products.flatMap((product) =>
     product.productVariants.map((variant) => ({
@@ -356,6 +362,8 @@ export function AdminPricesPage() {
       displayName: form.displayName,
       packageLabel: form.packageLabel,
       priceAmount: Number(form.priceAmount),
+      basePriceAmount: form.basePriceAmount ? Number(form.basePriceAmount) : Number(form.priceAmount),
+      promotionalPriceAmount: form.promotionalPriceAmount ? Number(form.promotionalPriceAmount) : null,
       availabilityStatus: 'available',
       confidenceLevel: 'high',
     };
@@ -372,6 +380,8 @@ export function AdminPricesPage() {
       displayName: '',
       packageLabel: '',
       priceAmount: '',
+      basePriceAmount: '',
+      promotionalPriceAmount: '',
     });
     setEditingOfferId(null);
     await reload();
@@ -414,8 +424,10 @@ export function AdminPricesPage() {
             </select>
             <Input placeholder="Nome exibido" value={form.displayName} onChange={(event) => setForm((current) => ({ ...current, displayName: event.target.value }))} />
             <Input placeholder="Embalagem" value={form.packageLabel} onChange={(event) => setForm((current) => ({ ...current, packageLabel: event.target.value }))} />
+            <Input placeholder="Preço base" value={form.basePriceAmount} onChange={(event) => setForm((current) => ({ ...current, basePriceAmount: event.target.value }))} />
+            <Input placeholder="Preço promocional" value={form.promotionalPriceAmount} onChange={(event) => setForm((current) => ({ ...current, promotionalPriceAmount: event.target.value, priceAmount: event.target.value || current.basePriceAmount || current.priceAmount }))} />
             <div className="flex gap-2">
-              <Input placeholder="Preço" value={form.priceAmount} onChange={(event) => setForm((current) => ({ ...current, priceAmount: event.target.value }))} />
+              <Input placeholder="Preço efetivo" value={form.priceAmount} onChange={(event) => setForm((current) => ({ ...current, priceAmount: event.target.value }))} />
               <Button type="submit">{editingOfferId ? 'Salvar' : 'Criar'}</Button>
             </div>
           </form>
@@ -479,7 +491,16 @@ export function AdminPricesPage() {
                                 </div>
                               </TableCell>
                               <TableCell>{offer.establishment.unitName}</TableCell>
-                              <TableCell>{formatCurrency(Number(offer.priceAmount))}</TableCell>
+                              <TableCell>
+                                <div className="grid gap-1">
+                                  {offer.promotionalPriceAmount && offer.basePriceAmount ? (
+                                    <span className="text-xs text-muted-foreground line-through">
+                                      {formatCurrency(Number(offer.basePriceAmount))}
+                                    </span>
+                                  ) : null}
+                                  <span>{formatCurrency(Number(offer.priceAmount))}</span>
+                                </div>
+                              </TableCell>
                               <TableCell>{formatFreshnessLabel(offer.observedAt)}</TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
@@ -498,6 +519,8 @@ export function AdminPricesPage() {
                                         displayName: offer.displayName,
                                         packageLabel: offer.packageLabel,
                                         priceAmount: String(offer.priceAmount),
+                                        basePriceAmount: offer.basePriceAmount ? String(offer.basePriceAmount) : '',
+                                        promotionalPriceAmount: offer.promotionalPriceAmount ? String(offer.promotionalPriceAmount) : '',
                                       });
                                     }}
                                   >
@@ -944,6 +967,30 @@ export function AdminRegionsPage() {
                   {region.implantationStatus === 'active' ? 'Desativar cidade' : 'Ativar cidade'}
                 </Button>
               </div>
+              {region.establishments.length > 0 ? (
+                <div className="mt-4 grid gap-2">
+                  {region.establishments.map((establishment) => (
+                    <div
+                      key={establishment.id}
+                      className="grid gap-2 rounded-lg border border-border/70 bg-background/80 p-3 md:grid-cols-[1fr_auto]"
+                    >
+                      <div>
+                        <div className="text-sm font-medium">{establishment.unitName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {establishment.brandName} · {establishment.neighborhood} · {establishment.isActive ? 'ativo' : 'inativo'}
+                        </div>
+                      </div>
+                      <Badge variant="secondary">
+                        {establishment.auditedProductsCount} produtos auditados
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-4 rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+                  Nenhum estabelecimento vinculado a esta cidade ainda.
+                </div>
+              )}
             </div>
           ))}
         </CardContent>
@@ -1266,10 +1313,148 @@ export function AdminQueuePage() {
               {job.failureReason ? (
                 <div className="mt-2 text-sm text-muted-foreground">{job.failureReason}</div>
               ) : null}
+              <div className="mt-3 grid gap-1 text-sm text-muted-foreground">
+                {job.owner ? <span>user_id: {job.owner.id}</span> : null}
+                {job.shoppingList ? <span>lista: {job.shoppingList.name}</span> : null}
+                {job.optimizationRun ? (
+                  <span>
+                    run {job.optimizationRun.id} · modo {job.optimizationRun.mode} · solicitado {formatFreshnessLabel(job.createdAt)}
+                  </span>
+                ) : null}
+                {job.finishedAt ? <span>completed: {formatFreshnessLabel(job.finishedAt)}</span> : null}
+              </div>
+              <div className="mt-3">
+                <Button asChild size="sm" variant="outline">
+                  <a href={`/dashboard/fila/${job.id}`} rel="noreferrer" target="_blank">
+                    Go to link
+                  </a>
+                </Button>
+              </div>
             </div>
           ))}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+export function AdminQueueDetailPage() {
+  const { jobId = '' } = useParams();
+  const loader = (token: string) => fetchAdminProcessingJobDetail(token, jobId);
+  const { data: job, error } = useAdminData<AdminProcessingJobDetailResponse | null>(
+    loader,
+    null,
+  );
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Falha ao carregar job</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!job) {
+    return <Card><CardHeader><CardTitle>Carregando job</CardTitle></CardHeader></Card>;
+  }
+
+  return (
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Detalhe do job</CardTitle>
+          <CardDescription>
+            {job.queueName} · {job.jobType} · tentativa {job.attemptCount}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">job_id</div>
+            <div className="mt-1 font-medium">{job.id}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">status</div>
+            <div className="mt-1 font-medium">{job.status}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">resource</div>
+            <div className="mt-1 font-medium">{job.resourceType} · {job.resourceId}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">owner</div>
+            <div className="mt-1 font-medium">{job.owner ? `${job.owner.displayName} · ${job.owner.id}` : 'Sem owner vinculado'}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">solicitado</div>
+            <div className="mt-1 font-medium">{formatFreshnessLabel(job.createdAt)}</div>
+          </div>
+          <div className="rounded-lg border border-border/70 p-4">
+            <div className="text-sm text-muted-foreground">completed</div>
+            <div className="mt-1 font-medium">{job.finishedAt ? formatFreshnessLabel(job.finishedAt) : 'Ainda sem conclusão'}</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {job.optimizationRun ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Otimização</CardTitle>
+            <CardDescription>
+              run {job.optimizationRun.id} · modo {job.optimizationRun.mode} · {job.optimizationRun.coverageStatus}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-border/70 p-4">
+                <div className="text-sm text-muted-foreground">Custo total</div>
+                <div className="mt-1 text-xl font-semibold">{formatCurrency(job.optimizationRun.totalEstimatedCost)}</div>
+              </div>
+              <div className="rounded-lg border border-border/70 p-4">
+                <div className="text-sm text-muted-foreground">Economia</div>
+                <div className="mt-1 text-xl font-semibold">{formatCurrency(job.optimizationRun.estimatedSavings)}</div>
+              </div>
+              <div className="rounded-lg border border-border/70 p-4">
+                <div className="text-sm text-muted-foreground">Lista</div>
+                <div className="mt-1 text-xl font-semibold">{job.shoppingList?.name ?? job.resourceId}</div>
+              </div>
+            </div>
+            {job.optimizationRun.summary ? (
+              <Alert>
+                <InfoIcon />
+                <AlertTitle>Resumo do thinking</AlertTitle>
+                <AlertDescription>{job.optimizationRun.summary}</AlertDescription>
+              </Alert>
+            ) : null}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Decisão</TableHead>
+                  <TableHead>Loja</TableHead>
+                  <TableHead>Preço</TableHead>
+                  <TableHead>Fonte</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {job.optimizationRun.selections.map((selection) => (
+                  <TableRow key={selection.id}>
+                    <TableCell>{selection.shoppingListItemName}</TableCell>
+                    <TableCell>{selection.status}</TableCell>
+                    <TableCell>
+                      {selection.offer
+                        ? `${selection.offer.establishmentName} · ${selection.offer.neighborhood}`
+                        : 'Sem oferta selecionada'}
+                    </TableCell>
+                    <TableCell>{formatCurrency(selection.offer?.priceAmount ?? selection.estimatedCost)}</TableCell>
+                    <TableCell>{selection.offer?.sourceLabel ?? selection.confidenceNotice ?? 'Sem fonte'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

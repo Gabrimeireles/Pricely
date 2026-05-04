@@ -15,6 +15,9 @@ export interface OptimizationSelection {
   establishmentNeighborhood?: string;
   estimatedCost?: number;
   priceAmount?: number;
+  comparisonPriceAmount?: number;
+  regionalAveragePriceAmount?: number;
+  savingsVsComparison?: number;
   sourceLabel?: string;
   observedAt?: string;
   selectionStatus: 'selected' | 'missing' | 'review';

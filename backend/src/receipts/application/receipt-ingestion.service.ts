@@ -42,6 +42,8 @@ export class ReceiptIngestionService {
           packageSize: item.packageSize,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
+          originalUnitPrice: item.originalUnitPrice,
+          promotionalUnitPrice: item.promotionalUnitPrice,
           currency: item.currency,
           matchConfidence: item.matchConfidence,
         };

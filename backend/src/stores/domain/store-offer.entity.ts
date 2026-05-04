@@ -14,6 +14,8 @@ export interface StoreOfferEntity {
   canonicalName: string;
   displayName: string;
   price: number;
+  basePrice?: number;
+  promotionalPrice?: number;
   quantityContext?: string;
   availabilityStatus: StoreOfferAvailabilityStatus;
   confidenceScore: number;

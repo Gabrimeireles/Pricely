@@ -7,15 +7,13 @@ describe('PublicPricingService', () => {
     const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     const prisma = {
       region: {
-        findUnique: jest
-          .fn()
-          .mockResolvedValueOnce({
-            id: 'region-1',
-            slug: 'sao-paulo-sp',
-            name: 'Sao Paulo',
-            stateCode: 'SP',
-            implantationStatus: 'active',
-          }),
+        findUnique: jest.fn().mockResolvedValueOnce({
+          id: 'region-1',
+          slug: 'sao-paulo-sp',
+          name: 'Sao Paulo',
+          stateCode: 'SP',
+          implantationStatus: 'active',
+        }),
       },
       establishment: {
         count: jest.fn().mockResolvedValue(1),
@@ -31,6 +29,8 @@ describe('PublicPricingService', () => {
               displayName: 'Cafe 500g',
               packageLabel: '500 g',
               priceAmount: 15.9,
+              basePriceAmount: 18.9,
+              promotionalPriceAmount: 15.9,
               sourceType: 'admin',
               sourceReference: 'Painel admin',
               observedAt: new Date('2026-04-27T10:00:00Z'),
@@ -54,6 +54,8 @@ describe('PublicPricingService', () => {
               id: 'offer-1',
               packageLabel: '500 g',
               priceAmount: 15.9,
+              basePriceAmount: 18.9,
+              promotionalPriceAmount: 15.9,
               sourceType: 'admin',
               sourceReference: 'Painel admin',
               observedAt: new Date('2026-04-27T10:00:00Z'),
@@ -72,6 +74,8 @@ describe('PublicPricingService', () => {
           displayName: 'Cafe 500g',
           packageLabel: '500 g',
           priceAmount: 15.9,
+          basePriceAmount: 18.9,
+          promotionalPriceAmount: 15.9,
           sourceType: 'admin',
           sourceReference: 'Painel admin',
           observedAt: new Date('2026-04-27T10:00:00Z'),
@@ -123,6 +127,9 @@ describe('PublicPricingService', () => {
           variantName: 'Cafe 500g',
           imageUrl: 'https://example.com/cafe.png',
           storeName: 'Mercado Centro',
+          priceAmount: 15.9,
+          basePriceAmount: 18.9,
+          promotionalPriceAmount: 15.9,
         }),
       ],
     });
@@ -138,10 +145,19 @@ describe('PublicPricingService', () => {
           id: 'variant-1',
           brandName: 'Pilao',
         }),
+        activeOffer: expect.objectContaining({
+          basePriceAmount: 18.9,
+          promotionalPriceAmount: 15.9,
+          regionalAveragePriceAmount: 15.9,
+          comparisonPriceAmount: 15.9,
+          savingsVsComparison: 0,
+        }),
         alternativeOffers: [
           expect.objectContaining({
             id: 'offer-1',
             storeName: 'Mercado Centro',
+            basePriceAmount: 18.9,
+            promotionalPriceAmount: 15.9,
           }),
         ],
       }),
@@ -152,6 +168,112 @@ describe('PublicPricingService', () => {
     );
     expect(logSpy).toHaveBeenCalledWith(
       'Offer detail requested for offer-1: 1 regional alternatives',
+    );
+  });
+
+  it('compares only identical variants across establishments in the same region', async () => {
+    jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    const prisma = {
+      productOffer: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'offer-cheap',
+          isActive: true,
+          catalogProductId: 'product-arroz',
+          productVariantId: 'variant-camil',
+          displayName: 'Arroz Camil 5kg',
+          packageLabel: '5 kg',
+          priceAmount: 19.99,
+          basePriceAmount: 20.99,
+          promotionalPriceAmount: 19.99,
+          sourceType: 'receipt',
+          sourceReference: 'NFCe 2',
+          observedAt: new Date('2026-04-27T10:00:00Z'),
+          confidenceLevel: 'high',
+          catalogProduct: {
+            id: 'product-arroz',
+            name: 'Arroz tipo 1 5kg',
+            category: 'mercearia',
+            imageUrl: null,
+          },
+          productVariant: {
+            id: 'variant-camil',
+            displayName: 'Arroz Camil 5kg',
+            brandName: 'Camil',
+            packageLabel: '5 kg',
+            imageUrl: null,
+          },
+          establishment: {
+            isActive: true,
+            regionId: 'region-1',
+            unitName: 'Estabelecimento 2',
+            neighborhood: 'Pinheiros',
+            region: {
+              id: 'region-1',
+              slug: 'sao-paulo-sp',
+              name: 'Sao Paulo',
+              stateCode: 'SP',
+            },
+          },
+        }),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'offer-cheap',
+            packageLabel: '5 kg',
+            priceAmount: 19.99,
+            basePriceAmount: 20.99,
+            promotionalPriceAmount: 19.99,
+            sourceType: 'receipt',
+            sourceReference: 'NFCe 2',
+            observedAt: new Date('2026-04-27T10:00:00Z'),
+            confidenceLevel: 'high',
+            establishment: {
+              unitName: 'Estabelecimento 2',
+              neighborhood: 'Pinheiros',
+            },
+          },
+          {
+            id: 'offer-expensive',
+            packageLabel: '5 kg',
+            priceAmount: 20.99,
+            basePriceAmount: 20.99,
+            promotionalPriceAmount: null,
+            sourceType: 'receipt',
+            sourceReference: 'NFCe 1',
+            observedAt: new Date('2026-04-27T09:00:00Z'),
+            confidenceLevel: 'high',
+            establishment: {
+              unitName: 'Estabelecimento 1',
+              neighborhood: 'Centro',
+            },
+          },
+        ]),
+      },
+    };
+
+    const service = new PublicPricingService(prisma as never);
+
+    await expect(service.getOfferDetail('offer-cheap')).resolves.toEqual(
+      expect.objectContaining({
+        activeOffer: expect.objectContaining({
+          priceAmount: 19.99,
+          comparisonPriceAmount: 20.99,
+          savingsVsComparison: 1,
+        }),
+        alternativeOffers: expect.arrayContaining([
+          expect.objectContaining({
+            id: 'offer-expensive',
+            priceAmount: 20.99,
+          }),
+        ]),
+      }),
+    );
+
+    expect(prisma.productOffer.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          productVariantId: 'variant-camil',
+        }),
+      }),
     );
   });
 

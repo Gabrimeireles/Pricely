@@ -28,6 +28,8 @@ export class StoreOfferRepository {
         displayName: offer.displayName,
         packageLabel: offer.quantityContext ?? 'un',
         priceAmount: offer.price,
+        basePriceAmount: offer.basePrice ?? offer.price,
+        promotionalPriceAmount: offer.promotionalPrice ?? null,
         availabilityStatus:
           offer.availabilityStatus === 'available'
             ? 'available'
@@ -53,6 +55,8 @@ export class StoreOfferRepository {
         displayName: offer.displayName,
         packageLabel: offer.quantityContext ?? 'un',
         priceAmount: offer.price,
+        basePriceAmount: offer.basePrice ?? offer.price,
+        promotionalPriceAmount: offer.promotionalPrice ?? null,
         currencyCode: 'BRL',
         availabilityStatus:
           offer.availabilityStatus === 'available'
@@ -121,6 +125,14 @@ export class StoreOfferRepository {
           canonicalName: normalizedProductName,
           displayName: offer.displayName,
           price: Number(offer.priceAmount),
+          basePrice:
+            offer.basePriceAmount !== null
+              ? Number(offer.basePriceAmount)
+              : Number(offer.priceAmount),
+          promotionalPrice:
+            offer.promotionalPriceAmount !== null
+              ? Number(offer.promotionalPriceAmount)
+              : undefined,
           quantityContext: offer.packageLabel,
           availabilityStatus:
             offer.availabilityStatus === 'available'
@@ -200,6 +212,14 @@ export class StoreOfferRepository {
           canonicalName: normalizedProductName,
           displayName: offer.displayName,
           price: Number(offer.priceAmount),
+          basePrice:
+            offer.basePriceAmount !== null
+              ? Number(offer.basePriceAmount)
+              : Number(offer.priceAmount),
+          promotionalPrice:
+            offer.promotionalPriceAmount !== null
+              ? Number(offer.promotionalPriceAmount)
+              : undefined,
           quantityContext: offer.packageLabel,
           availabilityStatus:
             offer.availabilityStatus === 'available'

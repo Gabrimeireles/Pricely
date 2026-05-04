@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { CatalogProductsService } from '../../catalog/application/catalog-products.service';
 import { CatalogMediaService } from '../../catalog/application/catalog-media.service';
@@ -89,6 +89,25 @@ export class AdminDashboardService {
     const jobs = await this.prisma.processingJob.findMany({
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       take: 100,
+      include: {
+        optimizationRun: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                email: true,
+              },
+            },
+            shoppingList: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     const projectedJobs = jobs.map((job) => ({
@@ -103,11 +122,117 @@ export class AdminDashboardService {
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
       finishedAt: job.finishedAt?.toISOString(),
+      owner: job.optimizationRun?.user,
+      shoppingList: job.optimizationRun?.shoppingList,
+      optimizationRun: job.optimizationRun
+        ? {
+            id: job.optimizationRun.id,
+            mode: job.optimizationRun.mode,
+            status: job.optimizationRun.status,
+            createdAt: job.optimizationRun.createdAt.toISOString(),
+            completedAt: job.optimizationRun.completedAt?.toISOString(),
+          }
+        : null,
     }));
 
     this.logger.log(`Admin processing jobs requested: ${projectedJobs.length} records returned`);
 
     return projectedJobs;
+  }
+
+  async getProcessingJobDetail(id: string) {
+    const job = await this.prisma.processingJob.findUnique({
+      where: { id },
+      include: {
+        optimizationRun: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                email: true,
+              },
+            },
+            shoppingList: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            optimizationSelections: {
+              include: {
+                shoppingListItem: true,
+                productOffer: {
+                  include: {
+                    productVariant: true,
+                    establishment: true,
+                  },
+                },
+              },
+              orderBy: {
+                id: 'asc',
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!job) {
+      throw new NotFoundException(`Processing job ${id} was not found`);
+    }
+
+    const optimizationRun = job.optimizationRun;
+
+    return {
+      id: job.id,
+      queueName: job.queueName,
+      jobType: job.jobType,
+      resourceType: job.resourceType,
+      resourceId: job.resourceId,
+      status: job.status,
+      attemptCount: job.attemptCount,
+      failureReason: job.failureReason,
+      createdAt: job.createdAt.toISOString(),
+      updatedAt: job.updatedAt.toISOString(),
+      finishedAt: job.finishedAt?.toISOString(),
+      owner: optimizationRun?.user ?? null,
+      shoppingList: optimizationRun?.shoppingList ?? null,
+      optimizationRun: optimizationRun
+        ? {
+            id: optimizationRun.id,
+            mode: optimizationRun.mode,
+            status: optimizationRun.status,
+            totalEstimatedCost: Number(optimizationRun.totalEstimatedCost ?? 0),
+            estimatedSavings: Number(optimizationRun.estimatedSavings ?? 0),
+            coverageStatus: optimizationRun.coverageStatus,
+            summary: optimizationRun.summary,
+            createdAt: optimizationRun.createdAt.toISOString(),
+            completedAt: optimizationRun.completedAt?.toISOString(),
+            selections: optimizationRun.optimizationSelections.map((selection) => ({
+              id: selection.id,
+              shoppingListItemId: selection.shoppingListItemId,
+              shoppingListItemName: selection.shoppingListItem.requestedName,
+              status: selection.status,
+              estimatedCost: Number(selection.estimatedCost ?? 0),
+              confidenceNotice: selection.confidenceNotice,
+              offer: selection.productOffer
+                ? {
+                    id: selection.productOffer.id,
+                    displayName: selection.productOffer.displayName,
+                    variantName: selection.productOffer.productVariant.displayName,
+                    establishmentName: selection.productOffer.establishment.unitName,
+                    neighborhood: selection.productOffer.establishment.neighborhood,
+                    priceAmount: Number(selection.productOffer.priceAmount),
+                    sourceLabel:
+                      selection.productOffer.sourceReference ?? selection.productOffer.sourceType,
+                    observedAt: selection.productOffer.observedAt.toISOString(),
+                  }
+                : null,
+            })),
+          }
+        : null,
+    };
   }
 
   async getQueueHealth() {
@@ -399,6 +524,8 @@ export class AdminDashboardService {
     displayName: string;
     packageLabel: string;
     priceAmount: number;
+    basePriceAmount?: number;
+    promotionalPriceAmount?: number | null;
     availabilityStatus: 'available' | 'unavailable' | 'uncertain';
     confidenceLevel: 'high' | 'medium' | 'low';
     sourceType?: string;
@@ -422,6 +549,8 @@ export class AdminDashboardService {
       displayName: string;
       packageLabel: string;
       priceAmount: number;
+      basePriceAmount: number;
+      promotionalPriceAmount: number | null;
       availabilityStatus: 'available' | 'unavailable' | 'uncertain';
       confidenceLevel: 'high' | 'medium' | 'low';
       sourceType: string;

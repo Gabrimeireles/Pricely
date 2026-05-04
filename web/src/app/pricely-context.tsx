@@ -139,7 +139,9 @@ export function PricelyProvider({ children }: PropsWithChildren) {
           })),
         );
       } catch {
-        setCities(supportedCities);
+        if (!disposed) {
+          setCities(supportedCities);
+        }
       }
     };
 
@@ -387,6 +389,18 @@ export function PricelyProvider({ children }: PropsWithChildren) {
           ...current,
           [listId]: result,
         }));
+        setLists((current) =>
+          current.map((list) =>
+            list.id === listId
+              ? {
+                  ...list,
+                  lastMode: mode,
+                  expectedSavings:
+                    result.estimatedSavings ?? list.expectedSavings,
+                }
+              : list,
+          ),
+        );
         setPreferredMode(mode);
         return result;
       },

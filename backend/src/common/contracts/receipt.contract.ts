@@ -2,6 +2,8 @@ export interface ReceiptLineItemInput {
   rawProductName: string;
   quantity?: number;
   unitPrice: number;
+  originalUnitPrice?: number;
+  promotionalUnitPrice?: number;
   currency?: string;
   packageSize?: string;
 }

@@ -240,6 +240,57 @@ web, and mobile.
 
 ---
 
+## Phase 12: Account List Sync and Real User Metrics
+
+- [~] T089 [P] Update web copy, list search persistence, exact variant image preview, and optimization mode persistence in `web/src/public/` and `web/src/app/`
+- [~] T090 [P] Correct user profile metrics so list count is real and savings sum only latest completed optimization per list in `backend/src/users/`
+- [ ] T091 [P] Align mobile checklist/list rendering with exact variant names and images in `mobile/lib/features/shopping_lists/` and `mobile/lib/features/optimization/`
+- [ ] T092 Add backend and frontend regression tests for cross-platform account sync semantics in `backend/test/`, `web/src/`, and `mobile/test/`
+
+## Phase 13: Offer Price Model and Store Comparisons
+
+- [ ] T093 Extend `ProductOffer` with base/original and promotional price fields in `backend/prisma/schema.prisma`
+- [ ] T094 Update receipt parsing and ingestion to capture original and promotional prices in `backend/src/receipts/`
+- [ ] T095 Implement variant-level establishment comparisons and regional average helpers in `backend/src/pricing/` and `backend/src/optimization/`
+- [ ] T096 Render promotional price, crossed original price, and comparison savings in `web/src/public/`, `mobile/lib/features/`, and related tests
+
+## Phase 14: Queue, Health, and Optimization Auditability
+
+- [ ] T097 Enrich admin processing job responses with owner, run, mode, request time, completion time, and attempt context in `backend/src/admin/`
+- [ ] T098 Add optimization detail route/modal with calculations, selected/rejected offers, and decision trace in `web/src/dashboard/`
+- [ ] T099 Add queue semantics tests for repeated runs versus repeated attempts in `backend/test/unit/jobs/` and `backend/test/integration/admin/`
+
+## Phase 15: Cities, Seed Data, and Local Infra
+
+- [~] T100 Add PgAdmin to Docker Compose with imported PostgreSQL server config in `docker-compose.yml` and `infra/pgadmin/`
+- [ ] T101 Show establishments and audited product counts inside admin city screens in `backend/src/admin/` and `web/src/dashboard/`
+- [ ] T102 Expand seed data with multiple establishments, variants, images, and price comparison cases in `backend/prisma/seed.js`
+
+## Phase 16: Observability, Deployment, and Infrastructure Planning
+
+- [ ] T103 Define Pino logging patterns and apply them consistently across backend modules in `backend/src/common/logging/` and feature services
+- [ ] T104 Plan Sentry instrumentation for backend, web, and mobile in `docs/` and future implementation tasks
+- [ ] T105 Plan Railway deployment topology and environment requirements in `docs/`
+- [ ] T106 Plan Terraform modules for future production infrastructure in `infra/terraform/` and `docs/`
+
+## Phase 17: CI Workflow Reliability and Security
+
+- [X] T108 Inspect failing GitHub Actions runs on `homolog` and classify whether the failures come from workflow YAML or code regressions in `.github/workflows/`, `backend/test/`, and `web/src/`
+- [X] T109 Patch backend and web regressions that broke CI after phase merges in `backend/test/` and `web/src/app/`
+- [X] T110 Harden CI workflow defaults with manual dispatch, explicit step names, concurrency, and read-only permissions in `.github/workflows/ci.yml` and `.github/workflows/deploy.yml`
+- [ ] T111 Add a dedicated mobile CI job with Flutter setup, analyzer, tests, and optional APK build once runner setup is stable in `.github/workflows/ci.yml`
+
+## Phase 18: Monetization and Entitlements
+
+- [X] T112 Research and document the recommended hybrid monetization model for optimization tokens, premium unlimited access, and future token packs in `docs/product/phase-18-monetization-plan.md`
+- [ ] T113 Add backend entitlement and token-ledger schema with idempotent consume/refund semantics in `backend/prisma/schema.prisma` and `backend/src/users/`
+- [ ] T114 Gate optimization-run creation by premium entitlement or available optimization tokens in `backend/src/optimization/` and `backend/src/jobs/`
+- [ ] T115 Add monthly free-token refill scheduling and abuse-safe bonus-token planning for receipt contributions in `backend/src/jobs/`
+- [ ] T116 Add premium/token UI states for web and mobile without blocking first-run value discovery in `web/src/public/`, `web/src/app/`, and `mobile/lib/`
+- [ ] T117 Plan Stripe subscription and credit-based billing integration after internal ledger tests pass in `docs/` and future billing modules
+
+---
+
 ## Phase 9: UX Flow Polish and Stitch Fidelity Hardening
 
 **Purpose**: Eliminate UX friction found in the post-release audit, fix PT-BR copy

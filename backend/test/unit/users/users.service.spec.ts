@@ -31,12 +31,8 @@ describe('UsersService', () => {
       },
       optimizationRun: {
         count: jest.fn().mockResolvedValue(0),
-        aggregate: jest.fn().mockResolvedValue({
-          _sum: {
-            estimatedSavings: 0,
-          },
-        }),
       },
+      $queryRaw: jest.fn().mockResolvedValue([{ totalEstimatedSavings: 0 }]),
       receiptRecord: {
         count: jest.fn().mockResolvedValue(0),
       },
@@ -55,6 +51,47 @@ describe('UsersService', () => {
       data: { preferredRegionId: 'region-1' },
     });
     expect(profile.preferredRegionSlug).toBe('sao-paulo-sp');
+  });
+
+  it('sums only the latest completed optimization savings for each user list', async () => {
+    const prisma = {
+      userAccount: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          email: 'cliente@pricely.local',
+          passwordHash: 'hash',
+          displayName: 'Cliente',
+          role: 'customer',
+          status: 'active',
+          lastLoginAt: null,
+          createdAt: new Date('2026-04-29T00:00:00.000Z'),
+          updatedAt: new Date('2026-04-29T00:00:00.000Z'),
+          preferredRegionId: null,
+        }),
+      },
+      region: {
+        findUnique: jest.fn(),
+      },
+      shoppingList: {
+        count: jest.fn().mockResolvedValue(2),
+      },
+      optimizationRun: {
+        count: jest.fn().mockResolvedValue(4),
+      },
+      $queryRaw: jest.fn().mockResolvedValue([{ totalEstimatedSavings: '31.50' }]),
+      receiptRecord: {
+        count: jest.fn().mockResolvedValue(0),
+      },
+    };
+
+    const service = new UsersService(prisma as never);
+
+    const profile = await service.getProfileById('user-1');
+
+    expect(profile.profileStats.shoppingListsCount).toBe(2);
+    expect(profile.profileStats.completedOptimizationRuns).toBe(4);
+    expect(profile.profileStats.totalEstimatedSavings).toBe(31.5);
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
   });
 
   it('fails when the preferred region slug does not exist', async () => {
