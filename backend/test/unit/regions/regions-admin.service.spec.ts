@@ -15,6 +15,19 @@ describe('RegionsAdminService', () => {
             _count: {
               establishments: 3,
             },
+            establishments: [
+              {
+                id: 'store-1',
+                brandName: 'Mercado Azul',
+                unitName: 'Unidade Pinheiros',
+                neighborhood: 'Pinheiros',
+                cityName: 'Sao Paulo',
+                isActive: true,
+                _count: {
+                  productOffers: 12,
+                },
+              },
+            ],
           },
         ]),
       },
@@ -31,6 +44,17 @@ describe('RegionsAdminService', () => {
         implantationStatus: 'active',
         publicSortOrder: 1,
         activeEstablishmentsCount: 3,
+        establishments: [
+          {
+            id: 'store-1',
+            brandName: 'Mercado Azul',
+            unitName: 'Unidade Pinheiros',
+            neighborhood: 'Pinheiros',
+            cityName: 'Sao Paulo',
+            isActive: true,
+            auditedProductsCount: 12,
+          },
+        ],
       },
     ]);
 
@@ -42,6 +66,21 @@ describe('RegionsAdminService', () => {
             establishments: {
               where: {
                 isActive: true,
+              },
+            },
+          },
+        },
+        establishments: {
+          orderBy: [{ unitName: 'asc' }],
+          include: {
+            _count: {
+              select: {
+                productOffers: {
+                  where: {
+                    isActive: true,
+                    availabilityStatus: 'available',
+                  },
+                },
               },
             },
           },

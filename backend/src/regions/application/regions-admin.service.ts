@@ -19,6 +19,21 @@ export class RegionsAdminService {
             },
           },
         },
+        establishments: {
+          orderBy: [{ unitName: 'asc' }],
+          include: {
+            _count: {
+              select: {
+                productOffers: {
+                  where: {
+                    isActive: true,
+                    availabilityStatus: 'available',
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -30,6 +45,15 @@ export class RegionsAdminService {
       implantationStatus: region.implantationStatus,
       publicSortOrder: region.publicSortOrder,
       activeEstablishmentsCount: region._count.establishments,
+      establishments: region.establishments.map((establishment) => ({
+        id: establishment.id,
+        brandName: establishment.brandName,
+        unitName: establishment.unitName,
+        neighborhood: establishment.neighborhood,
+        cityName: establishment.cityName,
+        isActive: establishment.isActive,
+        auditedProductsCount: establishment._count.productOffers,
+      })),
     }));
   }
 

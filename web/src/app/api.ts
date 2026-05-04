@@ -244,6 +244,15 @@ type AdminRegionResponse = {
   implantationStatus: 'active' | 'activating' | 'inactive';
   publicSortOrder: number;
   activeEstablishmentsCount: number;
+  establishments: Array<{
+    id: string;
+    brandName: string;
+    unitName: string;
+    neighborhood: string;
+    cityName: string;
+    isActive: boolean;
+    auditedProductsCount: number;
+  }>;
 };
 
 type AdminShoppingListAuditResponse = {

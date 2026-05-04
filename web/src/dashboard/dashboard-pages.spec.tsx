@@ -166,6 +166,17 @@ describe('Admin dashboard pages', () => {
         implantationStatus: 'active',
         publicSortOrder: 1,
         activeEstablishmentsCount: 2,
+        establishments: [
+          {
+            id: 'store-1',
+            brandName: 'Mercado Azul',
+            unitName: 'Unidade Pinheiros',
+            neighborhood: 'Pinheiros',
+            cityName: 'Sao Paulo',
+            isActive: true,
+            auditedProductsCount: 12,
+          },
+        ],
       },
     ]);
     fetchAdminEstablishments.mockResolvedValue([
@@ -190,9 +201,10 @@ describe('Admin dashboard pages', () => {
     render(<AdminRegionsPage />);
     expect(await screen.findByText('Cidades públicas')).toBeTruthy();
     expect(screen.getAllByText(/Sao Paulo/).length).toBeGreaterThan(0);
+    expect(screen.getByText('12 produtos auditados')).toBeTruthy();
 
     render(<AdminEstablishmentsPage />);
     expect(await screen.findByText('Unidades por cidade')).toBeTruthy();
-    expect(screen.getByText('Unidade Pinheiros')).toBeTruthy();
+    expect(screen.getAllByText('Unidade Pinheiros').length).toBeGreaterThan(0);
   });
 });
