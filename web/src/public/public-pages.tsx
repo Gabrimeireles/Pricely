@@ -1206,7 +1206,6 @@ export function ListEditorPage() {
     setSelectedVariantId('');
     setSelectedVariants([]);
     setIsBrandDialogOpen(false);
-    setCatalogResults([]);
   };
 
   const removeItem = (itemId: string) => {
@@ -1486,21 +1485,38 @@ export function ListEditorPage() {
                 </select>
               </Field>
               {draftBrandPreferenceMode === 'exact' ? (
-                <Field>
-                  <FieldLabel>Variante exata</FieldLabel>
-                  <select
-                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                    onChange={(event) => setSelectedVariantId(event.target.value)}
-                    value={selectedVariantId}
-                  >
-                    <option value="">Selecione a variante</option>
-                    {selectedVariants.map((variant) => (
-                      <option key={variant.id} value={variant.id}>
-                        {variant.brandName ? `${variant.brandName} - ` : ''}{variant.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                <div className="grid gap-3">
+                  <Field>
+                    <FieldLabel>Variante exata</FieldLabel>
+                    <select
+                      className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                      onChange={(event) => setSelectedVariantId(event.target.value)}
+                      value={selectedVariantId}
+                    >
+                      <option value="">Selecione a variante</option>
+                      {selectedVariants.map((variant) => (
+                        <option key={variant.id} value={variant.id}>
+                          {variant.brandName ? `${variant.brandName} - ` : ''}{variant.displayName}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  {selectedVariant ? (
+                    <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+                      <img
+                        alt={selectedExactVariantLabel}
+                        className="h-14 w-14 rounded-lg border border-border/70 object-cover"
+                        src={resolveProductImage(selectedVariant.imageUrl)}
+                      />
+                      <div className="grid gap-1">
+                        <span className="text-sm font-medium">{selectedExactVariantLabel}</span>
+                        <span className="text-xs text-muted-foreground">
+                          Variante exata selecionada
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
             <DialogFooter>

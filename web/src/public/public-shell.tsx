@@ -132,7 +132,7 @@ export function PublicLayout() {
               <div className="flex min-w-0 flex-col gap-1">
                 <span className="text-sm font-medium">Sua compra continua de onde você parou</span>
                 <span className="text-sm leading-6 text-muted-foreground">
-                  A cidade escolhida, as listas salvas e o checklist acompanham a mesma conta.
+                  A cidade escolhida, as listas salvas e o checklist acompanham a mesma conta em todas as plataformas.
                 </span>
               </div>
             </div>
