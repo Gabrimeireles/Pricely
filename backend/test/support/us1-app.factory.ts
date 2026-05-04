@@ -860,6 +860,31 @@ class PrismaUserAccountMock {
     },
   };
 
+  async $queryRaw() {
+    const latestCompletedByList = new Map<string, any>();
+
+    for (const run of this.optimizationRuns.values()) {
+      if (run.status !== 'completed' || run.estimatedSavings === null) {
+        continue;
+      }
+
+      const existing = latestCompletedByList.get(run.shoppingListId);
+      if (
+        !existing ||
+        new Date(run.createdAt).getTime() > new Date(existing.createdAt).getTime()
+      ) {
+        latestCompletedByList.set(run.shoppingListId, run);
+      }
+    }
+
+    const totalEstimatedSavings = [...latestCompletedByList.values()].reduce(
+      (total, run) => total + Number(run.estimatedSavings ?? 0),
+      0,
+    );
+
+    return [{ totalEstimatedSavings }];
+  }
+
   readonly optimizationSelection = {
     deleteMany: async ({ where }: { where: { optimizationRunId: string } }) => {
       const retained = this.optimizationSelections.filter(

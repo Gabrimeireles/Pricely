@@ -117,6 +117,12 @@ class PrismaUserAccountMock {
       return null;
     },
   };
+
+  readonly $queryRaw = jest.fn().mockResolvedValue([
+    {
+      totalEstimatedSavings: 0,
+    },
+  ]);
 }
 
 describe('Shared auth integration', () => {
@@ -137,6 +143,7 @@ describe('Shared auth integration', () => {
         optimizationRun: userAccountMock.optimizationRun,
         receiptRecord: userAccountMock.receiptRecord,
         region: userAccountMock.region,
+        $queryRaw: userAccountMock.$queryRaw,
       })
       .compile();
 

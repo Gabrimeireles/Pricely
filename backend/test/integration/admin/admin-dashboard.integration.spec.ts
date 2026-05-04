@@ -104,6 +104,11 @@ class AdminPrismaMock {
     count: async () => 7,
     aggregate: async () => ({ _sum: { estimatedSavings: 88.4 } }),
   };
+  readonly $queryRaw = jest.fn().mockResolvedValue([
+    {
+      totalEstimatedSavings: 88.4,
+    },
+  ]);
   readonly receiptRecord = { count: async () => 0 };
   readonly processingJob = { count: async () => 3 };
   readonly region = {

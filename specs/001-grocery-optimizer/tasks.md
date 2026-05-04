@@ -273,6 +273,22 @@ web, and mobile.
 - [ ] T105 Plan Railway deployment topology and environment requirements in `docs/`
 - [ ] T106 Plan Terraform modules for future production infrastructure in `infra/terraform/` and `docs/`
 
+## Phase 17: CI Workflow Reliability and Security
+
+- [X] T108 Inspect failing GitHub Actions runs on `homolog` and classify whether the failures come from workflow YAML or code regressions in `.github/workflows/`, `backend/test/`, and `web/src/`
+- [X] T109 Patch backend and web regressions that broke CI after phase merges in `backend/test/` and `web/src/app/`
+- [X] T110 Harden CI workflow defaults with manual dispatch, explicit step names, concurrency, and read-only permissions in `.github/workflows/ci.yml` and `.github/workflows/deploy.yml`
+- [ ] T111 Add a dedicated mobile CI job with Flutter setup, analyzer, tests, and optional APK build once runner setup is stable in `.github/workflows/ci.yml`
+
+## Phase 18: Monetization and Entitlements
+
+- [X] T112 Research and document the recommended hybrid monetization model for optimization tokens, premium unlimited access, and future token packs in `docs/product/phase-18-monetization-plan.md`
+- [ ] T113 Add backend entitlement and token-ledger schema with idempotent consume/refund semantics in `backend/prisma/schema.prisma` and `backend/src/users/`
+- [ ] T114 Gate optimization-run creation by premium entitlement or available optimization tokens in `backend/src/optimization/` and `backend/src/jobs/`
+- [ ] T115 Add monthly free-token refill scheduling and abuse-safe bonus-token planning for receipt contributions in `backend/src/jobs/`
+- [ ] T116 Add premium/token UI states for web and mobile without blocking first-run value discovery in `web/src/public/`, `web/src/app/`, and `mobile/lib/`
+- [ ] T117 Plan Stripe subscription and credit-based billing integration after internal ledger tests pass in `docs/` and future billing modules
+
 ---
 
 ## Phase 9: UX Flow Polish and Stitch Fidelity Hardening
