@@ -227,6 +227,16 @@ class CreateOfferDto {
   @Min(0)
   priceAmount!: number;
 
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  basePriceAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  promotionalPriceAmount?: number;
+
   @IsIn(['available', 'unavailable', 'uncertain'])
   availabilityStatus!: 'available' | 'unavailable' | 'uncertain';
 
@@ -275,6 +285,16 @@ class UpdateOfferDto {
   @IsNumber()
   @Min(0)
   priceAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  basePriceAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  promotionalPriceAmount?: number;
 
   @IsOptional()
   @IsIn(['available', 'unavailable', 'uncertain'])

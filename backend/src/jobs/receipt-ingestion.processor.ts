@@ -35,6 +35,8 @@ export class ReceiptIngestionProcessor {
           canonicalName: lineItem.normalizedName,
           displayName: lineItem.rawProductName,
           price: lineItem.unitPrice,
+          basePrice: lineItem.originalUnitPrice ?? lineItem.unitPrice,
+          promotionalPrice: lineItem.promotionalUnitPrice,
           quantityContext: lineItem.packageSize,
           availabilityStatus: 'available',
           confidenceScore: lineItem.matchConfidence,

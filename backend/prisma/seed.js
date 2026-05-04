@@ -77,6 +77,20 @@ async function main() {
     },
   });
 
+  const comparisonEstablishment = await prisma.establishment.upsert({
+    where: { cnpj: '98.765.432/0001-11' },
+    update: {},
+    create: {
+      brandName: 'Mercado Comparativo',
+      unitName: 'Unidade Vila Mariana',
+      cnpj: '98.765.432/0001-11',
+      cityName: 'Sao Paulo',
+      neighborhood: 'Vila Mariana',
+      regionId: region.id,
+      isActive: true,
+    },
+  });
+
   const catalogProduct = await prisma.catalogProduct.upsert({
     where: { slug: 'arroz-tipo-1-5kg' },
     update: {},
@@ -103,12 +117,17 @@ async function main() {
 
   const productVariant = await prisma.productVariant.upsert({
     where: { slug: 'arroz-tipo-1-5kg-seed-5kg' },
-    update: {},
+    update: {
+      brandName: 'Camil',
+      imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=900&q=80',
+    },
     create: {
       catalogProductId: catalogProduct.id,
       slug: 'arroz-tipo-1-5kg-seed-5kg',
-      displayName: 'Arroz tipo 1 5kg',
+      displayName: 'Arroz Camil tipo 1 5kg',
+      brandName: 'Camil',
       packageLabel: '5 kg',
+      imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=900&q=80',
       isActive: true,
     },
   });
@@ -139,11 +158,38 @@ async function main() {
       displayName: 'Arroz tipo 1 5kg',
       packageLabel: '5 kg',
       priceAmount: '22.90',
+      basePriceAmount: '24.90',
+      promotionalPriceAmount: '22.90',
       currencyCode: 'BRL',
       availabilityStatus: 'available',
       confidenceLevel: 'high',
       sourceType: 'admin',
       sourceReference: 'Seed local',
+      observedAt: new Date(),
+      isActive: true,
+    },
+  });
+
+  await prisma.productOffer.upsert({
+    where: {
+      id: '44444444-4444-4444-4444-444444444444',
+    },
+    update: {},
+    create: {
+      id: '44444444-4444-4444-4444-444444444444',
+      catalogProductId: catalogProduct.id,
+      productVariantId: productVariant.id,
+      establishmentId: comparisonEstablishment.id,
+      displayName: 'Arroz Camil tipo 1 5kg',
+      packageLabel: '5 kg',
+      priceAmount: '21.90',
+      basePriceAmount: '21.90',
+      promotionalPriceAmount: null,
+      currencyCode: 'BRL',
+      availabilityStatus: 'available',
+      confidenceLevel: 'high',
+      sourceType: 'admin',
+      sourceReference: 'Seed comparativo',
       observedAt: new Date(),
       isActive: true,
     },
@@ -162,6 +208,8 @@ async function main() {
       displayName: 'Cafe Pilao 500g',
       packageLabel: '500 g',
       priceAmount: '15.90',
+      basePriceAmount: '18.90',
+      promotionalPriceAmount: '15.90',
       currencyCode: 'BRL',
       availabilityStatus: 'available',
       confidenceLevel: 'high',
@@ -192,6 +240,7 @@ async function main() {
       customerEmail: customer.email,
       region: region.slug,
       establishment: establishment.unitName,
+      comparisonEstablishment: comparisonEstablishment.unitName,
       product: catalogProduct.slug,
       variant: productVariant.slug,
       publicOfferProduct: coffeeCatalogProduct.slug,

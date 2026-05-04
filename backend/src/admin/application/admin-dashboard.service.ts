@@ -399,6 +399,8 @@ export class AdminDashboardService {
     displayName: string;
     packageLabel: string;
     priceAmount: number;
+    basePriceAmount?: number;
+    promotionalPriceAmount?: number | null;
     availabilityStatus: 'available' | 'unavailable' | 'uncertain';
     confidenceLevel: 'high' | 'medium' | 'low';
     sourceType?: string;
@@ -422,6 +424,8 @@ export class AdminDashboardService {
       displayName: string;
       packageLabel: string;
       priceAmount: number;
+      basePriceAmount: number;
+      promotionalPriceAmount: number | null;
       availabilityStatus: 'available' | 'unavailable' | 'uncertain';
       confidenceLevel: 'high' | 'medium' | 'low';
       sourceType: string;

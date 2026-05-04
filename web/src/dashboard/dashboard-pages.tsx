@@ -328,6 +328,8 @@ export function AdminPricesPage() {
     displayName: '',
     packageLabel: '',
     priceAmount: '',
+    basePriceAmount: '',
+    promotionalPriceAmount: '',
   });
   const productVariants = products.flatMap((product) =>
     product.productVariants.map((variant) => ({
@@ -356,6 +358,8 @@ export function AdminPricesPage() {
       displayName: form.displayName,
       packageLabel: form.packageLabel,
       priceAmount: Number(form.priceAmount),
+      basePriceAmount: form.basePriceAmount ? Number(form.basePriceAmount) : Number(form.priceAmount),
+      promotionalPriceAmount: form.promotionalPriceAmount ? Number(form.promotionalPriceAmount) : null,
       availabilityStatus: 'available',
       confidenceLevel: 'high',
     };
@@ -372,6 +376,8 @@ export function AdminPricesPage() {
       displayName: '',
       packageLabel: '',
       priceAmount: '',
+      basePriceAmount: '',
+      promotionalPriceAmount: '',
     });
     setEditingOfferId(null);
     await reload();
@@ -414,8 +420,10 @@ export function AdminPricesPage() {
             </select>
             <Input placeholder="Nome exibido" value={form.displayName} onChange={(event) => setForm((current) => ({ ...current, displayName: event.target.value }))} />
             <Input placeholder="Embalagem" value={form.packageLabel} onChange={(event) => setForm((current) => ({ ...current, packageLabel: event.target.value }))} />
+            <Input placeholder="Preço base" value={form.basePriceAmount} onChange={(event) => setForm((current) => ({ ...current, basePriceAmount: event.target.value }))} />
+            <Input placeholder="Preço promocional" value={form.promotionalPriceAmount} onChange={(event) => setForm((current) => ({ ...current, promotionalPriceAmount: event.target.value, priceAmount: event.target.value || current.basePriceAmount || current.priceAmount }))} />
             <div className="flex gap-2">
-              <Input placeholder="Preço" value={form.priceAmount} onChange={(event) => setForm((current) => ({ ...current, priceAmount: event.target.value }))} />
+              <Input placeholder="Preço efetivo" value={form.priceAmount} onChange={(event) => setForm((current) => ({ ...current, priceAmount: event.target.value }))} />
               <Button type="submit">{editingOfferId ? 'Salvar' : 'Criar'}</Button>
             </div>
           </form>
@@ -479,7 +487,16 @@ export function AdminPricesPage() {
                                 </div>
                               </TableCell>
                               <TableCell>{offer.establishment.unitName}</TableCell>
-                              <TableCell>{formatCurrency(Number(offer.priceAmount))}</TableCell>
+                              <TableCell>
+                                <div className="grid gap-1">
+                                  {offer.promotionalPriceAmount && offer.basePriceAmount ? (
+                                    <span className="text-xs text-muted-foreground line-through">
+                                      {formatCurrency(Number(offer.basePriceAmount))}
+                                    </span>
+                                  ) : null}
+                                  <span>{formatCurrency(Number(offer.priceAmount))}</span>
+                                </div>
+                              </TableCell>
                               <TableCell>{formatFreshnessLabel(offer.observedAt)}</TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
@@ -498,6 +515,8 @@ export function AdminPricesPage() {
                                         displayName: offer.displayName,
                                         packageLabel: offer.packageLabel,
                                         priceAmount: String(offer.priceAmount),
+                                        basePriceAmount: offer.basePriceAmount ? String(offer.basePriceAmount) : '',
+                                        promotionalPriceAmount: offer.promotionalPriceAmount ? String(offer.promotionalPriceAmount) : '',
                                       });
                                     }}
                                   >

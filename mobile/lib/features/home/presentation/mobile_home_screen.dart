@@ -1186,10 +1186,27 @@ class _OfferCard extends StatelessWidget {
                     color: const Color(0xFF487500),
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: Text(
-                    _formatCurrency(offer.priceAmount),
-                    style: theme.textTheme.labelLarge
-                        ?.copyWith(color: const Color(0xFFB5FF56)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: <Widget>[
+                      if (offer.promotionalPriceAmount != null &&
+                          offer.basePriceAmount != null &&
+                          offer.basePriceAmount! >
+                              offer.promotionalPriceAmount!) ...<Widget>[
+                        Text(
+                          _formatCurrency(offer.basePriceAmount!),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: const Color(0xFFE5E7EB),
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ],
+                      Text(
+                        _formatCurrency(offer.priceAmount),
+                        style: theme.textTheme.labelLarge
+                            ?.copyWith(color: const Color(0xFFB5FF56)),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1253,7 +1270,23 @@ class _OfferDetailRow extends StatelessWidget {
           const SizedBox(height: 4),
           Text('${offer.packageLabel} · ${offer.sourceLabel}'),
           const SizedBox(height: 8),
+          if (offer.promotionalPriceAmount != null &&
+              offer.basePriceAmount != null &&
+              offer.basePriceAmount! > offer.promotionalPriceAmount!) ...<Widget>[
+            Text(
+              _formatCurrency(offer.basePriceAmount!),
+              style: const TextStyle(decoration: TextDecoration.lineThrough),
+            ),
+            const SizedBox(height: 2),
+          ],
           Text(_formatCurrency(offer.priceAmount)),
+          if (offer.savingsVsComparison != null &&
+              offer.savingsVsComparison! > 0) ...<Widget>[
+            const SizedBox(height: 4),
+            Text(
+              'Economia de ${_formatCurrency(offer.savingsVsComparison!)} versus outra loja',
+            ),
+          ],
         ],
       ),
     );

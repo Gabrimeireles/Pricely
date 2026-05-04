@@ -140,6 +140,38 @@ function confidenceBadge(level: ConfidenceLevel) {
   return <Badge variant="destructive">Revisar</Badge>;
 }
 
+function PriceDisplay({
+  priceAmount,
+  basePriceAmount,
+  promotionalPriceAmount,
+  size = 'md',
+}: {
+  priceAmount: number;
+  basePriceAmount?: number | null;
+  promotionalPriceAmount?: number | null;
+  size?: 'md' | 'lg';
+}) {
+  const hasPromotion =
+    promotionalPriceAmount !== undefined &&
+    promotionalPriceAmount !== null &&
+    basePriceAmount !== undefined &&
+    basePriceAmount !== null &&
+    basePriceAmount > promotionalPriceAmount;
+
+  return (
+    <div className="grid gap-1">
+      {hasPromotion ? (
+        <div className="text-sm text-muted-foreground line-through">
+          {formatCurrency(basePriceAmount)}
+        </div>
+      ) : null}
+      <div className={size === 'lg' ? 'text-4xl font-semibold' : 'text-2xl font-semibold'}>
+        {formatCurrency(priceAmount)}
+      </div>
+    </div>
+  );
+}
+
 function cityStatusBadge(city: SupportedCity) {
   if (city.status === 'supported') {
     return <Badge className="bg-lime-100 text-lime-900 hover:bg-lime-100">Disponível</Badge>;
@@ -318,6 +350,9 @@ export function LandingPage() {
       freshness: FreshnessLevel;
       confidence: ConfidenceLevel;
       price: number;
+      basePrice?: number;
+      promotionalPrice?: number;
+      savingsVsRegionalAverage?: number;
     }>
   >([]);
 
@@ -351,6 +386,9 @@ export function LandingPage() {
                   ? 'media'
                   : 'baixa',
             price: offer.priceAmount,
+            basePrice: offer.basePriceAmount,
+            promotionalPrice: offer.promotionalPriceAmount,
+            savingsVsRegionalAverage: offer.savingsVsRegionalAverage,
           })),
         );
       } catch {
@@ -511,7 +549,16 @@ export function LandingPage() {
                 {freshnessBadge(offer.freshness)}
                 {confidenceBadge(offer.confidence)}
               </div>
-              <div className="text-2xl font-semibold">{formatCurrency(offer.price)}</div>
+              <PriceDisplay
+                basePriceAmount={offer.basePrice}
+                priceAmount={offer.price}
+                promotionalPriceAmount={offer.promotionalPrice}
+              />
+              {offer.savingsVsRegionalAverage && offer.savingsVsRegionalAverage > 0 ? (
+                <div className="text-sm text-emerald-700">
+                  {formatCurrency(offer.savingsVsRegionalAverage)} abaixo da média da cidade
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         )) : (
@@ -611,7 +658,16 @@ export function OffersPage() {
                       : 'baixa',
                 )}
               </div>
-              <div className="text-2xl font-semibold">{formatCurrency(offer.priceAmount)}</div>
+              <PriceDisplay
+                basePriceAmount={offer.basePriceAmount}
+                priceAmount={offer.priceAmount}
+                promotionalPriceAmount={offer.promotionalPriceAmount}
+              />
+              {offer.savingsVsRegionalAverage && offer.savingsVsRegionalAverage > 0 ? (
+                <div className="text-sm text-emerald-700">
+                  {formatCurrency(offer.savingsVsRegionalAverage)} abaixo da média da cidade
+                </div>
+              ) : null}
             </CardContent>
             <CardFooter className="justify-end">
               <Button asChild size="sm" variant="outline">
@@ -700,9 +756,22 @@ export function OfferDetailPage() {
                     : 'baixa',
               )}
             </div>
-            <div className="text-4xl font-semibold">
-              {formatCurrency(offer.activeOffer.priceAmount)}
-            </div>
+            <PriceDisplay
+              basePriceAmount={offer.activeOffer.basePriceAmount}
+              priceAmount={offer.activeOffer.priceAmount}
+              promotionalPriceAmount={offer.activeOffer.promotionalPriceAmount}
+              size="lg"
+            />
+            {offer.activeOffer.savingsVsComparison && offer.activeOffer.savingsVsComparison > 0 ? (
+              <p className="text-sm font-medium text-emerald-700">
+                Economize {formatCurrency(offer.activeOffer.savingsVsComparison)} versus o maior preço encontrado para esta variante.
+              </p>
+            ) : null}
+            {offer.activeOffer.regionalAveragePriceAmount ? (
+              <p className="text-sm text-muted-foreground">
+                Média regional desta variante: {formatCurrency(offer.activeOffer.regionalAveragePriceAmount)}.
+              </p>
+            ) : null}
             <p className="text-sm text-muted-foreground">
               Preço observado em {offer.region.name} com evidência rastreável.
             </p>
@@ -727,7 +796,11 @@ export function OfferDetailPage() {
                     <div className="font-medium">{entry.storeName}</div>
                     <div className="text-sm text-muted-foreground">{entry.neighborhood}</div>
                   </div>
-                  <div className="text-lg font-semibold">{formatCurrency(entry.priceAmount)}</div>
+                  <PriceDisplay
+                    basePriceAmount={entry.basePriceAmount}
+                    priceAmount={entry.priceAmount}
+                    promotionalPriceAmount={entry.promotionalPriceAmount}
+                  />
                 </div>
                 <div className="mt-2 text-sm text-muted-foreground">
                   {entry.packageLabel} · {entry.sourceLabel} · {formatDateTime(entry.observedAt)}
@@ -1746,7 +1819,16 @@ export function OptimizationPage() {
                               'Sem loja definida'
                             )}
                           </TableCell>
-                          <TableCell>{formatCurrency(selection.priceAmount ?? selection.estimatedCost ?? 0)}</TableCell>
+                          <TableCell>
+                            <div className="grid gap-1">
+                              <span>{formatCurrency(selection.priceAmount ?? selection.estimatedCost ?? 0)}</span>
+                              {selection.savingsVsComparison && selection.savingsVsComparison > 0 ? (
+                                <span className="text-xs text-emerald-700">
+                                  economiza {formatCurrency(selection.savingsVsComparison)}
+                                </span>
+                              ) : null}
+                            </div>
+                          </TableCell>
                           <TableCell>{selection.sourceLabel ?? 'Sem evidência suficiente'}</TableCell>
                           <TableCell>
                             {selection.observedAt ? formatFreshnessLabel(selection.observedAt) : 'Sem data'}

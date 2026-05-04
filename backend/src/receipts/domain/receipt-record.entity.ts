@@ -23,6 +23,8 @@ export interface ReceiptLineItemEntity {
   packageSize?: string;
   quantity: number;
   unitPrice: number;
+  originalUnitPrice?: number;
+  promotionalUnitPrice?: number;
   currency: string;
   matchConfidence: number;
 }

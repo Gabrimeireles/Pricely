@@ -38,6 +38,7 @@ export class PublicPricingService {
       },
       orderBy: [{ observedAt: 'desc' }, { priceAmount: 'asc' }],
     });
+    const comparisonByVariant = this.buildComparisonByVariant(offers);
 
     const response = {
       region: {
@@ -53,22 +54,12 @@ export class PublicPricingService {
         },
       }),
       offerCoverageStatus: offers.length > 0 ? 'live' : 'collecting_data',
-      offers: offers.map((offer) => ({
-        id: offer.id,
-        catalogProductId: offer.catalogProductId,
-        productVariantId: offer.productVariantId,
-        productName: offer.catalogProduct.name,
-        variantName: offer.productVariant.displayName,
-        imageUrl: offer.productVariant.imageUrl ?? offer.catalogProduct.imageUrl,
-        displayName: offer.displayName,
-        packageLabel: offer.packageLabel,
-        priceAmount: Number(offer.priceAmount),
-        observedAt: offer.observedAt.toISOString(),
-        sourceLabel: offer.sourceReference ?? offer.sourceType,
-        storeName: offer.establishment.unitName,
-        neighborhood: offer.establishment.neighborhood,
-        confidenceLevel: offer.confidenceLevel,
-      })),
+      offers: offers.map((offer) =>
+        this.projectRegionalOffer(
+          offer,
+          comparisonByVariant.get(offer.productVariantId),
+        ),
+      ),
     };
 
     this.logger.log(
@@ -106,7 +97,7 @@ export class PublicPricingService {
 
     const alternativeOffers = await this.prisma.productOffer.findMany({
       where: {
-        catalogProductId: offer.catalogProductId,
+        productVariantId: offer.productVariantId,
         isActive: true,
         availabilityStatus: 'available',
         establishment: {
@@ -119,6 +110,7 @@ export class PublicPricingService {
       },
       orderBy: [{ priceAmount: 'asc' }, { observedAt: 'desc' }],
     });
+    const comparison = this.calculateComparison(alternativeOffers);
 
     const response = {
       id: offer.id,
@@ -145,6 +137,19 @@ export class PublicPricingService {
         displayName: offer.displayName,
         packageLabel: offer.packageLabel,
         priceAmount: Number(offer.priceAmount),
+        basePriceAmount:
+          offer.basePriceAmount !== null && offer.basePriceAmount !== undefined
+            ? Number(offer.basePriceAmount)
+            : Number(offer.priceAmount),
+        promotionalPriceAmount:
+          offer.promotionalPriceAmount !== null && offer.promotionalPriceAmount !== undefined
+            ? Number(offer.promotionalPriceAmount)
+            : undefined,
+        regionalAveragePriceAmount: comparison.averagePriceAmount,
+        comparisonPriceAmount: comparison.highestPriceAmount,
+        savingsVsComparison: Number(
+          Math.max(0, comparison.highestPriceAmount - Number(offer.priceAmount)).toFixed(2),
+        ),
         observedAt: offer.observedAt.toISOString(),
         sourceLabel: offer.sourceReference ?? offer.sourceType,
         storeName: offer.establishment.unitName,
@@ -157,6 +162,14 @@ export class PublicPricingService {
         neighborhood: entry.establishment.neighborhood,
         packageLabel: entry.packageLabel,
         priceAmount: Number(entry.priceAmount),
+        basePriceAmount:
+          entry.basePriceAmount !== null && entry.basePriceAmount !== undefined
+            ? Number(entry.basePriceAmount)
+            : Number(entry.priceAmount),
+        promotionalPriceAmount:
+          entry.promotionalPriceAmount !== null && entry.promotionalPriceAmount !== undefined
+            ? Number(entry.promotionalPriceAmount)
+            : undefined,
         observedAt: entry.observedAt.toISOString(),
         sourceLabel: entry.sourceReference ?? entry.sourceType,
         confidenceLevel: entry.confidenceLevel,
@@ -168,5 +181,102 @@ export class PublicPricingService {
     );
 
     return response;
+  }
+
+  private buildComparisonByVariant(
+    offers: Array<{
+      productVariantId: string;
+      priceAmount: { toString(): string } | number;
+    }>,
+  ) {
+    const grouped = new Map<string, Array<{ priceAmount: { toString(): string } | number }>>();
+
+    for (const offer of offers) {
+      const existing = grouped.get(offer.productVariantId) ?? [];
+      existing.push(offer);
+      grouped.set(offer.productVariantId, existing);
+    }
+
+    return new Map(
+      [...grouped.entries()].map(([variantId, entries]) => [
+        variantId,
+        this.calculateComparison(entries),
+      ]),
+    );
+  }
+
+  private calculateComparison(
+    offers: Array<{ priceAmount: { toString(): string } | number }>,
+  ) {
+    const prices = offers.map((offer) => Number(offer.priceAmount));
+    const highestPriceAmount = prices.length > 0 ? Math.max(...prices) : 0;
+    const averagePriceAmount =
+      prices.length > 0
+        ? Number((prices.reduce((sum, price) => sum + price, 0) / prices.length).toFixed(2))
+        : 0;
+
+    return {
+      highestPriceAmount,
+      averagePriceAmount,
+    };
+  }
+
+  private projectRegionalOffer(
+    offer: {
+      id: string;
+      catalogProductId: string;
+      productVariantId: string;
+      displayName: string;
+      packageLabel: string;
+      priceAmount: { toString(): string } | number;
+      basePriceAmount?: { toString(): string } | number | null;
+      promotionalPriceAmount?: { toString(): string } | number | null;
+      observedAt: Date;
+      sourceReference: string | null;
+      sourceType: string;
+      confidenceLevel: 'high' | 'medium' | 'low';
+      catalogProduct: {
+        name: string;
+        imageUrl: string | null;
+      };
+      productVariant: {
+        displayName: string;
+        imageUrl: string | null;
+      };
+      establishment: {
+        unitName: string;
+        neighborhood: string;
+      };
+    },
+    comparison?: { averagePriceAmount: number; highestPriceAmount: number },
+  ) {
+    const priceAmount = Number(offer.priceAmount);
+    const average = comparison?.averagePriceAmount ?? priceAmount;
+
+    return {
+      id: offer.id,
+      catalogProductId: offer.catalogProductId,
+      productVariantId: offer.productVariantId,
+      productName: offer.catalogProduct.name,
+      variantName: offer.productVariant.displayName,
+      imageUrl: offer.productVariant.imageUrl ?? offer.catalogProduct.imageUrl,
+      displayName: offer.displayName,
+      packageLabel: offer.packageLabel,
+      priceAmount,
+      basePriceAmount:
+        offer.basePriceAmount !== null && offer.basePriceAmount !== undefined
+          ? Number(offer.basePriceAmount)
+          : priceAmount,
+      promotionalPriceAmount:
+        offer.promotionalPriceAmount !== null && offer.promotionalPriceAmount !== undefined
+          ? Number(offer.promotionalPriceAmount)
+          : undefined,
+      savingsVsRegionalAverage: Number(Math.max(0, average - priceAmount).toFixed(2)),
+      observedAt: offer.observedAt.toISOString(),
+      sourceLabel: offer.sourceReference ?? offer.sourceType,
+      storeName: offer.establishment.unitName,
+      neighborhood: offer.establishment.neighborhood,
+      confidenceLevel: offer.confidenceLevel,
+    };
   }
 }

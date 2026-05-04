@@ -513,6 +513,10 @@ class PublicOfferSummary {
     required this.displayName,
     required this.packageLabel,
     required this.priceAmount,
+    this.basePriceAmount,
+    this.promotionalPriceAmount,
+    this.savingsVsRegionalAverage,
+    this.savingsVsComparison,
     required this.observedAt,
     required this.sourceLabel,
     required this.storeName,
@@ -527,6 +531,10 @@ class PublicOfferSummary {
   final String displayName;
   final String packageLabel;
   final double priceAmount;
+  final double? basePriceAmount;
+  final double? promotionalPriceAmount;
+  final double? savingsVsRegionalAverage;
+  final double? savingsVsComparison;
   final String observedAt;
   final String sourceLabel;
   final String storeName;
@@ -546,6 +554,12 @@ class PublicOfferSummary {
           'Oferta',
       packageLabel: json['packageLabel'] as String? ?? '',
       priceAmount: (json['priceAmount'] as num? ?? 0).toDouble(),
+      basePriceAmount: (json['basePriceAmount'] as num?)?.toDouble(),
+      promotionalPriceAmount:
+          (json['promotionalPriceAmount'] as num?)?.toDouble(),
+      savingsVsRegionalAverage:
+          (json['savingsVsRegionalAverage'] as num?)?.toDouble(),
+      savingsVsComparison: (json['savingsVsComparison'] as num?)?.toDouble(),
       observedAt: json['observedAt'] as String? ?? '',
       sourceLabel: json['sourceLabel'] as String? ?? 'manual',
       storeName: json['storeName'] as String? ?? 'Loja',
@@ -593,6 +607,9 @@ class PublicOfferDetail {
               activeOffer['displayName'] ?? product['name'] ?? 'Oferta',
           'packageLabel': activeOffer['packageLabel'] ?? '',
           'priceAmount': activeOffer['priceAmount'] ?? 0,
+          'basePriceAmount': activeOffer['basePriceAmount'],
+          'promotionalPriceAmount': activeOffer['promotionalPriceAmount'],
+          'savingsVsComparison': activeOffer['savingsVsComparison'],
           'observedAt': activeOffer['observedAt'] ?? '',
           'sourceLabel': activeOffer['sourceLabel'] ?? 'manual',
           'storeName': activeOffer['storeName'] ?? 'Loja',
@@ -611,6 +628,8 @@ class PublicOfferDetail {
                 'displayName': product['name'] ?? 'Oferta',
                 'packageLabel': entry['packageLabel'] ?? '',
                 'priceAmount': entry['priceAmount'] ?? 0,
+                'basePriceAmount': entry['basePriceAmount'],
+                'promotionalPriceAmount': entry['promotionalPriceAmount'],
                 'observedAt': entry['observedAt'] ?? '',
                 'sourceLabel': entry['sourceLabel'] ?? 'manual',
                 'storeName': entry['storeName'] ?? 'Loja',

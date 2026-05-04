@@ -28,6 +28,8 @@ export class OfferManagementService {
     displayName: string;
     packageLabel: string;
     priceAmount: number;
+    basePriceAmount?: number;
+    promotionalPriceAmount?: number | null;
     availabilityStatus: 'available' | 'unavailable' | 'uncertain';
     confidenceLevel: 'high' | 'medium' | 'low';
     sourceType?: string;
@@ -35,6 +37,8 @@ export class OfferManagementService {
     observedAt?: string;
     isActive?: boolean;
   }) {
+    const effectivePrice = input.promotionalPriceAmount ?? input.priceAmount;
+
     return this.prisma.productOffer.create({
       data: {
         catalogProductId: input.catalogProductId,
@@ -42,7 +46,9 @@ export class OfferManagementService {
         establishmentId: input.establishmentId,
         displayName: input.displayName,
         packageLabel: input.packageLabel,
-        priceAmount: input.priceAmount,
+        priceAmount: effectivePrice,
+        basePriceAmount: input.basePriceAmount ?? input.priceAmount,
+        promotionalPriceAmount: input.promotionalPriceAmount ?? null,
         currencyCode: 'BRL',
         availabilityStatus: input.availabilityStatus,
         confidenceLevel: input.confidenceLevel,
@@ -63,6 +69,8 @@ export class OfferManagementService {
       displayName: string;
       packageLabel: string;
       priceAmount: number;
+      basePriceAmount: number;
+      promotionalPriceAmount: number | null;
       availabilityStatus: 'available' | 'unavailable' | 'uncertain';
       confidenceLevel: 'high' | 'medium' | 'low';
       sourceType: string;
@@ -71,10 +79,19 @@ export class OfferManagementService {
       isActive: boolean;
     }>,
   ) {
+    const priceData =
+      input.promotionalPriceAmount !== undefined
+        ? {
+            promotionalPriceAmount: input.promotionalPriceAmount,
+            priceAmount: input.promotionalPriceAmount ?? input.priceAmount,
+          }
+        : {};
+
     return this.prisma.productOffer.update({
       where: { id },
       data: {
         ...input,
+        ...priceData,
         observedAt: input.observedAt ? new Date(input.observedAt) : undefined,
       },
     });

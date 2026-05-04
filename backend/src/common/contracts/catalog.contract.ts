@@ -38,6 +38,8 @@ export interface CatalogProductDetailContract {
     displayName: string;
     packageLabel: string;
     priceAmount: number;
+    basePriceAmount?: number;
+    promotionalPriceAmount?: number;
     observedAt: string;
     confidenceLevel: 'high' | 'medium' | 'low';
     storeName: string;

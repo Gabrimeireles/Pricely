@@ -67,6 +67,9 @@ type OptimizationResultApiResponse = {
     establishmentNeighborhood?: string;
     estimatedCost?: number;
     priceAmount?: number;
+    comparisonPriceAmount?: number;
+    regionalAveragePriceAmount?: number;
+    savingsVsComparison?: number;
     sourceLabel?: string;
     observedAt?: string;
     selectionStatus: 'selected' | 'missing' | 'review';
@@ -117,6 +120,9 @@ type RegionOffersApiResponse = {
     displayName: string;
     packageLabel: string;
     priceAmount: number;
+    basePriceAmount?: number;
+    promotionalPriceAmount?: number;
+    savingsVsRegionalAverage?: number;
     observedAt: string;
     sourceLabel: string;
     storeName: string;
@@ -150,6 +156,11 @@ type OfferDetailApiResponse = {
     displayName: string;
     packageLabel: string;
     priceAmount: number;
+    basePriceAmount?: number;
+    promotionalPriceAmount?: number;
+    regionalAveragePriceAmount?: number;
+    comparisonPriceAmount?: number;
+    savingsVsComparison?: number;
     observedAt: string;
     sourceLabel: string;
     storeName: string;
@@ -162,6 +173,8 @@ type OfferDetailApiResponse = {
     neighborhood: string;
     packageLabel: string;
     priceAmount: number;
+    basePriceAmount?: number;
+    promotionalPriceAmount?: number;
     observedAt: string;
     sourceLabel: string;
     confidenceLevel: 'high' | 'medium' | 'low';
@@ -328,6 +341,8 @@ type AdminOfferResponse = {
   displayName: string;
   packageLabel: string;
   priceAmount: number | string;
+  basePriceAmount?: number | string | null;
+  promotionalPriceAmount?: number | string | null;
   availabilityStatus: string;
   confidenceLevel: string;
   observedAt: string;
