@@ -19,6 +19,8 @@ export interface OptimizationSelectionEntity {
   observedAt?: string;
   selectionStatus: SelectionStatus;
   confidenceNotice?: string;
+  decisionReason?: string;
+  rejectedReason?: string;
 }
 
 export interface OptimizationResultEntity {

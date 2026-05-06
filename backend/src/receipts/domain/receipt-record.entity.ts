@@ -18,6 +18,20 @@ export interface ReceiptRecordEntity {
     | 'structured_provider';
   parseStatus: ReceiptParseStatus;
   confidenceScore: number;
+  duplicateKey?: string;
+  trustLevel?: 'untrusted' | 'pending_review' | 'trusted' | 'rejected';
+  moderationStatus?:
+    | 'pending'
+    | 'accepted'
+    | 'quarantined'
+    | 'duplicate'
+    | 'rejected';
+  rewardEligibilityStatus?:
+    | 'disabled'
+    | 'ineligible'
+    | 'eligible_pending'
+    | 'granted';
+  reviewReason?: string;
   rawSourceReference?: string;
   processingJobId?: string;
   processingStatus?: 'queued' | 'running' | 'completed' | 'failed' | 'retrying';

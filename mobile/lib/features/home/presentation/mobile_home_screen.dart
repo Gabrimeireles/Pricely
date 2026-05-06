@@ -1563,6 +1563,9 @@ class _ReceiptSummaryCard extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
           Text('${summary.ingestedItems} itens ingeridos'),
+          Text('Status: ${summary.moderationStatus}'),
+          Text('Rewards: ${summary.rewardEligibilityStatus}'),
+          Text('Motivo: ${summary.reviewReason}'),
           if (summary.lowConfidenceItems.isNotEmpty) ...<Widget>[
             const SizedBox(height: 8),
             Text('Baixa confiança: ${summary.lowConfidenceItems.join(', ')}'),

@@ -141,6 +141,28 @@ enum ReceiptParseStatus {
   failed
 }
 
+enum ReceiptContributionTrustLevel {
+  untrusted
+  pending_review
+  trusted
+  rejected
+}
+
+enum ReceiptModerationStatus {
+  pending
+  accepted
+  quarantined
+  duplicate
+  rejected
+}
+
+enum ReceiptRewardEligibilityStatus {
+  disabled
+  ineligible
+  eligible_pending
+  granted
+}
+
 model UserAccount {
   id               String            @id @default(uuid()) @db.Uuid
   email            String            @unique
@@ -260,6 +282,10 @@ model ProductOffer {
   confidenceLevel    OfferConfidenceLevel
   sourceType         String
   sourceReference    String?
+  receiptRecordId    String?                 @db.Uuid
+  receiptLineItemId  String?                 @db.Uuid
+  moderationStatus   ReceiptModerationStatus?
+  contributionConfidence Decimal?            @db.Decimal(5, 2)
   observedAt         DateTime
   expiresAt          DateTime?
   isActive           Boolean                 @default(true)
@@ -268,11 +294,15 @@ model ProductOffer {
   catalogProduct     CatalogProduct          @relation(fields: [catalogProductId], references: [id], onDelete: Restrict)
   productVariant     ProductVariant          @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
   optimizationSelections OptimizationSelection[]
+  receiptRecord      ReceiptRecord?          @relation(fields: [receiptRecordId], references: [id], onDelete: SetNull)
+  receiptLineItem    ReceiptLineItem?        @relation(fields: [receiptLineItemId], references: [id], onDelete: SetNull)
 
   @@index([catalogProductId, isActive, observedAt])
   @@index([productVariantId, isActive, observedAt])
   @@index([establishmentId, isActive])
   @@index([productVariantId, establishmentId, isActive])
+  @@index([receiptRecordId])
+  @@index([moderationStatus])
 }
 
 model ShoppingList {
@@ -426,10 +456,16 @@ model ReceiptRecord {
   jobId           String?           @unique @db.Uuid
   rawReference    String?
   confidenceScore Decimal?          @db.Decimal(5, 2)
+  duplicateKey    String?
+  trustLevel      ReceiptContributionTrustLevel @default(untrusted)
+  moderationStatus ReceiptModerationStatus @default(pending)
+  rewardEligibilityStatus ReceiptRewardEligibilityStatus @default(disabled)
+  reviewReason    String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   establishment   Establishment?    @relation(fields: [establishmentId], references: [id], onDelete: SetNull)
   lineItems       ReceiptLineItem[]
+  productOffers   ProductOffer[]
   processingJob   ProcessingJob?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
   user            UserAccount       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -438,6 +474,8 @@ model ReceiptRecord {
   @@index([parseStatus, createdAt])
   @@index([accessKey])
   @@index([storeCnpj])
+  @@index([duplicateKey])
+  @@index([moderationStatus, createdAt])
 }
 
 model ReceiptLineItem {
@@ -456,6 +494,7 @@ model ReceiptLineItem {
   matchConfidence        Decimal       @db.Decimal(5, 2)
   createdAt              DateTime      @default(now())
   receiptRecord          ReceiptRecord @relation(fields: [receiptRecordId], references: [id], onDelete: Cascade)
+  productOffers          ProductOffer[]
 
   @@index([receiptRecordId])
   @@index([ean])

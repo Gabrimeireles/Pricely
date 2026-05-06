@@ -95,6 +95,8 @@ class OptimizationSelection {
     required this.unitPrice,
     required this.subtotal,
     required this.confidenceLabel,
+    required this.decisionReason,
+    required this.rejectedReason,
   });
 
   final String itemName;
@@ -104,6 +106,8 @@ class OptimizationSelection {
   final double unitPrice;
   final double subtotal;
   final String confidenceLabel;
+  final String? decisionReason;
+  final String? rejectedReason;
 
   factory OptimizationSelection.fromJson(Map<String, dynamic> json) {
     return OptimizationSelection(
@@ -114,6 +118,8 @@ class OptimizationSelection {
       unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? 0,
       subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0,
       confidenceLabel: json['confidenceLabel'] as String? ?? 'medium',
+      decisionReason: json['decisionReason'] as String?,
+      rejectedReason: json['rejectedReason'] as String?,
     );
   }
 
@@ -126,6 +132,8 @@ class OptimizationSelection {
       'unitPrice': unitPrice,
       'subtotal': subtotal,
       'confidenceLabel': confidenceLabel,
+      'decisionReason': decisionReason,
+      'rejectedReason': rejectedReason,
     };
   }
 }

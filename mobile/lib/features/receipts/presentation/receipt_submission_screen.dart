@@ -141,6 +141,10 @@ class _SubmissionSummaryCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text('${summary.ingestedItems} itens ingeridos'),
+            const SizedBox(height: 8),
+            Text('Status: ${summary.moderationStatus}'),
+            Text('Rewards: ${summary.rewardEligibilityStatus}'),
+            Text('Motivo: ${summary.reviewReason}'),
             if (summary.lowConfidenceItems.isNotEmpty) ...<Widget>[
               const SizedBox(height: 8),
               Text(

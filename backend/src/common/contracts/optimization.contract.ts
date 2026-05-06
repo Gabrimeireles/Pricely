@@ -22,6 +22,8 @@ export interface OptimizationSelection {
   observedAt?: string;
   selectionStatus: 'selected' | 'missing' | 'review';
   confidenceNotice?: string;
+  decisionReason?: string;
+  rejectedReason?: string;
 }
 
 export interface OptimizationRunAccepted {

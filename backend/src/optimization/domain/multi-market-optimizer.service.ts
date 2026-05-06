@@ -15,26 +15,25 @@ export class MultiMarketOptimizerService {
     storeOffers: StoreOfferEntity[],
     mode: OptimizationMode = 'global_full',
   ): OptimizationResultEntity {
-    const itemOffers = new Map(
-      shoppingList.items.map((item) => [item.id, this.findMatchingOffers(item, storeOffers)]),
+    const itemOffers = this.generateCandidates(shoppingList, storeOffers);
+    const selectedStoreId = this.solveStoreConstraint(
+      shoppingList,
+      itemOffers,
+      mode,
     );
-    const selectedStoreId =
-      mode === 'global_full' ? undefined : this.selectSingleStore(shoppingList, itemOffers, mode);
-    const selections: OptimizationSelectionEntity[] = shoppingList.items.map((item) =>
-      this.selectOfferForItem(item, itemOffers.get(item.id) ?? [], selectedStoreId),
+    const selections: OptimizationSelectionEntity[] = shoppingList.items.map(
+      (item) =>
+        this.selectOfferForItem(
+          item,
+          itemOffers.get(item.id) ?? [],
+          selectedStoreId,
+        ),
     );
 
-    const totalEstimatedCost = Number(
-      selections
-        .reduce((accumulator, selection) => accumulator + (selection.estimatedCost || 0), 0)
-        .toFixed(2),
+    const score = this.scoreSelections(selections);
+    const selectedOffers = selections.filter(
+      (selection) => selection.selectionStatus === 'selected',
     );
-    const estimatedSavings = Number(
-      selections
-        .reduce((accumulator, selection) => accumulator + (selection.savingsVsComparison || 0), 0)
-        .toFixed(2),
-    );
-    const selectedOffers = selections.filter((selection) => selection.selectionStatus === 'selected');
     const coverageStatus =
       selectedOffers.length === 0
         ? 'none'
@@ -47,13 +46,66 @@ export class MultiMarketOptimizerService {
       shoppingListId: shoppingList.id,
       mode,
       status: 'completed',
-      totalEstimatedCost: selectedOffers.length > 0 ? totalEstimatedCost : undefined,
-      estimatedSavings: estimatedSavings > 0 ? estimatedSavings : 0,
+      totalEstimatedCost:
+        selectedOffers.length > 0 ? score.totalEstimatedCost : undefined,
+      estimatedSavings: score.estimatedSavings > 0 ? score.estimatedSavings : 0,
       coverageStatus,
       createdAt: new Date().toISOString(),
-      explanationSummary:
-        this.buildSummary(mode, coverageStatus, selectedStoreId, selections),
+      explanationSummary: this.buildSummary(
+        mode,
+        coverageStatus,
+        selectedStoreId,
+        selections,
+      ),
       selections,
+    };
+  }
+
+  private generateCandidates(
+    shoppingList: ShoppingListEntity,
+    storeOffers: StoreOfferEntity[],
+  ): Map<string, StoreOfferEntity[]> {
+    return new Map(
+      shoppingList.items.map((item) => [
+        item.id,
+        this.findMatchingOffers(item, storeOffers),
+      ]),
+    );
+  }
+
+  private solveStoreConstraint(
+    shoppingList: ShoppingListEntity,
+    itemOffers: Map<string, StoreOfferEntity[]>,
+    mode: OptimizationMode,
+  ): string | undefined {
+    return mode === 'global_full'
+      ? undefined
+      : this.selectSingleStore(shoppingList, itemOffers, mode);
+  }
+
+  private scoreSelections(selections: OptimizationSelectionEntity[]): {
+    totalEstimatedCost: number;
+    estimatedSavings: number;
+  } {
+    return {
+      totalEstimatedCost: Number(
+        selections
+          .reduce(
+            (accumulator, selection) =>
+              accumulator + (selection.estimatedCost || 0),
+            0,
+          )
+          .toFixed(2),
+      ),
+      estimatedSavings: Number(
+        selections
+          .reduce(
+            (accumulator, selection) =>
+              accumulator + (selection.savingsVsComparison || 0),
+            0,
+          )
+          .toFixed(2),
+      ),
     };
   }
 
@@ -84,6 +136,8 @@ export class MultiMarketOptimizerService {
         shoppingListItemName: item.requestedName,
         selectionStatus: 'review',
         confidenceNotice: 'Item could not be normalized confidently.',
+        decisionReason: 'manual_review_required',
+        rejectedReason: 'missing_normalized_product',
       };
     }
 
@@ -101,11 +155,18 @@ export class MultiMarketOptimizerService {
         confidenceNotice: selectedStoreId
           ? 'The selected store does not have a confirmed offer for this item.'
           : 'No confirmed offer is available for this item.',
+        decisionReason: 'no_confirmed_offer',
+        rejectedReason: selectedStoreId
+          ? 'single_store_constraint'
+          : 'no_active_available_offer',
       };
     }
 
     const quantity = item.quantity && item.quantity > 0 ? item.quantity : 1;
-    const comparison = this.calculateVariantComparison(cheapestOffer, matchingOffers);
+    const comparison = this.calculateVariantComparison(
+      cheapestOffer,
+      matchingOffers,
+    );
 
     return {
       id: `sel_${item.id}`,
@@ -119,7 +180,10 @@ export class MultiMarketOptimizerService {
       comparisonPriceAmount: comparison.highestPriceAmount,
       regionalAveragePriceAmount: comparison.averagePriceAmount,
       savingsVsComparison: Number(
-        Math.max(0, (comparison.highestPriceAmount - cheapestOffer.price) * quantity).toFixed(2),
+        Math.max(
+          0,
+          (comparison.highestPriceAmount - cheapestOffer.price) * quantity,
+        ).toFixed(2),
       ),
       sourceLabel: cheapestOffer.sourceReceiptLineItemId,
       observedAt: cheapestOffer.observedAt,
@@ -127,6 +191,9 @@ export class MultiMarketOptimizerService {
         cheapestOffer.confidenceScore < 0.75
           ? 'Selected from low-confidence market evidence.'
           : undefined,
+      decisionReason: selectedStoreId
+        ? `Selected best confirmed offer inside ${cheapestOffer.storeName}.`
+        : 'Selected cheapest confirmed regional offer for this product constraint.',
     };
   }
 
@@ -140,10 +207,15 @@ export class MultiMarketOptimizerService {
         : offer.canonicalName === selectedOffer.canonicalName,
     );
     const prices = comparableOffers.map((offer) => offer.price);
-    const highestPriceAmount = prices.length > 0 ? Math.max(...prices) : selectedOffer.price;
+    const highestPriceAmount =
+      prices.length > 0 ? Math.max(...prices) : selectedOffer.price;
     const averagePriceAmount =
       prices.length > 0
-        ? Number((prices.reduce((sum, price) => sum + price, 0) / prices.length).toFixed(2))
+        ? Number(
+            (
+              prices.reduce((sum, price) => sum + price, 0) / prices.length
+            ).toFixed(2),
+          )
         : selectedOffer.price;
 
     return {
@@ -174,7 +246,10 @@ export class MultiMarketOptimizerService {
         };
 
         const alreadyCounted = offers
-          .slice(0, offers.findIndex((entry) => entry.id === offer.id))
+          .slice(
+            0,
+            offers.findIndex((entry) => entry.id === offer.id),
+          )
           .some((entry) => entry.storeId === offer.storeId);
 
         if (!alreadyCounted) {
@@ -195,8 +270,10 @@ export class MultiMarketOptimizerService {
       const [, rightScore] = right;
 
       if (mode === 'global_unique') {
-        const leftFullCoverage = leftScore.matchedItems === shoppingList.items.length;
-        const rightFullCoverage = rightScore.matchedItems === shoppingList.items.length;
+        const leftFullCoverage =
+          leftScore.matchedItems === shoppingList.items.length;
+        const rightFullCoverage =
+          rightScore.matchedItems === shoppingList.items.length;
 
         if (leftFullCoverage !== rightFullCoverage) {
           return rightFullCoverage ? 1 : -1;
@@ -211,11 +288,17 @@ export class MultiMarketOptimizerService {
         return leftScore.totalCost - rightScore.totalCost;
       }
 
-      if (leftScore.matchedItems === maxCoverage && rightScore.matchedItems !== maxCoverage) {
+      if (
+        leftScore.matchedItems === maxCoverage &&
+        rightScore.matchedItems !== maxCoverage
+      ) {
         return -1;
       }
 
-      if (rightScore.matchedItems === maxCoverage && leftScore.matchedItems !== maxCoverage) {
+      if (
+        rightScore.matchedItems === maxCoverage &&
+        leftScore.matchedItems !== maxCoverage
+      ) {
         return 1;
       }
 
@@ -236,7 +319,8 @@ export class MultiMarketOptimizerService {
     selections: OptimizationSelectionEntity[],
   ): string {
     const selectedStoreName = selectedStoreId
-      ? selections.find((selection) => selection.selectionStatus === 'selected')?.establishmentName
+      ? selections.find((selection) => selection.selectionStatus === 'selected')
+          ?.establishmentName
       : undefined;
 
     if (mode === 'global_full') {
@@ -263,10 +347,11 @@ export class MultiMarketOptimizerService {
     offer: StoreOfferEntity,
   ): boolean {
     return Boolean(
-      (item.catalogProductId && offer.catalogProductId === item.catalogProductId) ||
-        (!item.catalogProductId &&
-          item.normalizedName &&
-          offer.canonicalName === item.normalizedName),
+      (item.catalogProductId &&
+        offer.catalogProductId === item.catalogProductId) ||
+      (!item.catalogProductId &&
+        item.normalizedName &&
+        offer.canonicalName === item.normalizedName),
     );
   }
 
@@ -275,12 +360,11 @@ export class MultiMarketOptimizerService {
     offers: StoreOfferEntity[],
   ): StoreOfferEntity[] {
     if (item.brandPreferenceMode === 'exact') {
-      return offers.filter(
-        (offer) =>
-          Boolean(
-            item.lockedProductVariantId &&
-              offer.productVariantId === item.lockedProductVariantId,
-          ),
+      return offers.filter((offer) =>
+        Boolean(
+          item.lockedProductVariantId &&
+          offer.productVariantId === item.lockedProductVariantId,
+        ),
       );
     }
 

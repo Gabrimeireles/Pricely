@@ -43,6 +43,12 @@ class DemoGroceryWorkflowGateway {
       storeName: storeName,
       ingestedItems: ingestedItems,
       lowConfidenceItems: lowConfidenceItems,
+      moderationStatus:
+          lowConfidenceItems.isEmpty ? 'accepted' : 'quarantined',
+      reviewReason: lowConfidenceItems.isEmpty
+          ? 'receipt_rewards_disabled'
+          : 'low_confidence_extraction',
+      rewardEligibilityStatus: 'disabled',
     );
   }
 
@@ -75,6 +81,8 @@ class DemoGroceryWorkflowGateway {
           unitPrice: cheapestOffer.unitPrice,
           subtotal: cheapestOffer.unitPrice * quantity,
           confidenceLabel: offers.length > 1 ? 'high' : 'medium',
+          decisionReason: 'selected_demo_offer',
+          rejectedReason: null,
         ),
       );
     }
