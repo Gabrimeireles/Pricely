@@ -34,5 +34,5 @@
 
 - [X] GitHub Actions use least-privilege permissions.
 - [X] Pull request workflows do not use privileged untrusted triggers.
-- [ ] Backend, web, and mobile tests pass before phase PR merge.
-- [ ] Release rollback and seed reset steps are documented before production rollout.
+- [X] Backend, web, and mobile tests pass before phase PR merge.
+- [X] Release rollback and seed reset steps are documented before production rollout.
