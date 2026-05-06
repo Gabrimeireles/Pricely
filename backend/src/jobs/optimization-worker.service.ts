@@ -11,6 +11,7 @@ import { QUEUE_CONNECTION } from '../common/queue/queue.config';
 import { type OptimizationJob } from '../common/queue/queue.tokens';
 import { ProcessingJobsService } from '../processing/application/processing-jobs.service';
 import { PrismaService } from '../persistence/prisma.service';
+import { EntitlementsService } from '../users/entitlements.service';
 import { OptimizationRunProcessor } from './optimization-run.processor';
 
 @Injectable()
@@ -22,6 +23,7 @@ export class OptimizationWorkerService implements OnModuleInit, OnModuleDestroy 
     @Inject(QUEUE_CONNECTION)
     private readonly connection: ConnectionOptions,
     private readonly prisma: PrismaService,
+    private readonly entitlementsService: EntitlementsService,
     private readonly processingJobsService: ProcessingJobsService,
     private readonly optimizationRunProcessor: OptimizationRunProcessor,
   ) {}
@@ -88,6 +90,15 @@ export class OptimizationWorkerService implements OnModuleInit, OnModuleDestroy 
       }
 
       await this.processingJobsService.markFailed(job.data.processingJobId, message);
+      const optimizationRun = await this.prisma.optimizationRun.findUnique({
+        where: {
+          id: job.data.optimizationRunId,
+        },
+        select: {
+          id: true,
+          userId: true,
+        },
+      });
       await this.prisma.optimizationRun.update({
         where: {
           id: job.data.optimizationRunId,
@@ -97,6 +108,13 @@ export class OptimizationWorkerService implements OnModuleInit, OnModuleDestroy 
           summary: message,
         },
       });
+      if (optimizationRun) {
+        await this.entitlementsService.refundOptimizationToken({
+          userId: optimizationRun.userId,
+          optimizationRunId: optimizationRun.id,
+          reason: 'optimization_failed',
+        });
+      }
       this.logger.error(
         `Optimization worker failed for run ${job.data.optimizationRunId} after ${job.attemptsMade} attempts: ${message}`,
       );

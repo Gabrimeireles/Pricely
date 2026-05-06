@@ -13,6 +13,7 @@ import {
 import { ProcessingJobsService } from '../../processing/application/processing-jobs.service';
 import { PrismaService } from '../../persistence/prisma.service';
 import { ShoppingListsService } from '../../lists/application/shopping-lists.service';
+import { EntitlementsService } from '../../users/entitlements.service';
 import { OptimizationRunRepository } from '../infrastructure/optimization-run.repository';
 
 const UUID_PATTERN =
@@ -25,6 +26,7 @@ export class OptimizationResultService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly shoppingListsService: ShoppingListsService,
+    private readonly entitlementsService: EntitlementsService,
     private readonly processingJobsService: ProcessingJobsService,
     private readonly optimizationRunRepository: OptimizationRunRepository,
     @Inject(OPTIMIZATION_QUEUE)
@@ -45,6 +47,7 @@ export class OptimizationResultService {
     request: OptimizeShoppingListRequest,
   ): Promise<OptimizationRunAccepted> {
     const shoppingList = await this.shoppingListsService.getById(userId, shoppingListId);
+    await this.entitlementsService.ensureOptimizationAllowed(userId);
 
     const regionId =
       (await this.resolveRegionId(request.regionId)) ??
@@ -71,6 +74,10 @@ export class OptimizationResultService {
       regionId,
       preferredEstablishmentId: request.preferredEstablishmentId ?? null,
       jobId: processingJob.id,
+    });
+    await this.entitlementsService.consumeOptimizationToken({
+      userId,
+      optimizationRunId: optimizationRun.id,
     });
 
     await this.optimizationQueue.add('optimization-generated', {

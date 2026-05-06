@@ -1,0 +1,7 @@
+[
+  {"title":"T099-T102: Backend aggregations, counts, savings, list audit, and queue diagnostics","body":"Implementar os itens T099, T102 da Phase 11 em backend, contratos e testes."},
+  {"title":"T103: Web publico city-first, savings reais e criacao de lista com variantes","body":"Implementar T103 da Phase 11 no web publico e listas autenticadas."},
+  {"title":"T104: Dashboard admin PT-BR, cards, upload, auditoria e fila detalhada","body":"Implementar T104 da Phase 11 no dashboard administrativo."},
+  {"title":"T105-T106: Mobile list QoL e refinamento Stitch de componentes","body":"Implementar T105 e T106 da Phase 11 no mobile e refinamentos compartilhados de componente."},
+  {"title":"T107: Validacao final cross-surface da Phase 11","body":"Executar T107 da Phase 11 com testes, Docker e smoke funcional."}
+]
