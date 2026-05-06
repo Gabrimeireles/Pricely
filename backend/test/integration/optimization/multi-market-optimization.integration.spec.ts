@@ -33,6 +33,7 @@ describe('Multi-market optimization integration', () => {
 
       await request(app.getHttpServer())
         .post('/receipts')
+        .set('Authorization', `Bearer ${session.accessToken}`)
         .send({
           storeName: 'Store A',
           items: [
@@ -44,6 +45,7 @@ describe('Multi-market optimization integration', () => {
 
       await request(app.getHttpServer())
         .post('/receipts')
+        .set('Authorization', `Bearer ${session.accessToken}`)
         .send({
           storeName: 'Store B',
           items: [
