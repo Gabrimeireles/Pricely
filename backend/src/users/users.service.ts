@@ -71,22 +71,26 @@ export class UsersService {
         })
       : null;
 
-    const [shoppingListsCount, completedOptimizationRuns, latestOptimizationSavings, receiptSubmissionsCount] =
-      await Promise.all([
-        this.prisma.shoppingList.count({
-          where: { userId: id },
-        }),
-        this.prisma.optimizationRun.count({
-          where: {
-            userId: id,
-            status: 'completed',
-          },
-        }),
-        this.getLatestCompletedSavingsByList(id),
-        this.prisma.receiptRecord.count({
-          where: { userId: id },
-        }),
-      ]);
+    const [
+      shoppingListsCount,
+      completedOptimizationRuns,
+      latestOptimizationSavings,
+      receiptSubmissionsCount,
+    ] = await Promise.all([
+      this.prisma.shoppingList.count({
+        where: { userId: id },
+      }),
+      this.prisma.optimizationRun.count({
+        where: {
+          userId: id,
+          status: 'completed',
+        },
+      }),
+      this.getLatestCompletedSavingsByList(id),
+      this.prisma.receiptRecord.count({
+        where: { userId: id },
+      }),
+    ]);
 
     return this.toProfile(
       user,
@@ -102,7 +106,10 @@ export class UsersService {
     );
   }
 
-  async updatePreferredRegionBySlug(id: string, regionSlug: string): Promise<UserProfile> {
+  async updatePreferredRegionBySlug(
+    id: string,
+    regionSlug: string,
+  ): Promise<UserProfile> {
     const region = await this.prisma.region.findUnique({
       where: { slug: regionSlug },
       select: { id: true, slug: true },
@@ -124,15 +131,15 @@ export class UsersService {
 
   toProfile(
     user: {
-    id: string;
-    email: string;
-    displayName: string;
-    role: 'customer' | 'admin';
-    status: 'active' | 'suspended';
-    preferredRegionId?: string | null;
-    lastLoginAt: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
+      id: string;
+      email: string;
+      displayName: string;
+      role: 'customer' | 'admin';
+      status: 'active' | 'suspended';
+      preferredRegionId?: string | null;
+      lastLoginAt: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
     },
     stats: UserProfileStats = this.buildEmptyProfileStats(),
     preferredRegionSlug: string | null = null,
@@ -162,20 +169,22 @@ export class UsersService {
     };
   }
 
-  private async getLatestCompletedSavingsByList(userId: string): Promise<number> {
+  private async getLatestCompletedSavingsByList(
+    userId: string,
+  ): Promise<number> {
     const rows = await this.prisma.$queryRaw<
       Array<{ totalEstimatedSavings: Prisma.Decimal | number | string | null }>
     >`
-      SELECT COALESCE(SUM(latest."estimatedSavings"), 0) AS "totalEstimatedSavings"
-      FROM (
-        SELECT DISTINCT ON ("shoppingListId") "shoppingListId", "estimatedSavings"
-        FROM "OptimizationRun"
-        WHERE "userId" = ${userId}
-          AND "status" = 'completed'
-          AND "estimatedSavings" IS NOT NULL
-        ORDER BY "shoppingListId", "createdAt" DESC
-      ) latest
-    `;
+    SELECT COALESCE(SUM(latest."estimatedSavings"), 0) AS "totalEstimatedSavings"
+    FROM (
+      SELECT DISTINCT ON ("shoppingListId") "shoppingListId", "estimatedSavings"
+      FROM "OptimizationRun"
+      WHERE "userId" = ${userId}::uuid
+        AND "status" = 'completed'
+        AND "estimatedSavings" IS NOT NULL
+      ORDER BY "shoppingListId", "createdAt" DESC
+    ) latest
+  `;
 
     return Number(rows[0]?.totalEstimatedSavings ?? 0);
   }
