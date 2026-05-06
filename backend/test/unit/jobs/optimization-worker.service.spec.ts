@@ -48,8 +48,15 @@ describe('OptimizationWorkerService', () => {
     };
     const prisma = {
       optimizationRun: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'run-1',
+          userId: 'user-1',
+        }),
         update: jest.fn().mockResolvedValue(undefined),
       },
+    };
+    const entitlementsService = {
+      refundOptimizationToken: jest.fn().mockResolvedValue(undefined),
     };
     const optimizationRunProcessor = {
       process: jest.fn().mockResolvedValue(undefined),
@@ -58,6 +65,7 @@ describe('OptimizationWorkerService', () => {
     const service = new OptimizationWorkerService(
       {} as never,
       prisma as never,
+      entitlementsService as never,
       processingJobsService as never,
       optimizationRunProcessor as never,
     );
@@ -101,6 +109,11 @@ describe('OptimizationWorkerService', () => {
       where: { id: 'run-1' },
       data: { status: 'failed', summary: 'fatal' },
     });
+    expect(entitlementsService.refundOptimizationToken).toHaveBeenCalledWith({
+      userId: 'user-1',
+      optimizationRunId: 'run-1',
+      reason: 'optimization_failed',
+    });
   });
 
   it('marks running and completed transitions around worker execution', async () => {
@@ -115,6 +128,9 @@ describe('OptimizationWorkerService', () => {
         update: jest.fn().mockResolvedValue(undefined),
       },
     };
+    const entitlementsService = {
+      refundOptimizationToken: jest.fn(),
+    };
     const optimizationRunProcessor = {
       process: jest.fn().mockResolvedValue(undefined),
     };
@@ -122,6 +138,7 @@ describe('OptimizationWorkerService', () => {
     const service = new OptimizationWorkerService(
       {} as never,
       prisma as never,
+      entitlementsService as never,
       processingJobsService as never,
       optimizationRunProcessor as never,
     );
