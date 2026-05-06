@@ -1120,6 +1120,51 @@ class _ProfileTab extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF5F1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFBFD8D0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  _SignalChip(
+                    label: user.entitlementPlan == 'premium'
+                        ? 'Premium ativo'
+                        : 'Plano gratuito',
+                    foreground: const Color(0xFF005C55),
+                    background: Colors.white,
+                  ),
+                  _SignalChip(
+                    label: user.entitlementPlan == 'premium'
+                        ? 'Otimizações ilimitadas'
+                        : '${user.availableOptimizationTokens}/${user.monthlyFreeOptimizationTokens} listas no mês',
+                    foreground: const Color(0xFF003EA8),
+                    background: const Color(0xFFDDE7FF),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text('Uso de otimizações', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 6),
+              const Text(
+                'O plano gratuito inclui 2 listas otimizadas por mês. A compra Premium ainda está desativada enquanto o billing é validado.',
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: user.checkoutEnabled ? () {} : null,
+                child: const Text('Comprar Premium'),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 20),
         OutlinedButton(
           onPressed: authController.signOut,

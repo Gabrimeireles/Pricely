@@ -23,6 +23,33 @@ export class EntitlementsService {
     return Boolean(entitlement);
   }
 
+  monthlyFreeTokenCount(): number {
+    const configured = Number(process.env.FREE_OPTIMIZATION_TOKENS_PER_MONTH);
+
+    return Number.isInteger(configured) && configured >= 0
+      ? configured
+      : DEFAULT_MONTHLY_FREE_TOKENS;
+  }
+
+  async getProfile(userId: string) {
+    const hasPremium = await this.hasActivePremium(userId);
+
+    if (!hasPremium) {
+      await this.grantMonthlyFreeTokens(userId);
+    }
+
+    return {
+      plan: hasPremium ? ('premium' as const) : ('free' as const),
+      status: 'active' as const,
+      availableOptimizationTokens: hasPremium
+        ? 0
+        : await this.getAvailableTokenBalance(userId),
+      monthlyFreeOptimizationTokens: this.monthlyFreeTokenCount(),
+      billingEnabled: false,
+      checkoutEnabled: false,
+    };
+  }
+
   async grantMonthlyFreeTokens(
     userId: string,
     period = this.currentPeriod(),
@@ -147,13 +174,5 @@ export class EntitlementsService {
 
   private currentPeriod(now = new Date()): string {
     return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
-  }
-
-  private monthlyFreeTokenCount(): number {
-    const configured = Number(process.env.FREE_OPTIMIZATION_TOKENS_PER_MONTH);
-
-    return Number.isInteger(configured) && configured >= 0
-      ? configured
-      : DEFAULT_MONTHLY_FREE_TOKENS;
   }
 }

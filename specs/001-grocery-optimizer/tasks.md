@@ -393,9 +393,9 @@ optimization tokens, premium unlimited access, optional token packs, and future 
 - [X] T135 [P] Add backend entitlement and token-ledger schema with idempotent consume/refund semantics in `backend/prisma/schema.prisma` and `backend/src/users/`
 - [X] T136 [P] Add backend unit and integration tests for free grants, premium bypass, token consume/refund, idempotent retries, and insufficient-token failures in `backend/test/unit/users/` and `backend/test/integration/optimization/`
 - [X] T137 Gate optimization-run creation by premium entitlement or available optimization tokens in `backend/src/optimization/` and `backend/src/jobs/`
-- [~] T138 Add monthly free-token refill scheduling and abuse-safe bonus-token planning for receipt contributions in `backend/src/jobs/`
-- [ ] T139 Add premium/token UI states for web and mobile without blocking first-run value discovery in `web/src/public/`, `web/src/app/`, and `mobile/lib/`
-- [ ] T140 Plan Stripe subscription and credit-based billing integration after internal ledger tests pass in `docs/product/stripe-billing-plan.md` and future billing modules
+- [X] T138 Add monthly free-token refill scheduling and abuse-safe bonus-token planning for receipt contributions in `backend/src/jobs/`
+- [X] T139 Add premium/token UI states for web and mobile without blocking first-run value discovery in `web/src/public/`, `web/src/app/`, and `mobile/lib/`
+- [X] T140 Plan Stripe subscription and credit-based billing integration after internal ledger tests pass in `docs/product/stripe-billing-plan.md` and future billing modules
 
 ---
 
@@ -421,7 +421,7 @@ controls.
 **Purpose**: Move optimization toward stronger operations-research behavior while keeping
 results explainable, auditable, and consistent across web/mobile.
 
-- [ ] T149 [P] Define optimization objective functions, constraints, tie-breakers, and infeasibility rules in `docs/product/optimization-engine-plan.md`
+- [X] T149 [P] Define optimization objective functions, constraints, tie-breakers, and infeasibility rules in `docs/product/optimization-engine-plan.md`
 - [ ] T150 [P] Add backend tests for local, single-store, multi-store, exact-variant, promotional-price, unavailable-item, and travel-cost scenarios in `backend/test/unit/optimization/`
 - [ ] T151 Refactor optimization domain services to separate candidate generation, constraint solving, scoring, and explanation building in `backend/src/optimization/`
 - [ ] T152 Add persisted optimization explanation payloads with selected offers, rejected alternatives, constraints, savings comparisons, and data-quality warnings in `backend/prisma/schema.prisma` and `backend/src/optimization/`
@@ -437,7 +437,7 @@ results explainable, auditable, and consistent across web/mobile.
 token rewards without letting bad or duplicated data corrupt prices.
 
 - [X] T155A Implement privacy-bounded receipt ingestion and extraction foundation with QR access-key parsing, provider/OCR abstractions, EAN capture, sanitized persistence, processing status/log linkage, and backend tests in `backend/src/receipts/`, `backend/src/jobs/`, `backend/prisma/schema.prisma`, and `backend/test/`
-- [ ] T156 [P] Specify receipt contribution trust levels, duplicate detection, suspicious-price handling, and reward eligibility in `docs/product/receipt-quality-plan.md`
+- [X] T156 [P] Specify receipt contribution trust levels, duplicate detection, suspicious-price handling, and reward eligibility in `docs/product/receipt-quality-plan.md`
 - [ ] T157 [P] Extend receipt and offer data models with contribution provenance, confidence changes, moderation state, and reward linkage in `backend/prisma/schema.prisma`
 - [ ] T158 [P] Add backend tests for duplicate receipts, conflicting prices, implausible discounts, repeated submissions, and reward eligibility in `backend/test/unit/receipts/` and `backend/test/integration/receipts/`
 - [ ] T159 Implement receipt contribution scoring, offer update quarantine, and manual review hooks in `backend/src/receipts/` and `backend/src/pricing/`
@@ -452,12 +452,12 @@ token rewards without letting bad or duplicated data corrupt prices.
 **Purpose**: Add security and end-to-end validation gates before broader hosting,
 payments, and receipt incentives increase risk.
 
-- [ ] T163 [P] Create an application security checklist covering auth, RBAC, payment webhooks, SQL injection, HTML injection, token double-spend, and admin privilege boundaries in `specs/001-grocery-optimizer/checklists/security.md`
+- [X] T163 [P] Create an application security checklist covering auth, RBAC, payment webhooks, SQL injection, HTML injection, token double-spend, and admin privilege boundaries in `specs/001-grocery-optimizer/checklists/security.md`
 - [ ] T164 [P] Add backend API security tests for auth bypass, role escalation, malformed IDs, SQL injection payloads, and webhook replay attempts in `backend/test/security/`
 - [ ] T165 [P] Add web security tests for HTML injection, unsafe rich text, admin form escaping, and route protection in `web/src/`
-- [ ] T166 [P] Add mobile security and privacy validation notes for token storage, entitlement display, and receipt-image handling in `mobile/test/` and `docs/security/mobile-security.md`
+- [X] T166 [P] Add mobile security and privacy validation notes for token storage, entitlement display, and receipt-image handling in `mobile/test/` and `docs/security/mobile-security.md`
 - [ ] T167 Add Playwright E2E coverage for sign-in, city selection, list creation, optimization, checklist, admin queue detail, and premium gate flows in `web/e2e/`
-- [ ] T168 Add release readiness documentation for rollback, seed reset, payment sandbox, observability checks, and incident triage in `docs/release/release-readiness.md`
+- [X] T168 Add release readiness documentation for rollback, seed reset, payment sandbox, observability checks, and incident triage in `docs/release/release-readiness.md`
 
 ---
 

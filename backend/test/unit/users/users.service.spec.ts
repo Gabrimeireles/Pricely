@@ -7,17 +7,17 @@ describe('UsersService', () => {
     const prisma = {
       userAccount: {
         findUnique: jest.fn().mockResolvedValue({
-            id: 'user-1',
-            email: 'cliente@pricely.local',
-            passwordHash: 'hash',
-            displayName: 'Cliente',
-            role: 'customer',
-            status: 'active',
-            lastLoginAt: null,
-            createdAt: new Date('2026-04-29T00:00:00.000Z'),
-            updatedAt: new Date('2026-04-29T00:00:00.000Z'),
-            preferredRegionId: 'region-1',
-          }),
+          id: 'user-1',
+          email: 'cliente@pricely.local',
+          passwordHash: 'hash',
+          displayName: 'Cliente',
+          role: 'customer',
+          status: 'active',
+          lastLoginAt: null,
+          createdAt: new Date('2026-04-29T00:00:00.000Z'),
+          updatedAt: new Date('2026-04-29T00:00:00.000Z'),
+          preferredRegionId: 'region-1',
+        }),
         update: jest.fn().mockResolvedValue(undefined),
       },
       region: {
@@ -40,7 +40,10 @@ describe('UsersService', () => {
 
     const service = new UsersService(prisma as never);
 
-    const profile = await service.updatePreferredRegionBySlug('user-1', 'sao-paulo-sp');
+    const profile = await service.updatePreferredRegionBySlug(
+      'user-1',
+      'sao-paulo-sp',
+    );
 
     expect(prisma.region.findUnique).toHaveBeenCalledWith({
       where: { slug: 'sao-paulo-sp' },
@@ -51,6 +54,10 @@ describe('UsersService', () => {
       data: { preferredRegionId: 'region-1' },
     });
     expect(profile.preferredRegionSlug).toBe('sao-paulo-sp');
+    expect(profile.entitlement).toMatchObject({
+      plan: 'free',
+      checkoutEnabled: false,
+    });
   });
 
   it('sums only the latest completed optimization savings for each user list', async () => {
@@ -78,7 +85,9 @@ describe('UsersService', () => {
       optimizationRun: {
         count: jest.fn().mockResolvedValue(4),
       },
-      $queryRaw: jest.fn().mockResolvedValue([{ totalEstimatedSavings: '31.50' }]),
+      $queryRaw: jest
+        .fn()
+        .mockResolvedValue([{ totalEstimatedSavings: '31.50' }]),
       receiptRecord: {
         count: jest.fn().mockResolvedValue(0),
       },

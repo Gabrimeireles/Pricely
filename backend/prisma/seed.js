@@ -39,6 +39,24 @@ async function main() {
     },
   });
 
+  await prisma.userEntitlement.upsert({
+    where: { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' },
+    update: {
+      userId: admin.id,
+      plan: 'premium',
+      status: 'active',
+      source: 'seed_admin',
+      endsAt: null,
+    },
+    create: {
+      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      userId: admin.id,
+      plan: 'premium',
+      status: 'active',
+      source: 'seed_admin',
+    },
+  });
+
   const region = await prisma.region.upsert({
     where: { slug: 'sao-paulo-sp' },
     update: {},
