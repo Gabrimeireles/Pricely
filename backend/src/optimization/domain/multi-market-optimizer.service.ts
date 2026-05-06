@@ -4,6 +4,7 @@ import { type OptimizationMode } from '../../common/contracts';
 import { type ShoppingListEntity } from '../../lists/domain/shopping-list.entity';
 import { type StoreOfferEntity } from '../../stores/domain/store-offer.entity';
 import {
+  type OptimizationExplanationPayload,
   type OptimizationResultEntity,
   type OptimizationSelectionEntity,
 } from './optimization-selection.entity';
@@ -56,6 +57,13 @@ export class MultiMarketOptimizerService {
         coverageStatus,
         selectedStoreId,
         selections,
+      ),
+      explanationPayload: this.buildExplanationPayload(
+        shoppingList,
+        storeOffers,
+        selections,
+        mode,
+        selectedStoreId,
       ),
       selections,
     };
@@ -340,6 +348,160 @@ export class MultiMarketOptimizerService {
     return selectedStoreName
       ? `Pricely prioritized one nearby-style store flow in ${selectedStoreName}, maximizing coverage before price.`
       : 'Pricely could not find a practical single-store option for this list.';
+  }
+
+  private buildExplanationPayload(
+    shoppingList: ShoppingListEntity,
+    storeOffers: StoreOfferEntity[],
+    selections: OptimizationSelectionEntity[],
+    mode: OptimizationMode,
+    selectedStoreId?: string,
+  ): OptimizationExplanationPayload {
+    const selectionsByItemId = new Map(
+      selections.map((selection) => [selection.shoppingListItemId, selection]),
+    );
+    const offersById = new Map(storeOffers.map((offer) => [offer.id, offer]));
+
+    return {
+      version: 1,
+      constraints: {
+        mode,
+        singleStoreRequired: mode !== 'global_full',
+        selectedStoreId,
+        exactVariantItemIds: shoppingList.items
+          .filter((item) => item.brandPreferenceMode === 'exact')
+          .map((item) => item.id),
+        unresolvedItemPolicy: 'flag_missing_or_review',
+      },
+      selectedOffers: selections
+        .filter(
+          (selection) =>
+            selection.selectionStatus === 'selected' &&
+            Boolean(selection.productOfferId),
+        )
+        .map((selection) => {
+          const offer = offersById.get(selection.productOfferId as string);
+
+          return {
+            shoppingListItemId: selection.shoppingListItemId,
+            productOfferId: selection.productOfferId as string,
+            storeId: offer?.storeId,
+            storeName: selection.establishmentName,
+            priceAmount: selection.priceAmount,
+            estimatedCost: selection.estimatedCost,
+            savingsVsComparison: selection.savingsVsComparison,
+            decisionReason: selection.decisionReason,
+          };
+        }),
+      rejectedAlternatives: shoppingList.items.flatMap((item) =>
+        this.buildRejectedAlternativesForItem(
+          item,
+          storeOffers,
+          selectionsByItemId.get(item.id),
+          selectedStoreId,
+        ),
+      ),
+      savingsComparisons: selections.map((selection) => ({
+        shoppingListItemId: selection.shoppingListItemId,
+        selectedPriceAmount: selection.priceAmount,
+        comparisonPriceAmount: selection.comparisonPriceAmount,
+        regionalAveragePriceAmount: selection.regionalAveragePriceAmount,
+        savingsVsComparison: selection.savingsVsComparison,
+      })),
+      dataQualityWarnings: selections.flatMap((selection) =>
+        this.buildDataQualityWarningsForSelection(selection),
+      ),
+    };
+  }
+
+  private buildRejectedAlternativesForItem(
+    item: ShoppingListEntity['items'][number],
+    storeOffers: StoreOfferEntity[],
+    selection?: OptimizationSelectionEntity,
+    selectedStoreId?: string,
+  ): OptimizationExplanationPayload['rejectedAlternatives'] {
+    const matchingOffers = this.applyBrandPreference(
+      item,
+      storeOffers.filter((offer) => this.matchesBaseProduct(item, offer)),
+    );
+
+    if (matchingOffers.length === 0) {
+      return [
+        {
+          shoppingListItemId: item.id,
+          reason: selection?.rejectedReason ?? 'no_matching_offer_candidate',
+        },
+      ];
+    }
+
+    return matchingOffers
+      .filter((offer) => offer.id !== selection?.productOfferId)
+      .sort((left, right) => left.price - right.price)
+      .slice(0, 10)
+      .map((offer) => ({
+        shoppingListItemId: item.id,
+        productOfferId: offer.id,
+        storeId: offer.storeId,
+        storeName: offer.storeName,
+        priceAmount: Number(offer.price.toFixed(2)),
+        reason: this.resolveRejectedAlternativeReason(
+          offer,
+          selection,
+          selectedStoreId,
+        ),
+      }));
+  }
+
+  private resolveRejectedAlternativeReason(
+    offer: StoreOfferEntity,
+    selection?: OptimizationSelectionEntity,
+    selectedStoreId?: string,
+  ): string {
+    if (offer.availabilityStatus !== 'available') {
+      return 'not_available';
+    }
+
+    if (selectedStoreId && offer.storeId !== selectedStoreId) {
+      return 'single_store_constraint';
+    }
+
+    if (!selection || selection.selectionStatus !== 'selected') {
+      return selection?.rejectedReason ?? 'not_selected';
+    }
+
+    return 'higher_price_or_lower_rank';
+  }
+
+  private buildDataQualityWarningsForSelection(
+    selection: OptimizationSelectionEntity,
+  ): OptimizationExplanationPayload['dataQualityWarnings'] {
+    const warnings: OptimizationExplanationPayload['dataQualityWarnings'] = [];
+
+    if (selection.confidenceNotice) {
+      warnings.push({
+        shoppingListItemId: selection.shoppingListItemId,
+        code: 'confidence_notice',
+        message: selection.confidenceNotice,
+      });
+    }
+
+    if (selection.selectionStatus === 'missing') {
+      warnings.push({
+        shoppingListItemId: selection.shoppingListItemId,
+        code: selection.rejectedReason ?? 'missing_offer',
+        message: 'No confirmed offer was selected for this item.',
+      });
+    }
+
+    if (selection.selectionStatus === 'review') {
+      warnings.push({
+        shoppingListItemId: selection.shoppingListItemId,
+        code: selection.rejectedReason ?? 'manual_review_required',
+        message: 'This item needs review before the result can be trusted.',
+      });
+    }
+
+    return warnings;
   }
 
   private matchesBaseProduct(

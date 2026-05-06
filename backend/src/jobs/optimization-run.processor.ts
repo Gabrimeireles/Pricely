@@ -91,6 +91,8 @@ export class OptimizationRunProcessor {
           estimatedSavings: computed.estimatedSavings ?? 0,
           coverageStatus: computed.coverageStatus,
           summary: computed.explanationSummary ?? null,
+          explanationPayload:
+            computed.explanationPayload as unknown as Prisma.InputJsonValue,
           completedAt,
         },
       }),
