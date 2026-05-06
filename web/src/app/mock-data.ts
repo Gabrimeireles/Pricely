@@ -517,6 +517,12 @@ export const profileSnapshot: ProfileSnapshot = {
   listsCreated: 18,
   receiptsShared: 34,
   invalidPromotionReports: 5,
+  entitlementPlan: 'free',
+  entitlementStatus: 'active',
+  availableOptimizationTokens: 2,
+  monthlyFreeOptimizationTokens: 2,
+  billingEnabled: false,
+  checkoutEnabled: false,
 };
 
 export const adminMetrics: AdminMetric[] = [

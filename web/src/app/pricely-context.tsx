@@ -89,6 +89,12 @@ function emptyProfile() {
     listsCreated: 0,
     receiptsShared: 0,
     invalidPromotionReports: 0,
+    entitlementPlan: 'free' as const,
+    entitlementStatus: 'active' as const,
+    availableOptimizationTokens: 0,
+    monthlyFreeOptimizationTokens: 2,
+    billingEnabled: false,
+    checkoutEnabled: false,
   };
 }
 

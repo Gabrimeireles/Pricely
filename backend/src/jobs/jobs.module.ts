@@ -10,6 +10,7 @@ import { OptimizationRunProcessor } from './optimization-run.processor';
 import { OptimizationWorkerService } from './optimization-worker.service';
 import { ReceiptIngestionProcessor } from './receipt-ingestion.processor';
 import { ReceiptWorkerService } from './receipt-worker.service';
+import { MonthlyTokenRefillService } from './monthly-token-refill.service';
 
 @Module({
   imports: [
@@ -25,7 +26,12 @@ import { ReceiptWorkerService } from './receipt-worker.service';
     ReceiptWorkerService,
     OptimizationRunProcessor,
     OptimizationWorkerService,
+    MonthlyTokenRefillService,
   ],
-  exports: [ReceiptIngestionProcessor, OptimizationRunProcessor],
+  exports: [
+    ReceiptIngestionProcessor,
+    OptimizationRunProcessor,
+    MonthlyTokenRefillService,
+  ],
 })
 export class JobsModule {}

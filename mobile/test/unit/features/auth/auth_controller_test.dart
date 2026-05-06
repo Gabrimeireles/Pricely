@@ -101,7 +101,32 @@ void main() {
 
     expect(controller.isAuthenticated, isTrue);
     expect(controller.currentUser?.role, 'admin');
+    expect(controller.currentUser?.entitlementPlan, 'free');
+    expect(controller.currentUser?.monthlyFreeOptimizationTokens, 2);
+    expect(controller.currentUser?.checkoutEnabled, isFalse);
     expect(await cacheService.loadAuthToken(), 'jwt-456');
+  });
+
+  test('parses premium entitlement as read-only profile state', () {
+    final user = AuthUser.fromJson(<String, dynamic>{
+      'id': 'user-premium',
+      'email': 'admin@pricely.app',
+      'displayName': 'Admin Pricely',
+      'role': 'admin',
+      'profileStats': <String, dynamic>{},
+      'entitlement': <String, dynamic>{
+        'plan': 'premium',
+        'status': 'active',
+        'availableOptimizationTokens': 0,
+        'monthlyFreeOptimizationTokens': 2,
+        'checkoutEnabled': false,
+      },
+    });
+
+    expect(user.entitlementPlan, 'premium');
+    expect(user.entitlementStatus, 'active');
+    expect(user.monthlyFreeOptimizationTokens, 2);
+    expect(user.checkoutEnabled, isFalse);
   });
 
   test('updates preferred region through the shared profile endpoint', () async {

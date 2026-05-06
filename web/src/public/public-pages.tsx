@@ -951,6 +951,30 @@ export function ListsPage() {
           </Card>
         </div>
 
+        <Card className="border-border/70 bg-emerald-50/80 shadow-sm">
+          <CardHeader className="gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-emerald-100 text-emerald-950 hover:bg-emerald-100">
+                {profile.entitlementPlan === 'premium' ? 'Premium ativo' : 'Plano gratuito'}
+              </Badge>
+              <Badge variant="secondary">
+                {profile.entitlementPlan === 'premium'
+                  ? 'Otimizações ilimitadas'
+                  : `${profile.availableOptimizationTokens} de ${profile.monthlyFreeOptimizationTokens} listas no mês`}
+              </Badge>
+            </div>
+            <CardTitle>Uso de otimizações</CardTitle>
+            <CardDescription>
+              O plano gratuito inclui 2 listas otimizadas por mês. A compra Premium ainda está desativada enquanto o billing é validado.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button disabled variant="outline">
+              Comprar Premium
+            </Button>
+          </CardContent>
+        </Card>
+
         {lists.length === 0 ? (
           <Alert>
             <BadgeCheckIcon />

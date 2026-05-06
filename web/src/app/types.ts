@@ -99,6 +99,12 @@ export interface ProfileSnapshot {
   listsCreated: number;
   receiptsShared: number;
   invalidPromotionReports: number;
+  entitlementPlan: 'free' | 'premium';
+  entitlementStatus: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired';
+  availableOptimizationTokens: number;
+  monthlyFreeOptimizationTokens: number;
+  billingEnabled: boolean;
+  checkoutEnabled: boolean;
 }
 
 export interface AdminQueueIssue {

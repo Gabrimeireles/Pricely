@@ -29,9 +29,9 @@ jobs:
           set -euo pipefail
           grep -Eq '^permissions:$' .github/workflows/ci.yml
           grep -Eq '^  contents: read$' .github/workflows/ci.yml
-          ! grep -R "pull_request_target:" .github/workflows
-          ! grep -R "permissions: write-all" .github/workflows
-          ! grep -R "contents: write" .github/workflows
+          ! grep -R "pull_request_target:" .github/workflows --include='*.yml' | grep -v "grep -R"
+          ! grep -R "permissions: write-all" .github/workflows --include='*.yml' | grep -v "grep -R"
+          ! grep -R "contents: write" .github/workflows --include='*.yml' | grep -v "grep -R"
       - name: Check dependency install integrity
         shell: bash
         run: |

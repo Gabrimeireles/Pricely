@@ -18,6 +18,14 @@ type AuthSessionResponse = {
       receiptSubmissionsCount: number;
       offerReportsCount: number;
     };
+    entitlement?: {
+      plan: 'free' | 'premium';
+      status: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired';
+      availableOptimizationTokens: number;
+      monthlyFreeOptimizationTokens: number;
+      billingEnabled: boolean;
+      checkoutEnabled: boolean;
+    };
   };
 };
 
@@ -835,11 +843,26 @@ export async function updateAdminOffer(
 }
 
 export function mapProfile(user: AuthSessionResponse['user']): ProfileSnapshot {
+  const entitlement = user.entitlement ?? {
+    plan: 'free' as const,
+    status: 'active' as const,
+    availableOptimizationTokens: 0,
+    monthlyFreeOptimizationTokens: 2,
+    billingEnabled: false,
+    checkoutEnabled: false,
+  };
+
   return {
     totalEstimatedSavings: user.profileStats.totalEstimatedSavings,
     listsCreated: user.profileStats.shoppingListsCount,
     receiptsShared: user.profileStats.receiptSubmissionsCount,
     invalidPromotionReports: user.profileStats.offerReportsCount,
+    entitlementPlan: entitlement.plan,
+    entitlementStatus: entitlement.status,
+    availableOptimizationTokens: entitlement.availableOptimizationTokens,
+    monthlyFreeOptimizationTokens: entitlement.monthlyFreeOptimizationTokens,
+    billingEnabled: entitlement.billingEnabled,
+    checkoutEnabled: entitlement.checkoutEnabled,
   };
 }
 

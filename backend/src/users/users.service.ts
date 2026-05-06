@@ -1,11 +1,25 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../persistence/prisma.service';
-import { type UserProfile, type UserProfileStats } from './users.types';
+import {
+  type UserEntitlementProfile,
+  type UserProfile,
+  type UserProfileStats,
+} from './users.types';
+import { EntitlementsService } from './entitlements.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly entitlementsService?: EntitlementsService,
+  ) {}
 
   async findByEmail(email: string) {
     return this.prisma.userAccount.findUnique({
@@ -103,6 +117,9 @@ export class UsersService {
         totalEstimatedSavings: latestOptimizationSavings,
       },
       preferredRegion?.slug ?? null,
+      this.entitlementsService
+        ? await this.entitlementsService.getProfile(id)
+        : this.buildDefaultEntitlementProfile(),
     );
   }
 
@@ -143,6 +160,7 @@ export class UsersService {
     },
     stats: UserProfileStats = this.buildEmptyProfileStats(),
     preferredRegionSlug: string | null = null,
+    entitlement: UserEntitlementProfile = this.buildDefaultEntitlementProfile(),
   ): UserProfile {
     return {
       id: user.id,
@@ -155,6 +173,18 @@ export class UsersService {
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
       profileStats: stats,
+      entitlement,
+    };
+  }
+
+  private buildDefaultEntitlementProfile(): UserEntitlementProfile {
+    return {
+      plan: 'free' as const,
+      status: 'active' as const,
+      availableOptimizationTokens: 0,
+      monthlyFreeOptimizationTokens: 2,
+      billingEnabled: false,
+      checkoutEnabled: false,
     };
   }
 

@@ -24,7 +24,11 @@ class AdminProcessingPrismaMock {
   };
 
   readonly userAccount = {
-    findUnique: async ({ where }: { where: { id?: string; email?: string } }) => {
+    findUnique: async ({
+      where,
+    }: {
+      where: { id?: string; email?: string };
+    }) => {
       if (where.email === 'admin@pricely.local') {
         return this.adminUser;
       }
@@ -36,7 +40,8 @@ class AdminProcessingPrismaMock {
     create: async () => ({
       id: 'admin-1',
       email: 'admin@pricely.local',
-      passwordHash: '$2b$10$zwG4Q/3hD4q0wV0WJQ6FmOpIHrjMTY1l8A8N2R9n4nD4UO7xN3Vmy',
+      passwordHash:
+        '$2b$10$zwG4Q/3hD4q0wV0WJQ6FmOpIHrjMTY1l8A8N2R9n4nD4UO7xN3Vmy',
       displayName: 'Admin',
       role: 'customer',
       status: 'active',
@@ -47,7 +52,8 @@ class AdminProcessingPrismaMock {
     update: async () => ({
       id: 'admin-1',
       email: 'admin@pricely.local',
-      passwordHash: '$2b$10$zwG4Q/3hD4q0wV0WJQ6FmOpIHrjMTY1l8A8N2R9n4nD4UO7xN3Vmy',
+      passwordHash:
+        '$2b$10$zwG4Q/3hD4q0wV0WJQ6FmOpIHrjMTY1l8A8N2R9n4nD4UO7xN3Vmy',
       displayName: 'Admin',
       role: 'admin',
       status: 'active',
@@ -57,6 +63,19 @@ class AdminProcessingPrismaMock {
       updatedAt: new Date(),
     }),
     count: async () => 1,
+  };
+
+  readonly userEntitlement = {
+    findFirst: jest.fn().mockResolvedValue(null),
+  };
+
+  readonly optimizationTokenLedgerEntry = {
+    upsert: jest.fn().mockResolvedValue({}),
+    aggregate: jest.fn().mockResolvedValue({
+      _sum: {
+        amount: 2,
+      },
+    }),
   };
 
   readonly shoppingList = { count: async () => 2 };
@@ -82,8 +101,7 @@ class AdminProcessingPrismaMock {
   readonly catalogProduct = { count: async () => 1 };
   readonly productOffer = { count: async () => 2 };
   readonly processingJob = {
-    count: async ({ where }: any) =>
-      where?.status?.in ? 2 : 4,
+    count: async ({ where }: any) => (where?.status?.in ? 2 : 4),
     findMany: async () => [
       {
         id: 'job-queued',
