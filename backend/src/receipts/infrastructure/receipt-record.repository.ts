@@ -7,31 +7,76 @@ export class ReceiptRecordRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(record: ReceiptRecordEntity): Promise<ReceiptRecordEntity> {
-    const establishment = await this.prisma.establishment.findFirst({
-      where: {
-        unitName: record.storeName,
-      },
-    });
+    const establishment = await this.findKnownEstablishment(record);
 
     await this.prisma.receiptRecord.create({
       data: {
         id: record.id,
-        userId: await this.resolveFallbackUserId(),
-        establishmentId:
-          establishment?.id ?? (await this.resolveFallbackEstablishmentId(record.storeName)),
-        sourceType: record.sourceType === 'image_parse' ? 'image_parse' : 'manual_entry',
-        parseStatus:
-          record.parseStatus === 'parsed'
-            ? 'parsed'
-            : record.parseStatus === 'partial'
-              ? 'partial'
-              : 'failed',
+        userId: record.userId,
+        establishmentId: establishment?.id ?? null,
+        sourceType: record.sourceType,
+        parseStatus: record.parseStatus,
+        storeName: record.storeName,
+        storeCnpj: record.storeCnpj,
+        accessKey: record.accessKey,
+        sefazUrl: record.sefazUrl,
         purchaseDate: record.purchaseDate ? new Date(record.purchaseDate) : null,
-        rawReference: JSON.stringify(record),
+        rawReference: JSON.stringify({
+          rawSourceReference: record.rawSourceReference,
+          processingLogs: record.processingLogs,
+        }),
+        confidenceScore: record.confidenceScore,
+        lineItems: {
+          create: record.lineItems.map((lineItem) => ({
+            id: lineItem.id,
+            ean: lineItem.ean,
+            rawProductName: lineItem.rawProductName,
+            normalizedName: lineItem.normalizedName,
+            packageSize: lineItem.packageSize,
+            quantity: lineItem.quantity,
+            unitPrice: lineItem.unitPrice,
+            originalUnitPrice: lineItem.originalUnitPrice,
+            promotionalUnitPrice: lineItem.promotionalUnitPrice,
+            lineTotal: Number((lineItem.quantity * lineItem.unitPrice).toFixed(2)),
+            currency: lineItem.currency,
+            matchConfidence: lineItem.matchConfidence,
+          })),
+        },
       },
     });
 
     return record;
+  }
+
+  async attachProcessingJob(receiptRecordId: string, processingJobId: string): Promise<void> {
+    await this.prisma.receiptRecord.update({
+      where: {
+        id: receiptRecordId,
+      },
+      data: {
+        jobId: processingJobId,
+      },
+    });
+  }
+
+  async markExtractionFailed(receiptRecordId: string, reason: string): Promise<void> {
+    const existing = await this.findById(receiptRecordId);
+
+    await this.prisma.receiptRecord.update({
+      where: {
+        id: receiptRecordId,
+      },
+      data: {
+        parseStatus: 'failed',
+        rawReference: JSON.stringify({
+          rawSourceReference: existing?.rawSourceReference,
+          processingLogs: [
+            ...(existing?.processingLogs ?? []),
+            `extraction_failed:${reason}`,
+          ],
+        }),
+      },
+    });
   }
 
   async findById(id: string): Promise<ReceiptRecordEntity | null> {
@@ -39,69 +84,107 @@ export class ReceiptRecordRepository {
       where: {
         id,
       },
+      include: {
+        processingJob: true,
+        lineItems: true,
+      },
     });
 
-    if (!record?.rawReference) {
+    if (!record) {
       return null;
     }
 
-    return JSON.parse(record.rawReference) as ReceiptRecordEntity;
+    const metadata = this.parseMetadata(record.rawReference);
+
+    return {
+      id: record.id,
+      userId: record.userId,
+      storeId: record.establishmentId ?? undefined,
+      storeName: record.storeName ?? undefined,
+      storeCnpj: record.storeCnpj ?? undefined,
+      accessKey: record.accessKey ?? undefined,
+      sefazUrl: record.sefazUrl ?? undefined,
+      purchaseDate: record.purchaseDate?.toISOString(),
+      sourceType: record.sourceType,
+      parseStatus: record.parseStatus,
+      confidenceScore: Number(record.confidenceScore ?? 0),
+      rawSourceReference: metadata.rawSourceReference,
+      processingJobId: record.jobId ?? undefined,
+      processingStatus: record.processingJob?.status,
+      processingLogs: metadata.processingLogs,
+      lineItems: record.lineItems.map((lineItem) => ({
+        id: lineItem.id,
+        receiptRecordId: lineItem.receiptRecordId,
+        ean: lineItem.ean ?? undefined,
+        rawProductName: lineItem.rawProductName,
+        normalizedName: lineItem.normalizedName,
+        packageSize: lineItem.packageSize ?? undefined,
+        quantity: Number(lineItem.quantity),
+        unitPrice: Number(lineItem.unitPrice),
+        originalUnitPrice:
+          lineItem.originalUnitPrice === null
+            ? undefined
+            : Number(lineItem.originalUnitPrice),
+        promotionalUnitPrice:
+          lineItem.promotionalUnitPrice === null
+            ? undefined
+            : Number(lineItem.promotionalUnitPrice),
+        currency: lineItem.currency,
+        matchConfidence: Number(lineItem.matchConfidence),
+      })),
+      createdAt: record.createdAt.toISOString(),
+      updatedAt: record.updatedAt.toISOString(),
+    };
   }
 
-  private async resolveFallbackUserId(): Promise<string> {
-    const user = await this.prisma.userAccount.findFirst({
-      where: {
-        status: 'active',
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
-
-    if (!user) {
-      throw new Error('No active user exists to persist the receipt record');
-    }
-
-    return user.id;
-  }
-
-  private async resolveFallbackEstablishmentId(storeName: string): Promise<string> {
-    const region = await this.prisma.region.findFirst({
-      where: {
-        implantationStatus: {
-          not: 'inactive',
+  private async findKnownEstablishment(record: ReceiptRecordEntity) {
+    if (record.storeCnpj) {
+      return this.prisma.establishment.findFirst({
+        where: {
+          OR: [
+            { cnpj: record.storeCnpj },
+            { cnpj: this.formatCnpj(record.storeCnpj) },
+          ],
         },
-      },
-      orderBy: {
-        publicSortOrder: 'asc',
-      },
-    });
-
-    if (!region) {
-      throw new Error('No active region exists to persist the receipt record');
+      });
     }
 
-    const safeDigits = storeName
-      .replace(/\D/g, '')
-      .padEnd(14, '0')
-      .slice(0, 14);
-    const formattedCnpj = `${safeDigits.slice(0, 2)}.${safeDigits.slice(2, 5)}.${safeDigits.slice(
+    if (!record.storeName) {
+      return null;
+    }
+
+    return this.prisma.establishment.findFirst({
+      where: {
+        unitName: record.storeName,
+      },
+    });
+  }
+
+  private parseMetadata(rawReference: string | null): {
+    rawSourceReference?: string;
+    processingLogs: string[];
+  } {
+    if (!rawReference) {
+      return {
+        processingLogs: [],
+      };
+    }
+
+    const parsed = JSON.parse(rawReference) as {
+      rawSourceReference?: string;
+      processingLogs?: string[];
+    };
+
+    return {
+      rawSourceReference: parsed.rawSourceReference,
+      processingLogs: parsed.processingLogs ?? [],
+    };
+  }
+
+  private formatCnpj(digits: string): string {
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(
       5,
       8,
-    )}/${safeDigits.slice(8, 12)}-${safeDigits.slice(12, 14)}`;
-
-    const establishment = await this.prisma.establishment.create({
-      data: {
-        brandName: storeName,
-        unitName: storeName,
-        cnpj: formattedCnpj,
-        cityName: region.name,
-        neighborhood: 'Nao informado',
-        regionId: region.id,
-        isActive: true,
-      },
-    });
-
-    return establishment.id;
+    )}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`;
   }
 }

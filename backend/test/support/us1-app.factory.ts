@@ -190,6 +190,35 @@ class InMemoryReceiptRecordRepository {
     return structuredClone(record);
   }
 
+  async attachProcessingJob(receiptRecordId: string, processingJobId: string) {
+    const existing = this.records.get(receiptRecordId);
+    if (!existing) {
+      return;
+    }
+
+    this.records.set(receiptRecordId, {
+      ...existing,
+      processingJobId,
+      processingStatus: 'queued',
+    });
+  }
+
+  async markExtractionFailed(receiptRecordId: string, reason: string) {
+    const existing = this.records.get(receiptRecordId);
+    if (!existing) {
+      return;
+    }
+
+    this.records.set(receiptRecordId, {
+      ...existing,
+      parseStatus: 'failed',
+      processingLogs: [
+        ...(existing.processingLogs ?? []),
+        `extraction_failed:${reason}`,
+      ],
+    });
+  }
+
   async findById(id: string) {
     const value = this.records.get(id);
     return value ? structuredClone(value) : null;

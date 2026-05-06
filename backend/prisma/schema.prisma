@@ -105,7 +105,11 @@ enum ProcessingJobStatus {
 
 enum ReceiptSourceType {
   manual_entry
+  qr_code_url
+  qr_code_image
+  pdf_upload
   image_parse
+  structured_provider
 }
 
 enum ReceiptParseStatus {
@@ -346,19 +350,54 @@ model ProcessingJob {
   updatedAt     DateTime            @updatedAt
   finishedAt    DateTime?
   optimizationRun OptimizationRun?
+  receiptRecord ReceiptRecord?
 }
 
 model ReceiptRecord {
   id              String            @id @default(uuid()) @db.Uuid
   userId          String            @db.Uuid
-  establishmentId String            @db.Uuid
+  establishmentId String?           @db.Uuid
   sourceType      ReceiptSourceType
   parseStatus     ReceiptParseStatus @default(queued)
+  storeName       String?
+  storeCnpj       String?
+  accessKey       String?
+  sefazUrl        String?
   purchaseDate    DateTime?
+  jobId           String?           @unique @db.Uuid
   rawReference    String?
+  confidenceScore Decimal?          @db.Decimal(5, 2)
   createdAt       DateTime          @default(now())
-  establishment   Establishment     @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  updatedAt       DateTime          @updatedAt
+  establishment   Establishment?    @relation(fields: [establishmentId], references: [id], onDelete: SetNull)
+  lineItems       ReceiptLineItem[]
+  processingJob   ProcessingJob?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
   user            UserAccount       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([establishmentId, createdAt])
+  @@index([userId, createdAt])
+  @@index([parseStatus, createdAt])
+  @@index([accessKey])
+  @@index([storeCnpj])
+}
+
+model ReceiptLineItem {
+  id                     String        @id @default(uuid()) @db.Uuid
+  receiptRecordId        String        @db.Uuid
+  ean                    String?
+  rawProductName         String
+  normalizedName         String
+  packageSize            String?
+  quantity               Decimal       @db.Decimal(10, 3)
+  unitPrice              Decimal       @db.Decimal(10, 2)
+  originalUnitPrice      Decimal?      @db.Decimal(10, 2)
+  promotionalUnitPrice   Decimal?      @db.Decimal(10, 2)
+  lineTotal              Decimal       @db.Decimal(10, 2)
+  currency               String        @default("BRL") @db.VarChar(3)
+  matchConfidence        Decimal       @db.Decimal(5, 2)
+  createdAt              DateTime      @default(now())
+  receiptRecord          ReceiptRecord @relation(fields: [receiptRecordId], references: [id], onDelete: Cascade)
+
+  @@index([receiptRecordId])
+  @@index([ean])
 }

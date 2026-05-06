@@ -436,6 +436,7 @@ results explainable, auditable, and consistent across web/mobile.
 **Purpose**: Turn receipt ingestion into a trustworthy source of offer updates and
 token rewards without letting bad or duplicated data corrupt prices.
 
+- [X] T155A Implement privacy-bounded receipt ingestion and extraction foundation with QR access-key parsing, provider/OCR abstractions, EAN capture, sanitized persistence, processing status/log linkage, and backend tests in `backend/src/receipts/`, `backend/src/jobs/`, `backend/prisma/schema.prisma`, and `backend/test/`
 - [ ] T156 [P] Specify receipt contribution trust levels, duplicate detection, suspicious-price handling, and reward eligibility in `docs/product/receipt-quality-plan.md`
 - [ ] T157 [P] Extend receipt and offer data models with contribution provenance, confidence changes, moderation state, and reward linkage in `backend/prisma/schema.prisma`
 - [ ] T158 [P] Add backend tests for duplicate receipts, conflicting prices, implausible discounts, repeated submissions, and reward eligibility in `backend/test/unit/receipts/` and `backend/test/integration/receipts/`
