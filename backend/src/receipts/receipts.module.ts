@@ -13,6 +13,7 @@ import {
   UnsupportedReceiptProvider,
 } from './application/receipt-provider';
 import { QrCodeParserService } from './application/qr-code-parser.service';
+import { ReceiptContributionQualityService } from './application/receipt-contribution-quality.service';
 import { ReceiptIngestionService } from './application/receipt-ingestion.service';
 import { ReceiptParserService } from './application/receipt-parser.service';
 import { ReceiptSanitizerService } from './application/receipt-sanitizer.service';
@@ -24,6 +25,7 @@ import { ReceiptRecordRepository } from './infrastructure/receipt-record.reposit
   providers: [
     ReceiptParserService,
     ReceiptSanitizerService,
+    ReceiptContributionQualityService,
     QrCodeParserService,
     ReceiptIngestionService,
     ReceiptRecordRepository,
@@ -39,6 +41,7 @@ import { ReceiptRecordRepository } from './infrastructure/receipt-record.reposit
   exports: [
     ReceiptParserService,
     ReceiptSanitizerService,
+    ReceiptContributionQualityService,
     QrCodeParserService,
     ReceiptIngestionService,
     ReceiptRecordRepository,

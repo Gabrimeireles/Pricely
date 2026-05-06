@@ -20,12 +20,19 @@ export class ReceiptRecordRepository {
         storeCnpj: record.storeCnpj,
         accessKey: record.accessKey,
         sefazUrl: record.sefazUrl,
-        purchaseDate: record.purchaseDate ? new Date(record.purchaseDate) : null,
+        purchaseDate: record.purchaseDate
+          ? new Date(record.purchaseDate)
+          : null,
         rawReference: JSON.stringify({
           rawSourceReference: record.rawSourceReference,
           processingLogs: record.processingLogs,
         }),
         confidenceScore: record.confidenceScore,
+        duplicateKey: record.duplicateKey,
+        trustLevel: record.trustLevel ?? 'untrusted',
+        moderationStatus: record.moderationStatus ?? 'pending',
+        rewardEligibilityStatus: record.rewardEligibilityStatus ?? 'disabled',
+        reviewReason: record.reviewReason,
         lineItems: {
           create: record.lineItems.map((lineItem) => ({
             id: lineItem.id,
@@ -37,7 +44,9 @@ export class ReceiptRecordRepository {
             unitPrice: lineItem.unitPrice,
             originalUnitPrice: lineItem.originalUnitPrice,
             promotionalUnitPrice: lineItem.promotionalUnitPrice,
-            lineTotal: Number((lineItem.quantity * lineItem.unitPrice).toFixed(2)),
+            lineTotal: Number(
+              (lineItem.quantity * lineItem.unitPrice).toFixed(2),
+            ),
             currency: lineItem.currency,
             matchConfidence: lineItem.matchConfidence,
           })),
@@ -48,7 +57,10 @@ export class ReceiptRecordRepository {
     return record;
   }
 
-  async attachProcessingJob(receiptRecordId: string, processingJobId: string): Promise<void> {
+  async attachProcessingJob(
+    receiptRecordId: string,
+    processingJobId: string,
+  ): Promise<void> {
     await this.prisma.receiptRecord.update({
       where: {
         id: receiptRecordId,
@@ -59,7 +71,10 @@ export class ReceiptRecordRepository {
     });
   }
 
-  async markExtractionFailed(receiptRecordId: string, reason: string): Promise<void> {
+  async markExtractionFailed(
+    receiptRecordId: string,
+    reason: string,
+  ): Promise<void> {
     const existing = await this.findById(receiptRecordId);
 
     await this.prisma.receiptRecord.update({
@@ -108,6 +123,11 @@ export class ReceiptRecordRepository {
       sourceType: record.sourceType,
       parseStatus: record.parseStatus,
       confidenceScore: Number(record.confidenceScore ?? 0),
+      duplicateKey: record.duplicateKey ?? undefined,
+      trustLevel: record.trustLevel,
+      moderationStatus: record.moderationStatus,
+      rewardEligibilityStatus: record.rewardEligibilityStatus,
+      reviewReason: record.reviewReason ?? undefined,
       rawSourceReference: metadata.rawSourceReference,
       processingJobId: record.jobId ?? undefined,
       processingStatus: record.processingJob?.status,
@@ -135,6 +155,21 @@ export class ReceiptRecordRepository {
       createdAt: record.createdAt.toISOString(),
       updatedAt: record.updatedAt.toISOString(),
     };
+  }
+
+  async findDuplicateCandidate(
+    duplicateKey: string,
+    userId: string,
+  ): Promise<{ id: string } | null> {
+    return this.prisma.receiptRecord.findFirst({
+      where: {
+        duplicateKey,
+        userId,
+      },
+      select: {
+        id: true,
+      },
+    });
   }
 
   private async findKnownEstablishment(record: ReceiptRecordEntity) {

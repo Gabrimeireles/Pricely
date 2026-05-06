@@ -29,7 +29,12 @@ describe('Receipt ingestion integration', () => {
       expect(response.body).toMatchObject({
         storeId: 'store_atacadao',
         parseStatus: 'parsed',
-        dataNotice: 'Prices and receipt data are based on receipts provided by users.',
+        trustLevel: 'trusted',
+        moderationStatus: 'accepted',
+        rewardEligibilityStatus: 'disabled',
+        reviewReason: 'receipt_rewards_disabled',
+        dataNotice:
+          'Prices and receipt data are based on receipts provided by users.',
       });
       expect(response.body.id).toEqual(expect.stringContaining('rr_'));
       expect(response.body.jobId).toEqual(expect.any(String));

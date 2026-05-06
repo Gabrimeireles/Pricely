@@ -36,6 +36,19 @@ export interface ReceiptRecord {
   purchaseDate?: string;
   parseStatus: 'queued' | 'parsed' | 'partial' | 'failed';
   confidenceScore?: number;
+  trustLevel?: 'untrusted' | 'pending_review' | 'trusted' | 'rejected';
+  moderationStatus?:
+    | 'pending'
+    | 'accepted'
+    | 'quarantined'
+    | 'duplicate'
+    | 'rejected';
+  rewardEligibilityStatus?:
+    | 'disabled'
+    | 'ineligible'
+    | 'eligible_pending'
+    | 'granted';
+  reviewReason?: string;
   jobId?: string;
   processingStatus?: 'queued' | 'running' | 'completed' | 'failed' | 'retrying';
   dataNotice: string;

@@ -1,7 +1,4 @@
-export type OptimizationModeId =
-  | 'local'
-  | 'global_unique'
-  | 'global_full';
+export type OptimizationModeId = 'local' | 'global_unique' | 'global_full';
 
 export type FreshnessLevel = 'fresh' | 'aging' | 'stale';
 export type ConfidenceLevel = 'alta' | 'media' | 'baixa';
@@ -80,6 +77,8 @@ export interface OptimizationDecision {
   confidence: ConfidenceLevel;
   status: 'selected' | 'missing' | 'review';
   note: string;
+  decisionReason?: string;
+  rejectedReason?: string;
 }
 
 export interface OptimizationScenario {
@@ -100,7 +99,12 @@ export interface ProfileSnapshot {
   receiptsShared: number;
   invalidPromotionReports: number;
   entitlementPlan: 'free' | 'premium';
-  entitlementStatus: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired';
+  entitlementStatus:
+    | 'active'
+    | 'trialing'
+    | 'past_due'
+    | 'cancelled'
+    | 'expired';
   availableOptimizationTokens: number;
   monthlyFreeOptimizationTokens: number;
   billingEnabled: boolean;

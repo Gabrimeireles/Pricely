@@ -195,6 +195,15 @@ class InMemoryReceiptRecordRepository {
     return structuredClone(record);
   }
 
+  async findDuplicateCandidate(duplicateKey: string, userId: string) {
+    return (
+      Array.from(this.records.values()).find(
+        (record) =>
+          record.duplicateKey === duplicateKey && record.userId === userId,
+      ) ?? null
+    );
+  }
+
   async attachProcessingJob(receiptRecordId: string, processingJobId: string) {
     const existing = this.records.get(receiptRecordId);
     if (!existing) {

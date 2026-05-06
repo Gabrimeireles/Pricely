@@ -292,6 +292,8 @@ class PricelyBackendGateway {
           subtotal: priceAmount.toDouble(),
           confidenceLabel:
               selection['confidenceNotice'] as String? ?? 'confirmado',
+          decisionReason: selection['decisionReason'] as String?,
+          rejectedReason: selection['rejectedReason'] as String?,
         ),
       );
     }

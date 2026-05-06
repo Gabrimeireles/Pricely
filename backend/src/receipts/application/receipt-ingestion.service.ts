@@ -1,7 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { type Queue } from 'bullmq';
 
-import { type ReceiptIngestionRequest, type ReceiptRecord } from '../../common/contracts';
+import {
+  type ReceiptIngestionRequest,
+  type ReceiptRecord,
+} from '../../common/contracts';
 import {
   RECEIPT_PROCESSING_QUEUE,
   type ReceiptProcessingJob,
@@ -12,6 +15,7 @@ import { ProcessingJobsService } from '../../processing/application/processing-j
 import { type ReceiptRecordEntity } from '../domain/receipt-record.entity';
 import { ReceiptRecordRepository } from '../infrastructure/receipt-record.repository';
 import { QrCodeParserService } from './qr-code-parser.service';
+import { ReceiptContributionQualityService } from './receipt-contribution-quality.service';
 import { ReceiptParserService } from './receipt-parser.service';
 import { ReceiptSanitizerService } from './receipt-sanitizer.service';
 
@@ -24,14 +28,19 @@ export class ReceiptIngestionService {
     private readonly receiptSanitizerService: ReceiptSanitizerService,
     private readonly qrCodeParserService: QrCodeParserService,
     private readonly productMatchService: ProductMatchService,
+    private readonly receiptContributionQualityService: ReceiptContributionQualityService,
     private readonly receiptRecordRepository: ReceiptRecordRepository,
     private readonly processingJobsService: ProcessingJobsService,
     @Inject(RECEIPT_PROCESSING_QUEUE)
     private readonly receiptProcessingQueue: Queue<ReceiptProcessingJob>,
   ) {}
 
-  async ingest(userId: string, request: ReceiptIngestionRequest): Promise<ReceiptRecord> {
-    const sanitizedRequest = this.receiptSanitizerService.sanitizeRequest(request);
+  async ingest(
+    userId: string,
+    request: ReceiptIngestionRequest,
+  ): Promise<ReceiptRecord> {
+    const sanitizedRequest =
+      this.receiptSanitizerService.sanitizeRequest(request);
     const qrCodeData = this.qrCodeParserService.parse(
       sanitizedRequest.qrCodeUrl ?? sanitizedRequest.accessKey,
     );
@@ -47,7 +56,9 @@ export class ReceiptIngestionService {
 
     const lineItems = await Promise.all(
       parsedReceipt.items.map(async (item) => {
-        const match = await this.productMatchService.resolve(item.rawProductName);
+        const match = await this.productMatchService.resolve(
+          item.rawProductName,
+        );
 
         return {
           id: `rli_${crypto.randomUUID()}`,
@@ -77,7 +88,8 @@ export class ReceiptIngestionService {
       accessKey: parsedReceipt.accessKey,
       sefazUrl: parsedReceipt.sefazUrl,
       purchaseDate: parsedReceipt.purchaseDate,
-      sourceType: extractionInput.sourceType || this.inferSourceType(extractionInput),
+      sourceType:
+        extractionInput.sourceType || this.inferSourceType(extractionInput),
       parseStatus: lineItems.length > 0 ? parsedReceipt.parseStatus : 'queued',
       confidenceScore: parsedReceipt.confidenceScore,
       rawSourceReference: this.buildRawSourceReference(extractionInput),
@@ -93,7 +105,19 @@ export class ReceiptIngestionService {
       updatedAt: now,
     };
 
-    await this.receiptRecordRepository.create(record);
+    const assessment =
+      await this.receiptContributionQualityService.assess(record);
+    const assessedRecord: ReceiptRecordEntity = {
+      ...record,
+      duplicateKey: assessment.duplicateKey,
+      trustLevel: assessment.trustLevel,
+      moderationStatus: assessment.moderationStatus,
+      rewardEligibilityStatus: assessment.rewardEligibilityStatus,
+      reviewReason: assessment.reviewReason,
+      processingLogs: [...record.processingLogs, ...assessment.logs],
+    };
+
+    await this.receiptRecordRepository.create(assessedRecord);
     const processingJob = await this.processingJobsService.createQueuedJob({
       queueName: 'receipt-processing',
       jobType: 'receipt_processing',
@@ -104,36 +128,45 @@ export class ReceiptIngestionService {
       receiptRecordId,
       processingJob.id,
     );
-    await this.receiptProcessingQueue.add('receipt-processing', {
-      receiptRecordId,
-      processingJobId: processingJob.id,
-    }, {
-      attempts: 3,
-      backoff: {
-        type: 'fixed',
-        delay: 2000,
+    await this.receiptProcessingQueue.add(
+      'receipt-processing',
+      {
+        receiptRecordId,
+        processingJobId: processingJob.id,
       },
-      removeOnComplete: 100,
-      removeOnFail: 100,
-    });
+      {
+        attempts: 3,
+        backoff: {
+          type: 'fixed',
+          delay: 2000,
+        },
+        removeOnComplete: 100,
+        removeOnFail: 100,
+      },
+    );
 
     this.logger.log(
-      `Receipt ${receiptRecordId} ingested with status ${record.parseStatus} and ${record.lineItems.length} line items`,
+      `Receipt ${receiptRecordId} ingested with status ${assessedRecord.parseStatus} and ${assessedRecord.lineItems.length} line items`,
     );
 
     return {
-      id: record.id,
-      storeId: record.storeId,
-      storeName: record.storeName,
-      storeCnpj: record.storeCnpj,
-      accessKey: record.accessKey,
-      sefazUrl: record.sefazUrl,
-      purchaseDate: record.purchaseDate,
-      parseStatus: record.parseStatus,
-      confidenceScore: record.confidenceScore,
+      id: assessedRecord.id,
+      storeId: assessedRecord.storeId,
+      storeName: assessedRecord.storeName,
+      storeCnpj: assessedRecord.storeCnpj,
+      accessKey: assessedRecord.accessKey,
+      sefazUrl: assessedRecord.sefazUrl,
+      purchaseDate: assessedRecord.purchaseDate,
+      parseStatus: assessedRecord.parseStatus,
+      confidenceScore: assessedRecord.confidenceScore,
+      trustLevel: assessedRecord.trustLevel,
+      moderationStatus: assessedRecord.moderationStatus,
+      rewardEligibilityStatus: assessedRecord.rewardEligibilityStatus,
+      reviewReason: assessedRecord.reviewReason,
       jobId: processingJob.id,
       processingStatus: 'queued',
-      dataNotice: 'Prices and receipt data are based on receipts provided by users.',
+      dataNotice:
+        'Prices and receipt data are based on receipts provided by users.',
     };
   }
 
@@ -155,7 +188,9 @@ export class ReceiptIngestionService {
     return 'manual_entry';
   }
 
-  private buildRawSourceReference(input: ReceiptIngestionRequest): string | undefined {
+  private buildRawSourceReference(
+    input: ReceiptIngestionRequest,
+  ): string | undefined {
     if (input.uploadedFile) {
       return JSON.stringify({
         storageKey: input.uploadedFile.storageKey,
