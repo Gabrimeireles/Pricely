@@ -29,6 +29,11 @@ export class MultiMarketOptimizerService {
         .reduce((accumulator, selection) => accumulator + (selection.estimatedCost || 0), 0)
         .toFixed(2),
     );
+    const estimatedSavings = Number(
+      selections
+        .reduce((accumulator, selection) => accumulator + (selection.savingsVsComparison || 0), 0)
+        .toFixed(2),
+    );
     const selectedOffers = selections.filter((selection) => selection.selectionStatus === 'selected');
     const coverageStatus =
       selectedOffers.length === 0
@@ -43,6 +48,7 @@ export class MultiMarketOptimizerService {
       mode,
       status: 'completed',
       totalEstimatedCost: selectedOffers.length > 0 ? totalEstimatedCost : undefined,
+      estimatedSavings: estimatedSavings > 0 ? estimatedSavings : 0,
       coverageStatus,
       createdAt: new Date().toISOString(),
       explanationSummary:
@@ -99,6 +105,7 @@ export class MultiMarketOptimizerService {
     }
 
     const quantity = item.quantity && item.quantity > 0 ? item.quantity : 1;
+    const comparison = this.calculateVariantComparison(cheapestOffer, matchingOffers);
 
     return {
       id: `sel_${item.id}`,
@@ -109,12 +116,39 @@ export class MultiMarketOptimizerService {
       selectionStatus: 'selected',
       estimatedCost: Number((cheapestOffer.price * quantity).toFixed(2)),
       priceAmount: Number(cheapestOffer.price.toFixed(2)),
+      comparisonPriceAmount: comparison.highestPriceAmount,
+      regionalAveragePriceAmount: comparison.averagePriceAmount,
+      savingsVsComparison: Number(
+        Math.max(0, (comparison.highestPriceAmount - cheapestOffer.price) * quantity).toFixed(2),
+      ),
       sourceLabel: cheapestOffer.sourceReceiptLineItemId,
       observedAt: cheapestOffer.observedAt,
       confidenceNotice:
         cheapestOffer.confidenceScore < 0.75
           ? 'Selected from low-confidence market evidence.'
           : undefined,
+    };
+  }
+
+  private calculateVariantComparison(
+    selectedOffer: StoreOfferEntity,
+    matchingOffers: StoreOfferEntity[],
+  ) {
+    const comparableOffers = matchingOffers.filter((offer) =>
+      selectedOffer.productVariantId
+        ? offer.productVariantId === selectedOffer.productVariantId
+        : offer.canonicalName === selectedOffer.canonicalName,
+    );
+    const prices = comparableOffers.map((offer) => offer.price);
+    const highestPriceAmount = prices.length > 0 ? Math.max(...prices) : selectedOffer.price;
+    const averagePriceAmount =
+      prices.length > 0
+        ? Number((prices.reduce((sum, price) => sum + price, 0) / prices.length).toFixed(2))
+        : selectedOffer.price;
+
+    return {
+      highestPriceAmount: Number(highestPriceAmount.toFixed(2)),
+      averagePriceAmount,
     };
   }
 

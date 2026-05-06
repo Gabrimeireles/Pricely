@@ -195,6 +195,113 @@ while sharing auth and domain contracts.
    preselect current city when available, allow manual override, and remove default
    optimization-mode choice from list creation.
 
+## Next Phase Planning
+
+### Phase 12: Account List Sync and Real User Metrics
+
+- Keep saved city, shopping lists, checklist state, and optimization mode consistent
+  across web and mobile sessions for the same account.
+- Keep catalog search results visible in list creation, using the product field only
+  as a filter.
+- Compute user savings from the latest completed optimization per list so repeated
+  optimization does not inflate the account total.
+
+### Phase 13: Offer Price Model and Store Comparisons
+
+- Extend offers with base/original price and promotional price so receipts can capture
+  discounted and non-discounted values.
+- Compare identical variants across establishments in the same city/region and expose
+  the monetary difference to shopper-facing UI.
+- Show promotional price treatment in UI, including crossed original price and savings
+  versus other stores or regional average when enough data exists.
+
+### Phase 14: Queue, Health, and Optimization Auditability
+
+- Enrich processing jobs with list owner, request/completion timestamps, optimization
+  mode, run id, job id, and attempt semantics.
+- Add a detailed operations view for a run with selected offers, rejected alternatives,
+  calculations, comparisons, and decision trace.
+- Clarify repeated completed jobs for the same list as separate optimization runs unless
+  they share the same processing job attempt chain.
+
+### Phase 15: Cities, Seed Data, and Local Infra
+
+- Expand city admin screens with establishments and audited product counts per store.
+- Keep Docker Compose useful for local operations by including PgAdmin connected to the
+  development PostgreSQL service.
+- Evolve seed data with multiple real-like variants, images, establishments, and price
+  comparison cases.
+
+### Phase 16: Observability, Deployment, and Infrastructure Planning
+
+- Standardize application logging with Pino patterns across existing backend modules and
+  new modules.
+- Plan Sentry integration for backend/web/mobile exception telemetry.
+- Plan Railway deployment topology for API, worker, PostgreSQL, Redis, and web hosting.
+- Plan Terraform modules for future production infrastructure without blocking local MVP
+  delivery.
+
+### Phase 17: CI Workflow Reliability and Security
+
+- Treat GitHub Actions failures as production-blocking regressions for `homolog`.
+- Inspect real Actions logs before changing workflow YAML.
+- Keep workflow permissions minimal and avoid agentic/AI actions on untrusted events.
+- Preserve backend and web quality gates as build, lint, and test.
+- Add mobile CI only after Flutter setup is explicit and stable in the runner.
+
+### Phase 18: Monetization and Entitlements
+
+- Use a hybrid freemium model: free optimization tokens, premium unlimited
+  optimizations with fair-use controls, and optional future token packs.
+- Model optimization tokens as an append-only ledger with idempotent consume/refund
+  semantics instead of a mutable counter.
+- Keep savings claims tied to real latest-completed-per-list savings so repeated
+  optimizations do not inflate value.
+- Plan Stripe subscription and credit-based billing integration after internal
+  entitlement rules are testable.
+- Keep sponsored retailer monetization separate from organic cheapest-result ranking
+  unless clearly labeled.
+
+### Phase 19: Subscription Billing and Payment Operations
+
+- Add billing contracts only after internal entitlements and the token ledger are
+  stable.
+- Integrate checkout, webhook, subscription status, cancellation, refund, and failed
+  payment states with idempotent event processing.
+- Keep admin support diagnostics available for entitlement source, subscription state,
+  and recent billing events.
+- Keep mobile upgrade messaging compatible with app-store policies before enabling
+  web-routed payment flows.
+
+### Phase 20: Advanced Optimization Engine and Explainability
+
+- Formalize optimization objectives, constraints, tie-breakers, infeasibility behavior,
+  and promotional-price treatment.
+- Separate candidate generation, constraint solving, scoring, and explanation building
+  inside backend optimization services.
+- Persist and expose selected offers, rejected alternatives, savings comparisons,
+  constraints, and confidence warnings for shopper and admin views.
+- Add bounded runtime checks for standard list sizes before increasing solver
+  complexity.
+
+### Phase 21: Receipt Intelligence, Contribution Quality, and Anti-Abuse
+
+- Treat receipt ingestion as a trust-scored contribution pipeline before it can update
+  current offers or reward optimization tokens.
+- Detect duplicate receipts, conflicting prices, implausible discounts, and repeated
+  suspicious submissions.
+- Add admin review queues for receipt-derived offers and token reward decisions.
+- Connect receipt rewards to the token ledger only after contribution scoring passes.
+
+### Phase 22: Security, QA, and Release Hardening
+
+- Add requirements-quality, API security, web injection, mobile privacy, and E2E
+  release gates before broader production/payment rollout.
+- Cover auth, RBAC, payment webhooks, SQL injection, HTML injection, token double-spend,
+  admin privilege boundaries, and rollback readiness.
+- Document release checks for seed reset, payment sandbox, observability, incident
+  triage, and rollback.
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |

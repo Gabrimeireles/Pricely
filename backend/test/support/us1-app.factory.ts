@@ -190,6 +190,35 @@ class InMemoryReceiptRecordRepository {
     return structuredClone(record);
   }
 
+  async attachProcessingJob(receiptRecordId: string, processingJobId: string) {
+    const existing = this.records.get(receiptRecordId);
+    if (!existing) {
+      return;
+    }
+
+    this.records.set(receiptRecordId, {
+      ...existing,
+      processingJobId,
+      processingStatus: 'queued',
+    });
+  }
+
+  async markExtractionFailed(receiptRecordId: string, reason: string) {
+    const existing = this.records.get(receiptRecordId);
+    if (!existing) {
+      return;
+    }
+
+    this.records.set(receiptRecordId, {
+      ...existing,
+      parseStatus: 'failed',
+      processingLogs: [
+        ...(existing.processingLogs ?? []),
+        `extraction_failed:${reason}`,
+      ],
+    });
+  }
+
   async findById(id: string) {
     const value = this.records.get(id);
     return value ? structuredClone(value) : null;
@@ -859,6 +888,31 @@ class PrismaUserAccountMock {
       };
     },
   };
+
+  async $queryRaw() {
+    const latestCompletedByList = new Map<string, any>();
+
+    for (const run of this.optimizationRuns.values()) {
+      if (run.status !== 'completed' || run.estimatedSavings === null) {
+        continue;
+      }
+
+      const existing = latestCompletedByList.get(run.shoppingListId);
+      if (
+        !existing ||
+        new Date(run.createdAt).getTime() > new Date(existing.createdAt).getTime()
+      ) {
+        latestCompletedByList.set(run.shoppingListId, run);
+      }
+    }
+
+    const totalEstimatedSavings = [...latestCompletedByList.values()].reduce(
+      (total, run) => total + Number(run.estimatedSavings ?? 0),
+      0,
+    );
+
+    return [{ totalEstimatedSavings }];
+  }
 
   readonly optimizationSelection = {
     deleteMany: async ({ where }: { where: { optimizationRunId: string } }) => {

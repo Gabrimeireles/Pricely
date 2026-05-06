@@ -5,6 +5,7 @@ import {
   AdminListsPage,
   AdminOffersPage,
   AdminOverviewPage,
+  AdminQueueDetailPage,
   AdminQueuePage,
   AdminRegionsPage,
 } from '@/dashboard/dashboard-pages';
@@ -40,6 +41,10 @@ export const dashboardRoute = {
     {
       path: 'fila',
       element: <AdminQueuePage />,
+    },
+    {
+      path: 'fila/:jobId',
+      element: <AdminQueueDetailPage />,
     },
     {
       path: 'precos',

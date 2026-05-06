@@ -21,11 +21,33 @@ export class ReceiptIngestionProcessor {
       return;
     }
 
-    await this.persistStoreOffers(record);
+    if (record.lineItems.length === 0) {
+      await this.receiptRecordRepository.markExtractionFailed(
+        receiptRecordId,
+        'structured_provider_or_ocr_not_configured',
+      );
+      throw new Error('Receipt extraction provider or OCR extractor is not configured');
+    }
+
+    if (!record.storeId || !record.storeName) {
+      await this.receiptRecordRepository.markExtractionFailed(
+        receiptRecordId,
+        'missing_store_identity',
+      );
+      throw new Error('Receipt store identity is required before creating price offers');
+    }
+
+    await this.persistStoreOffers({
+      ...record,
+      storeId: record.storeId,
+      storeName: record.storeName,
+    });
     this.logger.log(`Receipt ${receiptRecordId} processed into store offers`);
   }
 
-  private async persistStoreOffers(record: ReceiptRecordEntity): Promise<void> {
+  private async persistStoreOffers(
+    record: ReceiptRecordEntity & { storeId: string; storeName: string },
+  ): Promise<void> {
     await Promise.all(
       record.lineItems.map((lineItem) =>
         this.storeOfferRepository.upsert({
@@ -35,6 +57,8 @@ export class ReceiptIngestionProcessor {
           canonicalName: lineItem.normalizedName,
           displayName: lineItem.rawProductName,
           price: lineItem.unitPrice,
+          basePrice: lineItem.originalUnitPrice ?? lineItem.unitPrice,
+          promotionalPrice: lineItem.promotionalUnitPrice,
           quantityContext: lineItem.packageSize,
           availabilityStatus: 'available',
           confidenceScore: lineItem.matchConfidence,

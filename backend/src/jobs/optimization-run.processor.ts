@@ -63,6 +63,18 @@ export class OptimizationRunProcessor {
             selection.estimatedCost !== undefined
               ? new Prisma.Decimal(selection.estimatedCost)
               : null,
+          comparisonPriceAmount:
+            selection.comparisonPriceAmount !== undefined
+              ? new Prisma.Decimal(selection.comparisonPriceAmount)
+              : null,
+          regionalAveragePriceAmount:
+            selection.regionalAveragePriceAmount !== undefined
+              ? new Prisma.Decimal(selection.regionalAveragePriceAmount)
+              : null,
+          savingsVsComparison:
+            selection.savingsVsComparison !== undefined
+              ? new Prisma.Decimal(selection.savingsVsComparison)
+              : null,
           confidenceNotice: selection.confidenceNotice ?? null,
         })),
       }),

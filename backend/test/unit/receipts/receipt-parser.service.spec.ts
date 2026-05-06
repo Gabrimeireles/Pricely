@@ -30,11 +30,33 @@ describe('ReceiptParserService', () => {
     expect(result.items[0]).toMatchObject({
       rawProductName: 'Arroz Tio João tp1 5kg',
       normalizedName: 'arroz tio joao tipo 1',
+      ean: undefined,
       quantity: 2,
       unitPrice: 29.9,
       currency: 'BRL',
       packageSize: '5 kg',
       lineTotal: 59.8,
+    });
+  });
+
+  it('keeps EAN values when available for future product matching', () => {
+    const input: ReceiptIngestionRequest = {
+      storeName: 'Mercado Centro',
+      items: [
+        {
+          rawProductName: 'Cafe torrado 500g',
+          ean: '7891000000000',
+          quantity: 1,
+          unitPrice: 15.9,
+        },
+      ],
+    };
+
+    const result = service.parse(input);
+
+    expect(result.items[0]).toMatchObject({
+      ean: '7891000000000',
+      rawProductName: 'Cafe torrado 500g',
     });
   });
 
@@ -67,6 +89,30 @@ describe('ReceiptParserService', () => {
     expect(result.issues).toContain('item_0_quantity_defaulted');
     expect(result.issues).toContain('item_1_invalid_unit_price');
     expect(result.confidenceScore).toBeLessThan(0.95);
+  });
+
+  it('keeps original and promotional prices when a receipt line has a discount', () => {
+    const input: ReceiptIngestionRequest = {
+      storeName: 'Mercado Centro',
+      items: [
+        {
+          rawProductName: 'Arroz Camil tipo 1 5kg',
+          quantity: 1,
+          unitPrice: 18.99,
+          originalUnitPrice: 20.99,
+          promotionalUnitPrice: 18.99,
+        },
+      ],
+    };
+
+    const result = service.parse(input);
+
+    expect(result.items[0]).toMatchObject({
+      unitPrice: 18.99,
+      originalUnitPrice: 20.99,
+      promotionalUnitPrice: 18.99,
+      lineTotal: 18.99,
+    });
   });
 
   it('fails when no valid structured lines can be extracted', () => {

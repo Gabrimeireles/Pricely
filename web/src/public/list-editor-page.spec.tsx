@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -78,6 +78,7 @@ describe('ListEditorPage', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    cleanup();
   });
 
   it('lets the user choose a base product and keep the default variant rule', async () => {
@@ -107,9 +108,60 @@ describe('ListEditorPage', () => {
     const searchImage = screen.getByAltText('Arroz tipo 1 1kg') as HTMLImageElement;
     expect(searchImage.src).toContain('https://example.com/arroz-camil.jpg');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Adicionar' })[0]);
 
     expect(await screen.findByText('Qualquer variante')).toBeTruthy();
+    expect(screen.getAllByText('Arroz tipo 1 1kg').length).toBeGreaterThan(0);
+  });
+
+  it('keeps the comparable product list active after adding the first item', async () => {
+    render(
+      <MemoryRouter initialEntries={['/listas/nova']}>
+        <Routes>
+          <Route path="/listas/:listId" element={<ListEditorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Produto'), {
+      target: { value: 'Arroz' },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Adicionar' })).toBeTruthy(),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
+
+    expect(screen.getByText('Produtos comparáveis')).toBeTruthy();
+    expect(screen.getAllByText('Arroz tipo 1 1kg').length).toBeGreaterThan(0);
+  });
+
+  it('shows the selected exact variant image in the variant configuration dialog', async () => {
+    render(
+      <MemoryRouter initialEntries={['/listas/nova']}>
+        <Routes>
+          <Route path="/listas/:listId" element={<ListEditorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Configurar' }).length).toBeGreaterThan(0),
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Configurar' })[0]);
+    await screen.findByText('Configurar marca');
+    fireEvent.change(screen.getByDisplayValue('Qualquer variante'), {
+      target: { value: 'exact' },
+    });
+    fireEvent.change(screen.getByDisplayValue('Selecione a variante'), {
+      target: { value: 'variant-1' },
+    });
+
+    const variantImage = await screen.findByAltText('Camil · Arroz Tipo 1 1kg');
+    expect((variantImage as HTMLImageElement).src).toContain('https://example.com/arroz-camil.jpg');
+    expect(screen.getByText('Variante exata selecionada')).toBeTruthy();
   });
 
   it('renders the exact variant name for existing list items', async () => {

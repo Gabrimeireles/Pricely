@@ -67,6 +67,9 @@ type OptimizationResultApiResponse = {
     establishmentNeighborhood?: string;
     estimatedCost?: number;
     priceAmount?: number;
+    comparisonPriceAmount?: number;
+    regionalAveragePriceAmount?: number;
+    savingsVsComparison?: number;
     sourceLabel?: string;
     observedAt?: string;
     selectionStatus: 'selected' | 'missing' | 'review';
@@ -117,6 +120,9 @@ type RegionOffersApiResponse = {
     displayName: string;
     packageLabel: string;
     priceAmount: number;
+    basePriceAmount?: number;
+    promotionalPriceAmount?: number;
+    savingsVsRegionalAverage?: number;
     observedAt: string;
     sourceLabel: string;
     storeName: string;
@@ -150,6 +156,11 @@ type OfferDetailApiResponse = {
     displayName: string;
     packageLabel: string;
     priceAmount: number;
+    basePriceAmount?: number;
+    promotionalPriceAmount?: number;
+    regionalAveragePriceAmount?: number;
+    comparisonPriceAmount?: number;
+    savingsVsComparison?: number;
     observedAt: string;
     sourceLabel: string;
     storeName: string;
@@ -162,6 +173,8 @@ type OfferDetailApiResponse = {
     neighborhood: string;
     packageLabel: string;
     priceAmount: number;
+    basePriceAmount?: number;
+    promotionalPriceAmount?: number;
     observedAt: string;
     sourceLabel: string;
     confidenceLevel: 'high' | 'medium' | 'low';
@@ -220,6 +233,49 @@ type AdminProcessingJobResponse = {
   createdAt: string;
   updatedAt: string;
   finishedAt?: string;
+  owner?: {
+    id: string;
+    displayName: string;
+    email: string;
+  } | null;
+  shoppingList?: {
+    id: string;
+    name: string;
+  } | null;
+  optimizationRun?: {
+    id: string;
+    mode: OptimizationModeId;
+    status: 'queued' | 'running' | 'completed' | 'failed';
+    createdAt: string;
+    completedAt?: string;
+  } | null;
+};
+
+type AdminProcessingJobDetailResponse = AdminProcessingJobResponse & {
+  optimizationRun?: (NonNullable<AdminProcessingJobResponse['optimizationRun']> & {
+    totalEstimatedCost: number;
+    estimatedSavings: number;
+    coverageStatus: 'complete' | 'partial' | 'none';
+    summary?: string | null;
+    selections: Array<{
+      id: string;
+      shoppingListItemId: string;
+      shoppingListItemName: string;
+      status: 'selected' | 'review' | 'missing';
+      estimatedCost: number;
+      confidenceNotice?: string | null;
+      offer?: {
+        id: string;
+        displayName: string;
+        variantName: string;
+        establishmentName: string;
+        neighborhood: string;
+        priceAmount: number;
+        sourceLabel: string;
+        observedAt: string;
+      } | null;
+    }>;
+  }) | null;
 };
 
 type AdminQueueHealthResponse = {
@@ -244,6 +300,15 @@ type AdminRegionResponse = {
   implantationStatus: 'active' | 'activating' | 'inactive';
   publicSortOrder: number;
   activeEstablishmentsCount: number;
+  establishments: Array<{
+    id: string;
+    brandName: string;
+    unitName: string;
+    neighborhood: string;
+    cityName: string;
+    isActive: boolean;
+    auditedProductsCount: number;
+  }>;
 };
 
 type AdminShoppingListAuditResponse = {
@@ -328,6 +393,8 @@ type AdminOfferResponse = {
   displayName: string;
   packageLabel: string;
   priceAmount: number | string;
+  basePriceAmount?: number | string | null;
+  promotionalPriceAmount?: number | string | null;
   availabilityStatus: string;
   confidenceLevel: string;
   observedAt: string;
@@ -572,6 +639,10 @@ export async function fetchAdminProcessingJobs(token: string) {
   return apiFetch<AdminProcessingJobResponse[]>('/admin/processing-jobs', {}, token);
 }
 
+export async function fetchAdminProcessingJobDetail(token: string, id: string) {
+  return apiFetch<AdminProcessingJobDetailResponse>(`/admin/processing-jobs/${id}`, {}, token);
+}
+
 export async function fetchAdminQueueHealth(token: string) {
   return apiFetch<AdminQueueHealthResponse>('/admin/queue-health', {}, token);
 }
@@ -810,6 +881,7 @@ export type {
   AdminProductResponse,
   AdminProductVariantResponse,
   AdminProcessingJobResponse,
+  AdminProcessingJobDetailResponse,
   AdminQueueHealthResponse,
   AdminRegionResponse,
   OfferDetailApiResponse,

@@ -42,6 +42,7 @@ local. A stack sobe:
 
 - `postgres` em `localhost:5433`
 - `redis` em `localhost:6380`
+- `pgadmin` em `http://localhost:5050`
 - `backend` em `localhost:3000`
 - `web` em `localhost:5173`
 
@@ -69,6 +70,9 @@ Observacoes:
   `prisma db seed` antes de iniciar a API em modo de desenvolvimento.
 - A stack de compose e orientada a desenvolvimento local, com volumes montados e banco
   descartavel quando necessario.
+- O PgAdmin local usa `admin@pricely.local` / `admin` e ja importa o servidor
+  `Pricely PostgreSQL` apontando para o host Docker `postgres`. Quando solicitado,
+  use a senha do banco `postgres`.
 - A URL de API usada pelo navegador e `http://localhost:3000`.
 - Validacao local de referencia em `2026-04-27`:
   - `docker compose up --build -d`

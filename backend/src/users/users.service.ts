@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../persistence/prisma.service';
 import { type UserProfile, type UserProfileStats } from './users.types';
 
@@ -70,30 +71,26 @@ export class UsersService {
         })
       : null;
 
-    const [shoppingListsCount, completedOptimizationRuns, aggregatedOptimization, receiptSubmissionsCount] =
-      await Promise.all([
-        this.prisma.shoppingList.count({
-          where: { userId: id },
-        }),
-        this.prisma.optimizationRun.count({
-          where: {
-            userId: id,
-            status: 'completed',
-          },
-        }),
-        this.prisma.optimizationRun.aggregate({
-          where: {
-            userId: id,
-            status: 'completed',
-          },
-          _sum: {
-            estimatedSavings: true,
-          },
-        }),
-        this.prisma.receiptRecord.count({
-          where: { userId: id },
-        }),
-      ]);
+    const [
+      shoppingListsCount,
+      completedOptimizationRuns,
+      latestOptimizationSavings,
+      receiptSubmissionsCount,
+    ] = await Promise.all([
+      this.prisma.shoppingList.count({
+        where: { userId: id },
+      }),
+      this.prisma.optimizationRun.count({
+        where: {
+          userId: id,
+          status: 'completed',
+        },
+      }),
+      this.getLatestCompletedSavingsByList(id),
+      this.prisma.receiptRecord.count({
+        where: { userId: id },
+      }),
+    ]);
 
     return this.toProfile(
       user,
@@ -103,13 +100,16 @@ export class UsersService {
         offerReportsCount: 0,
         receiptSubmissionsCount,
         shoppingListsCount,
-        totalEstimatedSavings: Number(aggregatedOptimization._sum.estimatedSavings ?? 0),
+        totalEstimatedSavings: latestOptimizationSavings,
       },
       preferredRegion?.slug ?? null,
     );
   }
 
-  async updatePreferredRegionBySlug(id: string, regionSlug: string): Promise<UserProfile> {
+  async updatePreferredRegionBySlug(
+    id: string,
+    regionSlug: string,
+  ): Promise<UserProfile> {
     const region = await this.prisma.region.findUnique({
       where: { slug: regionSlug },
       select: { id: true, slug: true },
@@ -131,15 +131,15 @@ export class UsersService {
 
   toProfile(
     user: {
-    id: string;
-    email: string;
-    displayName: string;
-    role: 'customer' | 'admin';
-    status: 'active' | 'suspended';
-    preferredRegionId?: string | null;
-    lastLoginAt: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
+      id: string;
+      email: string;
+      displayName: string;
+      role: 'customer' | 'admin';
+      status: 'active' | 'suspended';
+      preferredRegionId?: string | null;
+      lastLoginAt: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
     },
     stats: UserProfileStats = this.buildEmptyProfileStats(),
     preferredRegionSlug: string | null = null,
@@ -167,5 +167,25 @@ export class UsersService {
       receiptSubmissionsCount: 0,
       offerReportsCount: 0,
     };
+  }
+
+  private async getLatestCompletedSavingsByList(
+    userId: string,
+  ): Promise<number> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{ totalEstimatedSavings: Prisma.Decimal | number | string | null }>
+    >`
+    SELECT COALESCE(SUM(latest."estimatedSavings"), 0) AS "totalEstimatedSavings"
+    FROM (
+      SELECT DISTINCT ON ("shoppingListId") "shoppingListId", "estimatedSavings"
+      FROM "OptimizationRun"
+      WHERE "userId" = ${userId}::uuid
+        AND "status" = 'completed'
+        AND "estimatedSavings" IS NOT NULL
+      ORDER BY "shoppingListId", "createdAt" DESC
+    ) latest
+  `;
+
+    return Number(rows[0]?.totalEstimatedSavings ?? 0);
   }
 }

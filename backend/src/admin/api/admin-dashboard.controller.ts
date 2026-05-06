@@ -227,6 +227,16 @@ class CreateOfferDto {
   @Min(0)
   priceAmount!: number;
 
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  basePriceAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  promotionalPriceAmount?: number;
+
   @IsIn(['available', 'unavailable', 'uncertain'])
   availabilityStatus!: 'available' | 'unavailable' | 'uncertain';
 
@@ -277,6 +287,16 @@ class UpdateOfferDto {
   priceAmount?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  basePriceAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  promotionalPriceAmount?: number;
+
+  @IsOptional()
   @IsIn(['available', 'unavailable', 'uncertain'])
   availabilityStatus?: 'available' | 'unavailable' | 'uncertain';
 
@@ -315,6 +335,11 @@ export class AdminDashboardController {
   @Get('processing-jobs')
   async listProcessingJobs() {
     return this.adminDashboardService.listProcessingJobs();
+  }
+
+  @Get('processing-jobs/:id')
+  async getProcessingJobDetail(@Param('id') id: string) {
+    return this.adminDashboardService.getProcessingJobDetail(id);
   }
 
   @Get('queue-health')

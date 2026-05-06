@@ -32,6 +32,9 @@ export interface RegionalOffersContract {
     displayName: string;
     packageLabel: string;
     priceAmount: number;
+    basePriceAmount?: number;
+    promotionalPriceAmount?: number;
+    savingsVsRegionalAverage?: number;
     observedAt: string;
     sourceLabel: string;
     storeName: string;
