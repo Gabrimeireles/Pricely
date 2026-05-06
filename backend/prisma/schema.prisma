@@ -90,6 +90,28 @@ enum OptimizationSelectionStatus {
   missing
 }
 
+enum UserEntitlementPlan {
+  free
+  premium
+}
+
+enum UserEntitlementStatus {
+  active
+  trialing
+  past_due
+  cancelled
+  expired
+}
+
+enum OptimizationTokenLedgerAction {
+  grant
+  consume
+  refund
+  expire
+  admin_adjustment
+  receipt_bonus
+}
+
 enum ProcessingJobType {
   optimization
   receipt_processing
@@ -133,6 +155,8 @@ model UserAccount {
   shoppingLists    ShoppingList[]
   optimizationRuns OptimizationRun[]
   receiptRecords   ReceiptRecord[]
+  entitlements      UserEntitlement[]
+  optimizationTokenLedger OptimizationTokenLedgerEntry[]
   preferredRegion  Region?           @relation("UserPreferredRegion", fields: [preferredRegionId], references: [id], onDelete: SetNull)
 }
 
@@ -309,6 +333,7 @@ model OptimizationRun {
   createdAt                DateTime                   @default(now())
   completedAt              DateTime?
   optimizationSelections   OptimizationSelection[]
+  tokenLedgerEntries       OptimizationTokenLedgerEntry[]
   processingJob            ProcessingJob?             @relation(fields: [jobId], references: [id], onDelete: SetNull)
   preferredEstablishment   Establishment?             @relation("PreferredEstablishment", fields: [preferredEstablishmentId], references: [id], onDelete: SetNull)
   region                   Region                     @relation(fields: [regionId], references: [id], onDelete: Restrict)
@@ -317,6 +342,40 @@ model OptimizationRun {
 
   @@index([shoppingListId, createdAt])
   @@index([status, createdAt])
+}
+
+model UserEntitlement {
+  id             String                @id @default(uuid()) @db.Uuid
+  userId         String                @db.Uuid
+  plan           UserEntitlementPlan
+  status         UserEntitlementStatus
+  source         String
+  externalRef    String?
+  startsAt       DateTime              @default(now())
+  endsAt         DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  user           UserAccount           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, plan, status])
+  @@index([externalRef])
+}
+
+model OptimizationTokenLedgerEntry {
+  id                       String                         @id @default(uuid()) @db.Uuid
+  userId                   String                         @db.Uuid
+  action                   OptimizationTokenLedgerAction
+  amount                   Int
+  idempotencyKey           String                         @unique
+  source                   String
+  relatedOptimizationRunId String?                        @db.Uuid
+  expiresAt                DateTime?
+  createdAt                DateTime                       @default(now())
+  user                     UserAccount                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedOptimizationRun   OptimizationRun?               @relation(fields: [relatedOptimizationRunId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([relatedOptimizationRunId])
 }
 
 model OptimizationSelection {

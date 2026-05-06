@@ -361,12 +361,12 @@ coverage counts, PgAdmin, and richer seed scenarios.
 error telemetry, deployment topology, and infrastructure planning before production
 hosting work begins.
 
-- [ ] T122 [P] Define backend Pino logger standards, redaction rules, correlation fields, and module adoption plan in `docs/observability/pino-logging-plan.md` and `backend/src/common/logging/`
-- [ ] T123 [P] Add backend unit/integration tests for logger context propagation and error classification in `backend/test/unit/common/` and `backend/test/integration/common/`
-- [ ] T124 [P] Plan Sentry instrumentation for backend, web, and mobile release/error telemetry in `docs/observability/sentry-plan.md`
-- [ ] T125 [P] Plan Railway deployment topology, services, env vars, health checks, and rollout/rollback notes in `docs/deployment/railway-plan.md`
-- [ ] T126 [P] Plan Terraform module boundaries for future production infrastructure in `infra/terraform/README.md` and `docs/deployment/terraform-roadmap.md`
-- [ ] T127 Update `docs/local-development.md` with observability and deployment environment conventions once the planning docs are created
+- [X] T122 [P] Define backend Pino logger standards, redaction rules, correlation fields, and module adoption plan in `docs/observability/pino-logging-plan.md` and `backend/src/common/logging/`
+- [X] T123 [P] Add backend unit/integration tests for logger context propagation and error classification in `backend/test/unit/common/` and `backend/test/integration/common/`
+- [X] T124 [P] Plan Sentry instrumentation for backend, web, and mobile release/error telemetry in `docs/observability/sentry-plan.md`
+- [X] T125 [P] Plan Railway deployment topology, services, env vars, health checks, and rollout/rollback notes in `docs/deployment/railway-plan.md`
+- [X] T126 [P] Plan Terraform module boundaries for future production infrastructure in `infra/terraform/README.md` and `docs/deployment/terraform-roadmap.md`
+- [X] T127 Update `docs/local-development.md` with observability and deployment environment conventions once the planning docs are created
 
 ---
 
@@ -378,9 +378,9 @@ automation, then extend coverage to mobile without making CI flaky.
 - [X] T128 Inspect failing GitHub Actions runs on `homolog` and classify whether the failures come from workflow YAML or code regressions in `.github/workflows/`, `backend/test/`, and `web/src/`
 - [X] T129 Patch backend and web regressions that broke CI after phase merges in `backend/test/` and `web/src/app/`
 - [X] T130 Harden CI workflow defaults with manual dispatch, explicit step names, concurrency, and read-only permissions in `.github/workflows/ci.yml` and `.github/workflows/deploy.yml`
-- [ ] T131 Add a dedicated mobile CI job with Flutter setup, analyzer, tests, cache strategy, and optional APK build once runner setup is stable in `.github/workflows/ci.yml`
-- [ ] T132 Add workflow regression documentation for branch targets, required checks, and known runner warnings in `docs/deployment/github-actions.md`
-- [ ] T133 Add lightweight security checks for workflow permissions, untrusted triggers, dependency install integrity, and artifact handling in `.github/workflows/ci.yml`
+- [X] T131 Add a dedicated mobile CI job with Flutter setup, analyzer, tests, cache strategy, and optional APK build once runner setup is stable in `.github/workflows/ci.yml`
+- [X] T132 Add workflow regression documentation for branch targets, required checks, and known runner warnings in `docs/deployment/github-actions.md`
+- [X] T133 Add lightweight security checks for workflow permissions, untrusted triggers, dependency install integrity, and artifact handling in `.github/workflows/ci.yml`
 
 ---
 
@@ -390,10 +390,10 @@ automation, then extend coverage to mobile without making CI flaky.
 optimization tokens, premium unlimited access, optional token packs, and future billing.
 
 - [X] T134 Research and document the recommended hybrid monetization model for optimization tokens, premium unlimited access, and future token packs in `docs/product/phase-18-monetization-plan.md`
-- [ ] T135 [P] Add backend entitlement and token-ledger schema with idempotent consume/refund semantics in `backend/prisma/schema.prisma` and `backend/src/users/`
-- [ ] T136 [P] Add backend unit and integration tests for free grants, premium bypass, token consume/refund, idempotent retries, and insufficient-token failures in `backend/test/unit/users/` and `backend/test/integration/optimization/`
-- [ ] T137 Gate optimization-run creation by premium entitlement or available optimization tokens in `backend/src/optimization/` and `backend/src/jobs/`
-- [ ] T138 Add monthly free-token refill scheduling and abuse-safe bonus-token planning for receipt contributions in `backend/src/jobs/`
+- [X] T135 [P] Add backend entitlement and token-ledger schema with idempotent consume/refund semantics in `backend/prisma/schema.prisma` and `backend/src/users/`
+- [X] T136 [P] Add backend unit and integration tests for free grants, premium bypass, token consume/refund, idempotent retries, and insufficient-token failures in `backend/test/unit/users/` and `backend/test/integration/optimization/`
+- [X] T137 Gate optimization-run creation by premium entitlement or available optimization tokens in `backend/src/optimization/` and `backend/src/jobs/`
+- [~] T138 Add monthly free-token refill scheduling and abuse-safe bonus-token planning for receipt contributions in `backend/src/jobs/`
 - [ ] T139 Add premium/token UI states for web and mobile without blocking first-run value discovery in `web/src/public/`, `web/src/app/`, and `mobile/lib/`
 - [ ] T140 Plan Stripe subscription and credit-based billing integration after internal ledger tests pass in `docs/product/stripe-billing-plan.md` and future billing modules
 

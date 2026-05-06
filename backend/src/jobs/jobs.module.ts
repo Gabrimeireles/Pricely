@@ -5,6 +5,7 @@ import { OptimizationModule } from '../optimization/optimization.module';
 import { ProcessingModule } from '../processing/processing.module';
 import { ReceiptsModule } from '../receipts/receipts.module';
 import { StoresModule } from '../stores/stores.module';
+import { UsersModule } from '../users/users.module';
 import { OptimizationRunProcessor } from './optimization-run.processor';
 import { OptimizationWorkerService } from './optimization-worker.service';
 import { ReceiptIngestionProcessor } from './receipt-ingestion.processor';
@@ -17,6 +18,7 @@ import { ReceiptWorkerService } from './receipt-worker.service';
     ListsModule,
     OptimizationModule,
     ProcessingModule,
+    UsersModule,
   ],
   providers: [
     ReceiptIngestionProcessor,

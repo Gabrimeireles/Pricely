@@ -19,6 +19,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  workflow-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check workflow permissions and trigger safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Eq '^permissions:$' .github/workflows/ci.yml
+          grep -Eq '^  contents: read$' .github/workflows/ci.yml
+          ! grep -R "pull_request_target:" .github/workflows
+          ! grep -R "permissions: write-all" .github/workflows
+          ! grep -R "contents: write" .github/workflows
+      - name: Check dependency install integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "npm ci" .github/workflows/ci.yml
+          grep -q "flutter pub get" .github/workflows/ci.yml
+
   backend:
     runs-on: ubuntu-latest
     defaults:
@@ -62,3 +82,25 @@ jobs:
         run: npm run lint
       - name: Test web
         run: npm run test
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install mobile dependencies
+        run: flutter pub get
+      - name: Analyze mobile
+        run: flutter analyze
+      - name: Test mobile
+        run: flutter test
+      - name: Build debug APK
+        if: github.event_name == 'workflow_dispatch'
+        run: flutter build apk --debug

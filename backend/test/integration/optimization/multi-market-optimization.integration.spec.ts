@@ -152,4 +152,37 @@ describe('Multi-market optimization integration', () => {
       await app.close();
     }
   });
+
+  it('rejects optimization when a non-premium user has no available tokens', async () => {
+    const previousGrant = process.env.FREE_OPTIMIZATION_TOKENS_PER_MONTH;
+    process.env.FREE_OPTIMIZATION_TOKENS_PER_MONTH = '0';
+    const { app, auth } = await createUs1TestApp();
+
+    try {
+      const session = await auth.registerCustomer('no-tokens@pricely.local');
+      const listResponse = await request(app.getHttpServer())
+        .post('/shopping-lists')
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          name: 'Limited groceries',
+          lastMode: 'global_full',
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/shopping-lists/${listResponse.body.id}/optimize`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          mode: 'global_full',
+        })
+        .expect(402);
+    } finally {
+      if (previousGrant === undefined) {
+        delete process.env.FREE_OPTIMIZATION_TOKENS_PER_MONTH;
+      } else {
+        process.env.FREE_OPTIMIZATION_TOKENS_PER_MONTH = previousGrant;
+      }
+      await app.close();
+    }
+  });
 });

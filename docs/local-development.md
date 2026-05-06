@@ -120,3 +120,12 @@ flutter run --dart-define=PRICELY_API_BASE_URL=http://192.168.0.10:3000
 - Novas variaveis devem ser refletidas nos respectivos `.env.example`.
 - O Prisma e a fonte de verdade para schema relacional e fluxo de banco em
   `backend/prisma/`.
+- Observabilidade local usa logs Pino estruturados no backend. Ajuste `LOG_LEVEL`
+  quando precisar de mais detalhe, mas nao registre payloads brutos de recibos,
+  senhas, tokens, CPF, nome ou endereco.
+- Planos de operacao e deploy estao em:
+  - [Pino logging](observability/pino-logging-plan.md)
+  - [Sentry](observability/sentry-plan.md)
+  - [Railway](deployment/railway-plan.md)
+  - [Terraform](deployment/terraform-roadmap.md)
+  - [GitHub Actions](deployment/github-actions.md)

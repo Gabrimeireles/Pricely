@@ -1,6 +1,9 @@
 import { Global, Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
-import { randomUUID } from 'node:crypto';
+import {
+  LOG_REDACTION_PATHS,
+  resolveRequestId,
+} from './logging.config';
 
 @Global()
 @Module({
@@ -8,13 +11,7 @@ import { randomUUID } from 'node:crypto';
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.LOG_LEVEL || 'info',
-        genReqId: (req, res) => {
-          const incoming = req.headers['x-request-id'];
-          const requestId =
-            (Array.isArray(incoming) ? incoming[0] : incoming) || randomUUID();
-          res.setHeader('x-request-id', requestId);
-          return requestId;
-        },
+        genReqId: resolveRequestId,
         customProps: (req) => ({
           requestId: req.id,
         }),
@@ -28,7 +25,7 @@ import { randomUUID } from 'node:crypto';
                 },
               }
             : undefined,
-        redact: ['req.headers.authorization'],
+        redact: LOG_REDACTION_PATHS,
       },
     }),
   ],

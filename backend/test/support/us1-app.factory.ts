@@ -283,6 +283,8 @@ class PrismaUserAccountMock {
   private readonly processingJobs = new Map<string, any>();
   private readonly optimizationRuns = new Map<string, any>();
   private readonly optimizationSelections: any[] = [];
+  private readonly userEntitlements: any[] = [];
+  private readonly optimizationTokenLedgerEntries = new Map<string, any>();
   private readonly regions = [
     {
       id: 'region-test-1',
@@ -934,6 +936,66 @@ class PrismaUserAccountMock {
         })),
       );
       return { count: data.length };
+    },
+  };
+
+  readonly userEntitlement = {
+    findFirst: async ({ where }: { where: any }) => {
+      const now = new Date();
+      const entry =
+        this.userEntitlements.find(
+          (entitlement) =>
+            entitlement.userId === where.userId &&
+            entitlement.plan === where.plan &&
+            where.status.in.includes(entitlement.status) &&
+            (!entitlement.endsAt || new Date(entitlement.endsAt) > now),
+        ) ?? null;
+
+      return entry ? structuredClone(entry) : null;
+    },
+  };
+
+  readonly optimizationTokenLedgerEntry = {
+    upsert: async ({ where, create }: { where: { idempotencyKey: string }; create: any }) => {
+      const existing = this.optimizationTokenLedgerEntries.get(where.idempotencyKey);
+
+      if (existing) {
+        return structuredClone(existing);
+      }
+
+      const entry = {
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+        ...create,
+      };
+      this.optimizationTokenLedgerEntries.set(entry.idempotencyKey, entry);
+
+      return structuredClone(entry);
+    },
+    aggregate: async ({ where }: { where: { userId: string } }) => {
+      const amount = [...this.optimizationTokenLedgerEntries.values()]
+        .filter((entry) => entry.userId === where.userId)
+        .reduce((total, entry) => total + Number(entry.amount), 0);
+
+      return {
+        _sum: {
+          amount,
+        },
+      };
+    },
+    findUnique: async ({ where }: { where: { idempotencyKey: string } }) => {
+      const entry = this.optimizationTokenLedgerEntries.get(where.idempotencyKey);
+      return entry ? structuredClone(entry) : null;
+    },
+    create: async ({ data }: { data: any }) => {
+      const entry = {
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+        ...data,
+      };
+      this.optimizationTokenLedgerEntries.set(entry.idempotencyKey, entry);
+
+      return structuredClone(entry);
     },
   };
 
