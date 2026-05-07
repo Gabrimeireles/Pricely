@@ -326,6 +326,22 @@ while sharing auth and domain contracts.
 - Include distance, coverage radius, and candidate-establishment counts in optimization
   explanations so local results remain auditable.
 
+### Phase 24: UI/UX Alignment with Stitch
+
+- Audit the implemented web and mobile MVP against the current Stitch projects before
+  starting broad visual refactors.
+- Keep the existing Stitch projects as the visual/product reference unless the audit
+  finds a material mismatch with the evolved product direction.
+- Map Stitch design-system rules into implementation guidance for web and mobile,
+  including teal/lime palette usage, Manrope/Inter typography, tonal surfaces, 8px
+  radius, no-heavy-divider rule, and tabular price typography.
+- Refactor public web surfaces, admin web surfaces, and mobile surfaces toward the
+  audited Stitch direction while preserving working backend contracts and MVP flows.
+- Include the new location widgets, receipt states, disabled premium/billing states, and
+  persisted optimization explanations in the UI/UX alignment scope.
+- Add screenshot, Playwright, widget, or golden-style validation notes for the key
+  Stitch-aligned surfaces before considering the MVP visually polished.
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
