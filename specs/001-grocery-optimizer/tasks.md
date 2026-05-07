@@ -461,6 +461,32 @@ payments, and receipt incentives increase risk.
 
 ---
 
+## Phase 23: UI/UX Alignment with Stitch
+
+**Purpose**: Align the implemented MVP product with the current Stitch web and mobile
+direction after backend, receipts, optimization explainability, entitlement, and QA
+hardening landed in `homolog`.
+
+**Stitch references**:
+
+- Web project: `https://stitch.withgoogle.com/projects/5721925466651878397`
+- Mobile project: `https://stitch.withgoogle.com/projects/12371596236658747102`
+
+**Scope rule**: Do not recreate Stitch from scratch unless the audit finds a material
+product-direction mismatch. Prefer converting current Stitch screens and design-system
+rules into implementation tasks against the real product.
+
+- [ ] T169 [P] Audit implemented web/mobile flows against Stitch screens and document product, IA, visual-system, and interaction gaps in `docs/product/stitch-ui-ux-alignment.md`
+- [ ] T170 [P] Map Stitch design-system rules into app implementation tokens for web and mobile, including teal/lime palette, Manrope/Inter usage, tonal surfaces, 8px radius, no-heavy-divider rule, and tabular price typography in `docs/product/stitch-ui-ux-alignment.md`
+- [ ] T171 Refactor public web surfaces toward Stitch direction for landing, city selection, offers explorer, offer detail, lists, list editor, optimization result, receipt states, and disabled premium gate in `web/src/public/`
+- [ ] T172 Refactor web admin surfaces toward Stitch direction for dashboard overview, queue health, receipt review/sanitization, catalog/offer operations, and optimization decision trace in `web/src/dashboard/`
+- [ ] T173 Refactor mobile surfaces toward Stitch direction for onboarding/home, list, optimization results by mode, receipt contribution, profile/value, error states, and dark-mode parity in `mobile/lib/features/`
+- [ ] T174 Render persisted optimization explanations as shopper-friendly and admin-friendly evidence modules instead of raw operational table rows in `web/src/public/`, `web/src/dashboard/`, and `mobile/lib/features/optimization/`
+- [ ] T175 Add visual regression/screenshot validation for key Stitch-aligned web flows with Playwright and keep existing MVP E2E coverage green in `web/e2e/`
+- [ ] T176 Add mobile widget/golden or screenshot-oriented validation notes for key Stitch-aligned mobile flows in `mobile/test/` and `docs/product/stitch-ui-ux-alignment.md`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -478,6 +504,7 @@ payments, and receipt incentives increase risk.
 - **Advanced optimization (Phase 20)**: Depends on Phase 13 offer price comparisons and Phase 14 explainability surfaces
 - **Receipt quality and rewards (Phase 21)**: Depends on Phase 18 token ledger and existing receipt ingestion
 - **Security, QA, and release hardening (Phase 22)**: Runs across Phases 18-21 before broader production/payment rollout
+- **UI/UX alignment (Phase 23)**: Depends on Phases 20-22 so the implemented product and explanation payloads can drive the final web/mobile experience
 
 ### User Story Dependencies
 
@@ -504,6 +531,7 @@ payments, and receipt incentives increase risk.
 - Phase 18 backend schema/tests can run in parallel with web/mobile paywall state design after entitlement contracts are named
 - Phase 20 optimization tests can run before solver refactor as the red phase for the operations-research implementation
 - Phase 22 security checklists and E2E scaffolding can run in parallel with billing and receipt work
+- Phase 23 audit and token mapping can run in parallel before implementation, but web/mobile refactors should follow the audit to avoid speculative UI churn
 
 ---
 
@@ -529,6 +557,7 @@ payments, and receipt incentives increase risk.
 6. Implement Phase 18 entitlement/token ledger before Stripe or paid UI claims
 7. Add Phase 19 billing only after token consume/refund idempotency is verified
 8. Improve optimization explainability and receipt incentives after monetization foundations are safe
+9. Run Phase 23 UI/UX alignment before treating the MVP as a polished product surface
 
 ### Parallel Team Strategy
 
@@ -538,6 +567,7 @@ With multiple contributors:
 2. One contributor focuses on backend catalog/region/admin modules
 3. One contributor focuses on web/mobile integration against stabilized contracts
 4. For Phases 18-22, split work into entitlement/billing, optimization science, receipt quality, frontend UX, and security/QA lanes
+5. For Phase 23, split work into audit/design tokens, public web, admin web, mobile, and visual validation lanes
 
 ---
 
@@ -546,5 +576,6 @@ With multiple contributors:
 - Total tasks are ordered for execution, not just grouped by subsystem
 - Every user story remains independently testable
 - File paths are intentionally explicit so the task list is immediately executable
-- Suggested next execution scope: Phase 16, T131-T133 from Phase 17, and Phase 18
+- Suggested next execution scope: Phase 23 audit and design-token mapping before visual refactors
 - Do not start Phase 19 Stripe work before Phase 18 token-ledger tests pass
+- Do not connect receipt rewards to the token ledger until T162 is explicitly unlocked
