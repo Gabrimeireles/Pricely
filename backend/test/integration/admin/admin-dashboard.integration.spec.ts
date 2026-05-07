@@ -36,13 +36,27 @@ class AdminPrismaMock {
   ];
 
   readonly userAccount = {
-    findUnique: async ({ where }: { where: { id?: string; email?: string } }) => {
+    findUnique: async ({
+      where,
+    }: {
+      where: { id?: string; email?: string };
+    }) => {
       if (where.id) {
         return this.users.get(where.id) ?? null;
       }
-      return [...this.users.values()].find((user) => user.email === where.email) ?? null;
+      return (
+        [...this.users.values()].find((user) => user.email === where.email) ??
+        null
+      );
     },
-    create: async ({ data }: { data: Pick<StoredUser, 'email' | 'passwordHash' | 'displayName' | 'role' | 'status'> }) => {
+    create: async ({
+      data,
+    }: {
+      data: Pick<
+        StoredUser,
+        'email' | 'passwordHash' | 'displayName' | 'role' | 'status'
+      >;
+    }) => {
       const now = new Date();
       const user: StoredUser = {
         id: crypto.randomUUID(),
@@ -58,13 +72,32 @@ class AdminPrismaMock {
       this.users.set(user.id, user);
       return user;
     },
-    update: async ({ where, data }: { where: { id: string }; data: Partial<StoredUser> }) => {
+    update: async ({
+      where,
+      data,
+    }: {
+      where: { id: string };
+      data: Partial<StoredUser>;
+    }) => {
       const existing = this.users.get(where.id)!;
       const updated = { ...existing, ...data, updatedAt: new Date() };
       this.users.set(updated.id, updated);
       return updated;
     },
     count: async () => 2,
+  };
+
+  readonly userEntitlement = {
+    findFirst: jest.fn().mockResolvedValue(null),
+  };
+
+  readonly optimizationTokenLedgerEntry = {
+    upsert: jest.fn().mockResolvedValue({}),
+    aggregate: jest.fn().mockResolvedValue({
+      _sum: {
+        amount: 2,
+      },
+    }),
   };
 
   readonly shoppingList = {
@@ -115,7 +148,11 @@ class AdminPrismaMock {
     count: async () => 1,
     findMany: async () => this.regions,
     create: async ({ data }: { data: any }) => {
-      const region = { id: crypto.randomUUID(), _count: { establishments: 0 }, ...data };
+      const region = {
+        id: crypto.randomUUID(),
+        _count: { establishments: 0 },
+        ...data,
+      };
       this.regions.push(region);
       return region;
     },
@@ -128,8 +165,20 @@ class AdminPrismaMock {
   readonly establishment = {
     count: async () => 5,
     findMany: async () => [],
-    create: async ({ data }: { data: any }) => ({ id: crypto.randomUUID(), region: { id: data.regionId, name: 'Sao Paulo', slug: 'sao-paulo-sp', stateCode: 'SP' }, ...data }),
-    update: async ({ where, data }: { where: { id: string }; data: any }) => ({ id: where.id, ...data }),
+    create: async ({ data }: { data: any }) => ({
+      id: crypto.randomUUID(),
+      region: {
+        id: data.regionId,
+        name: 'Sao Paulo',
+        slug: 'sao-paulo-sp',
+        stateCode: 'SP',
+      },
+      ...data,
+    }),
+    update: async ({ where, data }: { where: { id: string }; data: any }) => ({
+      id: where.id,
+      ...data,
+    }),
   };
   readonly catalogProduct = {
     count: async () => 9,
@@ -150,14 +199,26 @@ class AdminPrismaMock {
   };
   readonly productVariant = {
     findMany: async () => [],
-    create: async ({ data }: { data: any }) => ({ id: crypto.randomUUID(), ...data }),
-    update: async ({ where, data }: { where: { id: string }; data: any }) => ({ id: where.id, ...data }),
+    create: async ({ data }: { data: any }) => ({
+      id: crypto.randomUUID(),
+      ...data,
+    }),
+    update: async ({ where, data }: { where: { id: string }; data: any }) => ({
+      id: where.id,
+      ...data,
+    }),
   };
   readonly productOffer = {
     count: async () => 12,
     findMany: async () => [],
-    create: async ({ data }: { data: any }) => ({ id: crypto.randomUUID(), ...data }),
-    update: async ({ where, data }: { where: { id: string }; data: any }) => ({ id: where.id, ...data }),
+    create: async ({ data }: { data: any }) => ({
+      id: crypto.randomUUID(),
+      ...data,
+    }),
+    update: async ({ where, data }: { where: { id: string }; data: any }) => ({
+      id: where.id,
+      ...data,
+    }),
   };
 }
 

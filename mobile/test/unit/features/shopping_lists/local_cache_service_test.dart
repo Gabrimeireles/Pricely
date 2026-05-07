@@ -37,6 +37,8 @@ void main() {
               unitPrice: 4.98,
               subtotal: 29.9,
               confidenceLabel: 'high',
+              decisionReason: 'selected_confirmed_offer',
+              rejectedReason: null,
             ),
           ],
         ),

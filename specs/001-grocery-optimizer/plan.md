@@ -262,6 +262,70 @@ while sharing auth and domain contracts.
 - Keep sponsored retailer monetization separate from organic cheapest-result ranking
   unless clearly labeled.
 
+### Phase 19: Subscription Billing and Payment Operations
+
+- Add billing contracts only after internal entitlements and the token ledger are
+  stable.
+- Integrate checkout, webhook, subscription status, cancellation, refund, and failed
+  payment states with idempotent event processing.
+- Keep admin support diagnostics available for entitlement source, subscription state,
+  and recent billing events.
+- Keep mobile upgrade messaging compatible with app-store policies before enabling
+  web-routed payment flows.
+
+### Phase 20: Advanced Optimization Engine and Explainability
+
+- Formalize optimization objectives, constraints, tie-breakers, infeasibility behavior,
+  and promotional-price treatment.
+- Treat the final shopper modes as location-aware objectives:
+  - `local_unique`: cheapest viable basket in one nearby establishment inside the
+    shopper coverage radius.
+  - `local_multi`: cheapest item-level choices across nearby establishments inside the
+    shopper coverage radius.
+  - `global_multi`: cheapest item-level choices across all eligible establishments in
+    the shopper city/region, ignoring proximity ranking.
+- Separate candidate generation, constraint solving, scoring, and explanation building
+  inside backend optimization services.
+- Persist and expose selected offers, rejected alternatives, savings comparisons,
+  constraints, and confidence warnings for shopper and admin views.
+- Add bounded runtime checks for standard list sizes before increasing solver
+  complexity.
+
+### Phase 21: Receipt Intelligence, Contribution Quality, and Anti-Abuse
+
+- Treat receipt ingestion as a trust-scored contribution pipeline before it can update
+  current offers or reward optimization tokens.
+- Detect duplicate receipts, conflicting prices, implausible discounts, and repeated
+  suspicious submissions.
+- Add admin review queues for receipt-derived offers and token reward decisions.
+- Connect receipt rewards to the token ledger only after contribution scoring passes.
+
+### Phase 22: Security, QA, and Release Hardening
+
+- Add requirements-quality, API security, web injection, mobile privacy, and E2E
+  release gates before broader production/payment rollout.
+- Cover auth, RBAC, payment webhooks, SQL injection, HTML injection, token double-spend,
+  admin privilege boundaries, and rollback readiness.
+- Document release checks for seed reset, payment sandbox, observability, incident
+  triage, and rollback.
+
+### Phase 23: Location-Aware Optimization and Coverage
+
+- Store user location preferences only with explicit user configuration or permission;
+  do not infer precise location from receipts or IP addresses.
+- Store establishment coordinates and use them to calculate distance from the user's
+  configured location.
+- Add a configurable maximum coverage radius around the user and show how many active
+  establishments are available inside that area before the user saves the setting.
+- Add web and mobile widgets for reading current location through explicit permission
+  and for manual user selection when permission is denied, unavailable, or skipped.
+- Rename/align optimization behavior around three final modes:
+  `local_unique`, `local_multi`, and `global_multi`.
+- Keep `global_multi` limited to establishments in the user's selected city/region,
+  even though it ignores distance ranking.
+- Include distance, coverage radius, and candidate-establishment counts in optimization
+  explanations so local results remain auditable.
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |

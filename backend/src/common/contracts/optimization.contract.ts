@@ -22,6 +22,49 @@ export interface OptimizationSelection {
   observedAt?: string;
   selectionStatus: 'selected' | 'missing' | 'review';
   confidenceNotice?: string;
+  decisionReason?: string;
+  rejectedReason?: string;
+}
+
+export interface OptimizationExplanationPayload {
+  version: 1;
+  constraints: {
+    mode: OptimizationMode;
+    singleStoreRequired: boolean;
+    selectedStoreId?: string;
+    exactVariantItemIds: string[];
+    unresolvedItemPolicy: 'flag_missing_or_review';
+  };
+  selectedOffers: Array<{
+    shoppingListItemId: string;
+    productOfferId: string;
+    storeId?: string;
+    storeName?: string;
+    priceAmount?: number;
+    estimatedCost?: number;
+    savingsVsComparison?: number;
+    decisionReason?: string;
+  }>;
+  rejectedAlternatives: Array<{
+    shoppingListItemId: string;
+    productOfferId?: string;
+    storeId?: string;
+    storeName?: string;
+    priceAmount?: number;
+    reason: string;
+  }>;
+  savingsComparisons: Array<{
+    shoppingListItemId: string;
+    selectedPriceAmount?: number;
+    comparisonPriceAmount?: number;
+    regionalAveragePriceAmount?: number;
+    savingsVsComparison?: number;
+  }>;
+  dataQualityWarnings: Array<{
+    shoppingListItemId: string;
+    code: string;
+    message: string;
+  }>;
 }
 
 export interface OptimizationRunAccepted {
@@ -42,6 +85,7 @@ export interface OptimizationResult {
   estimatedSavings?: number;
   coverageStatus: 'complete' | 'partial' | 'none';
   explanationSummary?: string;
+  explanationPayload?: OptimizationExplanationPayload;
   createdAt: string;
   completedAt?: string;
   selections: OptimizationSelection[];

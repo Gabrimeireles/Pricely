@@ -16,6 +16,10 @@ class ReceiptLineItemInputDto {
   rawProductName!: string;
 
   @IsOptional()
+  @IsString()
+  ean?: string;
+
+  @IsOptional()
   @IsNumber()
   @Min(0.0001)
   quantity?: number;
@@ -43,20 +47,68 @@ class ReceiptLineItemInputDto {
   packageSize?: string;
 }
 
-export class ReceiptIngestionDto implements ReceiptIngestionRequest {
+class ReceiptUploadedFileMetadataDto {
   @IsString()
-  storeName!: string;
+  storageKey!: string;
+
+  @IsOptional()
+  @IsString()
+  originalFilename?: string;
+
+  @IsIn(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
+  mimeType!: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp';
+
+  @IsNumber()
+  @Min(1)
+  sizeBytes!: number;
+}
+
+export class ReceiptIngestionDto implements ReceiptIngestionRequest {
+  @IsOptional()
+  @IsString()
+  storeName?: string;
+
+  @IsOptional()
+  @IsString()
+  storeCnpj?: string;
 
   @IsOptional()
   @IsString()
   purchaseDate?: string;
 
   @IsOptional()
-  @IsIn(['manual_entry', 'image_parse', 'import'])
-  sourceType?: 'manual_entry' | 'image_parse' | 'import';
+  @IsIn([
+    'manual_entry',
+    'qr_code_url',
+    'qr_code_image',
+    'pdf_upload',
+    'image_parse',
+    'structured_provider',
+  ])
+  sourceType?:
+    | 'manual_entry'
+    | 'qr_code_url'
+    | 'qr_code_image'
+    | 'pdf_upload'
+    | 'image_parse'
+    | 'structured_provider';
 
+  @IsOptional()
+  @IsString()
+  qrCodeUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  accessKey?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ReceiptUploadedFileMetadataDto)
+  uploadedFile?: ReceiptUploadedFileMetadataDto;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ReceiptLineItemInputDto)
-  items!: ReceiptLineItemInputDto[];
+  items?: ReceiptLineItemInputDto[];
 }

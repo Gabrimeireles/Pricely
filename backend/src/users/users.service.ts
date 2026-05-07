@@ -1,11 +1,25 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../persistence/prisma.service';
-import { type UserProfile, type UserProfileStats } from './users.types';
+import {
+  type UserEntitlementProfile,
+  type UserProfile,
+  type UserProfileStats,
+} from './users.types';
+import { EntitlementsService } from './entitlements.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly entitlementsService?: EntitlementsService,
+  ) {}
 
   async findByEmail(email: string) {
     return this.prisma.userAccount.findUnique({
@@ -71,22 +85,26 @@ export class UsersService {
         })
       : null;
 
-    const [shoppingListsCount, completedOptimizationRuns, latestOptimizationSavings, receiptSubmissionsCount] =
-      await Promise.all([
-        this.prisma.shoppingList.count({
-          where: { userId: id },
-        }),
-        this.prisma.optimizationRun.count({
-          where: {
-            userId: id,
-            status: 'completed',
-          },
-        }),
-        this.getLatestCompletedSavingsByList(id),
-        this.prisma.receiptRecord.count({
-          where: { userId: id },
-        }),
-      ]);
+    const [
+      shoppingListsCount,
+      completedOptimizationRuns,
+      latestOptimizationSavings,
+      receiptSubmissionsCount,
+    ] = await Promise.all([
+      this.prisma.shoppingList.count({
+        where: { userId: id },
+      }),
+      this.prisma.optimizationRun.count({
+        where: {
+          userId: id,
+          status: 'completed',
+        },
+      }),
+      this.getLatestCompletedSavingsByList(id),
+      this.prisma.receiptRecord.count({
+        where: { userId: id },
+      }),
+    ]);
 
     return this.toProfile(
       user,
@@ -99,10 +117,16 @@ export class UsersService {
         totalEstimatedSavings: latestOptimizationSavings,
       },
       preferredRegion?.slug ?? null,
+      this.entitlementsService
+        ? await this.entitlementsService.getProfile(id)
+        : this.buildDefaultEntitlementProfile(),
     );
   }
 
-  async updatePreferredRegionBySlug(id: string, regionSlug: string): Promise<UserProfile> {
+  async updatePreferredRegionBySlug(
+    id: string,
+    regionSlug: string,
+  ): Promise<UserProfile> {
     const region = await this.prisma.region.findUnique({
       where: { slug: regionSlug },
       select: { id: true, slug: true },
@@ -124,18 +148,19 @@ export class UsersService {
 
   toProfile(
     user: {
-    id: string;
-    email: string;
-    displayName: string;
-    role: 'customer' | 'admin';
-    status: 'active' | 'suspended';
-    preferredRegionId?: string | null;
-    lastLoginAt: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
+      id: string;
+      email: string;
+      displayName: string;
+      role: 'customer' | 'admin';
+      status: 'active' | 'suspended';
+      preferredRegionId?: string | null;
+      lastLoginAt: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
     },
     stats: UserProfileStats = this.buildEmptyProfileStats(),
     preferredRegionSlug: string | null = null,
+    entitlement: UserEntitlementProfile = this.buildDefaultEntitlementProfile(),
   ): UserProfile {
     return {
       id: user.id,
@@ -148,6 +173,18 @@ export class UsersService {
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
       profileStats: stats,
+      entitlement,
+    };
+  }
+
+  private buildDefaultEntitlementProfile(): UserEntitlementProfile {
+    return {
+      plan: 'free' as const,
+      status: 'active' as const,
+      availableOptimizationTokens: 0,
+      monthlyFreeOptimizationTokens: 2,
+      billingEnabled: false,
+      checkoutEnabled: false,
     };
   }
 
@@ -162,20 +199,22 @@ export class UsersService {
     };
   }
 
-  private async getLatestCompletedSavingsByList(userId: string): Promise<number> {
+  private async getLatestCompletedSavingsByList(
+    userId: string,
+  ): Promise<number> {
     const rows = await this.prisma.$queryRaw<
       Array<{ totalEstimatedSavings: Prisma.Decimal | number | string | null }>
     >`
-      SELECT COALESCE(SUM(latest."estimatedSavings"), 0) AS "totalEstimatedSavings"
-      FROM (
-        SELECT DISTINCT ON ("shoppingListId") "shoppingListId", "estimatedSavings"
-        FROM "OptimizationRun"
-        WHERE "userId" = ${userId}
-          AND "status" = 'completed'
-          AND "estimatedSavings" IS NOT NULL
-        ORDER BY "shoppingListId", "createdAt" DESC
-      ) latest
-    `;
+    SELECT COALESCE(SUM(latest."estimatedSavings"), 0) AS "totalEstimatedSavings"
+    FROM (
+      SELECT DISTINCT ON ("shoppingListId") "shoppingListId", "estimatedSavings"
+      FROM "OptimizationRun"
+      WHERE "userId" = ${userId}::uuid
+        AND "status" = 'completed'
+        AND "estimatedSavings" IS NOT NULL
+      ORDER BY "shoppingListId", "createdAt" DESC
+    ) latest
+  `;
 
     return Number(rows[0]?.totalEstimatedSavings ?? 0);
   }

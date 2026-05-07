@@ -7,6 +7,15 @@ export interface ProfileStats {
   offerReportsCount: number;
 }
 
+export interface UserEntitlementProfile {
+  plan: 'free' | 'premium';
+  status: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired';
+  availableOptimizationTokens: number;
+  monthlyFreeOptimizationTokens: number;
+  billingEnabled: boolean;
+  checkoutEnabled: boolean;
+}
+
 export interface AuthenticatedUserProfile {
   id: string;
   email: string;
@@ -18,6 +27,7 @@ export interface AuthenticatedUserProfile {
   createdAt: string;
   updatedAt: string;
   profileStats: ProfileStats;
+  entitlement: UserEntitlementProfile;
 }
 
 export interface AuthSessionContract {

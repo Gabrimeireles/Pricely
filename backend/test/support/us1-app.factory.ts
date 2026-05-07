@@ -113,7 +113,8 @@ class InMemoryShoppingListRepository {
     return Array.from(this.lists.values())
       .sort(
         (left, right) =>
-          new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+          new Date(right.updatedAt).getTime() -
+          new Date(left.updatedAt).getTime(),
       )
       .map((entry) => structuredClone(entry));
   }
@@ -132,7 +133,9 @@ class InMemoryShoppingListRepository {
     }
 
     if (summary.latestEstimatedSavings !== undefined) {
-      existing.latestEstimatedSavings = Number(summary.latestEstimatedSavings ?? 0);
+      existing.latestEstimatedSavings = Number(
+        summary.latestEstimatedSavings ?? 0,
+      );
     }
     if (summary.latestOptimizationStatus !== undefined) {
       existing.latestOptimizationStatus = summary.latestOptimizationStatus;
@@ -161,7 +164,9 @@ class InMemoryShoppingListRepository {
             ...item,
             purchaseStatus,
             purchasedAt:
-              purchaseStatus === 'purchased' ? new Date().toISOString() : undefined,
+              purchaseStatus === 'purchased'
+                ? new Date().toISOString()
+                : undefined,
           }
         : item,
     );
@@ -188,6 +193,44 @@ class InMemoryReceiptRecordRepository {
   async create(record: any) {
     this.records.set(record.id, structuredClone(record));
     return structuredClone(record);
+  }
+
+  async findDuplicateCandidate(duplicateKey: string, userId: string) {
+    return (
+      Array.from(this.records.values()).find(
+        (record) =>
+          record.duplicateKey === duplicateKey && record.userId === userId,
+      ) ?? null
+    );
+  }
+
+  async attachProcessingJob(receiptRecordId: string, processingJobId: string) {
+    const existing = this.records.get(receiptRecordId);
+    if (!existing) {
+      return;
+    }
+
+    this.records.set(receiptRecordId, {
+      ...existing,
+      processingJobId,
+      processingStatus: 'queued',
+    });
+  }
+
+  async markExtractionFailed(receiptRecordId: string, reason: string) {
+    const existing = this.records.get(receiptRecordId);
+    if (!existing) {
+      return;
+    }
+
+    this.records.set(receiptRecordId, {
+      ...existing,
+      parseStatus: 'failed',
+      processingLogs: [
+        ...(existing.processingLogs ?? []),
+        `extraction_failed:${reason}`,
+      ],
+    });
   }
 
   async findById(id: string) {
@@ -230,14 +273,21 @@ class InMemoryStoreOfferRepository {
       .map((offer) => structuredClone(offer));
   }
 
-  async findByListItems(items: Array<{ catalogProductId?: string; normalizedName?: string }>) {
-    const catalogProductIds = new Set(items.map((item) => item.catalogProductId).filter(Boolean));
-    const canonicalNames = new Set(items.map((item) => item.normalizedName).filter(Boolean));
+  async findByListItems(
+    items: Array<{ catalogProductId?: string; normalizedName?: string }>,
+  ) {
+    const catalogProductIds = new Set(
+      items.map((item) => item.catalogProductId).filter(Boolean),
+    );
+    const canonicalNames = new Set(
+      items.map((item) => item.normalizedName).filter(Boolean),
+    );
 
     return Array.from(this.offers.values())
       .filter(
         (offer) =>
-          (offer.catalogProductId && catalogProductIds.has(offer.catalogProductId)) ||
+          (offer.catalogProductId &&
+            catalogProductIds.has(offer.catalogProductId)) ||
           canonicalNames.has(offer.canonicalName),
       )
       .map((offer) => structuredClone(offer));
@@ -254,6 +304,8 @@ class PrismaUserAccountMock {
   private readonly processingJobs = new Map<string, any>();
   private readonly optimizationRuns = new Map<string, any>();
   private readonly optimizationSelections: any[] = [];
+  private readonly userEntitlements: any[] = [];
+  private readonly optimizationTokenLedgerEntries = new Map<string, any>();
   private readonly regions = [
     {
       id: 'region-test-1',
@@ -377,6 +429,13 @@ class PrismaUserAccountMock {
       [...this.users.values()].filter(
         (user) => !where?.status || user.status === where.status,
       ).length,
+    findMany: async ({
+      where,
+      select,
+    }: { where?: { status?: string }; select?: { id?: boolean } } = {}) =>
+      [...this.users.values()]
+        .filter((user) => !where?.status || user.status === where.status)
+        .map((user) => (select?.id ? { id: user.id } : structuredClone(user))),
   };
 
   private async findUnique(args: {
@@ -388,8 +447,9 @@ class PrismaUserAccountMock {
 
     if (args.where.email) {
       const user =
-        [...this.users.values()].find((entry) => entry.email === args.where.email) ??
-        null;
+        [...this.users.values()].find(
+          (entry) => entry.email === args.where.email,
+        ) ?? null;
       return this.clone(user);
     }
 
@@ -397,7 +457,10 @@ class PrismaUserAccountMock {
   }
 
   private async create(args: {
-    data: Pick<StoredUser, 'email' | 'passwordHash' | 'displayName' | 'role' | 'status'>;
+    data: Pick<
+      StoredUser,
+      'email' | 'passwordHash' | 'displayName' | 'role' | 'status'
+    >;
   }): Promise<StoredUser> {
     const id = crypto.randomUUID();
     const now = new Date();
@@ -451,8 +514,9 @@ class PrismaUserAccountMock {
       select?: { id?: boolean; slug?: boolean };
     }) => {
       const region =
-        this.regions.find((entry) => entry.id === where.id || entry.slug === where.slug) ??
-        null;
+        this.regions.find(
+          (entry) => entry.id === where.id || entry.slug === where.slug,
+        ) ?? null;
       if (!region) {
         return null;
       }
@@ -514,7 +578,11 @@ class PrismaUserAccountMock {
   };
 
   readonly establishment = {
-    count: async ({ where }: { where?: { regionId?: string; isActive?: boolean } }) =>
+    count: async ({
+      where,
+    }: {
+      where?: { regionId?: string; isActive?: boolean };
+    }) =>
       this.establishments.filter(
         (entry) =>
           (!where?.regionId || entry.regionId === where.regionId) &&
@@ -537,7 +605,9 @@ class PrismaUserAccountMock {
       return structuredClone(establishment);
     },
     update: async ({ where, data }: { where: { id: string }; data: any }) => {
-      const establishment = this.establishments.find((entry) => entry.id === where.id);
+      const establishment = this.establishments.find(
+        (entry) => entry.id === where.id,
+      );
       if (!establishment) {
         throw new Error(`Establishment ${where.id} not found`);
       }
@@ -549,7 +619,8 @@ class PrismaUserAccountMock {
   readonly catalogProduct = {
     count: async ({ where }: { where?: { isActive?: boolean } }) =>
       this.catalogProducts.filter(
-        (entry) => where?.isActive === undefined || entry.isActive === where.isActive,
+        (entry) =>
+          where?.isActive === undefined || entry.isActive === where.isActive,
       ).length,
     findMany: async () =>
       this.catalogProducts.map((entry) => ({
@@ -565,7 +636,9 @@ class PrismaUserAccountMock {
         },
       })),
     findUnique: async ({ where }: { where: { id: string } }) => {
-      const product = this.catalogProducts.find((entry) => entry.id === where.id);
+      const product = this.catalogProducts.find(
+        (entry) => entry.id === where.id,
+      );
       if (!product) {
         return null;
       }
@@ -578,7 +651,9 @@ class PrismaUserAccountMock {
       return structuredClone({ ...product, aliases: [] });
     },
     update: async ({ where, data }: { where: { id: string }; data: any }) => {
-      const product = this.catalogProducts.find((entry) => entry.id === where.id);
+      const product = this.catalogProducts.find(
+        (entry) => entry.id === where.id,
+      );
       if (!product) {
         throw new Error(`Product ${where.id} not found`);
       }
@@ -592,11 +667,15 @@ class PrismaUserAccountMock {
       this.productVariants.map((entry) => ({
         ...structuredClone(entry),
         catalogProduct: structuredClone(
-          this.catalogProducts.find((product) => product.id === entry.catalogProductId),
+          this.catalogProducts.find(
+            (product) => product.id === entry.catalogProductId,
+          ),
         ),
       })),
     findUnique: async ({ where }: { where: { id: string } }) => {
-      const variant = this.productVariants.find((entry) => entry.id === where.id);
+      const variant = this.productVariants.find(
+        (entry) => entry.id === where.id,
+      );
       return variant ? structuredClone(variant) : null;
     },
     create: async ({ data }: { data: any }) => {
@@ -605,7 +684,9 @@ class PrismaUserAccountMock {
       return structuredClone(variant);
     },
     update: async ({ where, data }: { where: { id: string }; data: any }) => {
-      const variant = this.productVariants.find((entry) => entry.id === where.id);
+      const variant = this.productVariants.find(
+        (entry) => entry.id === where.id,
+      );
       if (!variant) {
         throw new Error(`Variant ${where.id} not found`);
       }
@@ -622,7 +703,8 @@ class PrismaUserAccountMock {
     }) =>
       this.productOffers.filter(
         (entry) =>
-          (where?.isActive === undefined || entry.isActive === where.isActive) &&
+          (where?.isActive === undefined ||
+            entry.isActive === where.isActive) &&
           (!where?.availabilityStatus ||
             entry.availabilityStatus === where.availabilityStatus),
       ).length,
@@ -630,7 +712,9 @@ class PrismaUserAccountMock {
       let offers = [...this.productOffers];
 
       if (where?.catalogProductId) {
-        offers = offers.filter((entry) => entry.catalogProductId === where.catalogProductId);
+        offers = offers.filter(
+          (entry) => entry.catalogProductId === where.catalogProductId,
+        );
       }
 
       if (where?.establishment?.regionId) {
@@ -662,7 +746,9 @@ class PrismaUserAccountMock {
           establishment: {
             ...structuredClone(establishment),
             region: structuredClone(
-              this.regions.find((region) => region.id === establishment.regionId),
+              this.regions.find(
+                (region) => region.id === establishment.regionId,
+              ),
             ),
           },
         };
@@ -741,8 +827,7 @@ class PrismaUserAccountMock {
     },
     count: async ({ where }: { where?: { status?: { in?: string[] } } }) =>
       [...this.processingJobs.values()].filter(
-        (entry) =>
-          !where?.status?.in || where.status.in.includes(entry.status),
+        (entry) => !where?.status?.in || where.status.in.includes(entry.status),
       ).length,
     findMany: async () =>
       [...this.processingJobs.values()].map((entry) => structuredClone(entry)),
@@ -774,26 +859,35 @@ class PrismaUserAccountMock {
         ...data,
       };
 
-      this.shoppingListRepository.setOptimizationSummary(updated.shoppingListId, {
-        latestEstimatedSavings: updated.estimatedSavings,
-        latestOptimizationStatus: updated.status,
-        latestOptimizedAt: updated.completedAt
-          ? new Date(updated.completedAt).toISOString()
-          : undefined,
-      });
+      this.shoppingListRepository.setOptimizationSummary(
+        updated.shoppingListId,
+        {
+          latestEstimatedSavings: updated.estimatedSavings,
+          latestOptimizationStatus: updated.status,
+          latestOptimizedAt: updated.completedAt
+            ? new Date(updated.completedAt).toISOString()
+            : undefined,
+        },
+      );
 
       this.optimizationRuns.set(where.id, updated);
       return structuredClone(updated);
     },
-    findFirst: async ({ where }: { where: { shoppingListId: string; userId: string } }) => {
+    findFirst: async ({
+      where,
+    }: {
+      where: { shoppingListId: string; userId: string };
+    }) => {
       const latest = [...this.optimizationRuns.values()]
         .filter(
           (run) =>
-            run.shoppingListId === where.shoppingListId && run.userId === where.userId,
+            run.shoppingListId === where.shoppingListId &&
+            run.userId === where.userId,
         )
         .sort(
           (left, right) =>
-            new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+            new Date(right.createdAt).getTime() -
+            new Date(left.createdAt).getTime(),
         )[0];
 
       if (!latest) {
@@ -840,7 +934,11 @@ class PrismaUserAccountMock {
           run.userId === where.userId &&
           (!where.status || run.status === where.status),
       ).length,
-    aggregate: async ({ where }: { where: { userId: string; status?: string } }) => {
+    aggregate: async ({
+      where,
+    }: {
+      where: { userId: string; status?: string };
+    }) => {
       const total = [...this.optimizationRuns.values()]
         .filter(
           (run) =>
@@ -871,7 +969,8 @@ class PrismaUserAccountMock {
       const existing = latestCompletedByList.get(run.shoppingListId);
       if (
         !existing ||
-        new Date(run.createdAt).getTime() > new Date(existing.createdAt).getTime()
+        new Date(run.createdAt).getTime() >
+          new Date(existing.createdAt).getTime()
       ) {
         latestCompletedByList.set(run.shoppingListId, run);
       }
@@ -908,6 +1007,76 @@ class PrismaUserAccountMock {
     },
   };
 
+  readonly userEntitlement = {
+    findFirst: async ({ where }: { where: any }) => {
+      const now = new Date();
+      const entry =
+        this.userEntitlements.find(
+          (entitlement) =>
+            entitlement.userId === where.userId &&
+            entitlement.plan === where.plan &&
+            where.status.in.includes(entitlement.status) &&
+            (!entitlement.endsAt || new Date(entitlement.endsAt) > now),
+        ) ?? null;
+
+      return entry ? structuredClone(entry) : null;
+    },
+  };
+
+  readonly optimizationTokenLedgerEntry = {
+    upsert: async ({
+      where,
+      create,
+    }: {
+      where: { idempotencyKey: string };
+      create: any;
+    }) => {
+      const existing = this.optimizationTokenLedgerEntries.get(
+        where.idempotencyKey,
+      );
+
+      if (existing) {
+        return structuredClone(existing);
+      }
+
+      const entry = {
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+        ...create,
+      };
+      this.optimizationTokenLedgerEntries.set(entry.idempotencyKey, entry);
+
+      return structuredClone(entry);
+    },
+    aggregate: async ({ where }: { where: { userId: string } }) => {
+      const amount = [...this.optimizationTokenLedgerEntries.values()]
+        .filter((entry) => entry.userId === where.userId)
+        .reduce((total, entry) => total + Number(entry.amount), 0);
+
+      return {
+        _sum: {
+          amount,
+        },
+      };
+    },
+    findUnique: async ({ where }: { where: { idempotencyKey: string } }) => {
+      const entry = this.optimizationTokenLedgerEntries.get(
+        where.idempotencyKey,
+      );
+      return entry ? structuredClone(entry) : null;
+    },
+    create: async ({ data }: { data: any }) => {
+      const entry = {
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+        ...data,
+      };
+      this.optimizationTokenLedgerEntries.set(entry.idempotencyKey, entry);
+
+      return structuredClone(entry);
+    },
+  };
+
   readonly shoppingList = {
     update: async ({ where, data }: { where: { id: string }; data: any }) => ({
       id: where.id,
@@ -918,16 +1087,18 @@ class PrismaUserAccountMock {
       return lists.map((list) => {
         const user = this.users.get(list.userId) ?? null;
         const preferredRegion = list.preferredRegionId
-          ? this.regions.find(
+          ? (this.regions.find(
               (region) =>
-                region.id === list.preferredRegionId || region.slug === list.preferredRegionId,
-            ) ?? null
+                region.id === list.preferredRegionId ||
+                region.slug === list.preferredRegionId,
+            ) ?? null)
           : null;
         const latestOptimization = [...this.optimizationRuns.values()]
           .filter((run) => run.shoppingListId === list.id)
           .sort(
             (left, right) =>
-              new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+              new Date(right.createdAt).getTime() -
+              new Date(left.createdAt).getTime(),
           )[0];
 
         return {
@@ -949,18 +1120,22 @@ class PrismaUserAccountMock {
               }
             : null,
           shoppingListItems: list.items.map((item: any) => ({ id: item.id })),
-          optimizationRuns: latestOptimization ? [structuredClone(latestOptimization)] : [],
+          optimizationRuns: latestOptimization
+            ? [structuredClone(latestOptimization)]
+            : [],
         };
       });
     },
     count: async ({ where }: { where?: { userId?: string } } = {}) =>
       where?.userId
         ? (await this.shoppingListRepository.listByUser(where.userId)).length
-        : (await Promise.all(
-            [...this.users.values()].map((user) =>
-              this.shoppingListRepository.listByUser(user.id),
-            ),
-          )).flat().length,
+        : (
+            await Promise.all(
+              [...this.users.values()].map((user) =>
+                this.shoppingListRepository.listByUser(user.id),
+              ),
+            )
+          ).flat().length,
   };
 
   readonly receiptRecord = {
@@ -1076,10 +1251,12 @@ export async function createUs1TestApp(): Promise<{
     return undefined;
   });
 
-  optimizationQueue.add = jest.fn().mockImplementation(async (_name, data: any) => {
-    await optimizationRunProcessor.process(data.optimizationRunId);
-    return undefined;
-  });
+  optimizationQueue.add = jest
+    .fn()
+    .mockImplementation(async (_name, data: any) => {
+      await optimizationRunProcessor.process(data.optimizationRunId);
+      return undefined;
+    });
 
   return {
     app,

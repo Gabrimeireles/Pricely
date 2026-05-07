@@ -1,4 +1,8 @@
-import type { OptimizationModeId, ProfileSnapshot, ShoppingList } from './types';
+import type {
+  OptimizationModeId,
+  ProfileSnapshot,
+  ShoppingList,
+} from './types';
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
 
@@ -17,6 +21,14 @@ type AuthSessionResponse = {
       contributionsCount: number;
       receiptSubmissionsCount: number;
       offerReportsCount: number;
+    };
+    entitlement?: {
+      plan: 'free' | 'premium';
+      status: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired';
+      availableOptimizationTokens: number;
+      monthlyFreeOptimizationTokens: number;
+      billingEnabled: boolean;
+      checkoutEnabled: boolean;
     };
   };
 };
@@ -74,6 +86,8 @@ type OptimizationResultApiResponse = {
     observedAt?: string;
     selectionStatus: 'selected' | 'missing' | 'review';
     confidenceNotice?: string;
+    decisionReason?: string;
+    rejectedReason?: string;
   }>;
 };
 
@@ -249,33 +263,70 @@ type AdminProcessingJobResponse = {
     createdAt: string;
     completedAt?: string;
   } | null;
+  receiptRecord?: {
+    id: string;
+    storeName?: string | null;
+    storeCnpj?: string | null;
+    parseStatus: 'queued' | 'parsed' | 'partial' | 'failed';
+    trustLevel: 'untrusted' | 'pending_review' | 'trusted' | 'rejected';
+    moderationStatus:
+      | 'pending'
+      | 'accepted'
+      | 'quarantined'
+      | 'duplicate'
+      | 'rejected';
+    rewardEligibilityStatus:
+      | 'disabled'
+      | 'ineligible'
+      | 'eligible_pending'
+      | 'granted';
+    reviewReason?: string | null;
+    purchaseDate?: string;
+  } | null;
 };
 
 type AdminProcessingJobDetailResponse = AdminProcessingJobResponse & {
-  optimizationRun?: (NonNullable<AdminProcessingJobResponse['optimizationRun']> & {
-    totalEstimatedCost: number;
-    estimatedSavings: number;
-    coverageStatus: 'complete' | 'partial' | 'none';
-    summary?: string | null;
-    selections: Array<{
-      id: string;
-      shoppingListItemId: string;
-      shoppingListItemName: string;
-      status: 'selected' | 'review' | 'missing';
-      estimatedCost: number;
-      confidenceNotice?: string | null;
-      offer?: {
-        id: string;
-        displayName: string;
-        variantName: string;
-        establishmentName: string;
-        neighborhood: string;
-        priceAmount: number;
-        sourceLabel: string;
-        observedAt: string;
-      } | null;
-    }>;
-  }) | null;
+  optimizationRun?:
+    | (NonNullable<AdminProcessingJobResponse['optimizationRun']> & {
+        totalEstimatedCost: number;
+        estimatedSavings: number;
+        coverageStatus: 'complete' | 'partial' | 'none';
+        summary?: string | null;
+        selections: Array<{
+          id: string;
+          shoppingListItemId: string;
+          shoppingListItemName: string;
+          status: 'selected' | 'review' | 'missing';
+          estimatedCost: number;
+          confidenceNotice?: string | null;
+          offer?: {
+            id: string;
+            displayName: string;
+            variantName: string;
+            establishmentName: string;
+            neighborhood: string;
+            priceAmount: number;
+            sourceLabel: string;
+            observedAt: string;
+          } | null;
+        }>;
+      })
+    | null;
+  receiptRecord?:
+    | (NonNullable<AdminProcessingJobResponse['receiptRecord']> & {
+        lineItems: Array<{
+          id: string;
+          rawProductName: string;
+          normalizedName: string;
+          ean?: string | null;
+          quantity: number;
+          unitPrice: number;
+          originalUnitPrice?: number;
+          promotionalUnitPrice?: number;
+          matchConfidence: number;
+        }>;
+      })
+    | null;
 };
 
 type AdminQueueHealthResponse = {
@@ -517,12 +568,20 @@ export async function fetchShoppingLists(token: string) {
 }
 
 export async function fetchShoppingList(token: string, listId: string) {
-  return apiFetch<ShoppingListApiResponse>(`/shopping-lists/${listId}`, {}, token);
+  return apiFetch<ShoppingListApiResponse>(
+    `/shopping-lists/${listId}`,
+    {},
+    token,
+  );
 }
 
 export async function createShoppingList(
   token: string,
-  input: { name: string; preferredRegionId?: string; lastMode?: OptimizationModeId },
+  input: {
+    name: string;
+    preferredRegionId?: string;
+    lastMode?: OptimizationModeId;
+  },
 ) {
   return apiFetch<ShoppingListApiResponse>(
     '/shopping-lists',
@@ -597,10 +656,7 @@ export async function runOptimization(
   return waitForOptimizationResult(token, listId);
 }
 
-export async function fetchLatestOptimization(
-  token: string,
-  listId: string,
-) {
+export async function fetchLatestOptimization(token: string, listId: string) {
   return apiFetch<OptimizationResultApiResponse>(
     `/shopping-lists/${listId}/optimizations/latest`,
     {},
@@ -608,10 +664,7 @@ export async function fetchLatestOptimization(
   );
 }
 
-async function waitForOptimizationResult(
-  token: string,
-  listId: string,
-) {
+async function waitForOptimizationResult(token: string, listId: string) {
   const deadline = Date.now() + 30000;
   let latest = await fetchLatestOptimization(token, listId);
 
@@ -625,7 +678,9 @@ async function waitForOptimizationResult(
   }
 
   if (latest.status === 'failed') {
-    throw new Error(latest.explanationSummary || 'Nao foi possivel processar esta lista.');
+    throw new Error(
+      latest.explanationSummary || 'Nao foi possivel processar esta lista.',
+    );
   }
 
   return latest;
@@ -636,11 +691,19 @@ export async function fetchAdminMetrics(token: string) {
 }
 
 export async function fetchAdminProcessingJobs(token: string) {
-  return apiFetch<AdminProcessingJobResponse[]>('/admin/processing-jobs', {}, token);
+  return apiFetch<AdminProcessingJobResponse[]>(
+    '/admin/processing-jobs',
+    {},
+    token,
+  );
 }
 
 export async function fetchAdminProcessingJobDetail(token: string, id: string) {
-  return apiFetch<AdminProcessingJobDetailResponse>(`/admin/processing-jobs/${id}`, {}, token);
+  return apiFetch<AdminProcessingJobDetailResponse>(
+    `/admin/processing-jobs/${id}`,
+    {},
+    token,
+  );
 }
 
 export async function fetchAdminQueueHealth(token: string) {
@@ -652,10 +715,17 @@ export async function fetchAdminRegions(token: string) {
 }
 
 export async function fetchAdminShoppingLists(token: string) {
-  return apiFetch<AdminShoppingListAuditResponse[]>('/admin/shopping-lists', {}, token);
+  return apiFetch<AdminShoppingListAuditResponse[]>(
+    '/admin/shopping-lists',
+    {},
+    token,
+  );
 }
 
-export async function createAdminRegion(token: string, input: Record<string, unknown>) {
+export async function createAdminRegion(
+  token: string,
+  input: Record<string, unknown>,
+) {
   return apiFetch<AdminRegionResponse>(
     '/admin/regions',
     {
@@ -666,7 +736,11 @@ export async function createAdminRegion(token: string, input: Record<string, unk
   );
 }
 
-export async function updateAdminRegion(token: string, id: string, input: Record<string, unknown>) {
+export async function updateAdminRegion(
+  token: string,
+  id: string,
+  input: Record<string, unknown>,
+) {
   return apiFetch<AdminRegionResponse>(
     `/admin/regions/${id}`,
     {
@@ -678,10 +752,17 @@ export async function updateAdminRegion(token: string, id: string, input: Record
 }
 
 export async function fetchAdminEstablishments(token: string) {
-  return apiFetch<AdminEstablishmentResponse[]>('/admin/establishments', {}, token);
+  return apiFetch<AdminEstablishmentResponse[]>(
+    '/admin/establishments',
+    {},
+    token,
+  );
 }
 
-export async function createAdminEstablishment(token: string, input: Record<string, unknown>) {
+export async function createAdminEstablishment(
+  token: string,
+  input: Record<string, unknown>,
+) {
   return apiFetch<AdminEstablishmentResponse>(
     '/admin/establishments',
     {
@@ -711,7 +792,10 @@ export async function fetchAdminProducts(token: string) {
   return apiFetch<AdminProductResponse[]>('/admin/catalog-products', {}, token);
 }
 
-export async function createAdminProduct(token: string, input: Record<string, unknown>) {
+export async function createAdminProduct(
+  token: string,
+  input: Record<string, unknown>,
+) {
   return apiFetch<AdminProductResponse>(
     '/admin/catalog-products',
     {
@@ -755,7 +839,11 @@ export async function uploadAdminProductImage(
 }
 
 export async function fetchAdminProductVariants(token: string) {
-  return apiFetch<AdminProductVariantResponse[]>('/admin/product-variants', {}, token);
+  return apiFetch<AdminProductVariantResponse[]>(
+    '/admin/product-variants',
+    {},
+    token,
+  );
 }
 
 export async function createAdminProductVariant(
@@ -808,7 +896,10 @@ export async function fetchAdminOffers(token: string) {
   return apiFetch<AdminOfferResponse[]>('/admin/offers', {}, token);
 }
 
-export async function createAdminOffer(token: string, input: Record<string, unknown>) {
+export async function createAdminOffer(
+  token: string,
+  input: Record<string, unknown>,
+) {
   return apiFetch<AdminOfferResponse>(
     '/admin/offers',
     {
@@ -835,15 +926,32 @@ export async function updateAdminOffer(
 }
 
 export function mapProfile(user: AuthSessionResponse['user']): ProfileSnapshot {
+  const entitlement = user.entitlement ?? {
+    plan: 'free' as const,
+    status: 'active' as const,
+    availableOptimizationTokens: 0,
+    monthlyFreeOptimizationTokens: 2,
+    billingEnabled: false,
+    checkoutEnabled: false,
+  };
+
   return {
     totalEstimatedSavings: user.profileStats.totalEstimatedSavings,
     listsCreated: user.profileStats.shoppingListsCount,
     receiptsShared: user.profileStats.receiptSubmissionsCount,
     invalidPromotionReports: user.profileStats.offerReportsCount,
+    entitlementPlan: entitlement.plan,
+    entitlementStatus: entitlement.status,
+    availableOptimizationTokens: entitlement.availableOptimizationTokens,
+    monthlyFreeOptimizationTokens: entitlement.monthlyFreeOptimizationTokens,
+    billingEnabled: entitlement.billingEnabled,
+    checkoutEnabled: entitlement.checkoutEnabled,
   };
 }
 
-export function mapShoppingList(apiList: ShoppingListApiResponse): ShoppingList {
+export function mapShoppingList(
+  apiList: ShoppingListApiResponse,
+): ShoppingList {
   return {
     id: apiList.id,
     name: apiList.name,

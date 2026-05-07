@@ -190,6 +190,8 @@ OptimizationResult _buildOptimizationResult() {
             unitPrice: 22.9,
             subtotal: 22.9,
             confidenceLabel: 'confirmado',
+            decisionReason: 'selected_confirmed_offer',
+            rejectedReason: null,
           ),
         ],
       ),

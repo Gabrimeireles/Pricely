@@ -1,0 +1,312 @@
+[
+  {
+    "task_id": "T001",
+    "title": "T001: Update backend dependencies for PostgreSQL, Prisma, auth support, and related scripts in `backend/package.json`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/79"
+  },
+  {
+    "task_id": "T002",
+    "title": "T002: Add Prisma schema bootstrap and migration configuration in `backend/prisma/schema.prisma` and `backend/package.json`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/80"
+  },
+  {
+    "task_id": "T003",
+    "title": "T003: Replace MongoDB local-development guidance with PostgreSQL guidance in `backend/.env.example`, `docs/local-development.md`, and `specs/001-grocery-optimizer/quickstart.md`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/81"
+  },
+  {
+    "task_id": "T004",
+    "title": "T004: Update web and mobile environment examples for shared auth and region endpoints in `web/.env.example`, `mobile/lib/core/networking/`, and `docs/local-development.md`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/82"
+  },
+  {
+    "task_id": "T005",
+    "title": "T005: Replace Mongo bootstrap with PostgreSQL/Prisma persistence bootstrap in `backend/src/persistence/`, `backend/src/app.module.ts`, and `backend/src/main.ts`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/83"
+  },
+  {
+    "task_id": "T006",
+    "title": "T006: Implement shared auth module, JWT/session guards, and role enforcement in `backend/src/auth/`, `backend/src/users/`, and `backend/src/common/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/84"
+  },
+  {
+    "task_id": "T007",
+    "title": "T007: Introduce shared request logging, correlation IDs, and severity-oriented error mapping in `backend/src/common/logging/`, `backend/src/common/errors/`, and `backend/src/common/validation/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/85"
+  },
+  {
+    "task_id": "T008",
+    "title": "T008: Add queue-backed processing job persistence and BullMQ worker wiring in `backend/src/common/queue/`, `backend/src/processing/`, and `backend/src/jobs/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/86"
+  },
+  {
+    "task_id": "T009",
+    "title": "T009: Create core relational entities and Prisma mappings for accounts, regions, establishments, products, offers, lists, optimization runs, and jobs in `backend/prisma/schema.prisma`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/87"
+  },
+  {
+    "task_id": "T010",
+    "title": "T010: Refresh shared backend contracts for auth, regions, offers, lists, and optimization runs in `backend/src/common/contracts/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/88"
+  },
+  {
+    "task_id": "T011",
+    "title": "T011: Add backend migration and seed workflow for baseline admin/customer accounts and demo catalog in `backend/prisma/` and `backend/package.json`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/89"
+  },
+  {
+    "task_id": "T012",
+    "title": "T012: Add foundational backend integration coverage for auth, Prisma persistence, and queued job state transitions in `backend/test/integration/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/90"
+  },
+  {
+    "task_id": "T013",
+    "title": "T013: Add frontend shared API client structure for authenticated public/admin requests in `web/src/app/`, `mobile/lib/core/networking/`, and related shared files",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/91"
+  },
+  {
+    "task_id": "T014",
+    "title": "T014: Add backend unit tests for auth session handling and list ownership rules in `backend/test/unit/auth/` and `backend/test/unit/lists/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/92"
+  },
+  {
+    "task_id": "T015",
+    "title": "T015: Add backend integration tests for shared auth, list persistence, and optimization run queuing in `backend/test/integration/auth/`, `backend/test/integration/lists/`, and `backend/test/integration/optimization/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/93"
+  },
+  {
+    "task_id": "T016",
+    "title": "T016: Add API contract tests for auth, shopping list, and optimization-run endpoints in `backend/test/contract/grocery-optimizer-api.contract.spec.ts`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/94"
+  },
+  {
+    "task_id": "T017",
+    "title": "T017: Add mobile tests for shared account sign-in, saved lists, and latest optimization access in `mobile/test/unit/features/auth/`, `mobile/test/widget/features/shopping_lists/`, and `mobile/test/widget/features/optimization/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/95"
+  },
+  {
+    "task_id": "T018",
+    "title": "T018: Add web tests for sign-in, list routes, and optimization-run retrieval in `web/test/public/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/96"
+  },
+  {
+    "task_id": "T019",
+    "title": "T019: Implement user account persistence and auth services in `backend/src/users/` and `backend/src/auth/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/97"
+  },
+  {
+    "task_id": "T020",
+    "title": "T020: Refactor shopping list persistence to PostgreSQL/Prisma in `backend/src/lists/domain/`, `backend/src/lists/infrastructure/`, and `backend/src/lists/application/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/98"
+  },
+  {
+    "task_id": "T021",
+    "title": "T021: Implement optimization-run aggregate and repository in `backend/src/optimization/domain/`, `backend/src/optimization/infrastructure/`, and `backend/src/processing/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/99"
+  },
+  {
+    "task_id": "T022",
+    "title": "T022: Implement auth, profile, shopping list, and optimization-run API endpoints in `backend/src/auth/api/`, `backend/src/users/api/`, `backend/src/lists/api/`, and `backend/src/optimization/api/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/100"
+  },
+  {
+    "task_id": "T023",
+    "title": "T023: Implement optimization-job enqueueing and result retrieval services in `backend/src/optimization/application/` and `backend/src/jobs/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/101"
+  },
+  {
+    "task_id": "T024",
+    "title": "T024: Implement Flutter shared auth, persisted lists, and optimization-run polling flow in `mobile/lib/features/auth/`, `mobile/lib/features/shopping_lists/`, and `mobile/lib/features/optimization/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/102"
+  },
+  {
+    "task_id": "T025",
+    "title": "T025: Implement web sign-in, sign-up, list editor, and optimization-run polling against real APIs in `web/src/public/`, `web/src/app/`, and `web/src/routes/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/103"
+  },
+  {
+    "task_id": "T026",
+    "title": "T026: Add user-visible processing, retry, and stale-result states on mobile and web in `mobile/lib/features/optimization/`, `web/src/public/`, and related shared UI files",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/104"
+  },
+  {
+    "task_id": "T027",
+    "title": "T027: Add structured logs and metrics for auth, list mutations, and optimization-run state changes in `backend/src/common/logging/`, `backend/src/auth/`, `backend/src/lists/`, and `backend/src/optimization/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/105"
+  },
+  {
+    "task_id": "T028",
+    "title": "T028: Add backend unit tests for region visibility rules and active-establishment counts in `backend/test/unit/regions/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/106"
+  },
+  {
+    "task_id": "T029",
+    "title": "T029: Add backend integration tests for public region, offer, and product-detail reads in `backend/test/integration/regions/`, `backend/test/integration/catalog/`, and `backend/test/integration/pricing/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/107"
+  },
+  {
+    "task_id": "T030",
+    "title": "T030: Add API contract tests for public region and product detail endpoints in `backend/test/contract/grocery-optimizer-api.contract.spec.ts`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/108"
+  },
+  {
+    "task_id": "T031",
+    "title": "T031: Add web tests for public region dropdown behavior, zero-store messaging, and product detail modal content in `web/test/public/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/109"
+  },
+  {
+    "task_id": "T032",
+    "title": "T032: Add mobile tests for region selection and public offer browsing in `mobile/test/widget/features/regions/` and `mobile/test/widget/features/offers/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/110"
+  },
+  {
+    "task_id": "T033",
+    "title": "T033: Implement region persistence, activation rules, and query services in `backend/src/regions/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/111"
+  },
+  {
+    "task_id": "T034",
+    "title": "T034: Implement establishment persistence with branch-level identity and active-state handling in `backend/src/establishments/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/112"
+  },
+  {
+    "task_id": "T035",
+    "title": "T035: Implement canonical product and alias persistence in `backend/src/catalog/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/113"
+  },
+  {
+    "task_id": "T036",
+    "title": "T036: Implement current product offer persistence and active-offer queries in `backend/src/pricing/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/114"
+  },
+  {
+    "task_id": "T037",
+    "title": "T037: Implement public region, regional-offer, and product-detail endpoints in `backend/src/regions/api/`, `backend/src/catalog/api/`, and `backend/src/pricing/api/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/115"
+  },
+  {
+    "task_id": "T038",
+    "title": "T038: Implement web public region selector, active-store count handling, offer explorer, and product detail modal against backend data in `web/src/public/`, `web/src/app/`, and `web/src/routes/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/116"
+  },
+  {
+    "task_id": "T039",
+    "title": "T039: Implement mobile region selector and public offer browsing against backend data in `mobile/lib/features/regions/` and `mobile/lib/features/offers/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/117"
+  },
+  {
+    "task_id": "T040",
+    "title": "T040: Add logging and diagnostics for region filtering, zero-store results, and product-offer reads in `backend/src/regions/`, `backend/src/pricing/`, and `backend/src/common/logging/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/118"
+  },
+  {
+    "task_id": "T041",
+    "title": "T041: Add backend unit tests for role checks, admin metrics aggregation, and activation-state mutations in `backend/test/unit/admin/`, `backend/test/unit/regions/`, and `backend/test/unit/pricing/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/119"
+  },
+  {
+    "task_id": "T042",
+    "title": "T042: Add backend integration tests for admin CRUD and metrics endpoints in `backend/test/integration/admin/`, `backend/test/integration/catalog/`, and `backend/test/integration/establishments/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/120"
+  },
+  {
+    "task_id": "T043",
+    "title": "T043: Add API contract tests for admin metrics and CRUD endpoints in `backend/test/contract/grocery-optimizer-api.contract.spec.ts`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/121"
+  },
+  {
+    "task_id": "T044",
+    "title": "T044: Add web tests for protected admin routing, metrics views, and CRUD forms in `web/test/dashboard/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/122"
+  },
+  {
+    "task_id": "T045",
+    "title": "T045: Implement admin metrics aggregation services in `backend/src/admin/application/` and `backend/src/admin/domain/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/123"
+  },
+  {
+    "task_id": "T046",
+    "title": "T046: Implement admin CRUD services for regions, establishments, products, and offers in `backend/src/admin/application/`, `backend/src/regions/`, `backend/src/establishments/`, `backend/src/catalog/`, and `backend/src/pricing/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/124"
+  },
+  {
+    "task_id": "T047",
+    "title": "T047: Implement admin API controllers, DTOs, and role guards in `backend/src/admin/api/`, `backend/src/regions/api/`, `backend/src/establishments/api/`, `backend/src/catalog/api/`, and `backend/src/pricing/api/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/125"
+  },
+  {
+    "task_id": "T048",
+    "title": "T048: Connect the web admin dashboard to live backend metrics and CRUD endpoints in `web/src/dashboard/`, `web/src/app/`, and `web/src/routes/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/126"
+  },
+  {
+    "task_id": "T049",
+    "title": "T049: Add dashboard states for empty metrics, activation toggles, and CRUD validation errors in `web/src/dashboard/` and `web/src/components/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/127"
+  },
+  {
+    "task_id": "T050",
+    "title": "T050: Add observability for admin writes and dashboard metrics generation in `backend/src/admin/`, `backend/src/common/logging/`, and `backend/src/common/errors/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/128"
+  },
+  {
+    "task_id": "T051",
+    "title": "T051: Add backend unit tests for processing-job state transitions and retry rules in `backend/test/unit/processing/` and `backend/test/unit/jobs/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/129"
+  },
+  {
+    "task_id": "T052",
+    "title": "T052: Add backend integration tests for BullMQ workers and job persistence in `backend/test/integration/jobs/` and `backend/test/integration/processing/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/130"
+  },
+  {
+    "task_id": "T053",
+    "title": "T053: Add API contract tests for processing-job reads in `backend/test/contract/grocery-optimizer-api.contract.spec.ts`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/131"
+  },
+  {
+    "task_id": "T054",
+    "title": "T054: Implement durable processing-job persistence and mapping to BullMQ jobs in `backend/src/processing/` and `backend/src/common/queue/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/132"
+  },
+  {
+    "task_id": "T055",
+    "title": "T055: Refactor optimization worker execution to update processing-job and optimization-run records consistently in `backend/src/jobs/` and `backend/src/optimization/application/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/133"
+  },
+  {
+    "task_id": "T056",
+    "title": "T056: Implement optional receipt-record persistence and queued processing hooks in `backend/src/receipts/` and `backend/src/processing/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/134"
+  },
+  {
+    "task_id": "T057",
+    "title": "T057: Expose processing-job diagnostics to admin and public clients where relevant in `backend/src/processing/api/` and `backend/src/admin/api/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/135"
+  },
+  {
+    "task_id": "T058",
+    "title": "T058: Add worker logs, failure reasons, retry context, and queue health summaries in `backend/src/jobs/`, `backend/src/common/logging/`, and `backend/src/admin/application/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/136"
+  },
+  {
+    "task_id": "T059",
+    "title": "T059: Add backend regression coverage for migration from Mongo-shaped assumptions to PostgreSQL relations in `backend/test/integration/` and `backend/prisma/`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/137"
+  },
+  {
+    "task_id": "T060",
+    "title": "T060: Update local seed/demo data and operator docs for regions, establishments, products, and offers in `backend/prisma/seed.*`, `docs/local-development.md`, and `README.md`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/138"
+  },
+  {
+    "task_id": "T061",
+    "title": "T061: Add web and mobile copy/state review for PT-BR region warnings, product-offer details, and admin validation feedback in `web/src/`, `mobile/lib/`, and related tests",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/139"
+  },
+  {
+    "task_id": "T062",
+    "title": "T062: Run quickstart validation and record any gaps in `specs/001-grocery-optimizer/quickstart.md`",
+    "url": "https://github.com/Gabrimeireles/Pricely/issues/140"
+  }
+]

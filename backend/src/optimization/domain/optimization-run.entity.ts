@@ -11,6 +11,7 @@ export interface OptimizationRunEntity {
   totalEstimatedCost?: number;
   estimatedSavings?: number;
   summary?: string;
+  explanationPayload?: unknown;
   createdAt: string;
   completedAt?: string;
 }

@@ -37,8 +37,9 @@ class PrismaUserAccountMock {
 
     if (args.where.email) {
       const user =
-        [...this.users.values()].find((entry) => entry.email === args.where.email) ??
-        null;
+        [...this.users.values()].find(
+          (entry) => entry.email === args.where.email,
+        ) ?? null;
       return this.clone(user);
     }
 
@@ -46,7 +47,10 @@ class PrismaUserAccountMock {
   }
 
   async create(args: {
-    data: Pick<StoredUser, 'email' | 'passwordHash' | 'displayName' | 'role' | 'status'>;
+    data: Pick<
+      StoredUser,
+      'email' | 'passwordHash' | 'displayName' | 'role' | 'status'
+    >;
   }): Promise<StoredUser> {
     const id = crypto.randomUUID();
     const now = new Date();
@@ -69,7 +73,12 @@ class PrismaUserAccountMock {
 
   async update(args: {
     where: { id: string };
-    data: Partial<Pick<StoredUser, 'lastLoginAt' | 'displayName' | 'status' | 'preferredRegionId'>>;
+    data: Partial<
+      Pick<
+        StoredUser,
+        'lastLoginAt' | 'displayName' | 'status' | 'preferredRegionId'
+      >
+    >;
   }): Promise<StoredUser> {
     const existing = this.users.get(args.where.id);
 
@@ -109,7 +118,11 @@ class PrismaUserAccountMock {
   };
 
   readonly region = {
-    findUnique: async ({ where }: { where: { id?: string; slug?: string } }) => {
+    findUnique: async ({
+      where,
+    }: {
+      where: { id?: string; slug?: string };
+    }) => {
       if (where.id === 'region-test-1' || where.slug === 'sao-paulo-sp') {
         return { id: 'region-test-1', slug: 'sao-paulo-sp' };
       }
@@ -123,6 +136,19 @@ class PrismaUserAccountMock {
       totalEstimatedSavings: 0,
     },
   ]);
+
+  readonly userEntitlement = {
+    findFirst: jest.fn().mockResolvedValue(null),
+  };
+
+  readonly optimizationTokenLedgerEntry = {
+    upsert: jest.fn().mockResolvedValue({}),
+    aggregate: jest.fn().mockResolvedValue({
+      _sum: {
+        amount: 2,
+      },
+    }),
+  };
 }
 
 describe('Shared auth integration', () => {
@@ -143,6 +169,9 @@ describe('Shared auth integration', () => {
         optimizationRun: userAccountMock.optimizationRun,
         receiptRecord: userAccountMock.receiptRecord,
         region: userAccountMock.region,
+        userEntitlement: userAccountMock.userEntitlement,
+        optimizationTokenLedgerEntry:
+          userAccountMock.optimizationTokenLedgerEntry,
         $queryRaw: userAccountMock.$queryRaw,
       })
       .compile();

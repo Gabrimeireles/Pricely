@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { type Queue } from 'bullmq';
 
 import {
+  type OptimizationExplanationPayload,
   type OptimizationRunAccepted,
   type OptimizeShoppingListRequest,
   type OptimizationResult,
@@ -13,6 +14,7 @@ import {
 import { ProcessingJobsService } from '../../processing/application/processing-jobs.service';
 import { PrismaService } from '../../persistence/prisma.service';
 import { ShoppingListsService } from '../../lists/application/shopping-lists.service';
+import { EntitlementsService } from '../../users/entitlements.service';
 import { OptimizationRunRepository } from '../infrastructure/optimization-run.repository';
 
 const UUID_PATTERN =
@@ -25,6 +27,7 @@ export class OptimizationResultService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly shoppingListsService: ShoppingListsService,
+    private readonly entitlementsService: EntitlementsService,
     private readonly processingJobsService: ProcessingJobsService,
     private readonly optimizationRunRepository: OptimizationRunRepository,
     @Inject(OPTIMIZATION_QUEUE)
@@ -44,7 +47,11 @@ export class OptimizationResultService {
     shoppingListId: string,
     request: OptimizeShoppingListRequest,
   ): Promise<OptimizationRunAccepted> {
-    const shoppingList = await this.shoppingListsService.getById(userId, shoppingListId);
+    const shoppingList = await this.shoppingListsService.getById(
+      userId,
+      shoppingListId,
+    );
+    await this.entitlementsService.ensureOptimizationAllowed(userId);
 
     const regionId =
       (await this.resolveRegionId(request.regionId)) ??
@@ -64,28 +71,37 @@ export class OptimizationResultService {
       resourceId: shoppingListId,
     });
 
-    const optimizationRun = await this.optimizationRunRepository.createQueuedRun({
-      shoppingListId,
+    const optimizationRun =
+      await this.optimizationRunRepository.createQueuedRun({
+        shoppingListId,
+        userId,
+        mode: request.mode,
+        regionId,
+        preferredEstablishmentId: request.preferredEstablishmentId ?? null,
+        jobId: processingJob.id,
+      });
+    await this.entitlementsService.consumeOptimizationToken({
       userId,
-      mode: request.mode,
-      regionId,
-      preferredEstablishmentId: request.preferredEstablishmentId ?? null,
-      jobId: processingJob.id,
+      optimizationRunId: optimizationRun.id,
     });
 
-    await this.optimizationQueue.add('optimization-generated', {
-      shoppingListId,
-      optimizationRunId: optimizationRun.id,
-      processingJobId: processingJob.id,
-    }, {
-      attempts: 3,
-      backoff: {
-        type: 'fixed',
-        delay: 2000,
+    await this.optimizationQueue.add(
+      'optimization-generated',
+      {
+        shoppingListId,
+        optimizationRunId: optimizationRun.id,
+        processingJobId: processingJob.id,
       },
-      removeOnComplete: 100,
-      removeOnFail: 100,
-    });
+      {
+        attempts: 3,
+        backoff: {
+          type: 'fixed',
+          delay: 2000,
+        },
+        removeOnComplete: 100,
+        removeOnFail: 100,
+      },
+    );
 
     this.logger.log(
       `Optimization run ${optimizationRun.id} queued for shopping list ${shoppingListId}`,
@@ -101,7 +117,10 @@ export class OptimizationResultService {
     };
   }
 
-  async getLatest(userId: string, shoppingListId: string): Promise<OptimizationResult> {
+  async getLatest(
+    userId: string,
+    shoppingListId: string,
+  ): Promise<OptimizationResult> {
     const latest = await this.optimizationRunRepository.findLatestForUser(
       userId,
       shoppingListId,
@@ -123,11 +142,18 @@ export class OptimizationResultService {
       mode: latest.mode,
       status: latest.status,
       totalEstimatedCost:
-        latest.totalEstimatedCost !== null ? Number(latest.totalEstimatedCost) : undefined,
+        latest.totalEstimatedCost !== null
+          ? Number(latest.totalEstimatedCost)
+          : undefined,
       estimatedSavings:
-        latest.estimatedSavings !== null ? Number(latest.estimatedSavings) : undefined,
+        latest.estimatedSavings !== null
+          ? Number(latest.estimatedSavings)
+          : undefined,
       coverageStatus: latest.coverageStatus,
       explanationSummary: latest.summary ?? undefined,
+      explanationPayload:
+        (latest.explanationPayload as OptimizationExplanationPayload | null) ??
+        undefined,
       createdAt: latest.createdAt.toISOString(),
       completedAt: latest.completedAt?.toISOString(),
       selections: latest.optimizationSelections.map((selection) => ({
@@ -136,9 +162,12 @@ export class OptimizationResultService {
         productOfferId: selection.productOfferId ?? undefined,
         shoppingListItemName: selection.shoppingListItem.requestedName,
         establishmentName: selection.productOffer?.establishment.unitName,
-        establishmentNeighborhood: selection.productOffer?.establishment.neighborhood,
+        establishmentNeighborhood:
+          selection.productOffer?.establishment.neighborhood,
         estimatedCost:
-          selection.estimatedCost !== null ? Number(selection.estimatedCost) : undefined,
+          selection.estimatedCost !== null
+            ? Number(selection.estimatedCost)
+            : undefined,
         priceAmount:
           selection.productOffer?.priceAmount !== undefined
             ? Number(selection.productOffer.priceAmount)
@@ -164,6 +193,15 @@ export class OptimizationResultService {
               ? 'missing'
               : 'review',
         confidenceNotice: selection.confidenceNotice ?? undefined,
+        decisionReason: selection.confidenceNotice
+          ? 'selected_with_data_quality_warning'
+          : selection.status === 'selected'
+            ? 'selected_confirmed_offer'
+            : 'not_selected',
+        rejectedReason:
+          selection.status === 'missing'
+            ? 'no_confirmed_offer_available'
+            : undefined,
       })),
     };
   }
@@ -183,7 +221,9 @@ export class OptimizationResultService {
     return region?.id ?? null;
   }
 
-  private async resolveRegionId(regionReference?: string): Promise<string | null> {
+  private async resolveRegionId(
+    regionReference?: string,
+  ): Promise<string | null> {
     if (!regionReference) {
       return null;
     }

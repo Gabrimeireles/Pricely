@@ -12,6 +12,7 @@ export interface StoreOfferEntity {
   storeId: string;
   storeName: string;
   canonicalName: string;
+  matchingCanonicalNames?: string[];
   displayName: string;
   price: number;
   basePrice?: number;

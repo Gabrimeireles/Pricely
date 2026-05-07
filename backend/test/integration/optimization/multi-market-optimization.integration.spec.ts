@@ -33,6 +33,7 @@ describe('Multi-market optimization integration', () => {
 
       await request(app.getHttpServer())
         .post('/receipts')
+        .set('Authorization', `Bearer ${session.accessToken}`)
         .send({
           storeName: 'Store A',
           items: [
@@ -44,6 +45,7 @@ describe('Multi-market optimization integration', () => {
 
       await request(app.getHttpServer())
         .post('/receipts')
+        .set('Authorization', `Bearer ${session.accessToken}`)
         .send({
           storeName: 'Store B',
           items: [
@@ -75,6 +77,15 @@ describe('Multi-market optimization integration', () => {
       expect(latestResponse.body.totalEstimatedCost).toBe(40.88);
       expect(latestResponse.body.selections).toHaveLength(2);
       expect(latestResponse.body.explanationSummary).toEqual(expect.any(String));
+      expect(latestResponse.body.explanationPayload).toEqual(
+        expect.objectContaining({
+          version: 1,
+          selectedOffers: expect.any(Array),
+          rejectedAlternatives: expect.any(Array),
+          savingsComparisons: expect.any(Array),
+          dataQualityWarnings: expect.any(Array),
+        }),
+      );
     } finally {
       await app.close();
     }
@@ -147,6 +158,39 @@ describe('Multi-market optimization integration', () => {
         }),
       );
     } finally {
+      await app.close();
+    }
+  });
+
+  it('rejects optimization when a non-premium user has no available tokens', async () => {
+    const previousGrant = process.env.FREE_OPTIMIZATION_TOKENS_PER_MONTH;
+    process.env.FREE_OPTIMIZATION_TOKENS_PER_MONTH = '0';
+    const { app, auth } = await createUs1TestApp();
+
+    try {
+      const session = await auth.registerCustomer('no-tokens@pricely.local');
+      const listResponse = await request(app.getHttpServer())
+        .post('/shopping-lists')
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          name: 'Limited groceries',
+          lastMode: 'global_full',
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/shopping-lists/${listResponse.body.id}/optimize`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          mode: 'global_full',
+        })
+        .expect(402);
+    } finally {
+      if (previousGrant === undefined) {
+        delete process.env.FREE_OPTIMIZATION_TOKENS_PER_MONTH;
+      } else {
+        process.env.FREE_OPTIMIZATION_TOKENS_PER_MONTH = previousGrant;
+      }
       await app.close();
     }
   });

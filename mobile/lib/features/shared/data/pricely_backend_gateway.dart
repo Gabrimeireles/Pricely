@@ -292,6 +292,8 @@ class PricelyBackendGateway {
           subtotal: priceAmount.toDouble(),
           confidenceLabel:
               selection['confidenceNotice'] as String? ?? 'confirmado',
+          decisionReason: selection['decisionReason'] as String?,
+          rejectedReason: selection['rejectedReason'] as String?,
         ),
       );
     }
@@ -431,6 +433,11 @@ class AuthUser {
     required this.offerReportsCount,
     required this.totalEstimatedSavings,
     required this.preferredRegionSlug,
+    required this.entitlementPlan,
+    required this.entitlementStatus,
+    required this.availableOptimizationTokens,
+    required this.monthlyFreeOptimizationTokens,
+    required this.checkoutEnabled,
   });
 
   final String id;
@@ -444,10 +451,17 @@ class AuthUser {
   final int offerReportsCount;
   final double totalEstimatedSavings;
   final String? preferredRegionSlug;
+  final String entitlementPlan;
+  final String entitlementStatus;
+  final int availableOptimizationTokens;
+  final int monthlyFreeOptimizationTokens;
+  final bool checkoutEnabled;
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     final profileStats =
         (json['profileStats'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final entitlement =
+        (json['entitlement'] as Map<String, dynamic>?) ?? <String, dynamic>{};
 
     return AuthUser(
       id: json['id'] as String,
@@ -467,6 +481,13 @@ class AuthUser {
       totalEstimatedSavings:
           (profileStats['totalEstimatedSavings'] as num? ?? 0).toDouble(),
       preferredRegionSlug: json['preferredRegionSlug'] as String?,
+      entitlementPlan: entitlement['plan'] as String? ?? 'free',
+      entitlementStatus: entitlement['status'] as String? ?? 'active',
+      availableOptimizationTokens:
+          (entitlement['availableOptimizationTokens'] as num? ?? 0).toInt(),
+      monthlyFreeOptimizationTokens:
+          (entitlement['monthlyFreeOptimizationTokens'] as num? ?? 2).toInt(),
+      checkoutEnabled: entitlement['checkoutEnabled'] as bool? ?? false,
     );
   }
 }

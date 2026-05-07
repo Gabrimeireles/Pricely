@@ -8,6 +8,7 @@ import { ProductNormalizerService } from '../../catalog/application/product-norm
 
 export interface ParsedReceiptLineItem {
   rawProductName: string;
+  ean?: string;
   normalizedName: string;
   quantity: number;
   unitPrice: number;
@@ -20,7 +21,10 @@ export interface ParsedReceiptLineItem {
 }
 
 export interface ParsedReceipt {
-  storeName: string;
+  storeName?: string;
+  storeCnpj?: string;
+  accessKey?: string;
+  sefazUrl?: string;
   purchaseDate?: string;
   parseStatus: 'parsed' | 'partial' | 'failed';
   confidenceScore: number;
@@ -36,13 +40,13 @@ export class ReceiptParserService {
 
   parse(request: ReceiptIngestionRequest): ParsedReceipt {
     const issues: string[] = [];
-    const storeName = request.storeName.trim();
+    const storeName = request.storeName?.trim();
 
     if (!storeName) {
       issues.push('missing_store_name');
     }
 
-    const items = request.items
+    const items = (request.items ?? [])
       .map((item, index) => this.parseItem(item, index, issues))
       .filter((item): item is ParsedReceiptLineItem => item !== null);
 
@@ -51,6 +55,9 @@ export class ReceiptParserService {
 
     return {
       storeName,
+      storeCnpj: request.storeCnpj,
+      accessKey: request.accessKey,
+      sefazUrl: request.qrCodeUrl,
       purchaseDate: request.purchaseDate,
       parseStatus,
       confidenceScore: this.calculateConfidenceScore(items.length, issues.length),
@@ -102,6 +109,7 @@ export class ReceiptParserService {
 
     return {
       rawProductName,
+      ean: item.ean,
       normalizedName: normalized.canonicalName,
       quantity,
       unitPrice: effectiveUnitPrice,

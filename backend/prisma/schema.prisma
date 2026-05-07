@@ -90,6 +90,28 @@ enum OptimizationSelectionStatus {
   missing
 }
 
+enum UserEntitlementPlan {
+  free
+  premium
+}
+
+enum UserEntitlementStatus {
+  active
+  trialing
+  past_due
+  cancelled
+  expired
+}
+
+enum OptimizationTokenLedgerAction {
+  grant
+  consume
+  refund
+  expire
+  admin_adjustment
+  receipt_bonus
+}
+
 enum ProcessingJobType {
   optimization
   receipt_processing
@@ -105,7 +127,11 @@ enum ProcessingJobStatus {
 
 enum ReceiptSourceType {
   manual_entry
+  qr_code_url
+  qr_code_image
+  pdf_upload
   image_parse
+  structured_provider
 }
 
 enum ReceiptParseStatus {
@@ -113,6 +139,28 @@ enum ReceiptParseStatus {
   parsed
   partial
   failed
+}
+
+enum ReceiptContributionTrustLevel {
+  untrusted
+  pending_review
+  trusted
+  rejected
+}
+
+enum ReceiptModerationStatus {
+  pending
+  accepted
+  quarantined
+  duplicate
+  rejected
+}
+
+enum ReceiptRewardEligibilityStatus {
+  disabled
+  ineligible
+  eligible_pending
+  granted
 }
 
 model UserAccount {
@@ -129,6 +177,8 @@ model UserAccount {
   shoppingLists    ShoppingList[]
   optimizationRuns OptimizationRun[]
   receiptRecords   ReceiptRecord[]
+  entitlements      UserEntitlement[]
+  optimizationTokenLedger OptimizationTokenLedgerEntry[]
   preferredRegion  Region?           @relation("UserPreferredRegion", fields: [preferredRegionId], references: [id], onDelete: SetNull)
 }
 
@@ -232,6 +282,10 @@ model ProductOffer {
   confidenceLevel    OfferConfidenceLevel
   sourceType         String
   sourceReference    String?
+  receiptRecordId    String?                 @db.Uuid
+  receiptLineItemId  String?                 @db.Uuid
+  moderationStatus   ReceiptModerationStatus?
+  contributionConfidence Decimal?            @db.Decimal(5, 2)
   observedAt         DateTime
   expiresAt          DateTime?
   isActive           Boolean                 @default(true)
@@ -240,11 +294,15 @@ model ProductOffer {
   catalogProduct     CatalogProduct          @relation(fields: [catalogProductId], references: [id], onDelete: Restrict)
   productVariant     ProductVariant          @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
   optimizationSelections OptimizationSelection[]
+  receiptRecord      ReceiptRecord?          @relation(fields: [receiptRecordId], references: [id], onDelete: SetNull)
+  receiptLineItem    ReceiptLineItem?        @relation(fields: [receiptLineItemId], references: [id], onDelete: SetNull)
 
   @@index([catalogProductId, isActive, observedAt])
   @@index([productVariantId, isActive, observedAt])
   @@index([establishmentId, isActive])
   @@index([productVariantId, establishmentId, isActive])
+  @@index([receiptRecordId])
+  @@index([moderationStatus])
 }
 
 model ShoppingList {
@@ -302,9 +360,11 @@ model OptimizationRun {
   estimatedSavings         Decimal?                   @db.Decimal(10, 2)
   coverageStatus           OptimizationCoverageStatus @default(none)
   summary                  String?
+  explanationPayload       Json?
   createdAt                DateTime                   @default(now())
   completedAt              DateTime?
   optimizationSelections   OptimizationSelection[]
+  tokenLedgerEntries       OptimizationTokenLedgerEntry[]
   processingJob            ProcessingJob?             @relation(fields: [jobId], references: [id], onDelete: SetNull)
   preferredEstablishment   Establishment?             @relation("PreferredEstablishment", fields: [preferredEstablishmentId], references: [id], onDelete: SetNull)
   region                   Region                     @relation(fields: [regionId], references: [id], onDelete: Restrict)
@@ -313,6 +373,40 @@ model OptimizationRun {
 
   @@index([shoppingListId, createdAt])
   @@index([status, createdAt])
+}
+
+model UserEntitlement {
+  id             String                @id @default(uuid()) @db.Uuid
+  userId         String                @db.Uuid
+  plan           UserEntitlementPlan
+  status         UserEntitlementStatus
+  source         String
+  externalRef    String?
+  startsAt       DateTime              @default(now())
+  endsAt         DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  user           UserAccount           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, plan, status])
+  @@index([externalRef])
+}
+
+model OptimizationTokenLedgerEntry {
+  id                       String                         @id @default(uuid()) @db.Uuid
+  userId                   String                         @db.Uuid
+  action                   OptimizationTokenLedgerAction
+  amount                   Int
+  idempotencyKey           String                         @unique
+  source                   String
+  relatedOptimizationRunId String?                        @db.Uuid
+  expiresAt                DateTime?
+  createdAt                DateTime                       @default(now())
+  user                     UserAccount                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedOptimizationRun   OptimizationRun?               @relation(fields: [relatedOptimizationRunId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([relatedOptimizationRunId])
 }
 
 model OptimizationSelection {
@@ -346,19 +440,63 @@ model ProcessingJob {
   updatedAt     DateTime            @updatedAt
   finishedAt    DateTime?
   optimizationRun OptimizationRun?
+  receiptRecord ReceiptRecord?
 }
 
 model ReceiptRecord {
   id              String            @id @default(uuid()) @db.Uuid
   userId          String            @db.Uuid
-  establishmentId String            @db.Uuid
+  establishmentId String?           @db.Uuid
   sourceType      ReceiptSourceType
   parseStatus     ReceiptParseStatus @default(queued)
+  storeName       String?
+  storeCnpj       String?
+  accessKey       String?
+  sefazUrl        String?
   purchaseDate    DateTime?
+  jobId           String?           @unique @db.Uuid
   rawReference    String?
+  confidenceScore Decimal?          @db.Decimal(5, 2)
+  duplicateKey    String?
+  trustLevel      ReceiptContributionTrustLevel @default(untrusted)
+  moderationStatus ReceiptModerationStatus @default(pending)
+  rewardEligibilityStatus ReceiptRewardEligibilityStatus @default(disabled)
+  reviewReason    String?
   createdAt       DateTime          @default(now())
-  establishment   Establishment     @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  updatedAt       DateTime          @updatedAt
+  establishment   Establishment?    @relation(fields: [establishmentId], references: [id], onDelete: SetNull)
+  lineItems       ReceiptLineItem[]
+  productOffers   ProductOffer[]
+  processingJob   ProcessingJob?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
   user            UserAccount       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([establishmentId, createdAt])
+  @@index([userId, createdAt])
+  @@index([parseStatus, createdAt])
+  @@index([accessKey])
+  @@index([storeCnpj])
+  @@index([duplicateKey])
+  @@index([moderationStatus, createdAt])
+}
+
+model ReceiptLineItem {
+  id                     String        @id @default(uuid()) @db.Uuid
+  receiptRecordId        String        @db.Uuid
+  ean                    String?
+  rawProductName         String
+  normalizedName         String
+  packageSize            String?
+  quantity               Decimal       @db.Decimal(10, 3)
+  unitPrice              Decimal       @db.Decimal(10, 2)
+  originalUnitPrice      Decimal?      @db.Decimal(10, 2)
+  promotionalUnitPrice   Decimal?      @db.Decimal(10, 2)
+  lineTotal              Decimal       @db.Decimal(10, 2)
+  currency               String        @default("BRL") @db.VarChar(3)
+  matchConfidence        Decimal       @db.Decimal(5, 2)
+  createdAt              DateTime      @default(now())
+  receiptRecord          ReceiptRecord @relation(fields: [receiptRecordId], references: [id], onDelete: Cascade)
+  productOffers          ProductOffer[]
+
+  @@index([receiptRecordId])
+  @@index([ean])
 }

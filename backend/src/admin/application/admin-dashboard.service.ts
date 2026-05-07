@@ -75,7 +75,9 @@ export class AdminDashboardService {
       activeOffers,
       productCount,
       queuedJobs,
-      globalEstimatedSavings: Number(aggregatedSavings._sum.estimatedSavings ?? 0),
+      globalEstimatedSavings: Number(
+        aggregatedSavings._sum.estimatedSavings ?? 0,
+      ),
     };
 
     this.logger.log(
@@ -90,6 +92,17 @@ export class AdminDashboardService {
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       take: 100,
       include: {
+        receiptRecord: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                email: true,
+              },
+            },
+          },
+        },
         optimizationRun: {
           include: {
             user: {
@@ -122,8 +135,21 @@ export class AdminDashboardService {
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
       finishedAt: job.finishedAt?.toISOString(),
-      owner: job.optimizationRun?.user,
+      owner: job.optimizationRun?.user ?? job.receiptRecord?.user,
       shoppingList: job.optimizationRun?.shoppingList,
+      receiptRecord: job.receiptRecord
+        ? {
+            id: job.receiptRecord.id,
+            storeName: job.receiptRecord.storeName,
+            storeCnpj: job.receiptRecord.storeCnpj,
+            parseStatus: job.receiptRecord.parseStatus,
+            trustLevel: job.receiptRecord.trustLevel,
+            moderationStatus: job.receiptRecord.moderationStatus,
+            rewardEligibilityStatus: job.receiptRecord.rewardEligibilityStatus,
+            reviewReason: job.receiptRecord.reviewReason,
+            purchaseDate: job.receiptRecord.purchaseDate?.toISOString(),
+          }
+        : null,
       optimizationRun: job.optimizationRun
         ? {
             id: job.optimizationRun.id,
@@ -135,7 +161,9 @@ export class AdminDashboardService {
         : null,
     }));
 
-    this.logger.log(`Admin processing jobs requested: ${projectedJobs.length} records returned`);
+    this.logger.log(
+      `Admin processing jobs requested: ${projectedJobs.length} records returned`,
+    );
 
     return projectedJobs;
   }
@@ -144,6 +172,22 @@ export class AdminDashboardService {
     const job = await this.prisma.processingJob.findUnique({
       where: { id },
       include: {
+        receiptRecord: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                email: true,
+              },
+            },
+            lineItems: {
+              orderBy: {
+                id: 'asc',
+              },
+            },
+          },
+        },
         optimizationRun: {
           include: {
             user: {
@@ -183,6 +227,7 @@ export class AdminDashboardService {
     }
 
     const optimizationRun = job.optimizationRun;
+    const receiptRecord = job.receiptRecord;
 
     return {
       id: job.id,
@@ -196,8 +241,38 @@ export class AdminDashboardService {
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
       finishedAt: job.finishedAt?.toISOString(),
-      owner: optimizationRun?.user ?? null,
+      owner: optimizationRun?.user ?? receiptRecord?.user ?? null,
       shoppingList: optimizationRun?.shoppingList ?? null,
+      receiptRecord: receiptRecord
+        ? {
+            id: receiptRecord.id,
+            storeName: receiptRecord.storeName,
+            storeCnpj: receiptRecord.storeCnpj,
+            parseStatus: receiptRecord.parseStatus,
+            trustLevel: receiptRecord.trustLevel,
+            moderationStatus: receiptRecord.moderationStatus,
+            rewardEligibilityStatus: receiptRecord.rewardEligibilityStatus,
+            reviewReason: receiptRecord.reviewReason,
+            purchaseDate: receiptRecord.purchaseDate?.toISOString(),
+            lineItems: receiptRecord.lineItems.map((item) => ({
+              id: item.id,
+              rawProductName: item.rawProductName,
+              normalizedName: item.normalizedName,
+              ean: item.ean,
+              quantity: Number(item.quantity),
+              unitPrice: Number(item.unitPrice),
+              originalUnitPrice:
+                item.originalUnitPrice === null
+                  ? undefined
+                  : Number(item.originalUnitPrice),
+              promotionalUnitPrice:
+                item.promotionalUnitPrice === null
+                  ? undefined
+                  : Number(item.promotionalUnitPrice),
+              matchConfidence: Number(item.matchConfidence),
+            })),
+          }
+        : null,
       optimizationRun: optimizationRun
         ? {
             id: optimizationRun.id,
@@ -209,27 +284,34 @@ export class AdminDashboardService {
             summary: optimizationRun.summary,
             createdAt: optimizationRun.createdAt.toISOString(),
             completedAt: optimizationRun.completedAt?.toISOString(),
-            selections: optimizationRun.optimizationSelections.map((selection) => ({
-              id: selection.id,
-              shoppingListItemId: selection.shoppingListItemId,
-              shoppingListItemName: selection.shoppingListItem.requestedName,
-              status: selection.status,
-              estimatedCost: Number(selection.estimatedCost ?? 0),
-              confidenceNotice: selection.confidenceNotice,
-              offer: selection.productOffer
-                ? {
-                    id: selection.productOffer.id,
-                    displayName: selection.productOffer.displayName,
-                    variantName: selection.productOffer.productVariant.displayName,
-                    establishmentName: selection.productOffer.establishment.unitName,
-                    neighborhood: selection.productOffer.establishment.neighborhood,
-                    priceAmount: Number(selection.productOffer.priceAmount),
-                    sourceLabel:
-                      selection.productOffer.sourceReference ?? selection.productOffer.sourceType,
-                    observedAt: selection.productOffer.observedAt.toISOString(),
-                  }
-                : null,
-            })),
+            selections: optimizationRun.optimizationSelections.map(
+              (selection) => ({
+                id: selection.id,
+                shoppingListItemId: selection.shoppingListItemId,
+                shoppingListItemName: selection.shoppingListItem.requestedName,
+                status: selection.status,
+                estimatedCost: Number(selection.estimatedCost ?? 0),
+                confidenceNotice: selection.confidenceNotice,
+                offer: selection.productOffer
+                  ? {
+                      id: selection.productOffer.id,
+                      displayName: selection.productOffer.displayName,
+                      variantName:
+                        selection.productOffer.productVariant.displayName,
+                      establishmentName:
+                        selection.productOffer.establishment.unitName,
+                      neighborhood:
+                        selection.productOffer.establishment.neighborhood,
+                      priceAmount: Number(selection.productOffer.priceAmount),
+                      sourceLabel:
+                        selection.productOffer.sourceReference ??
+                        selection.productOffer.sourceType,
+                      observedAt:
+                        selection.productOffer.observedAt.toISOString(),
+                    }
+                  : null,
+              }),
+            ),
           }
         : null,
     };
@@ -333,7 +415,9 @@ export class AdminDashboardService {
       };
     });
 
-    this.logger.log(`Admin shopping list audit requested: ${projected.length} lists returned`);
+    this.logger.log(
+      `Admin shopping list audit requested: ${projected.length} lists returned`,
+    );
 
     return projected;
   }
@@ -388,7 +472,9 @@ export class AdminDashboardService {
   }) {
     const created = await this.establishmentsService.create(input);
 
-    this.logger.log(`Admin created establishment ${created.id} for region ${input.regionId}`);
+    this.logger.log(
+      `Admin created establishment ${created.id} for region ${input.regionId}`,
+    );
 
     return created;
   }
@@ -426,7 +512,9 @@ export class AdminDashboardService {
   }) {
     const created = await this.catalogProductsService.createProduct(input);
 
-    this.logger.log(`Admin created catalog product ${created.id} (${created.slug})`);
+    this.logger.log(
+      `Admin created catalog product ${created.id} (${created.slug})`,
+    );
 
     return created;
   }
@@ -453,7 +541,10 @@ export class AdminDashboardService {
     id: string,
     file: { buffer: Buffer; mimetype: string; originalname: string },
   ) {
-    const updated = await this.catalogMediaService.uploadCatalogProductImage(id, file);
+    const updated = await this.catalogMediaService.uploadCatalogProductImage(
+      id,
+      file,
+    );
     this.logger.log(`Admin uploaded image for catalog product ${id}`);
     return updated;
   }
@@ -479,7 +570,9 @@ export class AdminDashboardService {
   }) {
     const created = await this.catalogProductsService.createVariant(input);
 
-    this.logger.log(`Admin created product variant ${created.id} for catalog product ${input.catalogProductId}`);
+    this.logger.log(
+      `Admin created product variant ${created.id} for catalog product ${input.catalogProductId}`,
+    );
 
     return created;
   }
@@ -508,7 +601,10 @@ export class AdminDashboardService {
     id: string,
     file: { buffer: Buffer; mimetype: string; originalname: string },
   ) {
-    const updated = await this.catalogMediaService.uploadProductVariantImage(id, file);
+    const updated = await this.catalogMediaService.uploadProductVariantImage(
+      id,
+      file,
+    );
     this.logger.log(`Admin uploaded image for product variant ${id}`);
     return updated;
   }
@@ -535,7 +631,9 @@ export class AdminDashboardService {
   }) {
     const created = await this.offerManagementService.create(input);
 
-    this.logger.log(`Admin created product offer ${created.id} for variant ${input.productVariantId}`);
+    this.logger.log(
+      `Admin created product offer ${created.id} for variant ${input.productVariantId}`,
+    );
 
     return created;
   }

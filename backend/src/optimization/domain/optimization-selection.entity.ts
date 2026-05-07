@@ -19,6 +19,49 @@ export interface OptimizationSelectionEntity {
   observedAt?: string;
   selectionStatus: SelectionStatus;
   confidenceNotice?: string;
+  decisionReason?: string;
+  rejectedReason?: string;
+}
+
+export interface OptimizationExplanationPayload {
+  version: 1;
+  constraints: {
+    mode: string;
+    singleStoreRequired: boolean;
+    selectedStoreId?: string;
+    exactVariantItemIds: string[];
+    unresolvedItemPolicy: 'flag_missing_or_review';
+  };
+  selectedOffers: Array<{
+    shoppingListItemId: string;
+    productOfferId: string;
+    storeId?: string;
+    storeName?: string;
+    priceAmount?: number;
+    estimatedCost?: number;
+    savingsVsComparison?: number;
+    decisionReason?: string;
+  }>;
+  rejectedAlternatives: Array<{
+    shoppingListItemId: string;
+    productOfferId?: string;
+    storeId?: string;
+    storeName?: string;
+    priceAmount?: number;
+    reason: string;
+  }>;
+  savingsComparisons: Array<{
+    shoppingListItemId: string;
+    selectedPriceAmount?: number;
+    comparisonPriceAmount?: number;
+    regionalAveragePriceAmount?: number;
+    savingsVsComparison?: number;
+  }>;
+  dataQualityWarnings: Array<{
+    shoppingListItemId: string;
+    code: string;
+    message: string;
+  }>;
 }
 
 export interface OptimizationResultEntity {
@@ -32,5 +75,6 @@ export interface OptimizationResultEntity {
   createdAt: string;
   completedAt?: string;
   explanationSummary?: string;
+  explanationPayload?: OptimizationExplanationPayload;
   selections: OptimizationSelectionEntity[];
 }
