@@ -77,6 +77,7 @@ export class OptimizationRunRepository {
     totalEstimatedCost: { toString(): string } | null;
     estimatedSavings: { toString(): string } | null;
     summary: string | null;
+    explanationPayload?: unknown;
     createdAt: Date;
     completedAt: Date | null;
   }): OptimizationRunEntity {
@@ -95,6 +96,7 @@ export class OptimizationRunRepository {
       estimatedSavings:
         record.estimatedSavings !== null ? Number(record.estimatedSavings) : undefined,
       summary: record.summary ?? undefined,
+      explanationPayload: record.explanationPayload ?? undefined,
       createdAt: record.createdAt.toISOString(),
       completedAt: record.completedAt?.toISOString(),
     };

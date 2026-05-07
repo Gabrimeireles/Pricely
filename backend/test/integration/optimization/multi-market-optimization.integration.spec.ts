@@ -77,6 +77,15 @@ describe('Multi-market optimization integration', () => {
       expect(latestResponse.body.totalEstimatedCost).toBe(40.88);
       expect(latestResponse.body.selections).toHaveLength(2);
       expect(latestResponse.body.explanationSummary).toEqual(expect.any(String));
+      expect(latestResponse.body.explanationPayload).toEqual(
+        expect.objectContaining({
+          version: 1,
+          selectedOffers: expect.any(Array),
+          rejectedAlternatives: expect.any(Array),
+          savingsComparisons: expect.any(Array),
+          dataQualityWarnings: expect.any(Array),
+        }),
+      );
     } finally {
       await app.close();
     }

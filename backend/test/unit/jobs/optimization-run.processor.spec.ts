@@ -73,6 +73,25 @@ describe('OptimizationRunProcessor', () => {
             confidenceNotice: 'high',
           },
         ],
+        explanationPayload: {
+          version: 1,
+          constraints: {
+            mode: 'global_full',
+            singleStoreRequired: false,
+            exactVariantItemIds: [],
+            unresolvedItemPolicy: 'flag_missing_or_review',
+          },
+          selectedOffers: [
+            {
+              shoppingListItemId: 'item-1',
+              productOfferId: 'offer-1',
+              estimatedCost: 15.9,
+            },
+          ],
+          rejectedAlternatives: [],
+          savingsComparisons: [],
+          dataQualityWarnings: [],
+        },
       }),
     };
     const optimizationRunRepository = {
@@ -115,6 +134,15 @@ describe('OptimizationRunProcessor', () => {
         data: expect.objectContaining({
           status: 'completed',
           coverageStatus: 'complete',
+          explanationPayload: expect.objectContaining({
+            version: 1,
+            selectedOffers: [
+              expect.objectContaining({
+                shoppingListItemId: 'item-1',
+                productOfferId: 'offer-1',
+              }),
+            ],
+          }),
         }),
       }),
     );

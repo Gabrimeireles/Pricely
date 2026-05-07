@@ -136,6 +136,41 @@ describe('MultiMarketOptimizerService', () => {
         savingsVsComparison: 2,
       }),
     );
+    expect(result.explanationPayload).toEqual(
+      expect.objectContaining({
+        version: 1,
+        constraints: expect.objectContaining({
+          mode: 'global_full',
+          singleStoreRequired: false,
+          unresolvedItemPolicy: 'flag_missing_or_review',
+        }),
+        selectedOffers: expect.arrayContaining([
+          expect.objectContaining({
+            shoppingListItemId: 'item-1',
+            productOfferId: 'offer-b1',
+            storeId: 'store-b',
+            priceAmount: 8,
+            savingsVsComparison: 2,
+          }),
+        ]),
+        rejectedAlternatives: expect.arrayContaining([
+          expect.objectContaining({
+            shoppingListItemId: 'item-1',
+            productOfferId: 'offer-a1',
+            reason: 'higher_price_or_lower_rank',
+          }),
+        ]),
+        savingsComparisons: expect.arrayContaining([
+          expect.objectContaining({
+            shoppingListItemId: 'item-1',
+            selectedPriceAmount: 8,
+            comparisonPriceAmount: 10,
+            regionalAveragePriceAmount: 9,
+            savingsVsComparison: 2,
+          }),
+        ]),
+      }),
+    );
   });
 
   it('calculates savings against the same variant in another establishment', () => {

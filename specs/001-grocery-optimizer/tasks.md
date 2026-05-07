@@ -424,10 +424,10 @@ results explainable, auditable, and consistent across web/mobile.
 - [X] T149 [P] Define optimization objective functions, constraints, tie-breakers, and infeasibility rules in `docs/product/optimization-engine-plan.md`
 - [X] T150 [P] Add backend tests for local, single-store, multi-store, exact-variant, promotional-price, unavailable-item, and travel-cost scenarios in `backend/test/unit/optimization/`
 - [X] T151 Refactor optimization domain services to separate candidate generation, constraint solving, scoring, and explanation building in `backend/src/optimization/`
-- [ ] T152 Add persisted optimization explanation payloads with selected offers, rejected alternatives, constraints, savings comparisons, and data-quality warnings in `backend/prisma/schema.prisma` and `backend/src/optimization/`
+- [X] T152 Add persisted optimization explanation payloads with selected offers, rejected alternatives, constraints, savings comparisons, and data-quality warnings in `backend/prisma/schema.prisma` and `backend/src/optimization/`
 - [X] T153 Expose optimization explanation contracts for web/mobile result screens and admin decision-trace views in `backend/src/common/contracts/optimization.contract.ts`
 - [X] T154 Render shopper-friendly explanation and savings confidence on web and mobile result screens in `web/src/public/` and `mobile/lib/features/optimization/`
-- [ ] T155 Add performance profiling and bounded runtime checks for standard list sizes in `backend/test/performance/optimization-performance.spec.ts`
+- [X] T155 Add performance profiling and bounded runtime checks for standard list sizes in `backend/test/performance/optimization-performance.spec.ts`
 
 ---
 

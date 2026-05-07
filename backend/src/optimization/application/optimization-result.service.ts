@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { type Queue } from 'bullmq';
 
 import {
+  type OptimizationExplanationPayload,
   type OptimizationRunAccepted,
   type OptimizeShoppingListRequest,
   type OptimizationResult,
@@ -150,6 +151,9 @@ export class OptimizationResultService {
           : undefined,
       coverageStatus: latest.coverageStatus,
       explanationSummary: latest.summary ?? undefined,
+      explanationPayload:
+        (latest.explanationPayload as OptimizationExplanationPayload | null) ??
+        undefined,
       createdAt: latest.createdAt.toISOString(),
       completedAt: latest.completedAt?.toISOString(),
       selections: latest.optimizationSelections.map((selection) => ({

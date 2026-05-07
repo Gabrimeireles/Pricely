@@ -360,6 +360,7 @@ model OptimizationRun {
   estimatedSavings         Decimal?                   @db.Decimal(10, 2)
   coverageStatus           OptimizationCoverageStatus @default(none)
   summary                  String?
+  explanationPayload       Json?
   createdAt                DateTime                   @default(now())
   completedAt              DateTime?
   optimizationSelections   OptimizationSelection[]
