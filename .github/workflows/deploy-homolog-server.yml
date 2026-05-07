@@ -1,0 +1,211 @@
+name: Deploy Homolog Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      reset_database:
+        description: "Drop/recreate schema before deploy. This is destructive."
+        required: true
+        type: boolean
+        default: false
+      run_seeders:
+        description: "Run backend seeders after db push/reset."
+        required: true
+        type: boolean
+        default: true
+      health_url:
+        description: "Optional public health URL to check after deploy."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-homolog-server-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-backend:
+    name: Build backend image
+    uses: Gabrimeireles/reusable-workflows/.github/workflows/docker-build.yml@master
+    with:
+      image_name: pricely-backend
+      dockerfile: ./backend/Dockerfile
+      context: ./backend
+
+  build-web:
+    name: Build web image
+    uses: Gabrimeireles/reusable-workflows/.github/workflows/docker-build.yml@master
+    with:
+      image_name: pricely-web
+      dockerfile: ./web/Dockerfile
+      context: ./web
+
+  deploy:
+    name: Deploy full stack
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-web]
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+      GHCR_PAT: ${{ secrets.GHCR_PAT }}
+      RUNTIME_ENV_FILE: ${{ secrets.RUNTIME_ENV_FILE }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB || 'pricely' }}
+      POSTGRES_USER: ${{ vars.POSTGRES_USER || 'postgres' }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_PORT: ${{ vars.POSTGRES_PORT || '5433' }}
+      REDIS_PORT_PUBLIC: ${{ vars.REDIS_PORT_PUBLIC || '6380' }}
+      PGADMIN_DEFAULT_EMAIL: ${{ vars.PGADMIN_DEFAULT_EMAIL || 'admin@pricely.example.com' }}
+      PGADMIN_DEFAULT_PASSWORD: ${{ secrets.PGADMIN_DEFAULT_PASSWORD }}
+      PGADMIN_PORT: ${{ vars.PGADMIN_PORT || '5050' }}
+      BACKEND_PORT: ${{ vars.BACKEND_PORT || '3000' }}
+      WEB_PORT: ${{ vars.WEB_PORT || '5173' }}
+      WEB_APP_URL: ${{ vars.WEB_APP_URL || 'http://localhost:5173' }}
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://localhost:3000' }}
+      NODE_ENV: ${{ vars.NODE_ENV || 'development' }}
+      IMAGE_TAG: sha-${{ github.sha }}
+      BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/pricely-backend
+      WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/pricely-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Connect to Tailscale
+        if: ${{ vars.USE_TAILSCALE == 'true' }}
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:dev-ci
+
+      - name: Validate deploy inputs
+        shell: bash
+        run: |
+          [ -n "$DEPLOY_HOST" ] || { echo "Missing secret DEPLOY_HOST"; exit 1; }
+          [ -n "$DEPLOY_USER" ] || { echo "Missing secret DEPLOY_USER"; exit 1; }
+          [ -n "${{ secrets.DEPLOY_SSH_KEY }}" ] || { echo "Missing secret DEPLOY_SSH_KEY"; exit 1; }
+          [ -n "$DEPLOY_PATH" ] || { echo "Missing variable DEPLOY_PATH"; exit 1; }
+          [ -n "$RUNTIME_ENV_FILE" ] || { echo "Missing secret RUNTIME_ENV_FILE"; exit 1; }
+          [ -n "$POSTGRES_PASSWORD" ] || { echo "Missing secret POSTGRES_PASSWORD"; exit 1; }
+          [ -n "$PGADMIN_DEFAULT_PASSWORD" ] || { echo "Missing secret PGADMIN_DEFAULT_PASSWORD"; exit 1; }
+          if [ -z "$GHCR_TOKEN" ] && [ -z "$GHCR_PAT" ]; then
+            echo "Missing secret GHCR_TOKEN or GHCR_PAT"
+            exit 1
+          fi
+          [ -f docker-compose.homolog.yml ] || { echo "Missing docker-compose.homolog.yml"; exit 1; }
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload compose and env files
+        shell: bash
+        run: |
+          mkdir -p .deploy
+          cp docker-compose.homolog.yml .deploy/docker-compose.yml
+
+          umask 177
+          {
+            printf 'BACKEND_IMAGE=%s\n' "$BACKEND_IMAGE"
+            printf 'WEB_IMAGE=%s\n' "$WEB_IMAGE"
+            printf 'IMAGE_TAG=%s\n' "$IMAGE_TAG"
+            printf 'POSTGRES_DB=%s\n' "$POSTGRES_DB"
+            printf 'POSTGRES_USER=%s\n' "$POSTGRES_USER"
+            printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
+            printf 'POSTGRES_PORT=%s\n' "$POSTGRES_PORT"
+            printf 'REDIS_PORT_PUBLIC=%s\n' "$REDIS_PORT_PUBLIC"
+            printf 'PGADMIN_DEFAULT_EMAIL=%s\n' "$PGADMIN_DEFAULT_EMAIL"
+            printf 'PGADMIN_DEFAULT_PASSWORD=%s\n' "$PGADMIN_DEFAULT_PASSWORD"
+            printf 'PGADMIN_PORT=%s\n' "$PGADMIN_PORT"
+            printf 'BACKEND_PORT=%s\n' "$BACKEND_PORT"
+            printf 'WEB_PORT=%s\n' "$WEB_PORT"
+            printf 'WEB_APP_URL=%s\n' "$WEB_APP_URL"
+            printf 'VITE_API_BASE_URL=%s\n' "$VITE_API_BASE_URL"
+            printf 'NODE_ENV=%s\n' "$NODE_ENV"
+          } > .deploy/.env
+
+          printf '%s\n' "$RUNTIME_ENV_FILE" > .deploy/.env.backend
+
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH'"
+          scp .deploy/docker-compose.yml "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/docker-compose.yml"
+          scp .deploy/.env "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env"
+          scp .deploy/.env.backend "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env.backend"
+
+      - name: Deploy containers
+        shell: bash
+        run: |
+          GHCR_AUTH_TOKEN="$GHCR_TOKEN"
+          if [ -z "$GHCR_AUTH_TOKEN" ]; then
+            GHCR_AUTH_TOKEN="$GHCR_PAT"
+          fi
+
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+            "GHCR_AUTH_TOKEN='$GHCR_AUTH_TOKEN' GITHUB_REPOSITORY_OWNER='${{ github.repository_owner }}' RESET_DATABASE='${{ inputs.reset_database }}' RUN_SEEDERS='${{ inputs.run_seeders }}' DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'ENDSSH'
+          set -euo pipefail
+
+          cd "$DEPLOY_PATH"
+
+          echo "$GHCR_AUTH_TOKEN" | docker login ghcr.io -u "$GITHUB_REPOSITORY_OWNER" --password-stdin
+
+          docker compose --env-file .env pull backend web
+          docker compose --env-file .env up -d postgres redis pgadmin
+
+          echo "Waiting for PostgreSQL..."
+          for attempt in $(seq 1 30); do
+            if docker compose --env-file .env exec -T postgres sh -lc 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "PostgreSQL did not become ready"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          if [ "$RESET_DATABASE" = "true" ]; then
+            echo "Running destructive database reset..."
+            docker compose --env-file .env run --rm backend sh -lc \
+              "npm run db:generate && npx prisma db push --force-reset"
+          else
+            echo "Applying database schema without destructive reset..."
+            docker compose --env-file .env run --rm backend sh -lc \
+              "npm run db:generate && npm run db:push"
+          fi
+
+          if [ "$RUN_SEEDERS" = "true" ]; then
+            echo "Running seeders..."
+            docker compose --env-file .env run --rm backend sh -lc "npm run db:seed"
+          fi
+
+          docker compose --env-file .env up -d backend web
+          docker image prune -f
+          ENDSSH
+
+      - name: Health check
+        if: ${{ inputs.health_url != '' }}
+        shell: bash
+        run: |
+          for attempt in $(seq 1 20); do
+            status=$(curl -sS -L --connect-timeout 5 --max-time 15 -o /tmp/health.body -w "%{http_code}" "${{ inputs.health_url }}" || true)
+            if echo "$status" | grep -q '^2[0-9][0-9]$'; then
+              echo "Health check passed"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Health check failed"
+          cat /tmp/health.body || true
+          exit 1
