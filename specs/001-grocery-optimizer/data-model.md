@@ -53,6 +53,10 @@
   - `cityName`: Human-readable city name
   - `neighborhood`: Neighborhood or district
   - `addressLine`: Optional address detail
+  - `latitude`: Optional decimal latitude for distance-based optimization
+  - `longitude`: Optional decimal longitude for distance-based optimization
+  - `locationSource`: Optional source label such as `admin`, `geocoded_address`, or
+    `manual`
   - `regionId`: Parent region reference
   - `isActive`: Whether the unit is available to public and optimization queries
   - `openedAt`: Optional record timestamp
@@ -64,6 +68,36 @@
 - **Validation Rules**:
   - `cnpj` must be unique
   - `brandName`, `regionId`, and `cityName` must be present
+  - Distance-based optimization must exclude establishments without coordinates unless
+    the run mode explicitly allows city-only fallback
+
+## UserLocationPreference
+
+- **Purpose**: User-controlled location and coverage-radius preference for local
+  optimization.
+- **Fields**:
+  - `id`: Unique identifier
+  - `userId`: Owner account reference
+  - `regionId`: City/region where this location is valid
+  - `label`: User-facing label such as `Casa` or `Trabalho`
+  - `latitude`: Decimal latitude configured by the user or permissioned location flow
+  - `longitude`: Decimal longitude configured by the user or permissioned location flow
+  - `coverageRadiusKm`: Maximum radius used to include nearby establishments
+  - `activeEstablishmentCount`: Last computed count of active establishments inside the
+    radius
+  - `isDefault`: Whether this preference is the account default for local optimization
+  - `createdAt`: Creation timestamp
+  - `updatedAt`: Last mutation timestamp
+- **Relationships**:
+  - Belongs to `UserAccount`
+  - Belongs to `Region`
+- **Validation Rules**:
+  - Location must be provided directly by the user or through explicit device
+    permission
+  - Coordinates must not be derived from receipts, CPF, address text, or IP geolocation
+  - `coverageRadiusKm` must be positive and bounded by product policy
+  - The establishment count shown to the user must be recomputed when coordinates or
+    radius changes
 
 ## CatalogProduct
 
@@ -210,8 +244,11 @@
   - `id`: Unique identifier
   - `shoppingListId`: Parent list reference
   - `userId`: Requesting user reference
-  - `mode`: `local`, `global_unique`, `global_full`
+  - `mode`: `local_unique`, `local_multi`, `global_multi`
   - `regionId`: Region used for the run
+  - `userLocationPreferenceId`: Optional location preference used for local modes
+  - `coverageRadiusKm`: Radius snapshot used for local candidate generation
+  - `candidateEstablishmentCount`: Count of eligible establishments considered
   - `preferredEstablishmentId`: Optional establishment for local mode
   - `jobId`: Related processing job identifier
   - `status`: `queued`, `running`, `completed`, `failed`
@@ -224,10 +261,15 @@
 - **Relationships**:
   - Belongs to `ShoppingList`
   - Belongs to `UserAccount`
+  - May belong to `UserLocationPreference`
   - Has many `OptimizationSelection`
   - May belong to `ProcessingJob`
 - **Validation Rules**:
   - Historical runs must remain queryable even when newer runs exist
+  - `local_unique` and `local_multi` require a user location preference with at least
+    one active establishment inside the coverage radius
+  - `global_multi` requires a region and must not include establishments outside that
+    region
 
 ## OptimizationSelection
 
@@ -237,6 +279,8 @@
   - `optimizationRunId`: Parent run reference
   - `shoppingListItemId`: Parent list item reference
   - `productOfferId`: Chosen offer when resolved
+  - `distanceKm`: Optional distance from the user's location to the selected
+    establishment for local modes
   - `status`: `selected`, `review`, `missing`
   - `estimatedCost`: Optional line total
   - `confidenceNotice`: Optional user-facing explanation
