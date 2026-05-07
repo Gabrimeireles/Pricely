@@ -113,6 +113,12 @@ export class StoreOfferRepository {
         const normalizedProductName = this.productNormalizerService.normalize(
           offer.catalogProduct.name,
         ).canonicalName;
+        const matchingCanonicalNames = this.buildMatchingCanonicalNames({
+          catalogProductName: offer.catalogProduct.name,
+          variantName: offer.productVariant.displayName,
+          brandName: offer.productVariant.brandName,
+          displayName: offer.displayName,
+        });
 
         return {
           id: offer.id,
@@ -123,6 +129,7 @@ export class StoreOfferRepository {
           storeId: offer.establishmentId,
           storeName: offer.establishment.unitName,
           canonicalName: normalizedProductName,
+          matchingCanonicalNames,
           displayName: offer.displayName,
           price: Number(offer.priceAmount),
           basePrice:
@@ -150,7 +157,11 @@ export class StoreOfferRepository {
           observedAt: offer.observedAt.toISOString(),
         } satisfies StoreOfferEntity;
       })
-      .filter((offer) => canonicalNames.includes(offer.canonicalName));
+      .filter((offer) =>
+        (offer.matchingCanonicalNames ?? [offer.canonicalName]).some((name) =>
+          canonicalNames.includes(name),
+        ),
+      );
   }
 
   async findByListItems(
@@ -200,6 +211,12 @@ export class StoreOfferRepository {
         const normalizedProductName = this.productNormalizerService.normalize(
           offer.catalogProduct.name,
         ).canonicalName;
+        const matchingCanonicalNames = this.buildMatchingCanonicalNames({
+          catalogProductName: offer.catalogProduct.name,
+          variantName: offer.productVariant.displayName,
+          brandName: offer.productVariant.brandName,
+          displayName: offer.displayName,
+        });
 
         return {
           id: offer.id,
@@ -210,6 +227,7 @@ export class StoreOfferRepository {
           storeId: offer.establishmentId,
           storeName: offer.establishment.unitName,
           canonicalName: normalizedProductName,
+          matchingCanonicalNames,
           displayName: offer.displayName,
           price: Number(offer.priceAmount),
           basePrice:
@@ -240,8 +258,38 @@ export class StoreOfferRepository {
       .filter(
         (offer) =>
           (offer.catalogProductId && catalogProductIds.has(offer.catalogProductId)) ||
-          canonicalNames.has(offer.canonicalName),
+          (offer.matchingCanonicalNames ?? [offer.canonicalName]).some((name) =>
+            canonicalNames.has(name),
+          ),
       );
+  }
+
+  private buildMatchingCanonicalNames(input: {
+    catalogProductName: string;
+    variantName?: string | null;
+    brandName?: string | null;
+    displayName: string;
+  }): string[] {
+    const candidates = [
+      input.catalogProductName,
+      input.variantName,
+      input.displayName,
+      input.brandName && input.variantName
+        ? `${input.brandName} ${input.variantName}`
+        : undefined,
+      input.brandName && input.displayName
+        ? `${input.brandName} ${input.displayName}`
+        : undefined,
+    ];
+
+    return [
+      ...new Set(
+        candidates
+          .filter((candidate): candidate is string => Boolean(candidate))
+          .map((candidate) => this.productNormalizerService.normalize(candidate).canonicalName)
+          .filter(Boolean),
+      ),
+    ];
   }
 
   private async resolveEstablishment(offer: StoreOfferEntity) {
