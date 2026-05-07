@@ -461,11 +461,28 @@ payments, and receipt incentives increase risk.
 
 ---
 
-## Phase 23: UI/UX Alignment with Stitch
+## Phase 23: Location-Aware Optimization and Coverage
+
+**Purpose**: Make local optimization respect the user's configured location and coverage
+radius while keeping global optimization limited to the user's selected city/region.
+
+- [X] T169 [P] Add location-aware optimization planning notes covering `local_unique`, `local_multi`, `global_multi`, distance policy, coverage-radius bounds, and privacy constraints in `docs/product/location-aware-optimization-plan.md`
+- [ ] T170 [P] Extend the data model and API contracts for establishment coordinates, user location preferences, coverage preview, candidate-establishment counts, and location-aware optimization request fields in `specs/001-grocery-optimizer/data-model.md` and `specs/001-grocery-optimizer/contracts/grocery-optimizer-api.yaml`
+- [ ] T171 Add Prisma schema and migration support for establishment latitude/longitude, user location preferences, optimization-run location snapshots, and selection distance fields in `backend/prisma/schema.prisma`
+- [ ] T172 [P] Add backend unit tests for distance calculation, radius filtering, city-bound global filtering, and no-location/no-coverage edge cases in `backend/test/unit/optimization/` and `backend/test/unit/locations/`
+- [ ] T173 Implement location preference services and coverage preview endpoints with explicit user-provided coordinates only in `backend/src/locations/`, `backend/src/users/`, and `backend/src/common/contracts/`
+- [ ] T174 Refactor optimization candidate generation to support `local_unique`, `local_multi`, and `global_multi` semantics with distance-aware explanations in `backend/src/optimization/`
+- [ ] T175 Update web location widgets to support explicit browser geolocation permission, manual city/location selection, radius preview, active-establishment count, and selected-offer distance display in `web/src/public/` and `web/src/app/`
+- [ ] T176 Update mobile location widgets to support platform location permission, denied/restricted/unavailable states, manual city/location selection, radius preview, and optimization-result distance copy in `mobile/lib/features/profile/`, `mobile/lib/features/shopping_lists/`, and `mobile/lib/features/optimization/`
+- [ ] T177 Add integration/E2E coverage for browser/mobile location permission, manual-location fallback, local single-store, local multi-store, global city-only, zero-establishment radius, and location-denied flows in `backend/test/integration/optimization/`, `web/e2e/`, and `mobile/test/`
+
+---
+
+## Phase 24: UI/UX Alignment with Stitch
 
 **Purpose**: Align the implemented MVP product with the current Stitch web and mobile
-direction after backend, receipts, optimization explainability, entitlement, and QA
-hardening landed in `homolog`.
+direction after backend, receipts, optimization explainability, entitlement, location
+planning, and QA hardening landed in `homolog`.
 
 **Stitch references**:
 
@@ -476,14 +493,14 @@ hardening landed in `homolog`.
 product-direction mismatch. Prefer converting current Stitch screens and design-system
 rules into implementation tasks against the real product.
 
-- [ ] T169 [P] Audit implemented web/mobile flows against Stitch screens and document product, IA, visual-system, and interaction gaps in `docs/product/stitch-ui-ux-alignment.md`
-- [ ] T170 [P] Map Stitch design-system rules into app implementation tokens for web and mobile, including teal/lime palette, Manrope/Inter usage, tonal surfaces, 8px radius, no-heavy-divider rule, and tabular price typography in `docs/product/stitch-ui-ux-alignment.md`
-- [ ] T171 Refactor public web surfaces toward Stitch direction for landing, city selection, offers explorer, offer detail, lists, list editor, optimization result, receipt states, and disabled premium gate in `web/src/public/`
-- [ ] T172 Refactor web admin surfaces toward Stitch direction for dashboard overview, queue health, receipt review/sanitization, catalog/offer operations, and optimization decision trace in `web/src/dashboard/`
-- [ ] T173 Refactor mobile surfaces toward Stitch direction for onboarding/home, list, optimization results by mode, receipt contribution, profile/value, error states, and dark-mode parity in `mobile/lib/features/`
-- [ ] T174 Render persisted optimization explanations as shopper-friendly and admin-friendly evidence modules instead of raw operational table rows in `web/src/public/`, `web/src/dashboard/`, and `mobile/lib/features/optimization/`
-- [ ] T175 Add visual regression/screenshot validation for key Stitch-aligned web flows with Playwright and keep existing MVP E2E coverage green in `web/e2e/`
-- [ ] T176 Add mobile widget/golden or screenshot-oriented validation notes for key Stitch-aligned mobile flows in `mobile/test/` and `docs/product/stitch-ui-ux-alignment.md`
+- [ ] T178 [P] Audit implemented web/mobile flows against Stitch screens and document product, IA, visual-system, and interaction gaps in `docs/product/stitch-ui-ux-alignment.md`
+- [ ] T179 [P] Map Stitch design-system rules into app implementation tokens for web and mobile, including teal/lime palette, Manrope/Inter usage, tonal surfaces, 8px radius, no-heavy-divider rule, and tabular price typography in `docs/product/stitch-ui-ux-alignment.md`
+- [ ] T180 Refactor public web surfaces toward Stitch direction for landing, city selection, offers explorer, offer detail, lists, list editor, optimization result, receipt states, location widgets, and disabled premium gate in `web/src/public/`
+- [ ] T181 Refactor web admin surfaces toward Stitch direction for dashboard overview, queue health, receipt review/sanitization, catalog/offer operations, and optimization decision trace in `web/src/dashboard/`
+- [ ] T182 Refactor mobile surfaces toward Stitch direction for onboarding/home, list, location widgets, optimization results by mode, receipt contribution, profile/value, error states, and dark-mode parity in `mobile/lib/features/`
+- [ ] T183 Render persisted optimization explanations as shopper-friendly and admin-friendly evidence modules instead of raw operational table rows in `web/src/public/`, `web/src/dashboard/`, and `mobile/lib/features/optimization/`
+- [ ] T184 Add visual regression/screenshot validation for key Stitch-aligned web flows with Playwright and keep existing MVP E2E coverage green in `web/e2e/`
+- [ ] T185 Add mobile widget/golden or screenshot-oriented validation notes for key Stitch-aligned mobile flows in `mobile/test/` and `docs/product/stitch-ui-ux-alignment.md`
 
 ---
 
@@ -504,7 +521,8 @@ rules into implementation tasks against the real product.
 - **Advanced optimization (Phase 20)**: Depends on Phase 13 offer price comparisons and Phase 14 explainability surfaces
 - **Receipt quality and rewards (Phase 21)**: Depends on Phase 18 token ledger and existing receipt ingestion
 - **Security, QA, and release hardening (Phase 22)**: Runs across Phases 18-21 before broader production/payment rollout
-- **UI/UX alignment (Phase 23)**: Depends on Phases 20-22 so the implemented product and explanation payloads can drive the final web/mobile experience
+- **Location-aware optimization (Phase 23)**: Depends on Phase 20 solver separation/explainability and Phase 15 establishment data; must complete before local optimization is marketed as proximity-aware
+- **UI/UX alignment (Phase 24)**: Depends on Phases 20-23 so the implemented product, explanation payloads, and location direction can drive the final web/mobile experience
 
 ### User Story Dependencies
 
@@ -531,7 +549,8 @@ rules into implementation tasks against the real product.
 - Phase 18 backend schema/tests can run in parallel with web/mobile paywall state design after entitlement contracts are named
 - Phase 20 optimization tests can run before solver refactor as the red phase for the operations-research implementation
 - Phase 22 security checklists and E2E scaffolding can run in parallel with billing and receipt work
-- Phase 23 audit and token mapping can run in parallel before implementation, but web/mobile refactors should follow the audit to avoid speculative UI churn
+- Phase 23 documentation/contracts, backend distance tests, and web/mobile design work can run in parallel after the mode names and privacy constraints are accepted
+- Phase 24 audit and token mapping can run in parallel before implementation, but web/mobile refactors should follow the audit to avoid speculative UI churn
 
 ---
 
@@ -557,7 +576,8 @@ rules into implementation tasks against the real product.
 6. Implement Phase 18 entitlement/token ledger before Stripe or paid UI claims
 7. Add Phase 19 billing only after token consume/refund idempotency is verified
 8. Improve optimization explainability and receipt incentives after monetization foundations are safe
-9. Run Phase 23 UI/UX alignment before treating the MVP as a polished product surface
+9. Add Phase 23 location-aware optimization before claiming local results are based on nearby establishments
+10. Run Phase 24 UI/UX alignment before treating the MVP as a polished product surface
 
 ### Parallel Team Strategy
 
@@ -566,8 +586,8 @@ With multiple contributors:
 1. One contributor focuses on backend auth, persistence, and optimization flows
 2. One contributor focuses on backend catalog/region/admin modules
 3. One contributor focuses on web/mobile integration against stabilized contracts
-4. For Phases 18-22, split work into entitlement/billing, optimization science, receipt quality, frontend UX, and security/QA lanes
-5. For Phase 23, split work into audit/design tokens, public web, admin web, mobile, and visual validation lanes
+4. For Phases 18-23, split work into entitlement/billing, optimization science, receipt quality, location/privacy, frontend UX, and security/QA lanes
+5. For Phase 24, split work into audit/design tokens, public web, admin web, mobile, and visual validation lanes
 
 ---
 
@@ -576,6 +596,6 @@ With multiple contributors:
 - Total tasks are ordered for execution, not just grouped by subsystem
 - Every user story remains independently testable
 - File paths are intentionally explicit so the task list is immediately executable
-- Suggested next execution scope: Phase 23 audit and design-token mapping before visual refactors
+- Suggested next execution scope: Phase 24 audit and design-token mapping before visual refactors
 - Do not start Phase 19 Stripe work before Phase 18 token-ledger tests pass
 - Do not connect receipt rewards to the token ledger until T162 is explicitly unlocked

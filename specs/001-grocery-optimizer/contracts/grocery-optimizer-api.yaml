@@ -55,6 +55,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserAccount'
+  /location-preferences:
+    get:
+      summary: List user-configured locations and coverage radius settings
+      responses:
+        '200':
+          description: Location preferences returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserLocationPreference'
+    post:
+      summary: Save a user-configured location and coverage radius
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertLocationPreferenceRequest'
+      responses:
+        '201':
+          description: Location preference saved with current coverage count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLocationPreference'
+  /location-preferences/coverage-preview:
+    post:
+      summary: Preview active establishment coverage for a candidate location/radius
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoveragePreviewRequest'
+      responses:
+        '200':
+          description: Establishment coverage preview returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoveragePreview'
   /regions:
     get:
       security: []
@@ -632,10 +675,77 @@ components:
           type: string
         neighborhood:
           type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        locationSource:
+          type: string
+          enum: [admin, geocoded_address, manual]
         regionId:
           type: string
         isActive:
           type: boolean
+    UserLocationPreference:
+      type: object
+      required: [id, userId, regionId, label, latitude, longitude, coverageRadiusKm, activeEstablishmentCount, isDefault]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        regionId:
+          type: string
+        label:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        coverageRadiusKm:
+          type: number
+        activeEstablishmentCount:
+          type: integer
+        isDefault:
+          type: boolean
+    UpsertLocationPreferenceRequest:
+      type: object
+      required: [regionId, label, latitude, longitude, coverageRadiusKm]
+      properties:
+        regionId:
+          type: string
+        label:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        coverageRadiusKm:
+          type: number
+        isDefault:
+          type: boolean
+    CoveragePreviewRequest:
+      type: object
+      required: [regionId, latitude, longitude, coverageRadiusKm]
+      properties:
+        regionId:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        coverageRadiusKm:
+          type: number
+    CoveragePreview:
+      type: object
+      required: [regionId, coverageRadiusKm, activeEstablishmentCount]
+      properties:
+        regionId:
+          type: string
+        coverageRadiusKm:
+          type: number
+        activeEstablishmentCount:
+          type: integer
     CatalogProduct:
       type: object
       required: [id, name, slug, category, isActive]
@@ -820,9 +930,13 @@ components:
       properties:
         mode:
           type: string
-          enum: [local, global_unique, global_full]
+          enum: [local_unique, local_multi, global_multi]
         regionId:
           type: string
+        userLocationPreferenceId:
+          type: string
+        coverageRadiusKm:
+          type: number
         preferredEstablishmentId:
           type: string
     OptimizationRunAccepted:
@@ -844,6 +958,8 @@ components:
           type: string
         productOfferId:
           type: string
+        distanceKm:
+          type: number
         status:
           type: string
           enum: [selected, review, missing]
@@ -861,9 +977,15 @@ components:
           type: string
         mode:
           type: string
-          enum: [local, global_unique, global_full]
+          enum: [local_unique, local_multi, global_multi]
         regionId:
           type: string
+        userLocationPreferenceId:
+          type: string
+        coverageRadiusKm:
+          type: number
+        candidateEstablishmentCount:
+          type: integer
         preferredEstablishmentId:
           type: string
         status:
