@@ -513,7 +513,9 @@ export class MultiMarketOptimizerService {
         offer.catalogProductId === item.catalogProductId) ||
       (!item.catalogProductId &&
         item.normalizedName &&
-        offer.canonicalName === item.normalizedName),
+        (offer.matchingCanonicalNames ?? [offer.canonicalName]).includes(
+          item.normalizedName,
+        )),
     );
   }
 
