@@ -277,6 +277,13 @@ while sharing auth and domain contracts.
 
 - Formalize optimization objectives, constraints, tie-breakers, infeasibility behavior,
   and promotional-price treatment.
+- Treat the final shopper modes as location-aware objectives:
+  - `local_unique`: cheapest viable basket in one nearby establishment inside the
+    shopper coverage radius.
+  - `local_multi`: cheapest item-level choices across nearby establishments inside the
+    shopper coverage radius.
+  - `global_multi`: cheapest item-level choices across all eligible establishments in
+    the shopper city/region, ignoring proximity ranking.
 - Separate candidate generation, constraint solving, scoring, and explanation building
   inside backend optimization services.
 - Persist and expose selected offers, rejected alternatives, savings comparisons,
@@ -301,6 +308,23 @@ while sharing auth and domain contracts.
   admin privilege boundaries, and rollback readiness.
 - Document release checks for seed reset, payment sandbox, observability, incident
   triage, and rollback.
+
+### Phase 23: Location-Aware Optimization and Coverage
+
+- Store user location preferences only with explicit user configuration or permission;
+  do not infer precise location from receipts or IP addresses.
+- Store establishment coordinates and use them to calculate distance from the user's
+  configured location.
+- Add a configurable maximum coverage radius around the user and show how many active
+  establishments are available inside that area before the user saves the setting.
+- Add web and mobile widgets for reading current location through explicit permission
+  and for manual user selection when permission is denied, unavailable, or skipped.
+- Rename/align optimization behavior around three final modes:
+  `local_unique`, `local_multi`, and `global_multi`.
+- Keep `global_multi` limited to establishments in the user's selected city/region,
+  even though it ignores distance ranking.
+- Include distance, coverage radius, and candidate-establishment counts in optimization
+  explanations so local results remain auditable.
 
 ## Complexity Tracking
 

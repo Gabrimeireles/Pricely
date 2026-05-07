@@ -461,6 +461,23 @@ payments, and receipt incentives increase risk.
 
 ---
 
+## Phase 23: Location-Aware Optimization and Coverage
+
+**Purpose**: Make local optimization respect the user's configured location and coverage
+radius while keeping global optimization limited to the user's selected city/region.
+
+- [X] T169 [P] Add location-aware optimization planning notes covering `local_unique`, `local_multi`, `global_multi`, distance policy, coverage-radius bounds, and privacy constraints in `docs/product/location-aware-optimization-plan.md`
+- [ ] T170 [P] Extend the data model and API contracts for establishment coordinates, user location preferences, coverage preview, candidate-establishment counts, and location-aware optimization request fields in `specs/001-grocery-optimizer/data-model.md` and `specs/001-grocery-optimizer/contracts/grocery-optimizer-api.yaml`
+- [ ] T171 Add Prisma schema and migration support for establishment latitude/longitude, user location preferences, optimization-run location snapshots, and selection distance fields in `backend/prisma/schema.prisma`
+- [ ] T172 [P] Add backend unit tests for distance calculation, radius filtering, city-bound global filtering, and no-location/no-coverage edge cases in `backend/test/unit/optimization/` and `backend/test/unit/locations/`
+- [ ] T173 Implement location preference services and coverage preview endpoints with explicit user-provided coordinates only in `backend/src/locations/`, `backend/src/users/`, and `backend/src/common/contracts/`
+- [ ] T174 Refactor optimization candidate generation to support `local_unique`, `local_multi`, and `global_multi` semantics with distance-aware explanations in `backend/src/optimization/`
+- [ ] T175 Update web location widgets to support explicit browser geolocation permission, manual city/location selection, radius preview, active-establishment count, and selected-offer distance display in `web/src/public/` and `web/src/app/`
+- [ ] T176 Update mobile location widgets to support platform location permission, denied/restricted/unavailable states, manual city/location selection, radius preview, and optimization-result distance copy in `mobile/lib/features/profile/`, `mobile/lib/features/shopping_lists/`, and `mobile/lib/features/optimization/`
+- [ ] T177 Add integration/E2E coverage for browser/mobile location permission, manual-location fallback, local single-store, local multi-store, global city-only, zero-establishment radius, and location-denied flows in `backend/test/integration/optimization/`, `web/e2e/`, and `mobile/test/`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -478,6 +495,7 @@ payments, and receipt incentives increase risk.
 - **Advanced optimization (Phase 20)**: Depends on Phase 13 offer price comparisons and Phase 14 explainability surfaces
 - **Receipt quality and rewards (Phase 21)**: Depends on Phase 18 token ledger and existing receipt ingestion
 - **Security, QA, and release hardening (Phase 22)**: Runs across Phases 18-21 before broader production/payment rollout
+- **Location-aware optimization (Phase 23)**: Depends on Phase 20 solver separation/explainability and Phase 15 establishment data; must complete before local optimization is marketed as proximity-aware
 
 ### User Story Dependencies
 
@@ -504,6 +522,7 @@ payments, and receipt incentives increase risk.
 - Phase 18 backend schema/tests can run in parallel with web/mobile paywall state design after entitlement contracts are named
 - Phase 20 optimization tests can run before solver refactor as the red phase for the operations-research implementation
 - Phase 22 security checklists and E2E scaffolding can run in parallel with billing and receipt work
+- Phase 23 documentation/contracts, backend distance tests, and web/mobile design work can run in parallel after the mode names and privacy constraints are accepted
 
 ---
 
@@ -529,6 +548,7 @@ payments, and receipt incentives increase risk.
 6. Implement Phase 18 entitlement/token ledger before Stripe or paid UI claims
 7. Add Phase 19 billing only after token consume/refund idempotency is verified
 8. Improve optimization explainability and receipt incentives after monetization foundations are safe
+9. Add Phase 23 location-aware optimization before claiming local results are based on nearby establishments
 
 ### Parallel Team Strategy
 
@@ -537,7 +557,7 @@ With multiple contributors:
 1. One contributor focuses on backend auth, persistence, and optimization flows
 2. One contributor focuses on backend catalog/region/admin modules
 3. One contributor focuses on web/mobile integration against stabilized contracts
-4. For Phases 18-22, split work into entitlement/billing, optimization science, receipt quality, frontend UX, and security/QA lanes
+4. For Phases 18-23, split work into entitlement/billing, optimization science, receipt quality, location/privacy, frontend UX, and security/QA lanes
 
 ---
 
