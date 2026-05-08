@@ -209,7 +209,10 @@ jobs:
             docker compose --env-file .env run --rm backend sh -lc "npm run db:seed"
           fi
 
-          docker compose --env-file .env up -d backend web
+          docker compose --env-file .env up -d --force-recreate backend web
+          docker compose --env-file .env ps
+          docker compose --env-file .env exec -T web sh -lc \
+            "printenv | sort | grep -E '^(VITE_|NODE_ENV)'; sed -n '1,35p' vite.config.ts"
           docker image prune -f
           ENDSSH
 
