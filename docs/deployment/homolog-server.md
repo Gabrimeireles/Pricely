@@ -85,6 +85,7 @@ Optional variables:
 - `WEB_APP_URL`
 - `VITE_API_BASE_URL`
 - `VITE_ALLOWED_HOSTS`
+- `VITE_ALLOW_ALL_HOSTS`
 - `NODE_ENV`
 - `USE_TAILSCALE`
 
@@ -108,8 +109,13 @@ Minimum variables:
 DEPLOY_PATH=/srv/stacks/pricely
 VITE_API_BASE_URL=https://<backend-public-url>
 VITE_ALLOWED_HOSTS=pricely.grmeireles.dev
+VITE_ALLOW_ALL_HOSTS=true
 WEB_APP_URL=https://<web-public-url>
 ```
+
+`VITE_ALLOW_ALL_HOSTS=true` is the homolog default because the web container
+runs the Vite development server behind Cloudflare Tunnel. Set it to `false`
+only if every public tunnel host is covered by `VITE_ALLOWED_HOSTS`.
 
 Use `GHCR_TOKEN` instead of `GHCR_PAT` only if the token has package pull access
 for the generated GHCR images.

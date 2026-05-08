@@ -69,6 +69,7 @@ jobs:
       WEB_APP_URL: ${{ vars.WEB_APP_URL || 'http://localhost:5173' }}
       VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://localhost:3000' }}
       VITE_ALLOWED_HOSTS: ${{ vars.VITE_ALLOWED_HOSTS || 'pricely.grmeireles.dev' }}
+      VITE_ALLOW_ALL_HOSTS: ${{ vars.VITE_ALLOW_ALL_HOSTS || 'true' }}
       NODE_ENV: ${{ vars.NODE_ENV || 'development' }}
     steps:
       - name: Checkout
@@ -145,6 +146,7 @@ jobs:
             printf 'WEB_APP_URL=%s\n' "$WEB_APP_URL"
             printf 'VITE_API_BASE_URL=%s\n' "$VITE_API_BASE_URL"
             printf 'VITE_ALLOWED_HOSTS=%s\n' "$VITE_ALLOWED_HOSTS"
+            printf 'VITE_ALLOW_ALL_HOSTS=%s\n' "$VITE_ALLOW_ALL_HOSTS"
             printf 'NODE_ENV=%s\n' "$NODE_ENV"
           } > .deploy/.env
 
