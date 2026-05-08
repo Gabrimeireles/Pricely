@@ -69,7 +69,6 @@ jobs:
       WEB_APP_URL: ${{ vars.WEB_APP_URL || 'http://localhost:5173' }}
       VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://localhost:3000' }}
       NODE_ENV: ${{ vars.NODE_ENV || 'development' }}
-      IMAGE_TAG: sha-${{ github.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,9 +79,11 @@ jobs:
         shell: bash
         run: |
           owner_lower=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          short_sha="${GITHUB_SHA::7}"
           {
             printf 'BACKEND_IMAGE=ghcr.io/%s/pricely-backend\n' "$owner_lower"
             printf 'WEB_IMAGE=ghcr.io/%s/pricely-web\n' "$owner_lower"
+            printf 'IMAGE_TAG=sha-%s\n' "$short_sha"
           } >> "$GITHUB_ENV"
 
       - name: Connect to Tailscale
