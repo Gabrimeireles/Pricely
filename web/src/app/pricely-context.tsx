@@ -11,6 +11,7 @@ import {
   createShoppingList,
   fetchPublicRegions,
   fetchMe,
+  fetchLatestOptimization,
   fetchShoppingLists,
   mapProfile,
   mapShoppingList,
@@ -76,6 +77,9 @@ interface PricelyContextValue {
     listId: string,
     mode: OptimizationModeId,
   ) => Promise<OptimizationResultApiResponse>;
+  loadLatestOptimization: (
+    listId: string,
+  ) => Promise<OptimizationResultApiResponse | null>;
 }
 
 const STORAGE_KEY = 'pricely-web-state-v2';
@@ -409,6 +413,34 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         );
         setPreferredMode(mode);
         return result;
+      },
+      loadLatestOptimization: async (listId) => {
+        if (!token) {
+          return null;
+        }
+
+        try {
+          const result = await fetchLatestOptimization(token, listId);
+          setOptimizationResults((current) => ({
+            ...current,
+            [listId]: result,
+          }));
+          setLists((current) =>
+            current.map((list) =>
+              list.id === listId
+                ? {
+                    ...list,
+                    lastMode: result.mode,
+                    expectedSavings:
+                      result.estimatedSavings ?? list.expectedSavings,
+                  }
+                : list,
+            ),
+          );
+          return result;
+        } catch {
+          return null;
+        }
       },
     }),
     [
