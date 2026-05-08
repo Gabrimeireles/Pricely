@@ -220,6 +220,107 @@ function listStatusTone(status: ShoppingListItem['status']) {
   return 'text-rose-700';
 }
 
+function coverageStatusLabel(status: 'complete' | 'partial' | 'none') {
+  if (status === 'complete') {
+    return 'Completa';
+  }
+  if (status === 'partial') {
+    return 'Parcial';
+  }
+
+  return 'Sem cobertura';
+}
+
+function selectionStatusLabel(status: 'selected' | 'missing' | 'review') {
+  if (status === 'selected') {
+    return 'Oferta selecionada';
+  }
+  if (status === 'review') {
+    return 'Revisar evidência';
+  }
+
+  return 'Sem oferta confirmada';
+}
+
+function rejectedReasonLabel(reason?: string) {
+  if (!reason) {
+    return '';
+  }
+
+  const labels: Record<string, string> = {
+    no_confirmed_offer_available: 'sem oferta confirmada',
+    no_active_available_offer: 'sem oferta ativa disponível',
+    single_store_constraint: 'fora da loja escolhida',
+    missing_normalized_product: 'produto precisa de revisão',
+  };
+
+  return labels[reason] ?? 'sem evidência suficiente';
+}
+
+function confidenceNoticeLabel(notice?: string) {
+  if (!notice) {
+    return undefined;
+  }
+
+  const normalized = notice.toLowerCase();
+  if (normalized.includes('no confirmed offer')) {
+    return 'Ainda não há oferta confirmada para este item.';
+  }
+  if (normalized.includes('selected store does not have')) {
+    return 'A loja selecionada ainda não tem oferta confirmada para este item.';
+  }
+  if (normalized.includes('low-confidence')) {
+    return 'Evidência de preço com confiança baixa.';
+  }
+  if (normalized.includes('could not be normalized')) {
+    return 'O item precisa de revisão antes de confiar no resultado.';
+  }
+
+  return notice;
+}
+
+function decisionReasonLabel(reason?: string) {
+  if (!reason) {
+    return undefined;
+  }
+
+  const labels: Record<string, string> = {
+    selected_confirmed_offer: 'Oferta confirmada selecionada',
+    selected_with_data_quality_warning:
+      'Oferta selecionada com alerta de qualidade',
+    no_confirmed_offer: 'Sem oferta confirmada',
+    not_selected: 'Não selecionado',
+  };
+
+  return labels[reason] ?? undefined;
+}
+
+function savingsComparisonLabel(selection: {
+  savingsVsComparison?: number;
+  comparisonPriceAmount?: number;
+  regionalAveragePriceAmount?: number;
+}) {
+  const savings = selection.savingsVsComparison ?? 0;
+
+  if (savings <= 0) {
+    return null;
+  }
+
+  if (selection.regionalAveragePriceAmount !== undefined) {
+    return `${formatCurrency(savings)} abaixo da média regional (${formatCurrency(
+      selection.regionalAveragePriceAmount,
+    )})`;
+  }
+
+  if (selection.comparisonPriceAmount !== undefined) {
+    return `${formatCurrency(savings)} abaixo do maior preço encontrado (${formatCurrency(
+      selection.comparisonPriceAmount,
+    )})`;
+  }
+
+  return `${formatCurrency(savings)} de economia estimada nas ofertas disponíveis`;
+}
+
 function RequireAuthentication({
   children,
   title,
@@ -1904,12 +2005,16 @@ export function OptimizationPage() {
   const {
     lists,
     optimizationResults,
+    loadLatestOptimization,
     preferredMode,
     runOptimization,
     setPreferredMode,
   } = usePricely();
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [latestLoadAttemptedFor, setLatestLoadAttemptedFor] = useState<
+    string | null
+  >(null);
   const list = lists.find((entry) => entry.id === listId);
   const result = optimizationResults[listId];
   const activeMode = result?.mode ?? list?.lastMode ?? preferredMode;
@@ -1921,6 +2026,15 @@ export function OptimizationPage() {
   const isStaleProcessing =
     isProcessingResult &&
     Date.now() - new Date(result.createdAt).getTime() > 30_000;
+
+  useEffect(() => {
+    if (!list || result || latestLoadAttemptedFor === listId) {
+      return;
+    }
+
+    setLatestLoadAttemptedFor(listId);
+    void loadLatestOptimization(listId);
+  }, [latestLoadAttemptedFor, list, listId, loadLatestOptimization, result]);
 
   const handleRun = async (mode: OptimizationModeId) => {
     setError(null);
@@ -2081,7 +2195,9 @@ export function OptimizationPage() {
                 <Card>
                   <CardHeader>
                     <CardDescription>Cobertura</CardDescription>
-                    <CardTitle>{result.coverageStatus}</CardTitle>
+                    <CardTitle>
+                      {coverageStatusLabel(result.coverageStatus)}
+                    </CardTitle>
                   </CardHeader>
                 </Card>
               </div>
@@ -2147,12 +2263,18 @@ export function OptimizationPage() {
                                 </span>
                                 {selection.confidenceNotice ? (
                                   <span className="text-xs text-muted-foreground">
-                                    {selection.confidenceNotice}
+                                    {confidenceNoticeLabel(
+                                      selection.confidenceNotice,
+                                    )}
                                   </span>
                                 ) : null}
-                                {selection.decisionReason ? (
+                                {decisionReasonLabel(
+                                  selection.decisionReason,
+                                ) ? (
                                   <span className="text-xs text-muted-foreground">
-                                    {selection.decisionReason}
+                                    {decisionReasonLabel(
+                                      selection.decisionReason,
+                                    )}
                                   </span>
                                 ) : null}
                               </div>
@@ -2183,10 +2305,7 @@ export function OptimizationPage() {
                               {selection.savingsVsComparison &&
                               selection.savingsVsComparison > 0 ? (
                                 <span className="text-xs text-emerald-700">
-                                  economiza{' '}
-                                  {formatCurrency(
-                                    selection.savingsVsComparison,
-                                  )}
+                                  {savingsComparisonLabel(selection)}
                                 </span>
                               ) : null}
                             </div>
@@ -2210,9 +2329,11 @@ export function OptimizationPage() {
                                     : 'missing',
                               )}
                             >
-                              {selection.selectionStatus}
+                              {selectionStatusLabel(selection.selectionStatus)}
                               {selection.rejectedReason
-                                ? ` · ${selection.rejectedReason}`
+                                ? ` · ${rejectedReasonLabel(
+                                    selection.rejectedReason,
+                                  )}`
                                 : ''}
                             </span>
                           </TableCell>
