@@ -84,6 +84,7 @@ Optional variables:
 - `WEB_PORT`
 - `WEB_APP_URL`
 - `VITE_API_BASE_URL`
+- `VITE_ALLOWED_HOSTS`
 - `NODE_ENV`
 - `USE_TAILSCALE`
 
@@ -106,6 +107,7 @@ Minimum variables:
 ```text
 DEPLOY_PATH=/srv/stacks/pricely
 VITE_API_BASE_URL=https://<backend-public-url>
+VITE_ALLOWED_HOSTS=pricely.grmeireles.dev
 WEB_APP_URL=https://<web-public-url>
 ```
 
