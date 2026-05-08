@@ -3,14 +3,19 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 
-const allowedHosts = (process.env.VITE_ALLOWED_HOSTS ?? '')
-  .split(',')
-  .map((host) => host.trim())
-  .filter(Boolean);
+const defaultAllowedHosts = ['pricely.grmeireles.dev'];
+const allowedHosts = [
+  ...defaultAllowedHosts,
+  ...(process.env.VITE_ALLOWED_HOSTS ?? '')
+    .split(',')
+    .map((host) => host.trim())
+    .filter(Boolean),
+];
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    host: '0.0.0.0',
     allowedHosts,
   },
   test: {
