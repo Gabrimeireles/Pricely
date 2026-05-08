@@ -54,7 +54,8 @@ jobs:
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
       GHCR_PAT: ${{ secrets.GHCR_PAT }}
-      RUNTIME_ENV_FILE: ${{ secrets.RUNTIME_ENV_FILE }}
+      BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE || secrets.RUNTIME_ENV_FILE }}
+      WEB_ENV_FILE: ${{ secrets.WEB_ENV_FILE }}
       POSTGRES_DB: ${{ vars.POSTGRES_DB || 'pricely' }}
       POSTGRES_USER: ${{ vars.POSTGRES_USER || 'postgres' }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -92,7 +93,7 @@ jobs:
           [ -n "$DEPLOY_USER" ] || { echo "Missing secret DEPLOY_USER"; exit 1; }
           [ -n "${{ secrets.DEPLOY_SSH_KEY }}" ] || { echo "Missing secret DEPLOY_SSH_KEY"; exit 1; }
           [ -n "$DEPLOY_PATH" ] || { echo "Missing variable DEPLOY_PATH"; exit 1; }
-          [ -n "$RUNTIME_ENV_FILE" ] || { echo "Missing secret RUNTIME_ENV_FILE"; exit 1; }
+          [ -n "$BACKEND_ENV_FILE" ] || { echo "Missing secret BACKEND_ENV_FILE or legacy RUNTIME_ENV_FILE"; exit 1; }
           [ -n "$POSTGRES_PASSWORD" ] || { echo "Missing secret POSTGRES_PASSWORD"; exit 1; }
           [ -n "$PGADMIN_DEFAULT_PASSWORD" ] || { echo "Missing secret PGADMIN_DEFAULT_PASSWORD"; exit 1; }
           if [ -z "$GHCR_TOKEN" ] && [ -z "$GHCR_PAT" ]; then
@@ -137,12 +138,18 @@ jobs:
             printf 'NODE_ENV=%s\n' "$NODE_ENV"
           } > .deploy/.env
 
-          printf '%s\n' "$RUNTIME_ENV_FILE" > .deploy/.env.backend
+          printf '%s\n' "$BACKEND_ENV_FILE" > .deploy/.env.backend
+          if [ -n "$WEB_ENV_FILE" ]; then
+            printf '%s\n' "$WEB_ENV_FILE" > .deploy/.env.web
+          else
+            printf '# Optional web runtime env file intentionally left empty.\n' > .deploy/.env.web
+          fi
 
           ssh "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH'"
           scp .deploy/docker-compose.yml "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/docker-compose.yml"
           scp .deploy/.env "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env"
           scp .deploy/.env.backend "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env.backend"
+          scp .deploy/.env.web "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env.web"
 
       - name: Deploy containers
         shell: bash
