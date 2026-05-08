@@ -70,13 +70,20 @@ jobs:
       VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://localhost:3000' }}
       NODE_ENV: ${{ vars.NODE_ENV || 'development' }}
       IMAGE_TAG: sha-${{ github.sha }}
-      BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/pricely-backend
-      WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/pricely-web
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      - name: Resolve GHCR image names
+        shell: bash
+        run: |
+          owner_lower=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          {
+            printf 'BACKEND_IMAGE=ghcr.io/%s/pricely-backend\n' "$owner_lower"
+            printf 'WEB_IMAGE=ghcr.io/%s/pricely-web\n' "$owner_lower"
+          } >> "$GITHUB_ENV"
 
       - name: Connect to Tailscale
         if: ${{ vars.USE_TAILSCALE == 'true' }}
