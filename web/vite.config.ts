@@ -11,12 +11,13 @@ const allowedHosts = [
     .map((host) => host.trim())
     .filter(Boolean),
 ];
+const allowAllHosts = process.env.VITE_ALLOW_ALL_HOSTS === 'true';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     host: '0.0.0.0',
-    allowedHosts,
+    allowedHosts: allowAllHosts ? true : allowedHosts,
   },
   test: {
     exclude: ['node_modules/**', 'dist/**', 'e2e/**'],
