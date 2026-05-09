@@ -20,6 +20,12 @@ export interface StoreOfferEntity {
   quantityContext?: string;
   availabilityStatus: StoreOfferAvailabilityStatus;
   confidenceScore: number;
+  trustFactor?: number;
+  trustLevel?: 'high' | 'medium' | 'low';
+  trustEvidenceCount?: number;
+  trustFreshnessDays?: number;
+  trustLastValidatedAt?: string;
+  trustExplanation?: string;
   sourceReceiptLineItemId: string;
   observedAt: string;
 }

@@ -84,6 +84,12 @@ type OptimizationResultApiResponse = {
     savingsVsComparison?: number;
     sourceLabel?: string;
     observedAt?: string;
+    trustFactor?: number;
+    trustLevel?: 'high' | 'medium' | 'low';
+    trustEvidenceCount?: number;
+    trustFreshnessDays?: number;
+    trustLastValidatedAt?: string;
+    trustExplanation?: string;
     selectionStatus: 'selected' | 'missing' | 'review';
     confidenceNotice?: string;
     decisionReason?: string;

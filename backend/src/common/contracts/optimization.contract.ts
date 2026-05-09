@@ -20,6 +20,12 @@ export interface OptimizationSelection {
   savingsVsComparison?: number;
   sourceLabel?: string;
   observedAt?: string;
+  trustFactor?: number;
+  trustLevel?: 'high' | 'medium' | 'low';
+  trustEvidenceCount?: number;
+  trustFreshnessDays?: number;
+  trustLastValidatedAt?: string;
+  trustExplanation?: string;
   selectionStatus: 'selected' | 'missing' | 'review';
   confidenceNotice?: string;
   decisionReason?: string;
@@ -44,6 +50,12 @@ export interface OptimizationExplanationPayload {
     estimatedCost?: number;
     savingsVsComparison?: number;
     decisionReason?: string;
+    trustFactor?: number;
+    trustLevel?: 'high' | 'medium' | 'low';
+    trustEvidenceCount?: number;
+    trustFreshnessDays?: number;
+    trustLastValidatedAt?: string;
+    trustExplanation?: string;
   }>;
   rejectedAlternatives: Array<{
     shoppingListItemId: string;
