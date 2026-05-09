@@ -26,10 +26,24 @@ function getCorsOrigins(): string[] {
   return Array.from(
     new Set(
       [...configuredOrigins, ...localWebOrigins]
-        .map((origin) => origin?.trim())
+        .map((origin) => normalizeCorsOrigin(origin))
         .filter((origin): origin is string => Boolean(origin)),
     ),
   );
+}
+
+function normalizeCorsOrigin(origin?: string): string | undefined {
+  const trimmed = origin?.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return trimmed.replace(/\/+$/, '');
+  }
 }
 
 async function bootstrap(): Promise<void> {
