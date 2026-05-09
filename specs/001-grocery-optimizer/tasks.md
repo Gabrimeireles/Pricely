@@ -493,14 +493,18 @@ planning, and QA hardening landed in `homolog`.
 product-direction mismatch. Prefer converting current Stitch screens and design-system
 rules into implementation tasks against the real product.
 
-- [ ] T178 [P] Audit implemented web/mobile flows against Stitch screens and document product, IA, visual-system, and interaction gaps in `docs/product/stitch-ui-ux-alignment.md`
-- [ ] T179 [P] Map Stitch design-system rules into app implementation tokens for web and mobile, including teal/lime palette, Manrope/Inter usage, tonal surfaces, 8px radius, no-heavy-divider rule, and tabular price typography in `docs/product/stitch-ui-ux-alignment.md`
-- [ ] T180 Refactor public web surfaces toward Stitch direction for landing, city selection, offers explorer, offer detail, lists, list editor, optimization result, receipt states, location widgets, and disabled premium gate in `web/src/public/`
-- [ ] T181 Refactor web admin surfaces toward Stitch direction for dashboard overview, queue health, receipt review/sanitization, catalog/offer operations, and optimization decision trace in `web/src/dashboard/`
-- [ ] T182 Refactor mobile surfaces toward Stitch direction for onboarding/home, list, location widgets, optimization results by mode, receipt contribution, profile/value, error states, and dark-mode parity in `mobile/lib/features/`
-- [ ] T183 Render persisted optimization explanations as shopper-friendly and admin-friendly evidence modules instead of raw operational table rows in `web/src/public/`, `web/src/dashboard/`, and `mobile/lib/features/optimization/`
-- [ ] T184 Add visual regression/screenshot validation for key Stitch-aligned web flows with Playwright and keep existing MVP E2E coverage green in `web/e2e/`
-- [ ] T185 Add mobile widget/golden or screenshot-oriented validation notes for key Stitch-aligned mobile flows in `mobile/test/` and `docs/product/stitch-ui-ux-alignment.md`
+- [X] T178 [P] Audit implemented web/mobile/admin flows against the current product and document product, IA, visual-system, trust-evidence, receipt, and interaction gaps in `docs/product/stitch-ui-ux-alignment.md`
+- [X] T179 [P] Map design-system rules into implementation-ready tokens and component rules for web and mobile, including teal/lime/amber/coral status roles, tonal surfaces, 8px radius, action badges, and tabular price typography in `docs/product/stitch-ui-ux-alignment.md`
+- [ ] T180 Split the broad Phase 24 refactor into issue-sized shopper lanes for `create list -> optimize -> shop -> contribute receipt`, including next-best-action strips, persistent city context, richer list item cards, and checklist-to-receipt handoff in `web/src/public/` and `mobile/lib/features/`
+- [ ] T181 Render persisted optimization explanations as shopper evidence modules with trust factor, source type, receipt count, freshness decay, confidence notice, and report/upload actions in `web/src/public/` and `mobile/lib/features/optimization/`
+- [ ] T182 Render admin decision evidence modules with selected offers, rejected alternatives, trust decay, receipt provenance, moderation status, and source labels in `web/src/dashboard/`
+- [ ] T183 Refactor receipt contribution surfaces so accepted, pending-review, duplicate, rejected, and low-confidence outcomes are visual and actionable without promising token rewards before T162 in `web/src/public/`, `web/src/dashboard/`, and `mobile/lib/features/receipts/`
+- [ ] T184 Add Phase 23-ready location widgets as explicit city/location/radius preview states, keeping proximity claims disabled until T170-T177 add persisted coordinates and distance-aware optimization in `web/src/public/` and `mobile/lib/features/`
+- [ ] T185 Refactor admin overview into an action-first operations surface that elevates stale offers, low-trust offers, failed jobs, quarantined receipts, catalog image gaps, and city coverage issues in `web/src/dashboard/`
+- [ ] T186 Refactor public web surfaces toward the audited direction for landing, city selection, offers explorer, offer detail, lists, list editor, optimization result, receipt states, location widgets, and disabled premium gate in `web/src/public/`
+- [ ] T187 Refactor mobile surfaces toward the audited direction for onboarding/home, list, location widgets, optimization results by mode, receipt contribution, profile/value, error states, and dark-mode parity in `mobile/lib/features/`
+- [ ] T188 Add visual regression/screenshot validation for key aligned web flows with Playwright and keep existing MVP E2E coverage green in `web/e2e/`
+- [ ] T189 Add mobile widget/golden or screenshot-oriented validation notes for key aligned mobile flows in `mobile/test/` and `docs/product/stitch-ui-ux-alignment.md`
 
 ---
 
@@ -550,7 +554,7 @@ rules into implementation tasks against the real product.
 - Phase 20 optimization tests can run before solver refactor as the red phase for the operations-research implementation
 - Phase 22 security checklists and E2E scaffolding can run in parallel with billing and receipt work
 - Phase 23 documentation/contracts, backend distance tests, and web/mobile design work can run in parallel after the mode names and privacy constraints are accepted
-- Phase 24 audit and token mapping can run in parallel before implementation, but web/mobile refactors should follow the audit to avoid speculative UI churn
+- Phase 24 audit and token mapping are complete; next implementation should start with the shopper-flow lane and trust/evidence modules before broad visual refactors
 
 ---
 
@@ -596,6 +600,6 @@ With multiple contributors:
 - Total tasks are ordered for execution, not just grouped by subsystem
 - Every user story remains independently testable
 - File paths are intentionally explicit so the task list is immediately executable
-- Suggested next execution scope: Phase 24 audit and design-token mapping before visual refactors
+- Suggested next execution scope: T180-T182, covering shopper-flow narrative, shopper trust evidence, and admin decision evidence before broad visual refactors
 - Do not start Phase 19 Stripe work before Phase 18 token-ledger tests pass
 - Do not connect receipt rewards to the token ledger until T162 is explicitly unlocked
