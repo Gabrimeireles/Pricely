@@ -64,7 +64,7 @@ services:
     env_file:
       - .env.backend
     environment:
-      PORT: ${BACKEND_PORT:-3000}
+      PORT: 3000
       APP_HOST: 0.0.0.0
       NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-pricely}
