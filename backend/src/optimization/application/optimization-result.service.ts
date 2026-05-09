@@ -136,6 +136,10 @@ export class OptimizationResultService {
       `Returned optimization run ${latest.id} with status ${latest.status} for shopping list ${shoppingListId}`,
     );
 
+    const trustSnapshots = this.getSelectionTrustSnapshots(
+      latest.explanationPayload as OptimizationExplanationPayload | null,
+    );
+
     return {
       id: latest.id,
       shoppingListId: latest.shoppingListId,
@@ -156,54 +160,97 @@ export class OptimizationResultService {
         undefined,
       createdAt: latest.createdAt.toISOString(),
       completedAt: latest.completedAt?.toISOString(),
-      selections: latest.optimizationSelections.map((selection) => ({
-        id: selection.id,
-        shoppingListItemId: selection.shoppingListItemId,
-        productOfferId: selection.productOfferId ?? undefined,
-        shoppingListItemName: selection.shoppingListItem.requestedName,
-        establishmentName: selection.productOffer?.establishment.unitName,
-        establishmentNeighborhood:
-          selection.productOffer?.establishment.neighborhood,
-        estimatedCost:
-          selection.estimatedCost !== null
-            ? Number(selection.estimatedCost)
-            : undefined,
-        priceAmount:
-          selection.productOffer?.priceAmount !== undefined
-            ? Number(selection.productOffer.priceAmount)
-            : undefined,
-        comparisonPriceAmount:
-          selection.comparisonPriceAmount !== null
-            ? Number(selection.comparisonPriceAmount)
-            : undefined,
-        regionalAveragePriceAmount:
-          selection.regionalAveragePriceAmount !== null
-            ? Number(selection.regionalAveragePriceAmount)
-            : undefined,
-        savingsVsComparison:
-          selection.savingsVsComparison !== null
-            ? Number(selection.savingsVsComparison)
-            : undefined,
-        sourceLabel: selection.productOffer?.sourceReference ?? undefined,
-        observedAt: selection.productOffer?.observedAt.toISOString(),
-        selectionStatus:
-          selection.status === 'selected'
-            ? 'selected'
-            : selection.status === 'missing'
-              ? 'missing'
-              : 'review',
-        confidenceNotice: selection.confidenceNotice ?? undefined,
-        decisionReason: selection.confidenceNotice
-          ? 'selected_with_data_quality_warning'
-          : selection.status === 'selected'
-            ? 'selected_confirmed_offer'
-            : 'not_selected',
-        rejectedReason:
-          selection.status === 'missing'
-            ? 'no_confirmed_offer_available'
-            : undefined,
-      })),
+      selections: latest.optimizationSelections.map((selection) => {
+        const trustSnapshot = trustSnapshots.get(
+          this.selectionTrustSnapshotKey(
+            selection.shoppingListItemId,
+            selection.productOfferId ?? undefined,
+          ),
+        );
+
+        return {
+          id: selection.id,
+          shoppingListItemId: selection.shoppingListItemId,
+          productOfferId: selection.productOfferId ?? undefined,
+          shoppingListItemName: selection.shoppingListItem.requestedName,
+          establishmentName: selection.productOffer?.establishment.unitName,
+          establishmentNeighborhood:
+            selection.productOffer?.establishment.neighborhood,
+          estimatedCost:
+            selection.estimatedCost !== null
+              ? Number(selection.estimatedCost)
+              : undefined,
+          priceAmount:
+            selection.productOffer?.priceAmount !== undefined
+              ? Number(selection.productOffer.priceAmount)
+              : undefined,
+          comparisonPriceAmount:
+            selection.comparisonPriceAmount !== null
+              ? Number(selection.comparisonPriceAmount)
+              : undefined,
+          regionalAveragePriceAmount:
+            selection.regionalAveragePriceAmount !== null
+              ? Number(selection.regionalAveragePriceAmount)
+              : undefined,
+          savingsVsComparison:
+            selection.savingsVsComparison !== null
+              ? Number(selection.savingsVsComparison)
+              : undefined,
+          sourceLabel: selection.productOffer?.sourceReference ?? undefined,
+          observedAt: selection.productOffer?.observedAt.toISOString(),
+          trustFactor: trustSnapshot?.trustFactor,
+          trustLevel: trustSnapshot?.trustLevel,
+          trustEvidenceCount: trustSnapshot?.trustEvidenceCount,
+          trustFreshnessDays: trustSnapshot?.trustFreshnessDays,
+          trustLastValidatedAt: trustSnapshot?.trustLastValidatedAt,
+          trustExplanation: trustSnapshot?.trustExplanation,
+          selectionStatus:
+            selection.status === 'selected'
+              ? 'selected'
+              : selection.status === 'missing'
+                ? 'missing'
+                : 'review',
+          confidenceNotice: selection.confidenceNotice ?? undefined,
+          decisionReason: selection.confidenceNotice
+            ? 'selected_with_data_quality_warning'
+            : selection.status === 'selected'
+              ? 'selected_confirmed_offer'
+              : 'not_selected',
+          rejectedReason:
+            selection.status === 'missing'
+              ? 'no_confirmed_offer_available'
+              : undefined,
+        };
+      }),
     };
+  }
+
+  private getSelectionTrustSnapshots(
+    explanationPayload?: OptimizationExplanationPayload | null,
+  ) {
+    return new Map(
+      (explanationPayload?.selectedOffers ?? []).map((offer) => [
+        this.selectionTrustSnapshotKey(
+          offer.shoppingListItemId,
+          offer.productOfferId,
+        ),
+        {
+          trustFactor: offer.trustFactor,
+          trustLevel: offer.trustLevel,
+          trustEvidenceCount: offer.trustEvidenceCount,
+          trustFreshnessDays: offer.trustFreshnessDays,
+          trustLastValidatedAt: offer.trustLastValidatedAt,
+          trustExplanation: offer.trustExplanation,
+        },
+      ]),
+    );
+  }
+
+  private selectionTrustSnapshotKey(
+    shoppingListItemId: string,
+    productOfferId?: string,
+  ): string {
+    return `${shoppingListItemId}:${productOfferId ?? 'none'}`;
   }
 
   private async resolveDefaultRegionId(): Promise<string | null> {

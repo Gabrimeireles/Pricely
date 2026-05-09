@@ -98,6 +98,12 @@ describe('OptimizationPage', () => {
             savingsVsComparison: 1,
             sourceLabel: 'nota fiscal do usuario',
             observedAt: '2026-05-08T09:00:00.000Z',
+            trustFactor: 78,
+            trustLevel: 'high',
+            trustEvidenceCount: 3,
+            trustFreshnessDays: 1,
+            trustExplanation:
+              '3 notas fiscais confiaveis; ultima validacao ha 1 dias; trust factor 78/100.',
             selectionStatus: 'selected',
             decisionReason: 'selected_confirmed_offer',
           },
@@ -116,6 +122,8 @@ describe('OptimizationPage', () => {
     expect(screen.getByText('Completa')).toBeTruthy();
     expect(screen.getByText('Oferta selecionada')).toBeTruthy();
     expect(screen.getByText('Oferta confirmada selecionada')).toBeTruthy();
+    expect(screen.getByText('Trust alto')).toBeTruthy();
+    expect(screen.getByText('78/100')).toBeTruthy();
     expect(
       screen.getByText('R$ 1,00 abaixo da média regional (R$ 22,90)'),
     ).toBeTruthy();

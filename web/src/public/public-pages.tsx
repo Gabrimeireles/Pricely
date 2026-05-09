@@ -158,6 +158,38 @@ function confidenceBadge(level: ConfidenceLevel) {
   return <Badge variant="destructive">Revisar</Badge>;
 }
 
+function trustFactorBadge(level?: 'high' | 'medium' | 'low') {
+  if (level === 'high') {
+    return (
+      <Badge className="bg-emerald-100 text-emerald-900 hover:bg-emerald-100">
+        Trust alto
+      </Badge>
+    );
+  }
+  if (level === 'medium') {
+    return <Badge variant="secondary">Trust médio</Badge>;
+  }
+
+  return <Badge variant="destructive">Trust baixo</Badge>;
+}
+
+function trustEvidenceLabel(selection: {
+  trustEvidenceCount?: number;
+  trustFreshnessDays?: number;
+}) {
+  const evidenceCount = selection.trustEvidenceCount ?? 0;
+  const receiptText =
+    evidenceCount === 1
+      ? '1 nota valida'
+      : `${evidenceCount} notas validas`;
+
+  if (selection.trustFreshnessDays === undefined) {
+    return receiptText;
+  }
+
+  return `${receiptText} · revalidado ha ${selection.trustFreshnessDays}d`;
+}
+
 function PriceDisplay({
   priceAmount,
   basePriceAmount,
@@ -2311,8 +2343,26 @@ export function OptimizationPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {selection.sourceLabel ??
-                              'Sem evidência suficiente'}
+                            <div className="flex flex-col items-start gap-1">
+                              <span>
+                                {selection.sourceLabel ??
+                                  'Sem evidência suficiente'}
+                              </span>
+                              {selection.trustFactor !== undefined ? (
+                                <>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {trustFactorBadge(selection.trustLevel)}
+                                    <span className="text-xs text-muted-foreground">
+                                      {selection.trustFactor}/100
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">
+                                    {selection.trustExplanation ??
+                                      trustEvidenceLabel(selection)}
+                                  </span>
+                                </>
+                              ) : null}
+                            </div>
                           </TableCell>
                           <TableCell>
                             {selection.observedAt

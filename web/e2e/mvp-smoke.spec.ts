@@ -99,6 +99,13 @@ const optimizationResult = {
       savingsVsComparison: 1.5,
       sourceLabel: 'Recibo de usuario',
       observedAt: '2026-05-05T09:30:00.000Z',
+      trustFactor: 82,
+      trustLevel: 'high',
+      trustEvidenceCount: 4,
+      trustFreshnessDays: 3,
+      trustLastValidatedAt: '2026-05-05T09:30:00.000Z',
+      trustExplanation:
+        '4 notas fiscais confiaveis; ultima validacao ha 3 dias; trust factor 82/100.',
       selectionStatus: 'selected',
       confidenceNotice: 'Preco observado em recibo recente.',
       decisionReason: 'selected_confirmed_offer',
@@ -348,6 +355,8 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   await page.getByText('Usar este modo').first().click();
   await expect(page.getByText('Decisões por item')).toBeVisible();
   await expect(page.getByText('Oferta confirmada selecionada')).toBeVisible();
+  await expect(page.getByText('Trust alto')).toBeVisible();
+  await expect(page.getByText('82/100', { exact: true })).toBeVisible();
 
   await page.goto('/listas/list-1/checklist');
   await expect(page.getByRole('heading', { name: 'Checklist de compra' })).toBeVisible();

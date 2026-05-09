@@ -195,8 +195,15 @@ export class MultiMarketOptimizerService {
       ),
       sourceLabel: cheapestOffer.sourceReceiptLineItemId,
       observedAt: cheapestOffer.observedAt,
+      trustFactor: cheapestOffer.trustFactor,
+      trustLevel: cheapestOffer.trustLevel,
+      trustEvidenceCount: cheapestOffer.trustEvidenceCount,
+      trustFreshnessDays: cheapestOffer.trustFreshnessDays,
+      trustLastValidatedAt: cheapestOffer.trustLastValidatedAt,
+      trustExplanation: cheapestOffer.trustExplanation,
       confidenceNotice:
-        cheapestOffer.confidenceScore < 0.75
+        cheapestOffer.confidenceScore < 0.75 ||
+        (cheapestOffer.trustFactor !== undefined && cheapestOffer.trustFactor < 60)
           ? 'Selected from low-confidence market evidence.'
           : undefined,
       decisionReason: selectedStoreId
@@ -391,6 +398,12 @@ export class MultiMarketOptimizerService {
             estimatedCost: selection.estimatedCost,
             savingsVsComparison: selection.savingsVsComparison,
             decisionReason: selection.decisionReason,
+            trustFactor: selection.trustFactor,
+            trustLevel: selection.trustLevel,
+            trustEvidenceCount: selection.trustEvidenceCount,
+            trustFreshnessDays: selection.trustFreshnessDays,
+            trustLastValidatedAt: selection.trustLastValidatedAt,
+            trustExplanation: selection.trustExplanation,
           };
         }),
       rejectedAlternatives: shoppingList.items.flatMap((item) =>

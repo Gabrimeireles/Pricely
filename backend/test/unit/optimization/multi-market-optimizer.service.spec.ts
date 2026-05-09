@@ -440,4 +440,48 @@ describe('MultiMarketOptimizerService', () => {
       confidenceNotice: 'Selected from low-confidence market evidence.',
     });
   });
+
+  it('carries offer trust factor evidence into optimization decisions', () => {
+    const list = createList();
+    list.items = [list.items[0]];
+
+    const result = service.optimize(
+      list,
+      [
+        createOffer({
+          id: 'offer-trusted',
+          catalogProductId: 'product-arroz',
+          storeId: 'store-a',
+          storeName: 'Mercado A',
+          canonicalName: 'arroz',
+          displayName: 'Arroz validado',
+          price: 8.49,
+          sourceReceiptLineItemId: 'receipt-derived',
+          observedAt: new Date().toISOString(),
+          trustFactor: 82,
+          trustLevel: 'high',
+          trustEvidenceCount: 4,
+          trustFreshnessDays: 2,
+          trustLastValidatedAt: new Date().toISOString(),
+          trustExplanation:
+            '4 notas fiscais confiaveis; ultima validacao ha 2 dias; trust factor 82/100.',
+        }),
+      ],
+      'global_full',
+    );
+
+    expect(result.selections[0]).toMatchObject({
+      selectionStatus: 'selected',
+      trustFactor: 82,
+      trustLevel: 'high',
+      trustEvidenceCount: 4,
+      trustFreshnessDays: 2,
+    });
+    expect(result.explanationPayload?.selectedOffers[0]).toEqual(
+      expect.objectContaining({
+        trustFactor: 82,
+        trustEvidenceCount: 4,
+      }),
+    );
+  });
 });
