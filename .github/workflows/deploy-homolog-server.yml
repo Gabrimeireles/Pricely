@@ -119,9 +119,19 @@ jobs:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
 
       - name: Add server to known hosts
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          for attempt in $(seq 1 6); do
+            if ssh-keyscan -T 15 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts; then
+              exit 0
+            fi
+            echo "ssh-keyscan failed on attempt $attempt; retrying..."
+            sleep 5
+          done
+          echo "Unable to scan SSH host key for $DEPLOY_HOST"
+          exit 1
 
       - name: Upload compose and env files
         shell: bash
