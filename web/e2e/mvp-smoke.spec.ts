@@ -101,7 +101,7 @@ const optimizationResult = {
       observedAt: '2026-05-05T09:30:00.000Z',
       selectionStatus: 'selected',
       confidenceNotice: 'Preco observado em recibo recente.',
-      decisionReason: 'Menor preco elegivel para o item.',
+      decisionReason: 'selected_confirmed_offer',
     },
   ],
 };
@@ -347,7 +347,7 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   await expect(page.getByRole('heading', { name: 'Resultado da otimização' })).toBeVisible();
   await page.getByText('Usar este modo').first().click();
   await expect(page.getByText('Decisões por item')).toBeVisible();
-  await expect(page.getByText('Menor preco elegivel para o item.')).toBeVisible();
+  await expect(page.getByText('Oferta confirmada selecionada')).toBeVisible();
 
   await page.goto('/listas/list-1/checklist');
   await expect(page.getByRole('heading', { name: 'Checklist de compra' })).toBeVisible();

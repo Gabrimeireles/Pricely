@@ -70,7 +70,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-pricely}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      WEB_APP_URL: ${WEB_APP_URL:-http://localhost:5173}
+      WEB_APP_URL: ${WEB_APP_URL:-https://pricely.grmeireles.dev}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://pricely.grmeireles.dev}
     command:
       [
         "sh",
