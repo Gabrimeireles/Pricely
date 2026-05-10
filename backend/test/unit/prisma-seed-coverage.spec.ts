@@ -32,7 +32,7 @@ describe('Prisma demo seed coverage', () => {
       "moderationStatus: 'quarantined'",
       "moderationStatus: 'duplicate'",
       "moderationStatus: 'rejected'",
-      "reviewReason: 'receipt_rewards_disabled'",
+      "reviewReason: 'receipt_reward_granted'",
       "reviewReason: 'duplicate_receipt'",
       "reviewReason: 'invalid_receipt_payload'",
       "sourceType: 'receipt'",

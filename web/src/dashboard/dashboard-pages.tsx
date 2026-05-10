@@ -2376,6 +2376,9 @@ export function AdminReceiptsPage() {
                 <div className="rounded-md border border-border/70 p-3">
                   <div className="text-xs text-muted-foreground">Reward</div>
                   <div className="mt-1 font-medium">
+                    {receipt.reward.label}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
                     {receipt.rewardEligibilityStatus}
                   </div>
                 </div>

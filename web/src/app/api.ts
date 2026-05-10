@@ -419,6 +419,11 @@ type AdminReceiptProcessingResponse = {
     averageMatchConfidence: number;
     usefulDataRatio: number;
   };
+  reward: {
+    points: number;
+    optimizationTokens: number;
+    label: string;
+  };
 };
 
 type AdminQueueHealthResponse = {

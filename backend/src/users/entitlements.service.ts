@@ -250,6 +250,31 @@ export class EntitlementsService {
     });
   }
 
+  async grantReceiptBonusTokens(input: {
+    userId: string;
+    receiptRecordId: string;
+    amount?: number;
+  }) {
+    const amount = input.amount ?? 1;
+    if (!Number.isInteger(amount) || amount <= 0) {
+      throw new BadRequestException('Receipt bonus amount must be positive');
+    }
+
+    return this.prisma.optimizationTokenLedgerEntry.upsert({
+      where: {
+        idempotencyKey: `receipt-bonus:${input.receiptRecordId}`,
+      },
+      update: {},
+      create: {
+        userId: input.userId,
+        action: 'receipt_bonus',
+        amount,
+        source: 'receipt_quality_reward',
+        idempotencyKey: `receipt-bonus:${input.receiptRecordId}`,
+      },
+    });
+  }
+
   private currentPeriod(now = new Date()): string {
     return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   }

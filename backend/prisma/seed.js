@@ -678,8 +678,8 @@ async function main() {
         duplicateKey: 'seed-accepted-receipt',
         trustLevel: 'trusted',
         moderationStatus: 'accepted',
-        rewardEligibilityStatus: 'disabled',
-        reviewReason: 'receipt_rewards_disabled',
+        rewardEligibilityStatus: 'granted',
+        reviewReason: 'receipt_reward_granted',
         establishmentId: establishment.id,
       },
       lineItems: [

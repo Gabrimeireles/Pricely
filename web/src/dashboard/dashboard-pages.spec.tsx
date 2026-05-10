@@ -380,6 +380,11 @@ describe('Admin dashboard pages', () => {
           averageMatchConfidence: 0.83,
           usefulDataRatio: 0.75,
         },
+        reward: {
+          points: 100,
+          optimizationTokens: 1,
+          label: '100 pontos + 1 credito pendente',
+        },
       },
     ]);
 
@@ -388,6 +393,7 @@ describe('Admin dashboard pages', () => {
     expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
     expect(screen.getAllByText('Mercado Centro').length).toBeGreaterThan(0);
     expect(screen.getByText('3/4 itens fortes')).toBeTruthy();
+    expect(screen.getByText('100 pontos + 1 credito pendente')).toBeTruthy();
     expect(screen.getByText('eligible_pending')).toBeTruthy();
     expect(screen.getByText('Ver leitura')).toBeTruthy();
   });

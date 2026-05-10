@@ -71,6 +71,28 @@ export class ReceiptRecordRepository {
     });
   }
 
+  async markRewardGranted(receiptRecordId: string): Promise<void> {
+    const existing = await this.findById(receiptRecordId);
+
+    await this.prisma.receiptRecord.update({
+      where: {
+        id: receiptRecordId,
+      },
+      data: {
+        rewardEligibilityStatus: 'granted',
+        reviewReason: 'receipt_reward_granted',
+        rawReference: JSON.stringify({
+          rawSourceReference: existing?.rawSourceReference,
+          processingLogs: [
+            ...(existing?.processingLogs ?? []),
+            'reward:points_granted:100',
+            'reward:optimization_token_granted:1',
+          ],
+        }),
+      },
+    });
+  }
+
   async markExtractionFailed(
     receiptRecordId: string,
     reason: string,
