@@ -9,6 +9,7 @@ import {
   AdminOverviewPage,
   AdminPricesPage,
   AdminQueuePage,
+  AdminReceiptsPage,
   AdminRegionsPage,
   AdminUsersPage,
 } from './dashboard-pages';
@@ -16,6 +17,7 @@ import {
 const fetchAdminMetrics = vi.fn();
 const fetchAdminQueueHealth = vi.fn();
 const fetchAdminProcessingJobs = vi.fn();
+const fetchAdminReceiptProcessing = vi.fn();
 const fetchAdminRegions = vi.fn();
 const fetchAdminEstablishments = vi.fn();
 const fetchAdminOffers = vi.fn();
@@ -44,6 +46,8 @@ vi.mock('@/app/api', () => ({
   fetchAdminProcessingJobs: (...args: unknown[]) =>
     fetchAdminProcessingJobs(...args),
   fetchAdminProcessingJobDetail: vi.fn(),
+  fetchAdminReceiptProcessing: (...args: unknown[]) =>
+    fetchAdminReceiptProcessing(...args),
   fetchAdminRegions: (...args: unknown[]) => fetchAdminRegions(...args),
   fetchAdminEstablishments: (...args: unknown[]) =>
     fetchAdminEstablishments(...args),
@@ -72,6 +76,7 @@ describe('Admin dashboard pages', () => {
     fetchAdminMetrics.mockReset();
     fetchAdminQueueHealth.mockReset();
     fetchAdminProcessingJobs.mockReset();
+    fetchAdminReceiptProcessing.mockReset();
     fetchAdminRegions.mockReset();
     fetchAdminEstablishments.mockReset();
     fetchAdminOffers.mockReset();
@@ -341,6 +346,50 @@ describe('Admin dashboard pages', () => {
     render(<AdminEstablishmentsPage />);
     expect(await screen.findByText('Unidades por cidade')).toBeTruthy();
     expect(screen.getAllByText('Unidade Pinheiros').length).toBeGreaterThan(0);
+  });
+
+  it('renders receipt processing quality and review actions', async () => {
+    fetchAdminReceiptProcessing.mockResolvedValue([
+      {
+        id: 'receipt-1',
+        storeName: 'Mercado Centro',
+        storeCnpj: '00.000.000/0001-00',
+        parseStatus: 'parsed',
+        trustLevel: 'trusted',
+        moderationStatus: 'accepted',
+        rewardEligibilityStatus: 'eligible_pending',
+        reviewReason: null,
+        purchaseDate: '2026-05-09T10:00:00.000Z',
+        createdAt: '2026-05-09T10:05:00.000Z',
+        updatedAt: '2026-05-09T10:06:00.000Z',
+        owner: {
+          id: 'user-1',
+          displayName: 'Cliente Teste',
+          email: 'cliente@pricely.local',
+        },
+        processingJob: {
+          id: 'job-1',
+          status: 'completed',
+          attemptCount: 1,
+          failureReason: null,
+          updatedAt: '2026-05-09T10:06:00.000Z',
+        },
+        quality: {
+          lineItemCount: 4,
+          highConfidenceLineItemCount: 3,
+          averageMatchConfidence: 0.83,
+          usefulDataRatio: 0.75,
+        },
+      },
+    ]);
+
+    render(<AdminReceiptsPage />);
+
+    expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
+    expect(screen.getAllByText('Mercado Centro').length).toBeGreaterThan(0);
+    expect(screen.getByText('3/4 itens fortes')).toBeTruthy();
+    expect(screen.getByText('eligible_pending')).toBeTruthy();
+    expect(screen.getByText('Ver leitura')).toBeTruthy();
   });
 
   it('renders admin users and supports premium and token actions', async () => {

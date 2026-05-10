@@ -105,7 +105,7 @@ describe('OptimizationPage', () => {
             trustEvidenceCount: 3,
             trustFreshnessDays: 1,
             trustExplanation:
-              '3 notas fiscais confiaveis; ultima validacao ha 1 dias; trust factor 78/100.',
+              '3 notas fiscais aceitas apoiam este preco; ultima validacao ha 1 dias; confianca da oferta 78/100.',
             selectionStatus: 'selected',
             decisionReason: 'selected_confirmed_offer',
           },
@@ -125,7 +125,7 @@ describe('OptimizationPage', () => {
     expect(screen.getByText('Oferta selecionada')).toBeTruthy();
     expect(screen.getByText('Oferta confirmada selecionada')).toBeTruthy();
     expect(screen.getByText('Selecionado: Cafe Pilao 500g · 500 g')).toBeTruthy();
-    expect(screen.getByText('Trust alto')).toBeTruthy();
+    expect(screen.getByText('Confiança alta')).toBeTruthy();
     expect(screen.getByText('78/100')).toBeTruthy();
     expect(screen.getByText(/segundo menor elegivel/)).toBeTruthy();
     expect(screen.queryByText(/selected_confirmed_offer/i)).toBeNull();

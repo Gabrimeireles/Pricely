@@ -24,6 +24,7 @@ import {
   type AdminProductResponse,
   type AdminProductVariantResponse,
   type AdminQueueHealthResponse,
+  type AdminReceiptProcessingResponse,
   type AdminRegionResponse,
   type AdminShoppingListAuditResponse,
   type AdminUserResponse,
@@ -40,6 +41,7 @@ import {
   fetchAdminProducts,
   fetchAdminProductVariants,
   fetchAdminQueueHealth,
+  fetchAdminReceiptProcessing,
   fetchAdminRegions,
   fetchAdminShoppingLists,
   fetchAdminUsers,
@@ -154,6 +156,31 @@ function JobResourceIcon({ job }: { job: AdminProcessingJobResponse }) {
   }
 
   return <ListChecksIcon className="size-4" />;
+}
+
+function receiptModerationLabel(
+  status: AdminReceiptProcessingResponse['moderationStatus'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['moderationStatus'],
+    string
+  > = {
+    accepted: 'Aceita',
+    duplicate: 'Duplicada',
+    pending: 'Pendente',
+    quarantined: 'Em revisão',
+    rejected: 'Rejeitada',
+  };
+
+  return labels[status];
+}
+
+function receiptQualityLabel(receipt: AdminReceiptProcessingResponse) {
+  if (receipt.quality.lineItemCount === 0) {
+    return 'Sem itens extraídos';
+  }
+
+  return `${receipt.quality.highConfidenceLineItemCount}/${receipt.quality.lineItemCount} itens fortes`;
 }
 
 export function AdminOverviewPage() {
@@ -2213,6 +2240,159 @@ export function AdminListsPage() {
   );
 }
 
+export function AdminReceiptsPage() {
+  const { data: receipts, error } = useAdminData<
+    AdminReceiptProcessingResponse[]
+  >(fetchAdminReceiptProcessing, []);
+
+  const pendingReviewCount = receipts.filter((receipt) =>
+    ['pending', 'quarantined'].includes(receipt.moderationStatus),
+  ).length;
+  const acceptedCount = receipts.filter(
+    (receipt) => receipt.moderationStatus === 'accepted',
+  ).length;
+  const rewardReadyCount = receipts.filter(
+    (receipt) => receipt.rewardEligibilityStatus === 'eligible_pending',
+  ).length;
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Falha ao carregar notas fiscais</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-3 md:grid-cols-3">
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Pendentes</CardTitle>
+            <CardDescription>Notas que ainda exigem revisão.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold">{pendingReviewCount}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Aceitas</CardTitle>
+            <CardDescription>Notas úteis para reforçar preços.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold">{acceptedCount}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Rewards prontos</CardTitle>
+            <CardDescription>
+              Elegíveis após qualidade, sem billing automático.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold">{rewardReadyCount}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-border/70 bg-card/90 shadow-sm">
+        <CardHeader>
+          <CardTitle>Notas fiscais processadas</CardTitle>
+          <CardDescription>
+            Conteúdo, qualidade de leitura, moderação e prontidão de reward.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {receipts.length === 0 ? (
+            <div className="rounded-lg border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
+              Nenhuma nota fiscal recebida ainda.
+            </div>
+          ) : null}
+          {receipts.map((receipt) => (
+            <div
+              key={receipt.id}
+              className="rounded-lg border border-border/70 bg-background/80 p-4"
+            >
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ReceiptTextIcon className="size-4 text-muted-foreground" />
+                    <span className="font-medium">
+                      {receipt.storeName ?? 'Loja não identificada'}
+                    </span>
+                    <Badge
+                      variant={
+                        receipt.moderationStatus === 'accepted'
+                          ? 'secondary'
+                          : receipt.moderationStatus === 'rejected'
+                            ? 'destructive'
+                            : 'outline'
+                      }
+                    >
+                      {receiptModerationLabel(receipt.moderationStatus)}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {receipt.owner.displayName || receipt.owner.email} ·{' '}
+                    {receipt.storeCnpj ?? 'CNPJ não identificado'} · recebida{' '}
+                    {formatFreshnessLabel(receipt.createdAt)}
+                  </div>
+                </div>
+                {receipt.processingJob ? (
+                  <Button asChild size="sm" variant="outline">
+                    <a href={`/dashboard/fila/${receipt.processingJob.id}`}>
+                      Ver leitura
+                      <ExternalLinkIcon className="size-4" />
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <div className="rounded-md border border-border/70 p-3">
+                  <div className="text-xs text-muted-foreground">Leitura</div>
+                  <div className="mt-1 font-medium">{receipt.parseStatus}</div>
+                </div>
+                <div className="rounded-md border border-border/70 p-3">
+                  <div className="text-xs text-muted-foreground">
+                    Qualidade
+                  </div>
+                  <div className="mt-1 font-medium">
+                    {receiptQualityLabel(receipt)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    média {Math.round(receipt.quality.averageMatchConfidence * 100)}%
+                  </div>
+                </div>
+                <div className="rounded-md border border-border/70 p-3">
+                  <div className="text-xs text-muted-foreground">
+                    Confiança
+                  </div>
+                  <div className="mt-1 font-medium">{receipt.trustLevel}</div>
+                </div>
+                <div className="rounded-md border border-border/70 p-3">
+                  <div className="text-xs text-muted-foreground">Reward</div>
+                  <div className="mt-1 font-medium">
+                    {receipt.rewardEligibilityStatus}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 text-sm text-muted-foreground">
+                {receipt.reviewReason ??
+                  'Sem motivo de revisão registrado para esta nota.'}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export function AdminQueuePage() {
   const { data: metrics } = useAdminData<AdminMetricsResponse | null>(
     fetchAdminMetrics,
@@ -2516,7 +2696,8 @@ export function AdminQueueDetailPage() {
                         </Badge>
                         {selection.offer?.confidenceLevel ? (
                           <span className="text-xs text-muted-foreground">
-                            Trust {selection.offer.confidenceLevel}
+                            Confiança da oferta{' '}
+                            {selection.offer.confidenceLevel}
                           </span>
                         ) : null}
                       </div>

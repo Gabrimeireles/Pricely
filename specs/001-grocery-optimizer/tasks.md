@@ -540,9 +540,9 @@ Premium access and extra optimization credits are support/admin operations for n
 - [~] T204 Rename optimization modes to descriptive user-facing semantics and keep API/backward-compatible aliases where needed in `backend/src/optimization/`, `backend/src/common/contracts/`, `web/src/public/`, and admin diagnostics
 - [~] T205 Persist optimization-specific variant substitutions on the original list while preserving the original `any variant` intent so future optimizations can swap variants again in `backend/src/lists/`, `backend/src/optimization/`, and `web/src/public/`
 - [X] T206 Update item decision math so savings compare selected offer against the second cheapest eligible offer, while city average remains a separate informational metric in `backend/src/optimization/`, `backend/src/common/contracts/optimization.contract.ts`, and `web/src/public/`
-- [ ] T207 Rename shopper-facing trust copy to `Confianca da oferta`, including source labels for admin/manual/receipt evidence, receipt support count, freshness decay, and clearer no-receipt wording in `backend/src/optimization/`, `backend/src/pricing/`, and `web/src/public/`
+- [X] T207 Rename shopper-facing trust copy to `Confianca da oferta`, including source labels for admin/manual/receipt evidence, receipt support count, freshness decay, and clearer no-receipt wording in `backend/src/optimization/`, `backend/src/pricing/`, and `web/src/public/`
 - [ ] T208 Add gamified receipt contribution rewards with points and token outcomes only after receipt quality scoring confirms useful, correctly processed receipt data in `backend/src/receipts/`, `backend/src/users/`, and `web/src/public/`
-- [ ] T209 Add a dedicated admin receipt-processing queue/detail surface for receipt content, line-item quality, moderation status, and reward readiness in `backend/src/admin/` and `web/src/dashboard/`
+- [X] T209 Add a dedicated admin receipt-processing queue/detail surface for receipt content, line-item quality, moderation status, and reward readiness in `backend/src/admin/` and `web/src/dashboard/`
 - [ ] T210 Add public city-request/contact flow while keeping city creation admin-only in `backend/src/regions/`, `backend/src/admin/`, and `web/src/public/`
 
 ---

@@ -318,6 +318,7 @@ export class StoreOfferRepository {
               evidenceCount,
               freshnessDays,
               factor,
+              latestOffer.sourceType,
             ),
           },
         ];
@@ -366,19 +367,38 @@ export class StoreOfferRepository {
     evidenceCount: number,
     freshnessDays: number,
     factor: number,
+    sourceType: string,
   ): string {
+    const sourceLabel = this.trustSourceLabel(sourceType);
     const receiptText =
       evidenceCount === 0
-        ? 'sem nota fiscal recente vinculada; usando evidencia operacional'
+        ? `preco ainda sem nota fiscal aceita; origem ${sourceLabel} sustenta a oferta`
         : evidenceCount === 1
-        ? '1 nota fiscal confiavel'
-        : `${evidenceCount} notas fiscais confiaveis`;
+        ? '1 nota fiscal aceita apoia este preco'
+        : `${evidenceCount} notas fiscais aceitas apoiam este preco`;
     const freshnessText =
       freshnessDays === 0
         ? 'validacao hoje'
         : `ultima validacao ha ${freshnessDays} dias`;
 
-    return `${receiptText}; ${freshnessText}; trust factor ${factor}/100.`;
+    return `${receiptText}; ${freshnessText}; confianca da oferta ${factor}/100.`;
+  }
+
+  private trustSourceLabel(sourceType: string): string {
+    if (sourceType === 'receipt') {
+      return 'nota fiscal';
+    }
+    if (sourceType === 'admin' || sourceType === 'manual') {
+      return 'cadastro administrativo';
+    }
+    if (sourceType === 'flyer') {
+      return 'encarte';
+    }
+    if (sourceType === 'site') {
+      return 'site do estabelecimento';
+    }
+
+    return 'operacional';
   }
 
   private buildMatchingCanonicalNames(input: {
