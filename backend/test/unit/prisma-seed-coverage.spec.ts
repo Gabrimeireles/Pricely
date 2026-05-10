@@ -1,0 +1,44 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+describe('Prisma demo seed coverage', () => {
+  const seedSource = readFileSync(
+    join(__dirname, '../../prisma/seed.js'),
+    'utf8',
+  );
+
+  it('keeps city, establishment, variant, and offer demo coverage broad enough for homolog QA', () => {
+    expect(seedSource).toContain('rio-de-janeiro-rj');
+    expect(seedSource).toContain('curitiba-pr');
+    expect(seedSource).toContain('Unidade Santo Amaro');
+    expect(seedSource).toContain('Atacado Guanabara');
+    expect(seedSource).toContain('feijao-carioca-camil-1kg');
+    expect(seedSource).toContain('Seed baixa confianca');
+    expect(seedSource).toContain('Seed Rio comparativo');
+  });
+
+  it('keeps receipt and processing-job states for admin queue and trust-evidence QA', () => {
+    for (const expected of [
+      "status: 'queued'",
+      "status: 'retrying'",
+      "status: 'completed'",
+      "status: 'failed'",
+      "parseStatus: 'queued'",
+      "parseStatus: 'partial'",
+      "parseStatus: 'parsed'",
+      "parseStatus: 'failed'",
+      "moderationStatus: 'accepted'",
+      "moderationStatus: 'pending'",
+      "moderationStatus: 'quarantined'",
+      "moderationStatus: 'duplicate'",
+      "moderationStatus: 'rejected'",
+      "reviewReason: 'receipt_rewards_disabled'",
+      "reviewReason: 'duplicate_receipt'",
+      "reviewReason: 'invalid_receipt_payload'",
+      "sourceType: 'receipt'",
+      'receiptLineItemId',
+    ]) {
+      expect(seedSource).toContain(expected);
+    }
+  });
+});
