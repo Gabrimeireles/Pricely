@@ -467,8 +467,8 @@ payments, and receipt incentives increase risk.
 radius while keeping global optimization limited to the user's selected city/region.
 
 - [X] T169 [P] Add location-aware optimization planning notes covering `local_unique`, `local_multi`, `global_multi`, distance policy, coverage-radius bounds, and privacy constraints in `docs/product/location-aware-optimization-plan.md`
-- [ ] T170 [P] Extend the data model and API contracts for establishment coordinates, user location preferences, coverage preview, candidate-establishment counts, and location-aware optimization request fields in `specs/001-grocery-optimizer/data-model.md` and `specs/001-grocery-optimizer/contracts/grocery-optimizer-api.yaml`
-- [ ] T171 Add Prisma schema and migration support for establishment latitude/longitude, user location preferences, optimization-run location snapshots, and selection distance fields in `backend/prisma/schema.prisma`
+- [ ] T170 [P] Extend the data model and API contracts for establishment address/CEP, geocoded coordinates, user location preferences, coverage preview, candidate-establishment counts, and location-aware optimization request fields in `specs/001-grocery-optimizer/data-model.md` and `specs/001-grocery-optimizer/contracts/grocery-optimizer-api.yaml`
+- [ ] T171 Add Prisma schema and migration support for establishment address/CEP, latitude/longitude, geocoding metadata, user location preferences, optimization-run location snapshots, and selection distance fields in `backend/prisma/schema.prisma`
 - [ ] T172 [P] Add backend unit tests for distance calculation, radius filtering, city-bound global filtering, and no-location/no-coverage edge cases in `backend/test/unit/optimization/` and `backend/test/unit/locations/`
 - [ ] T173 Implement location preference services and coverage preview endpoints with explicit user-provided coordinates only in `backend/src/locations/`, `backend/src/users/`, and `backend/src/common/contracts/`
 - [ ] T174 Refactor optimization candidate generation to support `local_unique`, `local_multi`, and `global_multi` semantics with distance-aware explanations in `backend/src/optimization/`
@@ -495,16 +495,37 @@ rules into implementation tasks against the real product.
 
 - [X] T178 [P] Audit implemented web/mobile/admin flows against the current product and document product, IA, visual-system, trust-evidence, receipt, and interaction gaps in `docs/product/stitch-ui-ux-alignment.md`
 - [X] T179 [P] Map design-system rules into implementation-ready tokens and component rules for web and mobile, including teal/lime/amber/coral status roles, tonal surfaces, 8px radius, action badges, and tabular price typography in `docs/product/stitch-ui-ux-alignment.md`
-- [ ] T180 Split the broad Phase 24 refactor into issue-sized shopper lanes for `create list -> optimize -> shop -> contribute receipt`, including next-best-action strips, persistent city context, richer list item cards, and checklist-to-receipt handoff in `web/src/public/` and `mobile/lib/features/`
-- [ ] T181 Render persisted optimization explanations as shopper evidence modules with trust factor, source type, receipt count, freshness decay, confidence notice, and report/upload actions in `web/src/public/` and `mobile/lib/features/optimization/`
+- [ ] T180 Split the broad Phase 24 refactor into issue-sized shopper lanes for `create list -> optimize -> shop -> contribute receipt`, including next-best-action strips, compact persistent city context, richer list item cards, sticky mobile actions, checklist completion, optional paid-total capture, price-mismatch reports, and checklist-to-receipt handoff in `web/src/public/` and `mobile/lib/features/`
+- [ ] T181 Render persisted optimization explanations as shopper evidence modules with trust factor, source type, receipt/observation count, freshness decay, confidence notice, selected variant, true comparison math, and report/upload actions in `web/src/public/` and `mobile/lib/features/optimization/`
 - [ ] T182 Render admin decision evidence modules with selected offers, rejected alternatives, trust decay, receipt provenance, moderation status, and source labels in `web/src/dashboard/`
 - [ ] T183 Refactor receipt contribution surfaces so accepted, pending-review, duplicate, rejected, and low-confidence outcomes are visual and actionable without promising token rewards before T162 in `web/src/public/`, `web/src/dashboard/`, and `mobile/lib/features/receipts/`
 - [ ] T184 Add Phase 23-ready location widgets as explicit city/location/radius preview states, keeping proximity claims disabled until T170-T177 add persisted coordinates and distance-aware optimization in `web/src/public/` and `mobile/lib/features/`
 - [ ] T185 Refactor admin overview into an action-first operations surface that elevates stale offers, low-trust offers, failed jobs, quarantined receipts, catalog image gaps, and city coverage issues in `web/src/dashboard/`
-- [ ] T186 Refactor public web surfaces toward the audited direction for landing, city selection, offers explorer, offer detail, lists, list editor, optimization result, receipt states, location widgets, and disabled premium gate in `web/src/public/`
-- [ ] T187 Refactor mobile surfaces toward the audited direction for onboarding/home, list, location widgets, optimization results by mode, receipt contribution, profile/value, error states, and dark-mode parity in `mobile/lib/features/`
-- [ ] T188 Add visual regression/screenshot validation for key aligned web flows with Playwright and keep existing MVP E2E coverage green in `web/e2e/`
-- [ ] T189 Add mobile widget/golden or screenshot-oriented validation notes for key aligned mobile flows in `mobile/test/` and `docs/product/stitch-ui-ux-alignment.md`
+- [ ] T186 Refactor public city and offer surfaces so activating cities have explicit placeholders, supported-establishment sections show active stores or activation states, offers are grouped by product/variant with cheapest eligible establishment first, and establishment filters/comparison panels replace duplicate offer cards in `web/src/public/` and `web/src/app/`
+- [ ] T187 Refactor public web surfaces toward the audited direction for landing, city selection, offers explorer, offer detail, lists, list editor, optimization result, receipt states, location widgets, premium/free entitlement copy, and disabled billing gate in `web/src/public/`
+- [ ] T188 Refactor mobile surfaces toward the audited direction for onboarding/home, list, location widgets, optimization results by mode, receipt contribution, profile/value, error states, and dark-mode parity in `mobile/lib/features/`
+- [ ] T189 Refactor admin catalog and offer operations so variants are managed through a dedicated detail route/tab, long variant lists are searchable/collapsible, variant images appear in price/offer rows, and raw IDs move behind detail affordances in `web/src/dashboard/`
+- [ ] T190 Refactor admin list operations and queue health cards so they show human-readable owner, list, mode, elapsed time, status, and icon actions before technical job/resource IDs in `web/src/dashboard/`
+- [ ] T191 Add visual regression/screenshot validation for key aligned web flows with Playwright and keep existing MVP E2E coverage green in `web/e2e/`
+- [ ] T192 Add mobile widget/golden or screenshot-oriented validation notes for key aligned mobile flows in `mobile/test/` and `docs/product/stitch-ui-ux-alignment.md`
+
+---
+
+## Phase 25: Public Performance, Responsive QA, and Rich Demo Data
+
+**Purpose**: Make the public homolog URL fast enough for real shoppers and expand demo
+data so offer grouping, trust evidence, city activation, stale data, and admin flows can
+be tested deeply.
+
+- [ ] T193 Profile the public `https://pricely.grmeireles.dev/` load path with Lighthouse or Playwright navigation timing, capturing LCP, TTI, JS payload, critical API latency, image timing, and Cloudflare/API response timing in `web/e2e/` and `docs/product/stitch-ui-ux-alignment.md`
+- [ ] T194 Reduce public landing and shell load latency by auditing bundle size, route-level loading, context fetch waterfalls, image dimensions/weights, skeleton states, and unnecessary initial API calls in `web/src/public/`, `web/src/app/`, and `web/src/routes/`
+- [ ] T195 Add mobile responsiveness QA for landing, city chooser, offers, offer comparison, list editor, optimization result, checklist, profile/entitlement, admin tables, and auth screens in `web/e2e/` and `web/src/`
+- [ ] T196 Expand seed data with additional cities across active, activating, and collecting-data states in `backend/prisma/seed.js`
+- [ ] T197 Expand seed data with more establishments per active city, including CNPJ, neighborhood, address/CEP, and future-ready latitude/longitude placeholders in `backend/prisma/seed.js`
+- [ ] T198 Expand seed data with broader catalog products, variants, package sizes, images, aliases, categories, and enough repeated comparable products to stress product/variant management in `backend/prisma/seed.js`
+- [ ] T199 Expand seed data with duplicate comparable offers across establishments, promotional/base price cases, stale offers, low-confidence offers, unavailable offers, seeded/admin-derived offers, and receipt-derived trust evidence in `backend/prisma/seed.js`
+- [ ] T200 Expand seed data with receipt records and processing jobs covering accepted, pending-review, duplicate, quarantined, rejected, low-confidence, and reward-disabled states in `backend/prisma/seed.js`
+- [ ] T201 Add backend/web tests that verify seed coverage for city activation placeholders, grouped offer comparisons, trust evidence, stale/low-confidence data, and admin queue/readability scenarios in `backend/test/` and `web/e2e/`
 
 ---
 
@@ -527,6 +548,7 @@ rules into implementation tasks against the real product.
 - **Security, QA, and release hardening (Phase 22)**: Runs across Phases 18-21 before broader production/payment rollout
 - **Location-aware optimization (Phase 23)**: Depends on Phase 20 solver separation/explainability and Phase 15 establishment data; must complete before local optimization is marketed as proximity-aware
 - **UI/UX alignment (Phase 24)**: Depends on Phases 20-23 so the implemented product, explanation payloads, and location direction can drive the final web/mobile experience
+- **Public performance and rich demo data (Phase 25)**: Can run alongside Phase 24, but seed expansion should avoid changing production behavior outside demo/test data and performance fixes must preserve public API contracts
 
 ### User Story Dependencies
 
@@ -554,7 +576,8 @@ rules into implementation tasks against the real product.
 - Phase 20 optimization tests can run before solver refactor as the red phase for the operations-research implementation
 - Phase 22 security checklists and E2E scaffolding can run in parallel with billing and receipt work
 - Phase 23 documentation/contracts, backend distance tests, and web/mobile design work can run in parallel after the mode names and privacy constraints are accepted
-- Phase 24 audit and token mapping are complete; next implementation should start with the shopper-flow lane and trust/evidence modules before broad visual refactors
+- Phase 24 audit and token mapping are complete; next implementation should start with the shopper-flow lane, trust/evidence modules, offer grouping, and performance profiling before broad visual refactors
+- Phase 25 performance profiling and seed expansion can run in parallel with Phase 24 UI work because they touch mostly `web/e2e/`, `web/src/app/`, and `backend/prisma/seed.js`
 
 ---
 
@@ -582,6 +605,7 @@ rules into implementation tasks against the real product.
 8. Improve optimization explainability and receipt incentives after monetization foundations are safe
 9. Add Phase 23 location-aware optimization before claiming local results are based on nearby establishments
 10. Run Phase 24 UI/UX alignment before treating the MVP as a polished product surface
+11. Run Phase 25 performance and seed realism before using homolog as a serious product-review or investor-demo environment
 
 ### Parallel Team Strategy
 
@@ -591,7 +615,8 @@ With multiple contributors:
 2. One contributor focuses on backend catalog/region/admin modules
 3. One contributor focuses on web/mobile integration against stabilized contracts
 4. For Phases 18-23, split work into entitlement/billing, optimization science, receipt quality, location/privacy, frontend UX, and security/QA lanes
-5. For Phase 24, split work into audit/design tokens, public web, admin web, mobile, and visual validation lanes
+5. For Phase 24, split work into audit/design tokens, shopper flow, trust evidence, offer discovery, admin readability, mobile, and visual validation lanes
+6. For Phase 25, split work into performance profiling, public web load fixes, responsive QA, seed catalog/city/offer expansion, and seed receipt/queue scenarios
 
 ---
 
@@ -600,6 +625,6 @@ With multiple contributors:
 - Total tasks are ordered for execution, not just grouped by subsystem
 - Every user story remains independently testable
 - File paths are intentionally explicit so the task list is immediately executable
-- Suggested next execution scope: T180-T182, covering shopper-flow narrative, shopper trust evidence, and admin decision evidence before broad visual refactors
+- Suggested next execution scope: T180-T181 and T193, covering shopper-flow narrative, shopper trust evidence, and public URL performance profiling before broad visual refactors
 - Do not start Phase 19 Stripe work before Phase 18 token-ledger tests pass
 - Do not connect receipt rewards to the token ledger until T162 is explicitly unlocked
