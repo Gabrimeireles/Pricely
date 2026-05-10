@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -8,6 +8,7 @@ import { CitiesPage, OfferDetailPage, OffersPage } from './public-pages';
 
 const fetchRegionOffers = vi.fn();
 const fetchOfferDetail = vi.fn();
+const requestCityInclusion = vi.fn();
 
 const setCityId = vi.fn();
 
@@ -51,6 +52,8 @@ vi.mock('@/app/api', async () => {
     ...actual,
     fetchRegionOffers: (...args: unknown[]) => fetchRegionOffers(...args),
     fetchOfferDetail: (...args: unknown[]) => fetchOfferDetail(...args),
+    requestCityInclusion: (...args: unknown[]) =>
+      requestCityInclusion(...args),
   };
 });
 
@@ -58,6 +61,7 @@ describe('public pages', () => {
   beforeEach(() => {
     fetchRegionOffers.mockReset();
     fetchOfferDetail.mockReset();
+    requestCityInclusion.mockReset();
     setCityId.mockReset();
   });
 
@@ -87,6 +91,43 @@ describe('public pages', () => {
     expect(
       screen.getByText(/2 estabelecimentos ativos com ofertas na cidade/),
     ).toBeTruthy();
+  });
+
+  it('submits a public city inclusion request', async () => {
+    requestCityInclusion.mockResolvedValue({
+      id: 'request-1',
+      cityName: 'Santos',
+      stateCode: 'SP',
+      status: 'requested',
+      createdAt: '2026-05-10T10:00:00.000Z',
+    });
+
+    render(
+      <MemoryRouter>
+        <CitiesPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Cidade'), {
+      target: { value: 'Santos' },
+    });
+    fireEvent.change(screen.getByLabelText('UF'), {
+      target: { value: 'sp' },
+    });
+    fireEvent.change(screen.getByLabelText('Contato'), {
+      target: { value: 'cliente@pricely.local' },
+    });
+    fireEvent.click(screen.getByText('Solicitar'));
+
+    await waitFor(() =>
+      expect(requestCityInclusion).toHaveBeenCalledWith({
+        cityName: 'Santos',
+        stateCode: 'SP',
+        contactEmail: 'cliente@pricely.local',
+        message: undefined,
+      }),
+    );
+    expect(screen.getByText('Pedido registrado')).toBeTruthy();
   });
 
   it('renders regional offers with empty-state friendly city context', async () => {

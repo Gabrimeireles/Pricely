@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { type CreateCityInclusionRequestContract } from '../../common/contracts';
 import { PrismaService } from '../../persistence/prisma.service';
 
 @Injectable()
@@ -90,5 +91,29 @@ export class PublicRegionsService {
     );
 
     return impact;
+  }
+
+  async requestCityInclusion(input: CreateCityInclusionRequestContract) {
+    const request = await this.prisma.cityInclusionRequest.create({
+      data: {
+        cityName: input.cityName.trim(),
+        stateCode: input.stateCode.trim().toUpperCase(),
+        contactName: input.contactName?.trim(),
+        contactEmail: input.contactEmail?.trim().toLowerCase(),
+        message: input.message?.trim(),
+      },
+    });
+
+    this.logger.log(
+      `City inclusion requested: ${request.cityName}-${request.stateCode}`,
+    );
+
+    return {
+      id: request.id,
+      cityName: request.cityName,
+      stateCode: request.stateCode,
+      status: request.status,
+      createdAt: request.createdAt.toISOString(),
+    };
   }
 }

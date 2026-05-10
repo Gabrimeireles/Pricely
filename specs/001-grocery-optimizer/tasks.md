@@ -543,7 +543,7 @@ Premium access and extra optimization credits are support/admin operations for n
 - [X] T207 Rename shopper-facing trust copy to `Confianca da oferta`, including source labels for admin/manual/receipt evidence, receipt support count, freshness decay, and clearer no-receipt wording in `backend/src/optimization/`, `backend/src/pricing/`, and `web/src/public/`
 - [~] T208 Add gamified receipt contribution rewards with points and token outcomes only after receipt quality scoring confirms useful, correctly processed receipt data in `backend/src/receipts/`, `backend/src/users/`, and `web/src/public/`
 - [X] T209 Add a dedicated admin receipt-processing queue/detail surface for receipt content, line-item quality, moderation status, and reward readiness in `backend/src/admin/` and `web/src/dashboard/`
-- [ ] T210 Add public city-request/contact flow while keeping city creation admin-only in `backend/src/regions/`, `backend/src/admin/`, and `web/src/public/`
+- [X] T210 Add public city-request/contact flow while keeping city creation admin-only in `backend/src/regions/`, `backend/src/admin/`, and `web/src/public/`
 
 ---
 

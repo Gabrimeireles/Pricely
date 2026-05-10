@@ -27,6 +27,7 @@ import {
   fetchCatalogProductVariants,
   fetchOfferDetail,
   fetchRegionOffers,
+  requestCityInclusion,
   searchCatalogProducts,
 } from '@/app/api';
 import { usePricely } from '@/app/pricely-context';
@@ -1149,6 +1150,38 @@ export function OfferDetailPage() {
 
 export function CitiesPage() {
   const { cities } = usePricely();
+  const [requestForm, setRequestForm] = useState({
+    cityName: '',
+    stateCode: '',
+    contactEmail: '',
+    message: '',
+  });
+  const [requestStatus, setRequestStatus] = useState<
+    'idle' | 'submitting' | 'submitted' | 'failed'
+  >('idle');
+
+  const handleCityRequestSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setRequestStatus('submitting');
+
+    try {
+      await requestCityInclusion({
+        cityName: requestForm.cityName,
+        stateCode: requestForm.stateCode,
+        contactEmail: requestForm.contactEmail || undefined,
+        message: requestForm.message || undefined,
+      });
+      setRequestStatus('submitted');
+      setRequestForm({
+        cityName: '',
+        stateCode: '',
+        contactEmail: '',
+        message: '',
+      });
+    } catch {
+      setRequestStatus('failed');
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -1210,6 +1243,113 @@ export function CitiesPage() {
           </Card>
         ))}
       </div>
+
+      <Card className="border-border/70 bg-card/90 shadow-sm">
+        <CardHeader>
+          <CardTitle>Solicitar nova cidade</CardTitle>
+          <CardDescription>
+            A equipe analisa pedidos de cobertura. Somente admins conseguem
+            ativar cidades e estabelecimentos no sistema.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="grid gap-4 md:grid-cols-[1fr_120px] lg:grid-cols-[1fr_120px_1fr_auto]"
+            onSubmit={handleCityRequestSubmit}
+          >
+            <Field>
+              <FieldLabel htmlFor="city-request-name">Cidade</FieldLabel>
+              <Input
+                id="city-request-name"
+                maxLength={80}
+                minLength={2}
+                onChange={(event) =>
+                  setRequestForm((current) => ({
+                    ...current,
+                    cityName: event.target.value,
+                  }))
+                }
+                placeholder="Campinas"
+                required
+                value={requestForm.cityName}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="city-request-state">UF</FieldLabel>
+              <Input
+                id="city-request-state"
+                maxLength={2}
+                minLength={2}
+                onChange={(event) =>
+                  setRequestForm((current) => ({
+                    ...current,
+                    stateCode: event.target.value.toUpperCase(),
+                  }))
+                }
+                placeholder="SP"
+                required
+                value={requestForm.stateCode}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="city-request-email">Contato</FieldLabel>
+              <Input
+                id="city-request-email"
+                onChange={(event) =>
+                  setRequestForm((current) => ({
+                    ...current,
+                    contactEmail: event.target.value,
+                  }))
+                }
+                placeholder="email opcional"
+                type="email"
+                value={requestForm.contactEmail}
+              />
+            </Field>
+            <div className="flex items-end">
+              <Button disabled={requestStatus === 'submitting'} type="submit">
+                Solicitar
+              </Button>
+            </div>
+            <Field className="md:col-span-2 lg:col-span-4">
+              <FieldLabel htmlFor="city-request-message">
+                Estabelecimentos importantes
+              </FieldLabel>
+              <Textarea
+                id="city-request-message"
+                maxLength={500}
+                onChange={(event) =>
+                  setRequestForm((current) => ({
+                    ...current,
+                    message: event.target.value,
+                  }))
+                }
+                placeholder="Mercados ou bairros que deveriam entrar na cobertura"
+                value={requestForm.message}
+              />
+            </Field>
+          </form>
+          {requestStatus === 'submitted' ? (
+            <Alert className="mt-4">
+              <BadgeCheckIcon />
+              <AlertTitle>Pedido registrado</AlertTitle>
+              <AlertDescription>
+                Vamos avaliar a cidade e priorizar a ativação quando houver
+                cobertura mínima de estabelecimentos e ofertas.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {requestStatus === 'failed' ? (
+            <Alert className="mt-4" variant="destructive">
+              <AlertCircleIcon />
+              <AlertTitle>Não foi possível enviar</AlertTitle>
+              <AlertDescription>
+                Revise os campos e tente novamente em instantes.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+        </CardContent>
+      </Card>
     </div>
   );
 }
