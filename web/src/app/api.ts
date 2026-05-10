@@ -129,6 +129,14 @@ type PublicImpactResponse = {
   optimizedListsCount: number;
 };
 
+type CityInclusionRequestResponse = {
+  id: string;
+  cityName: string;
+  stateCode: string;
+  status: 'requested' | 'reviewed' | 'planned' | 'rejected';
+  createdAt: string;
+};
+
 type RegionOffersApiResponse = {
   region: {
     id: string;
@@ -716,6 +724,19 @@ export async function fetchPublicImpact() {
   return apiFetch<PublicImpactResponse>('/regions/impact');
 }
 
+export async function requestCityInclusion(input: {
+  cityName: string;
+  stateCode: string;
+  contactName?: string;
+  contactEmail?: string;
+  message?: string;
+}) {
+  return apiFetch<CityInclusionRequestResponse>('/regions/requests', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export async function fetchRegionOffers(regionSlug: string) {
   return apiFetch<RegionOffersApiResponse>(`/regions/${regionSlug}/offers`);
 }
@@ -1286,6 +1307,7 @@ export function mapShoppingList(
 export type {
   AdminShoppingListAuditResponse,
   AdminUserResponse,
+  CityInclusionRequestResponse,
   CoveragePreviewResponse,
   AdminEstablishmentResponse,
   AdminMetricsResponse,

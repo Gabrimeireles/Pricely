@@ -595,6 +595,16 @@ class PrismaUserAccountMock {
     },
   };
 
+  readonly cityInclusionRequest = {
+    create: async ({ data }: { data: any }) => ({
+      id: crypto.randomUUID(),
+      status: 'requested',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...data,
+    }),
+  };
+
   readonly establishment = {
     count: async ({
       where,
