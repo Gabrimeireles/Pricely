@@ -231,6 +231,13 @@ Required behavior:
 The public URL is perceived as slow. Treat performance as a product requirement, not
 only infrastructure.
 
+Initial measurement on 2026-05-10 found the public homolog URL serving Vite dev assets
+(`@vite/client`, `@react-refresh`, `/src/*`, and `/node_modules/.vite/*`). The observed
+first contentful paint was about 4.7s with roughly 60 module requests before the page
+became usable. The first production fix is to serve the web container with
+`npm run build` plus `vite preview` and keep an opt-in Playwright check that fails if
+development assets appear on the public URL again.
+
 Investigation targets:
 
 - initial JS bundle size and route-level code splitting

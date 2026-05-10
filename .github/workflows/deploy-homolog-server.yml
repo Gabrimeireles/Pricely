@@ -224,7 +224,7 @@ jobs:
           docker compose --env-file .env up -d --force-recreate backend web
           docker compose --env-file .env ps
           docker compose --env-file .env exec -T web sh -lc \
-            "printenv | sort | grep -E '^(VITE_|NODE_ENV)'; sed -n '1,35p' vite.config.ts" </dev/null
+            "printenv | sort | grep -E '^(VITE_|NODE_ENV)'; test -d dist && sed -n '1,20p' dist/index.html" </dev/null
           docker image prune -f
           ENDSSH
 
