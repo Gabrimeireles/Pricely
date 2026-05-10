@@ -1290,10 +1290,37 @@ export function ListsPage() {
 
 export function ChecklistPage() {
   const { listId = '' } = useParams();
-  const { lists, updateListItemPurchaseStatus } = usePricely();
+  const {
+    lists,
+    completeListCheckout,
+    loadLatestOptimization,
+    optimizationResults,
+    reportListItemPriceMismatch,
+    updateListItemPurchaseStatus,
+  } = usePricely();
   const [error, setError] = useState<string | null>(null);
   const [pendingItemId, setPendingItemId] = useState<string | null>(null);
+  const [paidTotal, setPaidTotal] = useState('');
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [reportItem, setReportItem] = useState<ShoppingListItem | null>(null);
+  const [reportedPrice, setReportedPrice] = useState('');
+  const [reportReason, setReportReason] = useState('');
+  const [reportSuccess, setReportSuccess] = useState<string | null>(null);
   const list = lists.find((entry) => entry.id === listId);
+  const optimizationResult = optimizationResults[listId];
+  const purchasedCount =
+    list?.items.filter((item) => item.purchaseStatus === 'purchased').length ?? 0;
+  const allItemsPurchased = Boolean(
+    list && list.items.length > 0 && purchasedCount === list.items.length,
+  );
+
+  useEffect(() => {
+    if (!list || optimizationResult) {
+      return;
+    }
+
+    void loadLatestOptimization(list.id).catch(() => undefined);
+  }, [list, loadLatestOptimization, optimizationResult]);
 
   const toggleItem = async (
     itemId: string,
@@ -1316,6 +1343,60 @@ export function ChecklistPage() {
       );
     } finally {
       setPendingItemId(null);
+    }
+  };
+
+  const expectedPriceForItem = (itemId: string) =>
+    optimizationResult?.selections.find(
+      (selection) => selection.shoppingListItemId === itemId,
+    )?.priceAmount;
+
+  const completeChecklist = async () => {
+    setError(null);
+    setIsCompleting(true);
+
+    try {
+      await completeListCheckout(
+        listId,
+        paidTotal.trim() ? Number(paidTotal.replace(',', '.')) : undefined,
+      );
+    } catch (completionError) {
+      setError(
+        completionError instanceof Error
+          ? completionError.message
+          : 'Não foi possível concluir a lista.',
+      );
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  const submitPriceReport = async () => {
+    if (!reportItem) {
+      return;
+    }
+
+    setError(null);
+    const expectedPrice = expectedPriceForItem(reportItem.id);
+
+    try {
+      await reportListItemPriceMismatch(listId, reportItem.id, {
+        expectedPrice,
+        reportedPrice: reportedPrice.trim()
+          ? Number(reportedPrice.replace(',', '.'))
+          : undefined,
+        reason: reportReason,
+      });
+      setReportSuccess(`Reporte registrado para ${reportItem.name}.`);
+      setReportItem(null);
+      setReportedPrice('');
+      setReportReason('');
+    } catch (reportError) {
+      setError(
+        reportError instanceof Error
+          ? reportError.message
+          : 'Não foi possível registrar o reporte de preço.',
+      );
     }
   };
 
@@ -1357,9 +1438,52 @@ export function ChecklistPage() {
             </Alert>
           ) : null}
 
+          {reportSuccess ? (
+            <Alert>
+              <BadgeCheckIcon />
+              <AlertTitle>Reporte recebido</AlertTitle>
+              <AlertDescription>{reportSuccess}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <Card className="border-border/70 bg-card/95">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="font-medium">
+                  {purchasedCount} de {list.items.length} itens comprados
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {list.completedAt
+                    ? `Lista concluída em ${formatDateTime(list.completedAt)}${
+                        list.paidTotal !== undefined
+                          ? ` · total pago ${formatCurrency(list.paidTotal)}`
+                          : ''
+                      }`
+                    : allItemsPurchased
+                      ? 'Todos os itens foram marcados. Informe o total pago se quiser salvar essa conferência.'
+                      : 'Marque os itens conforme encontra os produtos no estabelecimento.'}
+                </div>
+              </div>
+              {allItemsPurchased && !list.completedAt ? (
+                <div className="flex flex-col gap-2 sm:min-w-72 sm:flex-row">
+                  <Input
+                    inputMode="decimal"
+                    onChange={(event) => setPaidTotal(event.target.value)}
+                    placeholder="Total pago opcional"
+                    value={paidTotal}
+                  />
+                  <Button disabled={isCompleting} onClick={completeChecklist}>
+                    Concluir
+                  </Button>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4">
             {list.items.map((item) => {
               const checked = item.purchaseStatus === 'purchased';
+              const expectedPrice = expectedPriceForItem(item.id);
 
               return (
                 <Card
@@ -1402,15 +1526,79 @@ export function ChecklistPage() {
                           {item.note}
                         </div>
                       ) : null}
+                      {expectedPrice !== undefined ? (
+                        <div className="text-sm text-muted-foreground">
+                          Preço previsto: {formatCurrency(expectedPrice)}
+                        </div>
+                      ) : null}
                     </div>
-                    <Badge variant={checked ? 'secondary' : 'outline'}>
-                      {checked ? 'Comprado' : 'Pendente'}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge variant={checked ? 'secondary' : 'outline'}>
+                        {checked ? 'Comprado' : 'Pendente'}
+                      </Badge>
+                      <Button
+                        onClick={() => {
+                          setReportItem(item);
+                          setReportedPrice(
+                            expectedPrice !== undefined
+                              ? String(expectedPrice).replace('.', ',')
+                              : '',
+                          );
+                        }}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        Reportar preço
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               );
             })}
           </div>
+
+          <Dialog
+            open={Boolean(reportItem)}
+            onOpenChange={(open) => {
+              if (!open) {
+                setReportItem(null);
+                setReportedPrice('');
+                setReportReason('');
+              }
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Reportar preço diferente</DialogTitle>
+                <DialogDescription>
+                  Avise quando o produto não estiver com o preço citado no app.
+                  Isso ajuda a revisar a oferta e a confiança da evidência.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <Field>
+                  <FieldLabel>Preço encontrado</FieldLabel>
+                  <Input
+                    inputMode="decimal"
+                    onChange={(event) => setReportedPrice(event.target.value)}
+                    placeholder="Ex.: 21,90"
+                    value={reportedPrice}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel>Observação opcional</FieldLabel>
+                  <Textarea
+                    onChange={(event) => setReportReason(event.target.value)}
+                    placeholder="Ex.: etiqueta mostrava outro valor ou item indisponível"
+                    value={reportReason}
+                  />
+                </Field>
+              </div>
+              <DialogFooter>
+                <Button onClick={submitPriceReport}>Enviar reporte</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </RequireAuthentication>

@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 
 import {
   type CreateShoppingListRequest,
@@ -143,6 +148,86 @@ export class ShoppingListsService {
     }
 
     return updated;
+  }
+
+  async completeCheckout(
+    userId: string,
+    shoppingListId: string,
+    paidTotal?: number,
+  ): Promise<ShoppingListEntity> {
+    const list = await this.shoppingListRepository.findByIdForUser(
+      shoppingListId,
+      userId,
+    );
+
+    if (!list) {
+      throw new NotFoundException(`Shopping list ${shoppingListId} not found`);
+    }
+
+    const hasPendingItems = list.items.some(
+      (item) => item.purchaseStatus !== 'purchased',
+    );
+
+    if (list.items.length === 0 || hasPendingItems) {
+      throw new BadRequestException(
+        'All shopping list items must be purchased before checkout completion',
+      );
+    }
+
+    const updated = await this.shoppingListRepository.completeCheckout(
+      shoppingListId,
+      userId,
+      paidTotal,
+    );
+
+    if (!updated) {
+      throw new NotFoundException(`Shopping list ${shoppingListId} not found`);
+    }
+
+    return updated;
+  }
+
+  async reportItemPriceMismatch(
+    userId: string,
+    shoppingListId: string,
+    itemId: string,
+    input: {
+      expectedPrice?: number;
+      reportedPrice?: number;
+      reason?: string;
+    },
+  ): Promise<{ id: string; createdAt: string }> {
+    const list = await this.shoppingListRepository.findByIdForUser(
+      shoppingListId,
+      userId,
+    );
+
+    if (!list) {
+      throw new NotFoundException(`Shopping list ${shoppingListId} not found`);
+    }
+
+    const item = list.items.find((entry) => entry.id === itemId);
+
+    if (!item) {
+      throw new NotFoundException(`Shopping list item ${itemId} not found`);
+    }
+
+    if (
+      input.expectedPrice === undefined &&
+      input.reportedPrice === undefined &&
+      !input.reason?.trim()
+    ) {
+      throw new BadRequestException(
+        'At least one report field must be provided',
+      );
+    }
+
+    return this.shoppingListRepository.createPriceMismatchReport(
+      shoppingListId,
+      userId,
+      itemId,
+      input,
+    );
   }
 
   async replace(

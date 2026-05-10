@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import {
+  completeShoppingListCheckout,
   createShoppingList,
   fetchPublicRegions,
   fetchMe,
@@ -16,6 +17,7 @@ import {
   mapProfile,
   mapShoppingList,
   replaceShoppingList,
+  reportShoppingListItemPriceMismatch,
   runOptimization as runOptimizationRequest,
   signIn as signInRequest,
   signUp as signUpRequest,
@@ -73,6 +75,19 @@ interface PricelyContextValue {
     itemId: string,
     purchaseStatus: 'pending' | 'purchased',
   ) => Promise<ShoppingList>;
+  completeListCheckout: (
+    listId: string,
+    paidTotal?: number,
+  ) => Promise<ShoppingList>;
+  reportListItemPriceMismatch: (
+    listId: string,
+    itemId: string,
+    input: {
+      expectedPrice?: number;
+      reportedPrice?: number;
+      reason?: string;
+    },
+  ) => Promise<void>;
   runOptimization: (
     listId: string,
     mode: OptimizationModeId,
@@ -388,6 +403,29 @@ export function PricelyProvider({ children }: PropsWithChildren) {
           current.map((entry) => (entry.id === mapped.id ? mapped : entry)),
         );
         return mapped;
+      },
+      completeListCheckout: async (listId, paidTotal) => {
+        if (!token) {
+          throw new Error('Voce precisa entrar para concluir o checklist.');
+        }
+
+        const updated = await completeShoppingListCheckout(
+          token,
+          listId,
+          paidTotal,
+        );
+        const mapped = mapShoppingList(updated);
+        setLists((current) =>
+          current.map((entry) => (entry.id === mapped.id ? mapped : entry)),
+        );
+        return mapped;
+      },
+      reportListItemPriceMismatch: async (listId, itemId, input) => {
+        if (!token) {
+          throw new Error('Voce precisa entrar para reportar um preço.');
+        }
+
+        await reportShoppingListItemPriceMismatch(token, listId, itemId, input);
       },
       runOptimization: async (listId, mode) => {
         if (!token) {

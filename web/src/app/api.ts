@@ -42,6 +42,8 @@ type ShoppingListApiResponse = {
   latestEstimatedSavings: number;
   latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
   latestOptimizedAt?: string;
+  completedAt?: string;
+  paidTotal?: number;
   items: Array<{
     id: string;
     requestedName: string;
@@ -645,6 +647,41 @@ export async function updateShoppingListItemPurchaseStatus(
   );
 }
 
+export async function completeShoppingListCheckout(
+  token: string,
+  listId: string,
+  paidTotal?: number,
+) {
+  return apiFetch<ShoppingListApiResponse>(
+    `/shopping-lists/${listId}/checkout-completion`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ paidTotal }),
+    },
+    token,
+  );
+}
+
+export async function reportShoppingListItemPriceMismatch(
+  token: string,
+  listId: string,
+  itemId: string,
+  input: {
+    expectedPrice?: number;
+    reportedPrice?: number;
+    reason?: string;
+  },
+) {
+  return apiFetch<{ id: string; createdAt: string }>(
+    `/shopping-lists/${listId}/items/${itemId}/price-reports`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
 export async function runOptimization(
   token: string,
   listId: string,
@@ -965,6 +1002,8 @@ export function mapShoppingList(
     lastMode: apiList.lastMode,
     updatedAt: apiList.updatedAt,
     expectedSavings: apiList.latestEstimatedSavings ?? 0,
+    completedAt: apiList.completedAt,
+    paidTotal: apiList.paidTotal,
     items: apiList.items.map((item) => ({
       id: item.id,
       name: item.requestedName,

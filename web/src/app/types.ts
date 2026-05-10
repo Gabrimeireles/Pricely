@@ -62,6 +62,8 @@ export interface ShoppingList {
   lastMode: OptimizationModeId;
   updatedAt: string;
   expectedSavings: number;
+  completedAt?: string;
+  paidTotal?: number;
   items: ShoppingListItem[];
 }
 

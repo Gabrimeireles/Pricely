@@ -177,6 +177,7 @@ model UserAccount {
   shoppingLists    ShoppingList[]
   optimizationRuns OptimizationRun[]
   receiptRecords   ReceiptRecord[]
+  priceMismatchReports PriceMismatchReport[]
   entitlements      UserEntitlement[]
   optimizationTokenLedger OptimizationTokenLedgerEntry[]
   preferredRegion  Region?           @relation("UserPreferredRegion", fields: [preferredRegionId], references: [id], onDelete: SetNull)
@@ -311,10 +312,13 @@ model ShoppingList {
   name              String
   preferredRegionId String?          @db.Uuid
   status            ShoppingListStatus @default(draft)
+  completedAt       DateTime?
+  paidTotal         Decimal?         @db.Decimal(10, 2)
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   shoppingListItems ShoppingListItem[]
   optimizationRuns  OptimizationRun[]
+  priceMismatchReports PriceMismatchReport[]
   preferredRegion   Region?          @relation(fields: [preferredRegionId], references: [id], onDelete: SetNull)
   user              UserAccount      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -338,6 +342,7 @@ model ShoppingListItem {
   createdAt        DateTime                        @default(now())
   updatedAt        DateTime                        @updatedAt
   optimizationSelections OptimizationSelection[]
+  priceMismatchReports PriceMismatchReport[]
   catalogProduct   CatalogProduct?                 @relation(fields: [catalogProductId], references: [id], onDelete: SetNull)
   lockedProductVariant ProductVariant?             @relation("LockedProductVariant", fields: [lockedProductVariantId], references: [id], onDelete: SetNull)
   shoppingList     ShoppingList                    @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
@@ -345,6 +350,24 @@ model ShoppingListItem {
   @@index([shoppingListId])
   @@index([catalogProductId])
   @@index([lockedProductVariantId])
+}
+
+model PriceMismatchReport {
+  id                 String            @id @default(uuid()) @db.Uuid
+  userId             String            @db.Uuid
+  shoppingListId     String            @db.Uuid
+  shoppingListItemId String?           @db.Uuid
+  expectedPrice      Decimal?          @db.Decimal(10, 2)
+  reportedPrice      Decimal?          @db.Decimal(10, 2)
+  reason             String?
+  createdAt          DateTime          @default(now())
+  shoppingList       ShoppingList      @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  shoppingListItem   ShoppingListItem? @relation(fields: [shoppingListItemId], references: [id], onDelete: SetNull)
+  user               UserAccount       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([shoppingListId, createdAt])
+  @@index([shoppingListItemId])
+  @@index([userId, createdAt])
 }
 
 model OptimizationRun {

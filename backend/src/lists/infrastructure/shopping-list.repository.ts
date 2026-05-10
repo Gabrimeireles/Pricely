@@ -225,6 +225,69 @@ export class ShoppingListRepository {
     return updated ? this.toEntity(updated, existing.lastMode) : null;
   }
 
+  async completeCheckout(
+    shoppingListId: string,
+    userId: string,
+    paidTotal?: number,
+  ): Promise<ShoppingListEntity | null> {
+    const existing = await this.findByIdForUser(shoppingListId, userId);
+
+    if (!existing) {
+      return null;
+    }
+
+    const updated = await this.prisma.shoppingList.update({
+      where: {
+        id: shoppingListId,
+      },
+      data: {
+        completedAt: new Date(),
+        paidTotal:
+          paidTotal !== undefined ? new Prisma.Decimal(paidTotal) : undefined,
+      },
+      include: shoppingListInclude,
+    });
+
+    return this.toEntity(updated, existing.lastMode);
+  }
+
+  async createPriceMismatchReport(
+    shoppingListId: string,
+    userId: string,
+    itemId: string,
+    input: {
+      expectedPrice?: number;
+      reportedPrice?: number;
+      reason?: string;
+    },
+  ): Promise<{ id: string; createdAt: string }> {
+    const report = await this.prisma.priceMismatchReport.create({
+      data: {
+        userId,
+        shoppingListId,
+        shoppingListItemId: itemId,
+        expectedPrice:
+          input.expectedPrice !== undefined
+            ? new Prisma.Decimal(input.expectedPrice)
+            : null,
+        reportedPrice:
+          input.reportedPrice !== undefined
+            ? new Prisma.Decimal(input.reportedPrice)
+            : null,
+        reason: input.reason?.trim() || null,
+      },
+      select: {
+        id: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      id: report.id,
+      createdAt: report.createdAt.toISOString(),
+    };
+  }
+
   private toEntity(
     record: ShoppingListRecord,
     fallbackMode: 'local' | 'global_unique' | 'global_full' = 'global_full',
@@ -244,6 +307,11 @@ export class ShoppingListRepository {
           : 0,
       latestOptimizationStatus: latestRun?.status,
       latestOptimizedAt: latestRun?.completedAt?.toISOString(),
+      completedAt: record.completedAt?.toISOString(),
+      paidTotal:
+        record.paidTotal !== null && record.paidTotal !== undefined
+          ? Number(record.paidTotal)
+          : undefined,
       createdAt: record.createdAt.toISOString(),
       updatedAt: record.updatedAt.toISOString(),
       items: record.shoppingListItems.map((item) => ({
