@@ -54,17 +54,17 @@ describe('OptimizationPage', () => {
     );
 
     expect(screen.getByText('Escolha o modo')).toBeTruthy();
-    expect(screen.getByText('Local')).toBeTruthy();
-    expect(screen.getByText('Global único')).toBeTruthy();
-    expect(screen.getByText('Global completo')).toBeTruthy();
+    expect(screen.getByText('Uma loja perto de mim')).toBeTruthy();
+    expect(screen.getByText('Uma loja na cidade')).toBeTruthy();
+    expect(screen.getByText('Menor total na cidade')).toBeTruthy();
     expect(
       screen.getByText('Compra mensal - São Paulo. Compare o melhor total, a cobertura e a economia estimada da sua compra.'),
     ).toBeTruthy();
     expect(
-      screen.getByText('Prioriza concluir a compra com o menor deslocamento possível.'),
+      screen.getByText('Usa uma loja elegivel dentro do raio local configurado.'),
     ).toBeTruthy();
     expect(
-      screen.getByText('Procura a melhor loja única para equilibrar cobertura e preço.'),
+      screen.getByText('Procura a melhor loja unica para equilibrar cobertura e preco.'),
     ).toBeTruthy();
     expect(
       screen.getByText('Busca o menor custo total item a item na cidade selecionada.'),

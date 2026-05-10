@@ -5,6 +5,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { EstablishmentsModule } from './establishments/establishments.module';
 import { JobsModule } from './jobs/jobs.module';
 import { ListsModule } from './lists/lists.module';
+import { LocationsModule } from './locations/locations.module';
 import { LoggingModule } from './common/logging/logging.module';
 import { QueueModule } from './common/queue/queue.module';
 import { OptimizationModule } from './optimization/optimization.module';
@@ -25,6 +26,7 @@ import { StoresModule } from './stores/stores.module';
     EstablishmentsModule,
     RegionsModule,
     ListsModule,
+    LocationsModule,
     StoresModule,
     PricingModule,
     OptimizationModule,

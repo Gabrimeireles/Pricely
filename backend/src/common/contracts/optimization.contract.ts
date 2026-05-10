@@ -1,7 +1,10 @@
-import type { OptimizationMode } from './shopping-list.contract';
+import type {
+  OptimizationMode,
+  OptimizationModeRequest,
+} from './shopping-list.contract';
 
 export interface OptimizeShoppingListRequest {
-  mode: OptimizationMode;
+  mode: OptimizationModeRequest;
   preferredEstablishmentId?: string;
   regionId?: string;
 }

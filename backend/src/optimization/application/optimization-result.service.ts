@@ -3,6 +3,7 @@ import { type Queue } from 'bullmq';
 
 import {
   type OptimizationExplanationPayload,
+  type OptimizationMode,
   type OptimizationRunAccepted,
   type OptimizeShoppingListRequest,
   type OptimizationResult,
@@ -64,6 +65,8 @@ export class OptimizationResultService {
       );
     }
 
+    const mode = this.normalizeMode(request.mode);
+
     const processingJob = await this.processingJobsService.createQueuedJob({
       queueName: 'optimization',
       jobType: 'optimization',
@@ -75,7 +78,7 @@ export class OptimizationResultService {
       await this.optimizationRunRepository.createQueuedRun({
         shoppingListId,
         userId,
-        mode: request.mode,
+        mode,
         regionId,
         preferredEstablishmentId: request.preferredEstablishmentId ?? null,
         jobId: processingJob.id,
@@ -111,10 +114,20 @@ export class OptimizationResultService {
       id: optimizationRun.id,
       jobId: processingJob.id,
       shoppingListId,
-      mode: request.mode,
+      mode,
       status: 'queued',
       queuedAt: optimizationRun.createdAt,
     };
+  }
+
+  private normalizeMode(mode: OptimizeShoppingListRequest['mode']): OptimizationMode {
+    const aliases: Record<string, OptimizationMode> = {
+      local_unique: 'local',
+      local_multi: 'global_unique',
+      global_multi: 'global_full',
+    };
+
+    return aliases[mode] ?? (mode as OptimizationMode);
   }
 
   async getLatest(
