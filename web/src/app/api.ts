@@ -337,8 +337,25 @@ type AdminProcessingJobDetailResponse = AdminProcessingJobResponse & {
             establishmentName: string;
             neighborhood: string;
             priceAmount: number;
+            confidenceLevel?: 'high' | 'medium' | 'low';
+            sourceType?: string;
             sourceLabel: string;
             observedAt: string;
+            receiptEvidence?: {
+              id: string;
+              moderationStatus:
+                | 'pending'
+                | 'accepted'
+                | 'quarantined'
+                | 'duplicate'
+                | 'rejected';
+              trustLevel:
+                | 'untrusted'
+                | 'pending_review'
+                | 'trusted'
+                | 'rejected';
+              reviewReason?: string | null;
+            } | null;
           } | null;
         }>;
       })

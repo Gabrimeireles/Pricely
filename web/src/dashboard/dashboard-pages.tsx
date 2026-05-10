@@ -2265,7 +2265,26 @@ export function AdminQueueDetailPage() {
                 {job.optimizationRun.selections.map((selection) => (
                   <TableRow key={selection.id}>
                     <TableCell>{selection.shoppingListItemName}</TableCell>
-                    <TableCell>{selection.status}</TableCell>
+                    <TableCell>
+                      <div className="grid gap-1">
+                        <Badge
+                          variant={
+                            selection.status === 'selected'
+                              ? 'secondary'
+                              : selection.status === 'review'
+                                ? 'outline'
+                                : 'destructive'
+                          }
+                        >
+                          {selection.status}
+                        </Badge>
+                        {selection.offer?.confidenceLevel ? (
+                          <span className="text-xs text-muted-foreground">
+                            Trust {selection.offer.confidenceLevel}
+                          </span>
+                        ) : null}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {selection.offer
                         ? `${selection.offer.establishmentName} · ${selection.offer.neighborhood}`
@@ -2277,9 +2296,26 @@ export function AdminQueueDetailPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {selection.offer?.sourceLabel ??
-                        selection.confidenceNotice ??
-                        'Sem fonte'}
+                      <div className="grid gap-1">
+                        <span>
+                          {selection.offer?.sourceLabel ??
+                            selection.confidenceNotice ??
+                            'Sem fonte'}
+                        </span>
+                        {selection.offer ? (
+                          <span className="text-xs text-muted-foreground">
+                            {selection.offer.sourceType ?? 'fonte'} · atualizado{' '}
+                            {formatFreshnessLabel(selection.offer.observedAt)}
+                          </span>
+                        ) : null}
+                        {selection.offer?.receiptEvidence ? (
+                          <span className="text-xs text-muted-foreground">
+                            Nota{' '}
+                            {selection.offer.receiptEvidence.moderationStatus} ·{' '}
+                            {selection.offer.receiptEvidence.trustLevel}
+                          </span>
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -2299,6 +2335,26 @@ export function AdminQueueDetailPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-border/70 p-4">
+                <div className="text-sm text-muted-foreground">Moderacao</div>
+                <div className="mt-1 text-lg font-semibold">
+                  {job.receiptRecord.moderationStatus}
+                </div>
+              </div>
+              <div className="rounded-lg border border-border/70 p-4">
+                <div className="text-sm text-muted-foreground">Confianca</div>
+                <div className="mt-1 text-lg font-semibold">
+                  {job.receiptRecord.trustLevel}
+                </div>
+              </div>
+              <div className="rounded-lg border border-border/70 p-4">
+                <div className="text-sm text-muted-foreground">Reward</div>
+                <div className="mt-1 text-lg font-semibold">
+                  {job.receiptRecord.rewardEligibilityStatus}
+                </div>
+              </div>
+            </div>
             <Alert>
               <InfoIcon />
               <AlertTitle>
