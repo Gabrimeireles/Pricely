@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -10,6 +10,7 @@ import {
   AdminPricesPage,
   AdminQueuePage,
   AdminRegionsPage,
+  AdminUsersPage,
 } from './dashboard-pages';
 
 const fetchAdminMetrics = vi.fn();
@@ -20,6 +21,9 @@ const fetchAdminEstablishments = vi.fn();
 const fetchAdminOffers = vi.fn();
 const fetchAdminProducts = vi.fn();
 const fetchAdminProductVariants = vi.fn();
+const fetchAdminUsers = vi.fn();
+const setAdminUserPremium = vi.fn();
+const grantAdminUserTokens = vi.fn();
 
 vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
@@ -44,6 +48,9 @@ vi.mock('@/app/api', () => ({
   fetchAdminEstablishments: (...args: unknown[]) =>
     fetchAdminEstablishments(...args),
   fetchAdminShoppingLists: vi.fn(),
+  fetchAdminUsers: (...args: unknown[]) => fetchAdminUsers(...args),
+  setAdminUserPremium: (...args: unknown[]) => setAdminUserPremium(...args),
+  grantAdminUserTokens: (...args: unknown[]) => grantAdminUserTokens(...args),
   updateAdminRegion: vi.fn(),
   createAdminRegion: vi.fn(),
   createAdminEstablishment: vi.fn(),
@@ -70,6 +77,9 @@ describe('Admin dashboard pages', () => {
     fetchAdminOffers.mockReset();
     fetchAdminProducts.mockReset();
     fetchAdminProductVariants.mockReset();
+    fetchAdminUsers.mockReset();
+    setAdminUserPremium.mockReset();
+    grantAdminUserTokens.mockReset();
   });
 
   afterEach(() => {
@@ -331,5 +341,70 @@ describe('Admin dashboard pages', () => {
     render(<AdminEstablishmentsPage />);
     expect(await screen.findByText('Unidades por cidade')).toBeTruthy();
     expect(screen.getAllByText('Unidade Pinheiros').length).toBeGreaterThan(0);
+  });
+
+  it('renders admin users and supports premium and token actions', async () => {
+    fetchAdminUsers.mockResolvedValue([
+      {
+        id: 'user-1',
+        email: 'cliente@pricely.local',
+        displayName: 'Cliente Teste',
+        role: 'customer',
+        status: 'active',
+        preferredRegion: {
+          id: 'region-1',
+          slug: 'sao-paulo-sp',
+          name: 'Sao Paulo',
+          stateCode: 'SP',
+        },
+        lastLoginAt: '2026-05-10T04:00:00.000Z',
+        createdAt: '2026-05-01T04:00:00.000Z',
+        updatedAt: '2026-05-10T04:00:00.000Z',
+        counts: {
+          shoppingLists: 4,
+          optimizationRuns: 3,
+          receiptRecords: 2,
+          priceMismatchReports: 1,
+        },
+        entitlement: {
+          plan: 'free',
+          status: 'active',
+          source: 'monthly_free_refill',
+          availableOptimizationTokens: 2,
+          monthlyFreeOptimizationTokens: 2,
+          billingEnabled: false,
+          checkoutEnabled: false,
+          lastPaymentAt: null,
+          lastPaymentStatus: 'billing_disabled',
+        },
+        latestOptimization: null,
+      },
+    ]);
+    setAdminUserPremium.mockResolvedValue({});
+    grantAdminUserTokens.mockResolvedValue({});
+
+    render(<AdminUsersPage />);
+
+    expect((await screen.findAllByText('Usuarios')).length).toBeGreaterThan(0);
+    expect(screen.getByText('Cliente Teste')).toBeTruthy();
+    expect(screen.getByText('Sao Paulo - SP')).toBeTruthy();
+    expect(screen.getByText('2 creditos disponiveis')).toBeTruthy();
+    expect(screen.getByText('Billing desativado')).toBeTruthy();
+
+    fireEvent.click(screen.getByText('Ativar premium'));
+    await waitFor(() =>
+      expect(setAdminUserPremium).toHaveBeenCalledWith('token', 'user-1', true),
+    );
+
+    fireEvent.change(screen.getByLabelText('Creditos extras para Cliente Teste'), {
+      target: { value: '3' },
+    });
+    fireEvent.click(screen.getByText('Adicionar'));
+    await waitFor(() =>
+      expect(grantAdminUserTokens).toHaveBeenCalledWith('token', 'user-1', {
+        amount: 3,
+        reason: 'suporte_admin',
+      }),
+    );
   });
 });

@@ -6,7 +6,50 @@ describe('AdminDashboardService', () => {
   it('aggregates metrics, queue health, and processing job projections', async () => {
     const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     const prisma = {
-      userAccount: { count: jest.fn().mockResolvedValue(12) },
+      userAccount: {
+        count: jest.fn().mockResolvedValue(12),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'user-1',
+            email: 'cliente1@pricely.local',
+            displayName: 'Cliente 1',
+            role: 'customer',
+            status: 'active',
+            lastLoginAt: new Date('2026-04-27T08:00:00Z'),
+            createdAt: new Date('2026-04-20T08:00:00Z'),
+            updatedAt: new Date('2026-04-27T08:00:00Z'),
+            preferredRegion: {
+              id: 'region-1',
+              slug: 'sao-paulo-sp',
+              name: 'Sao Paulo',
+              stateCode: 'SP',
+            },
+            entitlements: [
+              {
+                plan: 'free',
+                status: 'active',
+                source: 'monthly_free_refill',
+                endsAt: null,
+              },
+            ],
+            optimizationRuns: [
+              {
+                id: 'run-1',
+                mode: 'global_full',
+                status: 'completed',
+                createdAt: new Date('2026-04-27T10:00:00Z'),
+                completedAt: new Date('2026-04-27T10:05:00Z'),
+              },
+            ],
+            _count: {
+              shoppingLists: 3,
+              optimizationRuns: 2,
+              receiptRecords: 1,
+              priceMismatchReports: 4,
+            },
+          },
+        ]),
+      },
       shoppingList: { count: jest.fn().mockResolvedValue(24) },
       optimizationRun: {
         count: jest.fn().mockResolvedValue(18),
@@ -142,6 +185,16 @@ describe('AdminDashboardService', () => {
           },
         ]),
       },
+      optimizationTokenLedgerEntry: {
+        groupBy: jest.fn().mockResolvedValue([
+          {
+            userId: 'user-1',
+            _sum: {
+              amount: 5,
+            },
+          },
+        ]),
+      },
       shoppingList: {
         count: jest.fn().mockResolvedValue(24),
         findMany: jest.fn().mockResolvedValue([
@@ -185,6 +238,11 @@ describe('AdminDashboardService', () => {
       {} as never,
       {} as never,
       {} as never,
+      {
+        monthlyFreeTokenCount: jest.fn().mockReturnValue(2),
+        setManualPremium: jest.fn(),
+        grantAdminOptimizationTokens: jest.fn(),
+      } as never,
     );
 
     await expect(service.getMetrics()).resolves.toEqual({
@@ -301,6 +359,29 @@ describe('AdminDashboardService', () => {
       }),
     ]);
 
+    await expect(service.listUsers()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'user-1',
+        email: 'cliente1@pricely.local',
+        counts: {
+          shoppingLists: 3,
+          optimizationRuns: 2,
+          receiptRecords: 1,
+          priceMismatchReports: 4,
+        },
+        entitlement: expect.objectContaining({
+          plan: 'free',
+          availableOptimizationTokens: 5,
+          billingEnabled: false,
+          lastPaymentStatus: 'billing_disabled',
+        }),
+        latestOptimization: expect.objectContaining({
+          id: 'run-1',
+          mode: 'global_full',
+        }),
+      }),
+    ]);
+
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining('Admin metrics generated'),
     );
@@ -336,6 +417,7 @@ describe('AdminDashboardService', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
 
     await service.createRegion({
@@ -359,5 +441,77 @@ describe('AdminDashboardService', () => {
     });
     expect(logSpy).toHaveBeenCalledWith('Admin created region campinas-sp (region-1)');
     expect(logSpy).toHaveBeenCalledWith('Admin updated region region-1');
+  });
+
+  it('delegates premium and token adjustments to entitlement service', async () => {
+    const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    const prisma = {
+      userAccount: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'user-1',
+            email: 'cliente1@pricely.local',
+            displayName: 'Cliente 1',
+            role: 'customer',
+            status: 'active',
+            lastLoginAt: null,
+            createdAt: new Date('2026-04-20T08:00:00Z'),
+            updatedAt: new Date('2026-04-27T08:00:00Z'),
+            preferredRegion: null,
+            entitlements: [],
+            optimizationRuns: [],
+            _count: {
+              shoppingLists: 0,
+              optimizationRuns: 0,
+              receiptRecords: 0,
+              priceMismatchReports: 0,
+            },
+          },
+        ]),
+      },
+      optimizationTokenLedgerEntry: {
+        groupBy: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const entitlementsService = {
+      monthlyFreeTokenCount: jest.fn().mockReturnValue(2),
+      setManualPremium: jest.fn().mockResolvedValue(null),
+      grantAdminOptimizationTokens: jest.fn().mockResolvedValue(null),
+    };
+
+    const service = new AdminDashboardService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      entitlementsService as never,
+    );
+
+    await service.setUserPremium('user-1', { enabled: true }, 'admin-1');
+    await service.grantUserOptimizationTokens(
+      'user-1',
+      { amount: 3, reason: 'suporte_admin' },
+      'admin-1',
+    );
+
+    expect(entitlementsService.setManualPremium).toHaveBeenCalledWith({
+      userId: 'user-1',
+      enabled: true,
+      adminUserId: 'admin-1',
+    });
+    expect(entitlementsService.grantAdminOptimizationTokens).toHaveBeenCalledWith({
+      userId: 'user-1',
+      amount: 3,
+      reason: 'suporte_admin',
+      adminUserId: 'admin-1',
+    });
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('enabled premium'),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('granted 3 optimization tokens'),
+    );
   });
 });

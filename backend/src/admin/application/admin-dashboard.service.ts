@@ -6,6 +6,7 @@ import { EstablishmentsService } from '../../establishments/application/establis
 import { PrismaService } from '../../persistence/prisma.service';
 import { OfferManagementService } from '../../pricing/application/offer-management.service';
 import { RegionsAdminService } from '../../regions/application/regions-admin.service';
+import { EntitlementsService } from '../../users/entitlements.service';
 
 @Injectable()
 export class AdminDashboardService {
@@ -18,6 +19,7 @@ export class AdminDashboardService {
     private readonly catalogProductsService: CatalogProductsService,
     private readonly catalogMediaService: CatalogMediaService,
     private readonly offerManagementService: OfferManagementService,
+    private readonly entitlementsService: EntitlementsService,
   ) {}
 
   async getMetrics() {
@@ -436,6 +438,168 @@ export class AdminDashboardService {
     );
 
     return projected;
+  }
+
+  async listUsers(userIds?: string[]) {
+    const users = await this.prisma.userAccount.findMany({
+      where: userIds?.length
+        ? {
+            id: {
+              in: userIds,
+            },
+          }
+        : undefined,
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 100,
+      include: {
+        preferredRegion: {
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            stateCode: true,
+          },
+        },
+        entitlements: {
+          orderBy: [{ createdAt: 'desc' }],
+          take: 1,
+        },
+        optimizationRuns: {
+          orderBy: [{ createdAt: 'desc' }],
+          take: 1,
+          select: {
+            id: true,
+            mode: true,
+            status: true,
+            createdAt: true,
+            completedAt: true,
+          },
+        },
+        _count: {
+          select: {
+            shoppingLists: true,
+            optimizationRuns: true,
+            receiptRecords: true,
+            priceMismatchReports: true,
+          },
+        },
+      },
+    });
+
+    const tokenBalances = await this.prisma.optimizationTokenLedgerEntry.groupBy({
+      by: ['userId'],
+      where: {
+        userId: {
+          in: users.map((user) => user.id),
+        },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+    const tokenBalanceByUser = new Map(
+      tokenBalances.map((entry) => [
+        entry.userId,
+        Number(entry._sum.amount ?? 0),
+      ]),
+    );
+
+    return users.map((user) => {
+      const latestEntitlement = user.entitlements[0];
+      const hasActivePremium =
+        latestEntitlement?.plan === 'premium' &&
+        ['active', 'trialing'].includes(latestEntitlement.status) &&
+        (!latestEntitlement.endsAt || latestEntitlement.endsAt > new Date());
+      const latestOptimization = user.optimizationRuns[0];
+
+      return {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        status: user.status,
+        preferredRegion: user.preferredRegion,
+        lastLoginAt: user.lastLoginAt?.toISOString(),
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+        counts: {
+          shoppingLists: user._count.shoppingLists,
+          optimizationRuns: user._count.optimizationRuns,
+          receiptRecords: user._count.receiptRecords,
+          priceMismatchReports: user._count.priceMismatchReports,
+        },
+        entitlement: {
+          plan: hasActivePremium ? 'premium' : 'free',
+          status: latestEntitlement?.status ?? 'active',
+          source: latestEntitlement?.source ?? 'monthly_free_refill',
+          availableOptimizationTokens: hasActivePremium
+            ? null
+            : (tokenBalanceByUser.get(user.id) ?? 0),
+          monthlyFreeOptimizationTokens:
+            this.entitlementsService.monthlyFreeTokenCount(),
+          billingEnabled: false,
+          checkoutEnabled: false,
+          lastPaymentAt: null,
+          lastPaymentStatus: 'billing_disabled',
+        },
+        latestOptimization: latestOptimization
+          ? {
+              id: latestOptimization.id,
+              mode: latestOptimization.mode,
+              status: latestOptimization.status,
+              createdAt: latestOptimization.createdAt.toISOString(),
+              completedAt: latestOptimization.completedAt?.toISOString(),
+            }
+          : null,
+      };
+    });
+  }
+
+  async setUserPremium(
+    userId: string,
+    input: { enabled: boolean },
+    adminUserId: string,
+  ) {
+    await this.entitlementsService.setManualPremium({
+      userId,
+      enabled: input.enabled,
+      adminUserId,
+    });
+
+    this.logger.log(
+      `Admin ${adminUserId} ${input.enabled ? 'enabled' : 'disabled'} premium for user ${userId}`,
+    );
+
+    return this.getUserOrThrow(userId);
+  }
+
+  async grantUserOptimizationTokens(
+    userId: string,
+    input: { amount: number; reason?: string },
+    adminUserId: string,
+  ) {
+    await this.entitlementsService.grantAdminOptimizationTokens({
+      userId,
+      amount: input.amount,
+      reason: input.reason,
+      adminUserId,
+    });
+
+    this.logger.log(
+      `Admin ${adminUserId} granted ${input.amount} optimization tokens to user ${userId}`,
+    );
+
+    return this.getUserOrThrow(userId);
+  }
+
+  private async getUserOrThrow(userId: string) {
+    const [found] = await this.listUsers([userId]);
+    if (!found) {
+      throw new NotFoundException(`User ${userId} was not found`);
+    }
+
+    return found;
   }
 
   async listRegions() {

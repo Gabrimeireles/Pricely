@@ -47,3 +47,44 @@ export interface AdminShoppingListAuditContract {
     completedAt?: string;
   } | null;
 }
+
+export interface AdminUserContract {
+  id: string;
+  email: string;
+  displayName: string;
+  role: 'customer' | 'admin';
+  status: 'active' | 'suspended';
+  preferredRegion: {
+    id: string;
+    slug: string;
+    name: string;
+    stateCode: string;
+  } | null;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  counts: {
+    shoppingLists: number;
+    optimizationRuns: number;
+    receiptRecords: number;
+    priceMismatchReports: number;
+  };
+  entitlement: {
+    plan: 'free' | 'premium';
+    status: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired';
+    source: string;
+    availableOptimizationTokens: number | null;
+    monthlyFreeOptimizationTokens: number;
+    billingEnabled: false;
+    checkoutEnabled: false;
+    lastPaymentAt: string | null;
+    lastPaymentStatus: 'billing_disabled' | 'none' | 'paid' | 'failed';
+  };
+  latestOptimization: {
+    id: string;
+    mode: 'local' | 'global_unique' | 'global_full';
+    status: 'queued' | 'running' | 'completed' | 'failed';
+    createdAt: string;
+    completedAt?: string;
+  } | null;
+}

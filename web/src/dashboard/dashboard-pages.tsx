@@ -12,6 +12,7 @@ import {
   ListChecksIcon,
   ReceiptTextIcon,
   SparklesIcon,
+  UserCogIcon,
 } from 'lucide-react';
 
 import {
@@ -25,6 +26,7 @@ import {
   type AdminQueueHealthResponse,
   type AdminRegionResponse,
   type AdminShoppingListAuditResponse,
+  type AdminUserResponse,
   createAdminEstablishment,
   createAdminOffer,
   createAdminProduct,
@@ -40,6 +42,9 @@ import {
   fetchAdminQueueHealth,
   fetchAdminRegions,
   fetchAdminShoppingLists,
+  fetchAdminUsers,
+  grantAdminUserTokens,
+  setAdminUserPremium,
   updateAdminOffer,
   updateAdminEstablishment,
   updateAdminProduct,
@@ -1835,6 +1840,237 @@ export function AdminEstablishmentsPage() {
 }
 
 export const AdminOffersPage = AdminPricesPage;
+
+function adminUserLocationLabel(user: AdminUserResponse) {
+  if (!user.preferredRegion) {
+    return 'Cidade nao definida';
+  }
+
+  return `${user.preferredRegion.name} - ${user.preferredRegion.stateCode}`;
+}
+
+function adminUserPlanLabel(user: AdminUserResponse) {
+  if (user.entitlement.plan === 'premium') {
+    return 'Premium manual ativo';
+  }
+
+  return `${user.entitlement.availableOptimizationTokens ?? 0} creditos disponiveis`;
+}
+
+export function AdminUsersPage() {
+  const { accessToken } = usePricely();
+  const { data: users, error, reload } = useAdminData<AdminUserResponse[]>(
+    fetchAdminUsers,
+    [],
+  );
+  const [tokenAmounts, setTokenAmounts] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handlePremiumToggle = async (user: AdminUserResponse) => {
+    if (!accessToken) {
+      return;
+    }
+
+    await setAdminUserPremium(
+      accessToken,
+      user.id,
+      user.entitlement.plan !== 'premium',
+    );
+    setMessage(
+      user.entitlement.plan === 'premium'
+        ? 'Premium manual removido.'
+        : 'Premium manual ativado.',
+    );
+    await reload();
+  };
+
+  const handleTokenGrant = async (user: AdminUserResponse) => {
+    if (!accessToken) {
+      return;
+    }
+
+    const amount = Number(tokenAmounts[user.id] ?? 0);
+    if (!Number.isInteger(amount) || amount <= 0) {
+      setMessage('Informe uma quantidade positiva de creditos.');
+      return;
+    }
+
+    await grantAdminUserTokens(accessToken, user.id, {
+      amount,
+      reason: 'suporte_admin',
+    });
+    setTokenAmounts((current) => ({ ...current, [user.id]: '' }));
+    setMessage(`${amount} creditos adicionados para ${user.displayName}.`);
+    await reload();
+  };
+
+  return (
+    <div className="grid gap-4">
+      <Card className="border-border/70 bg-card/90 shadow-sm">
+        <CardHeader>
+          <CardTitle>Usuarios</CardTitle>
+          <CardDescription>
+            Operacao de acesso, premium manual e creditos enquanto o billing
+            permanece desativado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {error ? (
+            <Alert variant="destructive">
+              <AlertTitle>Falha ao carregar usuarios</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+          {message ? (
+            <Alert>
+              <InfoIcon />
+              <AlertTitle>Alteracao aplicada</AlertTitle>
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="text-sm text-muted-foreground">Usuarios</div>
+              <div className="text-2xl font-semibold">{users.length}</div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="text-sm text-muted-foreground">Premium</div>
+              <div className="text-2xl font-semibold">
+                {users.filter((user) => user.entitlement.plan === 'premium').length}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="text-sm text-muted-foreground">Listas</div>
+              <div className="text-2xl font-semibold">
+                {users.reduce((sum, user) => sum + user.counts.shoppingLists, 0)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="text-sm text-muted-foreground">Notas fiscais</div>
+              <div className="text-2xl font-semibold">
+                {users.reduce((sum, user) => sum + user.counts.receiptRecords, 0)}
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-border/70">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Usuario</TableHead>
+                  <TableHead>Localidade</TableHead>
+                  <TableHead>Uso</TableHead>
+                  <TableHead>Plano</TableHead>
+                  <TableHead>Ultimo pagamento</TableHead>
+                  <TableHead>Acoes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="font-medium">{user.displayName}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {user.email}
+                      </div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <Badge variant="secondary">{user.role}</Badge>
+                        <Badge variant="outline">{user.status}</Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">{adminUserLocationLabel(user)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        ultimo acesso{' '}
+                        {user.lastLoginAt
+                          ? formatFreshnessLabel(user.lastLoginAt)
+                          : 'nao registrado'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {user.counts.shoppingLists} listas ·{' '}
+                        {user.counts.optimizationRuns} otimizacoes
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {user.counts.receiptRecords} notas ·{' '}
+                        {user.counts.priceMismatchReports} reports
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <UserCogIcon className="size-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          {adminUserPlanLabel(user)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Origem {user.entitlement.source}; billing desativado
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {user.entitlement.lastPaymentAt ?? 'Sem cobranca ativa'}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {user.entitlement.lastPaymentStatus === 'billing_disabled'
+                          ? 'Billing desativado'
+                          : user.entitlement.lastPaymentStatus}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          onClick={() => void handlePremiumToggle(user)}
+                          size="sm"
+                          type="button"
+                          variant={
+                            user.entitlement.plan === 'premium'
+                              ? 'outline'
+                              : 'default'
+                          }
+                        >
+                          {user.entitlement.plan === 'premium'
+                            ? 'Remover premium'
+                            : 'Ativar premium'}
+                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            aria-label={`Creditos extras para ${user.displayName}`}
+                            className="h-9 w-24"
+                            min="1"
+                            onChange={(event) =>
+                              setTokenAmounts((current) => ({
+                                ...current,
+                                [user.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="+2"
+                            type="number"
+                            value={tokenAmounts[user.id] ?? ''}
+                          />
+                          <Button
+                            onClick={() => void handleTokenGrant(user)}
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                          >
+                            Adicionar
+                          </Button>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export function AdminListsPage() {
   const { data: metrics } = useAdminData<AdminMetricsResponse | null>(
