@@ -7,6 +7,7 @@ import {
   AdminOverviewPage,
   AdminQueueDetailPage,
   AdminQueuePage,
+  AdminReceiptsPage,
   AdminRegionsPage,
   AdminUsersPage,
 } from '@/dashboard/dashboard-pages';
@@ -42,6 +43,10 @@ export const dashboardRoute = {
     {
       path: 'usuarios',
       element: <AdminUsersPage />,
+    },
+    {
+      path: 'notas',
+      element: <AdminReceiptsPage />,
     },
     {
       path: 'fila',

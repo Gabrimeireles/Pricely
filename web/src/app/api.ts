@@ -380,6 +380,47 @@ type AdminProcessingJobDetailResponse = AdminProcessingJobResponse & {
     | null;
 };
 
+type AdminReceiptProcessingResponse = {
+  id: string;
+  storeName?: string | null;
+  storeCnpj?: string | null;
+  parseStatus: 'queued' | 'parsed' | 'partial' | 'failed';
+  trustLevel: 'untrusted' | 'pending_review' | 'trusted' | 'rejected';
+  moderationStatus:
+    | 'pending'
+    | 'accepted'
+    | 'quarantined'
+    | 'duplicate'
+    | 'rejected';
+  rewardEligibilityStatus:
+    | 'disabled'
+    | 'ineligible'
+    | 'eligible_pending'
+    | 'granted';
+  reviewReason?: string | null;
+  purchaseDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  owner: {
+    id: string;
+    displayName: string;
+    email: string;
+  };
+  processingJob?: {
+    id: string;
+    status: 'queued' | 'running' | 'completed' | 'failed' | 'retrying';
+    attemptCount: number;
+    failureReason?: string | null;
+    updatedAt: string;
+  } | null;
+  quality: {
+    lineItemCount: number;
+    highConfidenceLineItemCount: number;
+    averageMatchConfidence: number;
+    usefulDataRatio: number;
+  };
+};
+
 type AdminQueueHealthResponse = {
   queuedJobs: number;
   runningJobs: number;
@@ -915,6 +956,14 @@ export async function fetchAdminProcessingJobDetail(token: string, id: string) {
   );
 }
 
+export async function fetchAdminReceiptProcessing(token: string) {
+  return apiFetch<AdminReceiptProcessingResponse[]>(
+    '/admin/receipt-processing',
+    {},
+    token,
+  );
+}
+
 export async function fetchAdminQueueHealth(token: string) {
   return apiFetch<AdminQueueHealthResponse>('/admin/queue-health', {}, token);
 }
@@ -1241,6 +1290,7 @@ export type {
   AdminProcessingJobResponse,
   AdminProcessingJobDetailResponse,
   AdminQueueHealthResponse,
+  AdminReceiptProcessingResponse,
   AdminRegionResponse,
   OfferDetailApiResponse,
   OptimizationResultApiResponse,

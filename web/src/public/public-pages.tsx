@@ -162,15 +162,15 @@ function trustFactorBadge(level?: 'high' | 'medium' | 'low') {
   if (level === 'high') {
     return (
       <Badge className="bg-emerald-100 text-emerald-900 hover:bg-emerald-100">
-        Trust alto
+        Confiança alta
       </Badge>
     );
   }
   if (level === 'medium') {
-    return <Badge variant="secondary">Trust médio</Badge>;
+    return <Badge variant="secondary">Confiança média</Badge>;
   }
 
-  return <Badge variant="destructive">Trust baixo</Badge>;
+  return <Badge variant="destructive">Confiança baixa</Badge>;
 }
 
 function trustEvidenceLabel(selection: {
@@ -180,16 +180,21 @@ function trustEvidenceLabel(selection: {
   const evidenceCount = selection.trustEvidenceCount ?? 0;
   const receiptText =
     evidenceCount === 0
-      ? 'Sem nota fiscal recente vinculada; usando evidência operacional'
+      ? 'Preço ainda sem nota fiscal aceita; origem operacional sustenta a oferta'
       : evidenceCount === 1
-      ? '1 nota valida'
-      : `${evidenceCount} notas validas`;
+      ? '1 nota fiscal aceita apoia este preço'
+      : `${evidenceCount} notas fiscais aceitas apoiam este preço`;
 
   if (selection.trustFreshnessDays === undefined) {
     return receiptText;
   }
 
-  return `${receiptText} · revalidado ha ${selection.trustFreshnessDays}d`;
+  const freshnessText =
+    selection.trustFreshnessDays === 0
+      ? 'validado hoje'
+      : `última validação há ${selection.trustFreshnessDays}d`;
+
+  return `${receiptText} · ${freshnessText}`;
 }
 
 function PriceDisplay({

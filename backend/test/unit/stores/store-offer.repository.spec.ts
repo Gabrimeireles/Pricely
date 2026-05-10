@@ -175,6 +175,9 @@ describe('StoreOfferRepository', () => {
       }),
     );
     expect(offers[0].trustFactor).toBeGreaterThanOrEqual(75);
-    expect(offers[0].trustExplanation).toContain('2 notas fiscais confiaveis');
+    expect(offers[0].trustExplanation).toContain(
+      '2 notas fiscais aceitas apoiam este preco',
+    );
+    expect(offers[0].trustExplanation).toContain('confianca da oferta');
   });
 });

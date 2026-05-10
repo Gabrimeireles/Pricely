@@ -6,6 +6,7 @@ import {
   MapPinnedIcon,
   MoonStarIcon,
   PackageSearchIcon,
+  ReceiptTextIcon,
   ShieldCheckIcon,
   StoreIcon,
   SunMediumIcon,
@@ -70,6 +71,11 @@ const adminNav = [
     to: '/dashboard/usuarios',
     label: 'Usuarios',
     icon: UsersIcon,
+  },
+  {
+    to: '/dashboard/notas',
+    label: 'Notas fiscais',
+    icon: ReceiptTextIcon,
   },
   {
     to: '/dashboard/fila',

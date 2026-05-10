@@ -335,6 +335,86 @@ export class AdminDashboardService {
     };
   }
 
+  async listReceiptProcessingReviews() {
+    const receipts = await this.prisma.receiptRecord.findMany({
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 100,
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+          },
+        },
+        processingJob: true,
+        lineItems: {
+          select: {
+            matchConfidence: true,
+          },
+        },
+      },
+    });
+
+    const projectedReceipts = receipts.map((receipt) => {
+      const confidences = receipt.lineItems.map((item) =>
+        Number(item.matchConfidence),
+      );
+      const lineItemCount = confidences.length;
+      const highConfidenceLineItemCount = confidences.filter(
+        (confidence) => confidence >= 0.75,
+      ).length;
+      const averageMatchConfidence =
+        lineItemCount === 0
+          ? 0
+          : Number(
+              (
+                confidences.reduce((sum, confidence) => sum + confidence, 0) /
+                lineItemCount
+              ).toFixed(2),
+            );
+
+      return {
+        id: receipt.id,
+        storeName: receipt.storeName,
+        storeCnpj: receipt.storeCnpj,
+        parseStatus: receipt.parseStatus,
+        trustLevel: receipt.trustLevel,
+        moderationStatus: receipt.moderationStatus,
+        rewardEligibilityStatus: receipt.rewardEligibilityStatus,
+        reviewReason: receipt.reviewReason,
+        purchaseDate: receipt.purchaseDate?.toISOString(),
+        createdAt: receipt.createdAt.toISOString(),
+        updatedAt: receipt.updatedAt.toISOString(),
+        owner: receipt.user,
+        processingJob: receipt.processingJob
+          ? {
+              id: receipt.processingJob.id,
+              status: receipt.processingJob.status,
+              attemptCount: receipt.processingJob.attemptCount,
+              failureReason: receipt.processingJob.failureReason,
+              updatedAt: receipt.processingJob.updatedAt.toISOString(),
+            }
+          : null,
+        quality: {
+          lineItemCount,
+          highConfidenceLineItemCount,
+          averageMatchConfidence,
+          usefulDataRatio:
+            lineItemCount === 0
+              ? 0
+              : Number((highConfidenceLineItemCount / lineItemCount).toFixed(2)),
+        },
+      };
+    });
+
+    this.logger.log(
+      `Admin receipt processing requested: ${projectedReceipts.length} records returned`,
+    );
+
+    return projectedReceipts;
+  }
+
   async getQueueHealth() {
     const jobs = await this.prisma.processingJob.findMany({
       select: {
