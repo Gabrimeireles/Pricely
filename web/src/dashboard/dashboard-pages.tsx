@@ -3,10 +3,15 @@
 import { useParams } from 'react-router-dom';
 
 import {
+  AlertTriangleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  ExternalLinkIcon,
   ImageUpIcon,
   InfoIcon,
+  ListChecksIcon,
+  ReceiptTextIcon,
+  SparklesIcon,
 } from 'lucide-react';
 
 import {
@@ -96,6 +101,54 @@ function useAdminData<T>(
   }, [accessToken]);
 
   return { data, error, reload };
+}
+
+function jobResourceTitle(job: AdminProcessingJobResponse) {
+  if (job.shoppingList) {
+    return `Lista: ${job.shoppingList.name}`;
+  }
+
+  if (job.receiptRecord) {
+    return `Nota fiscal: ${job.receiptRecord.storeName ?? 'loja nao identificada'}`;
+  }
+
+  if (job.optimizationRun) {
+    return `Otimizacao ${job.optimizationRun.mode.replace(/_/g, ' ')}`;
+  }
+
+  return `${job.resourceType.replace(/_/g, ' ')} em processamento`;
+}
+
+function jobOwnerLabel(job: AdminProcessingJobResponse) {
+  if (!job.owner) {
+    return 'Sem usuario vinculado';
+  }
+
+  return `${job.owner.displayName || job.owner.email}`;
+}
+
+function jobStatusLabel(status: AdminProcessingJobResponse['status']) {
+  const labels: Record<AdminProcessingJobResponse['status'], string> = {
+    completed: 'Concluido',
+    failed: 'Falhou',
+    queued: 'Em fila',
+    retrying: 'Tentando novamente',
+    running: 'Executando',
+  };
+
+  return labels[status];
+}
+
+function JobResourceIcon({ job }: { job: AdminProcessingJobResponse }) {
+  if (job.receiptRecord || job.resourceType.includes('receipt')) {
+    return <ReceiptTextIcon className="size-4" />;
+  }
+
+  if (job.optimizationRun || job.queueName.includes('optimization')) {
+    return <SparklesIcon className="size-4" />;
+  }
+
+  return <ListChecksIcon className="size-4" />;
 }
 
 export function AdminOverviewPage() {
@@ -712,14 +765,32 @@ export function AdminPricesPage() {
                           {groupedOffers.map((offer) => (
                             <TableRow key={offer.id}>
                               <TableCell>
-                                <div className="grid gap-1">
-                                  <span className="font-medium">
-                                    {offer.productVariant.displayName}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {offer.productVariant.brandName ??
-                                      'Marca livre'}
-                                  </span>
+                                <div className="flex items-center gap-3">
+                                  {offer.productVariant.imageUrl ? (
+                                    <img
+                                      alt={offer.productVariant.displayName}
+                                      className="size-12 rounded-md border border-border/70 object-cover"
+                                      src={resolveProductImage(
+                                        offer.productVariant.imageUrl,
+                                      )}
+                                    />
+                                  ) : (
+                                    <div className="flex size-12 items-center justify-center rounded-md border border-dashed border-border/70 bg-muted/20 text-[10px] text-muted-foreground">
+                                      Sem foto
+                                    </div>
+                                  )}
+                                  <div className="grid gap-1">
+                                    <span className="font-medium">
+                                      {offer.productVariant.displayName}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {offer.productVariant.brandName ??
+                                        'Marca livre'}{' '}
+                                      ·{' '}
+                                      {offer.productVariant.packageLabel ??
+                                        offer.packageLabel}
+                                    </span>
+                                  </div>
                                 </div>
                               </TableCell>
                               <TableCell>
@@ -844,6 +915,30 @@ export function AdminCatalogPage() {
     variantLabel: '',
     packageLabel: '',
   });
+  const [catalogQuery, setCatalogQuery] = useState('');
+  const [expandedCatalogProductId, setExpandedCatalogProductId] = useState<
+    string | null
+  >(null);
+  const normalizedCatalogQuery = catalogQuery.trim().toLowerCase();
+  const visibleProducts = normalizedCatalogQuery
+    ? products.filter((product) => {
+        const productVariants = variants.filter(
+          (variant) => variant.catalogProductId === product.id,
+        );
+        return [
+          product.name,
+          product.slug,
+          product.category,
+          ...product.aliases.map((alias) => alias.alias),
+          ...productVariants.flatMap((variant) => [
+            variant.displayName,
+            variant.brandName ?? '',
+            variant.packageLabel ?? '',
+            variant.slug ?? '',
+          ]),
+        ].some((value) => value.toLowerCase().includes(normalizedCatalogQuery));
+      })
+    : products;
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
@@ -1074,19 +1169,33 @@ export function AdminCatalogPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
+          <div className="grid gap-3 rounded-lg border border-border/70 bg-muted/20 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+            <Input
+              aria-label="Buscar no catalogo"
+              placeholder="Buscar produto, alias, marca ou variante"
+              value={catalogQuery}
+              onChange={(event) => setCatalogQuery(event.target.value)}
+            />
+            <Badge variant="secondary">
+              {visibleProducts.length} de {products.length} produtos
+            </Badge>
+          </div>
           {error ? (
             <Alert variant="destructive">
               <AlertTitle>Falha ao carregar catálogo</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           ) : (
-            products.map((product) => {
+            visibleProducts.map((product) => {
               const productVariants = variants.filter(
                 (variant) => variant.catalogProductId === product.id,
               );
               const previewImage =
                 productVariants.find((variant) => variant.imageUrl)?.imageUrl ??
                 product.imageUrl;
+              const variantsExpanded =
+                expandedCatalogProductId === product.id ||
+                normalizedCatalogQuery.length > 0;
 
               return (
                 <div
@@ -1151,6 +1260,23 @@ export function AdminCatalogPage() {
                     >
                       {product.isActive ? 'Desativar' : 'Ativar'}
                     </Button>
+                    <Button
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        setExpandedCatalogProductId(
+                          variantsExpanded ? null : product.id,
+                        )
+                      }
+                    >
+                      {variantsExpanded ? (
+                        <ChevronUpIcon className="size-4" />
+                      ) : (
+                        <ChevronDownIcon className="size-4" />
+                      )}
+                      {productVariants.length} variantes
+                    </Button>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {product.aliases.map((alias) => (
@@ -1159,74 +1285,76 @@ export function AdminCatalogPage() {
                       </Badge>
                     ))}
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {productVariants.map((variant) => (
-                      <div
-                        key={variant.id}
-                        className="min-w-[280px] rounded-lg border-2 border-border/70 bg-muted/20 p-3"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <img
-                              alt={variant.displayName}
-                              className="h-12 w-12 rounded-lg border border-border/70 object-cover"
-                              src={resolveProductImage(variant.imageUrl)}
-                            />
-                            <div className="grid gap-1">
-                              <div className="text-sm font-medium">
-                                {variant.brandName
-                                  ? `${variant.brandName} - `
-                                  : ''}
-                                {variant.displayName}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {variant.packageLabel ??
-                                  'Apresentação não informada'}{' '}
-                                · Identificador público:{' '}
-                                {variant.slug ?? 'não definido'}
+                  {variantsExpanded ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {productVariants.map((variant) => (
+                        <div
+                          key={variant.id}
+                          className="min-w-[280px] rounded-lg border-2 border-border/70 bg-muted/20 p-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <img
+                                alt={variant.displayName}
+                                className="h-12 w-12 rounded-lg border border-border/70 object-cover"
+                                src={resolveProductImage(variant.imageUrl)}
+                              />
+                              <div className="grid gap-1">
+                                <div className="text-sm font-medium">
+                                  {variant.brandName
+                                    ? `${variant.brandName} - `
+                                    : ''}
+                                  {variant.displayName}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {variant.packageLabel ??
+                                    'Apresentação não informada'}{' '}
+                                  · Identificador público:{' '}
+                                  {variant.slug ?? 'não definido'}
+                                </div>
                               </div>
                             </div>
+                            <Button
+                              size="sm"
+                              type="button"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingVariantId(variant.id);
+                                setVariantForm({
+                                  catalogProductId: variant.catalogProductId,
+                                  slug: variant.slug ?? '',
+                                  displayName: variant.displayName,
+                                  brandName: variant.brandName ?? '',
+                                  variantLabel: variant.variantLabel ?? '',
+                                  packageLabel: variant.packageLabel ?? '',
+                                });
+                                setVariantImageFile(null);
+                              }}
+                            >
+                              Editar
+                            </Button>
                           </div>
-                          <Button
-                            size="sm"
-                            type="button"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditingVariantId(variant.id);
-                              setVariantForm({
-                                catalogProductId: variant.catalogProductId,
-                                slug: variant.slug ?? '',
-                                displayName: variant.displayName,
-                                brandName: variant.brandName ?? '',
-                                variantLabel: variant.variantLabel ?? '',
-                                packageLabel: variant.packageLabel ?? '',
-                              });
-                              setVariantImageFile(null);
-                            }}
-                          >
-                            Editar
-                          </Button>
+                          <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2">
+                            <span className="text-sm font-medium">Ativo</span>
+                            <Switch
+                              checked={variant.isActive}
+                              onCheckedChange={async (checked) => {
+                                if (!accessToken) {
+                                  return;
+                                }
+                                await updateAdminProductVariant(
+                                  accessToken,
+                                  variant.id,
+                                  { isActive: checked },
+                                );
+                                await reloadVariants();
+                              }}
+                            />
+                          </div>
                         </div>
-                        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2">
-                          <span className="text-sm font-medium">Ativo</span>
-                          <Switch
-                            checked={variant.isActive}
-                            onCheckedChange={async (checked) => {
-                              if (!accessToken) {
-                                return;
-                              }
-                              await updateAdminProductVariant(
-                                accessToken,
-                                variant.id,
-                                { isActive: checked },
-                              );
-                              await reloadVariants();
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               );
             })
@@ -1886,7 +2014,10 @@ export function AdminQueuePage() {
           ) : null}
           {queueHealth?.recentFailures?.length ? (
             <div className="rounded-lg border border-destructive/30 p-4">
-              <div className="text-sm font-medium">Falhas recentes</div>
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <AlertTriangleIcon className="size-4 text-destructive" />
+                Falhas recentes
+              </div>
               <div className="mt-2 grid gap-2 text-sm text-muted-foreground">
                 {queueHealth.recentFailures.map((failure, index) => (
                   <div key={`${failure.queueName}-${index}`}>
@@ -1919,8 +2050,7 @@ export function AdminQueuePage() {
         <CardHeader>
           <CardTitle>Jobs recentes</CardTitle>
           <CardDescription>
-            Recursos processados, tentativas, status e identificadores
-            persistidos.
+            Lista, usuario, modo e tempo antes dos identificadores tecnicos.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -1932,16 +2062,21 @@ export function AdminQueuePage() {
           {jobs.slice(0, 10).map((job) => (
             <div
               key={job.id}
-              className="rounded-lg border border-border/70 p-4"
+              className="rounded-lg border border-border/70 bg-background/80 p-4"
             >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-medium">
-                    {job.resourceType} · {job.resourceId}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground">
+                    <JobResourceIcon job={job} />
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {job.queueName} · tentativa {job.attemptCount} · job{' '}
-                    {job.id}
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">
+                      {jobResourceTitle(job)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {jobOwnerLabel(job)} · {job.queueName} · tentativa{' '}
+                      {job.attemptCount}
+                    </div>
                   </div>
                 </div>
                 <Badge
@@ -1953,45 +2088,45 @@ export function AdminQueuePage() {
                         : 'secondary'
                   }
                 >
-                  {job.status}
+                  {jobStatusLabel(job.status)}
                 </Badge>
               </div>
               {job.failureReason ? (
-                <div className="mt-2 text-sm text-muted-foreground">
+                <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                   {job.failureReason}
                 </div>
               ) : null}
-              <div className="mt-3 grid gap-1 text-sm text-muted-foreground">
-                {job.owner ? <span>user_id: {job.owner.id}</span> : null}
-                {job.shoppingList ? (
-                  <span>lista: {job.shoppingList.name}</span>
-                ) : null}
+              <div className="mt-3 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
                 {job.optimizationRun ? (
                   <span>
-                    run {job.optimizationRun.id} · modo{' '}
-                    {job.optimizationRun.mode} · solicitado{' '}
-                    {formatFreshnessLabel(job.createdAt)}
+                    Modo {job.optimizationRun.mode.replace(/_/g, ' ')} ·{' '}
+                    {job.optimizationRun.status}
                   </span>
                 ) : null}
                 {job.receiptRecord ? (
                   <span>
-                    recibo {job.receiptRecord.id} ·{' '}
-                    {job.receiptRecord.moderationStatus} ·{' '}
+                    Nota {job.receiptRecord.moderationStatus} ·{' '}
                     {job.receiptRecord.reviewReason ?? 'sem revisão pendente'}
                   </span>
                 ) : null}
+                <span>Solicitado {formatFreshnessLabel(job.createdAt)}</span>
                 {job.finishedAt ? (
-                  <span>completed: {formatFreshnessLabel(job.finishedAt)}</span>
+                  <span>Concluido {formatFreshnessLabel(job.finishedAt)}</span>
                 ) : null}
               </div>
-              <div className="mt-3">
-                <Button asChild size="sm" variant="outline">
+              <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+                <div className="truncate text-xs text-muted-foreground">
+                  ID tecnico: {job.resourceType} · {job.resourceId} · job{' '}
+                  {job.id}
+                </div>
+                <Button asChild size="icon" variant="outline">
                   <a
+                    aria-label={`Abrir detalhe do job ${job.id}`}
                     href={`/dashboard/fila/${job.id}`}
                     rel="noreferrer"
                     target="_blank"
                   >
-                    Go to link
+                    <ExternalLinkIcon className="size-4" />
                   </a>
                 </Button>
               </div>

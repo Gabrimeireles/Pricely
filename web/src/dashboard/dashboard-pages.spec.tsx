@@ -1,15 +1,25 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AdminEstablishmentsPage, AdminOverviewPage, AdminQueuePage, AdminRegionsPage } from './dashboard-pages';
+import {
+  AdminCatalogPage,
+  AdminEstablishmentsPage,
+  AdminOverviewPage,
+  AdminPricesPage,
+  AdminQueuePage,
+  AdminRegionsPage,
+} from './dashboard-pages';
 
 const fetchAdminMetrics = vi.fn();
 const fetchAdminQueueHealth = vi.fn();
 const fetchAdminProcessingJobs = vi.fn();
 const fetchAdminRegions = vi.fn();
 const fetchAdminEstablishments = vi.fn();
+const fetchAdminOffers = vi.fn();
+const fetchAdminProducts = vi.fn();
+const fetchAdminProductVariants = vi.fn();
 
 vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
@@ -27,18 +37,21 @@ vi.mock('@/app/pricely-context', () => ({
 vi.mock('@/app/api', () => ({
   fetchAdminMetrics: (...args: unknown[]) => fetchAdminMetrics(...args),
   fetchAdminQueueHealth: (...args: unknown[]) => fetchAdminQueueHealth(...args),
-  fetchAdminProcessingJobs: (...args: unknown[]) => fetchAdminProcessingJobs(...args),
+  fetchAdminProcessingJobs: (...args: unknown[]) =>
+    fetchAdminProcessingJobs(...args),
   fetchAdminProcessingJobDetail: vi.fn(),
   fetchAdminRegions: (...args: unknown[]) => fetchAdminRegions(...args),
-  fetchAdminEstablishments: (...args: unknown[]) => fetchAdminEstablishments(...args),
+  fetchAdminEstablishments: (...args: unknown[]) =>
+    fetchAdminEstablishments(...args),
   fetchAdminShoppingLists: vi.fn(),
   updateAdminRegion: vi.fn(),
   createAdminRegion: vi.fn(),
   createAdminEstablishment: vi.fn(),
   updateAdminEstablishment: vi.fn(),
-  fetchAdminOffers: vi.fn(),
-  fetchAdminProducts: vi.fn(),
-  fetchAdminProductVariants: vi.fn(),
+  fetchAdminOffers: (...args: unknown[]) => fetchAdminOffers(...args),
+  fetchAdminProducts: (...args: unknown[]) => fetchAdminProducts(...args),
+  fetchAdminProductVariants: (...args: unknown[]) =>
+    fetchAdminProductVariants(...args),
   createAdminOffer: vi.fn(),
   createAdminProduct: vi.fn(),
   createAdminProductVariant: vi.fn(),
@@ -54,6 +67,9 @@ describe('Admin dashboard pages', () => {
     fetchAdminProcessingJobs.mockReset();
     fetchAdminRegions.mockReset();
     fetchAdminEstablishments.mockReset();
+    fetchAdminOffers.mockReset();
+    fetchAdminProducts.mockReset();
+    fetchAdminProductVariants.mockReset();
   });
 
   afterEach(() => {
@@ -114,7 +130,9 @@ describe('Admin dashboard pages', () => {
 
     render(<AdminOverviewPage />);
 
-    expect(await screen.findByText(/Nenhuma metrica operacional ainda/)).toBeTruthy();
+    expect(
+      await screen.findByText(/Nenhuma metrica operacional ainda/),
+    ).toBeTruthy();
   });
 
   it('renders queue diagnostics and recent jobs in the dedicated queue page', async () => {
@@ -147,6 +165,25 @@ describe('Admin dashboard pages', () => {
         status: 'completed',
         attemptCount: 1,
         failureReason: null,
+        createdAt: '2026-05-10T04:00:00.000Z',
+        updatedAt: '2026-05-10T04:03:00.000Z',
+        finishedAt: '2026-05-10T04:03:00.000Z',
+        owner: {
+          id: 'user-1',
+          displayName: 'Cliente Teste',
+          email: 'cliente@pricely.local',
+        },
+        shoppingList: {
+          id: 'list-1',
+          name: 'Compra da semana',
+        },
+        optimizationRun: {
+          id: 'run-1',
+          mode: 'global_full',
+          status: 'completed',
+          createdAt: '2026-05-10T04:00:00.000Z',
+          completedAt: '2026-05-10T04:03:00.000Z',
+        },
       },
     ]);
 
@@ -154,7 +191,94 @@ describe('Admin dashboard pages', () => {
 
     expect(await screen.findByText('Saude da fila')).toBeTruthy();
     expect(screen.getByText('Jobs recentes')).toBeTruthy();
-    expect(screen.getByText(/shopping_list/)).toBeTruthy();
+    expect(screen.getByText('Lista: Compra da semana')).toBeTruthy();
+    expect(screen.getByText(/Cliente Teste/)).toBeTruthy();
+    expect(screen.getByText(/Modo global full/)).toBeTruthy();
+    expect(screen.getByLabelText('Abrir detalhe do job job-1')).toBeTruthy();
+    expect(screen.queryByText('Go to link')).toBeNull();
+  });
+
+  it('renders catalog search, collapsed variants, and offer variant images', async () => {
+    fetchAdminProducts.mockResolvedValue([
+      {
+        id: 'product-1',
+        slug: 'cafe-torrado',
+        name: 'Cafe torrado',
+        category: 'mercearia',
+        defaultUnit: 'un',
+        imageUrl: null,
+        isActive: true,
+        aliases: [{ id: 'alias-1', alias: 'cafe' }],
+        productVariants: [],
+        _count: { productOffers: 1 },
+      },
+    ]);
+    fetchAdminProductVariants.mockResolvedValue([
+      {
+        id: 'variant-1',
+        catalogProductId: 'product-1',
+        slug: 'cafe-pilao-500g',
+        displayName: 'Cafe Pilao 500g',
+        brandName: 'Pilao',
+        variantLabel: null,
+        packageLabel: '500 g',
+        imageUrl: '/uploads/cafe.png',
+        isActive: true,
+      },
+    ]);
+    fetchAdminOffers.mockResolvedValue([
+      {
+        id: 'offer-1',
+        displayName: 'Cafe Pilao 500g',
+        packageLabel: '500 g',
+        priceAmount: 15.9,
+        basePriceAmount: 18.9,
+        promotionalPriceAmount: 15.9,
+        availabilityStatus: 'available',
+        confidenceLevel: 'high',
+        observedAt: '2026-05-10T04:00:00.000Z',
+        isActive: true,
+        catalogProduct: { id: 'product-1', name: 'Cafe torrado' },
+        productVariant: {
+          id: 'variant-1',
+          displayName: 'Cafe Pilao 500g',
+          brandName: 'Pilao',
+          packageLabel: '500 g',
+          imageUrl: '/uploads/cafe.png',
+        },
+        establishment: {
+          id: 'store-1',
+          unitName: 'Mercado Centro',
+          neighborhood: 'Centro',
+          region: {
+            id: 'region-1',
+            slug: 'sao-paulo-sp',
+            name: 'Sao Paulo',
+            stateCode: 'SP',
+          },
+        },
+      },
+    ]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        unitName: 'Mercado Centro',
+      },
+    ]);
+
+    render(<AdminCatalogPage />);
+
+    expect(await screen.findByLabelText('Buscar no catalogo')).toBeTruthy();
+    expect(screen.getByText('1 variantes')).toBeTruthy();
+    expect(screen.queryByText('Cafe Pilao 500g')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Buscar no catalogo'), {
+      target: { value: 'pilao' },
+    });
+    expect(await screen.findByText(/Cafe Pilao 500g/)).toBeTruthy();
+
+    render(<AdminPricesPage />);
+    expect(await screen.findByAltText('Cafe Pilao 500g')).toBeTruthy();
+    expect(screen.getByText(/Pilao/)).toBeTruthy();
   });
 
   it('renders dedicated regions and establishments views', async () => {

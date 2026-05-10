@@ -140,23 +140,23 @@ type RegionOffersApiResponse = {
 };
 
 type RegionalOfferApiResponse = {
-    id: string;
-    catalogProductId: string;
-    productVariantId: string;
-    productName: string;
-    variantName?: string;
-    imageUrl?: string;
-    displayName: string;
-    packageLabel: string;
-    priceAmount: number;
-    basePriceAmount?: number;
-    promotionalPriceAmount?: number;
-    savingsVsRegionalAverage?: number;
-    observedAt: string;
-    sourceLabel: string;
-    storeName: string;
-    neighborhood: string;
-    confidenceLevel: 'high' | 'medium' | 'low';
+  id: string;
+  catalogProductId: string;
+  productVariantId: string;
+  productName: string;
+  variantName?: string;
+  imageUrl?: string;
+  displayName: string;
+  packageLabel: string;
+  priceAmount: number;
+  basePriceAmount?: number;
+  promotionalPriceAmount?: number;
+  savingsVsRegionalAverage?: number;
+  observedAt: string;
+  sourceLabel: string;
+  storeName: string;
+  neighborhood: string;
+  confidenceLevel: 'high' | 'medium' | 'low';
 };
 
 type RegionalOfferGroupApiResponse = {
@@ -489,6 +489,8 @@ type AdminOfferResponse = {
     id: string;
     displayName: string;
     brandName?: string | null;
+    imageUrl?: string | null;
+    packageLabel?: string | null;
   };
   establishment: {
     id: string;
