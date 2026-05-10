@@ -31,8 +31,12 @@ describe('Receipt ingestion integration', () => {
         parseStatus: 'parsed',
         trustLevel: 'trusted',
         moderationStatus: 'accepted',
-        rewardEligibilityStatus: 'disabled',
-        reviewReason: 'receipt_rewards_disabled',
+        rewardEligibilityStatus: 'granted',
+        rewardPoints: 100,
+        rewardOptimizationTokens: 1,
+        rewardMessage:
+          'Nota validada: voce ganhou 100 pontos e 1 credito de otimizacao.',
+        reviewReason: 'receipt_reward_granted',
         dataNotice:
           'Prices and receipt data are based on receipts provided by users.',
       });

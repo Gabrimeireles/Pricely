@@ -128,4 +128,9 @@ export interface AdminReceiptProcessingContract {
     averageMatchConfidence: number;
     usefulDataRatio: number;
   };
+  reward: {
+    points: number;
+    optimizationTokens: number;
+    label: string;
+  };
 }

@@ -233,6 +233,24 @@ class InMemoryReceiptRecordRepository {
     });
   }
 
+  async markRewardGranted(receiptRecordId: string) {
+    const existing = this.records.get(receiptRecordId);
+    if (!existing) {
+      return;
+    }
+
+    this.records.set(receiptRecordId, {
+      ...existing,
+      rewardEligibilityStatus: 'granted',
+      reviewReason: 'receipt_reward_granted',
+      processingLogs: [
+        ...(existing.processingLogs ?? []),
+        'reward:points_granted:100',
+        'reward:optimization_token_granted:1',
+      ],
+    });
+  }
+
   async findById(id: string) {
     const value = this.records.get(id);
     return value ? structuredClone(value) : null;

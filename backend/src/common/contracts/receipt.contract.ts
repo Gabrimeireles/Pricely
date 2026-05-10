@@ -48,6 +48,9 @@ export interface ReceiptRecord {
     | 'ineligible'
     | 'eligible_pending'
     | 'granted';
+  rewardPoints?: number;
+  rewardOptimizationTokens?: number;
+  rewardMessage?: string;
   reviewReason?: string;
   jobId?: string;
   processingStatus?: 'queued' | 'running' | 'completed' | 'failed' | 'retrying';

@@ -405,6 +405,9 @@ export class AdminDashboardService {
               ? 0
               : Number((highConfidenceLineItemCount / lineItemCount).toFixed(2)),
         },
+        reward: this.receiptRewardProjection(
+          receipt.rewardEligibilityStatus,
+        ),
       };
     });
 
@@ -413,6 +416,29 @@ export class AdminDashboardService {
     );
 
     return projectedReceipts;
+  }
+
+  private receiptRewardProjection(status: string) {
+    if (status === 'granted') {
+      return {
+        points: 100,
+        optimizationTokens: 1,
+        label: '100 pontos + 1 credito concedido',
+      };
+    }
+    if (status === 'eligible_pending') {
+      return {
+        points: 100,
+        optimizationTokens: 1,
+        label: '100 pontos + 1 credito pendente',
+      };
+    }
+
+    return {
+      points: 0,
+      optimizationTokens: 0,
+      label: 'Sem reward',
+    };
   }
 
   async getQueueHealth() {

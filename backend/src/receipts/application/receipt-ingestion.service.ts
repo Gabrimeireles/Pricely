@@ -12,6 +12,7 @@ import {
 import { toSlug } from '../../common/utils/slug.util';
 import { ProductMatchService } from '../../catalog/application/product-match.service';
 import { ProcessingJobsService } from '../../processing/application/processing-jobs.service';
+import { EntitlementsService } from '../../users/entitlements.service';
 import { type ReceiptRecordEntity } from '../domain/receipt-record.entity';
 import { ReceiptRecordRepository } from '../infrastructure/receipt-record.repository';
 import { QrCodeParserService } from './qr-code-parser.service';
@@ -31,6 +32,7 @@ export class ReceiptIngestionService {
     private readonly receiptContributionQualityService: ReceiptContributionQualityService,
     private readonly receiptRecordRepository: ReceiptRecordRepository,
     private readonly processingJobsService: ProcessingJobsService,
+    private readonly entitlementsService: EntitlementsService,
     @Inject(RECEIPT_PROCESSING_QUEUE)
     private readonly receiptProcessingQueue: Queue<ReceiptProcessingJob>,
   ) {}
@@ -118,6 +120,7 @@ export class ReceiptIngestionService {
     };
 
     await this.receiptRecordRepository.create(assessedRecord);
+    const reward = await this.grantReceiptRewardIfEligible(assessedRecord);
     const processingJob = await this.processingJobsService.createQueuedJob({
       queueName: 'receipt-processing',
       jobType: 'receipt_processing',
@@ -161,12 +164,53 @@ export class ReceiptIngestionService {
       confidenceScore: assessedRecord.confidenceScore,
       trustLevel: assessedRecord.trustLevel,
       moderationStatus: assessedRecord.moderationStatus,
-      rewardEligibilityStatus: assessedRecord.rewardEligibilityStatus,
-      reviewReason: assessedRecord.reviewReason,
+      rewardEligibilityStatus: reward.status,
+      rewardPoints: reward.points,
+      rewardOptimizationTokens: reward.optimizationTokens,
+      rewardMessage: reward.message,
+      reviewReason: reward.reviewReason ?? assessedRecord.reviewReason,
       jobId: processingJob.id,
       processingStatus: 'queued',
       dataNotice:
         'Prices and receipt data are based on receipts provided by users.',
+    };
+  }
+
+  private async grantReceiptRewardIfEligible(record: ReceiptRecordEntity): Promise<{
+    status: NonNullable<ReceiptRecord['rewardEligibilityStatus']>;
+    points: number;
+    optimizationTokens: number;
+    message: string;
+    reviewReason?: string;
+  }> {
+    if (
+      record.trustLevel !== 'trusted' ||
+      record.moderationStatus !== 'accepted' ||
+      record.rewardEligibilityStatus !== 'eligible_pending'
+    ) {
+      return {
+        status: record.rewardEligibilityStatus ?? 'disabled',
+        points: 0,
+        optimizationTokens: 0,
+        message:
+          'A nota foi registrada, mas ainda nao atingiu qualidade suficiente para recompensa.',
+      };
+    }
+
+    await this.entitlementsService.grantReceiptBonusTokens({
+      userId: record.userId,
+      receiptRecordId: record.id,
+      amount: 1,
+    });
+    await this.receiptRecordRepository.markRewardGranted(record.id);
+
+    return {
+      status: 'granted',
+      points: 100,
+      optimizationTokens: 1,
+      message:
+        'Nota validada: voce ganhou 100 pontos e 1 credito de otimizacao.',
+      reviewReason: 'receipt_reward_granted',
     };
   }
 
