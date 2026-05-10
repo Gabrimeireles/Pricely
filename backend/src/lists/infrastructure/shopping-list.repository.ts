@@ -318,8 +318,12 @@ export class ShoppingListRepository {
         id: item.id,
         catalogProductId: item.catalogProductId ?? undefined,
         lockedProductVariantId: item.lockedProductVariantId ?? undefined,
-        brandPreferenceMode:
-          item.brandPreferenceMode === 'exact' ? 'exact' : 'any',
+        optimizedProductVariantId:
+          item.optimizedProductVariantId ?? undefined,
+        optimizedFromBrandPreferenceMode:
+          item.optimizedFromBrandPreferenceMode ?? undefined,
+        optimizedAt: item.optimizedAt?.toISOString(),
+        brandPreferenceMode: item.brandPreferenceMode,
         preferredBrandNames: item.preferredBrandNames,
         imageUrl:
           item.lockedProductVariant?.imageUrl ??

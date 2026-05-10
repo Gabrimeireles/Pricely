@@ -357,6 +357,9 @@ model ShoppingListItem {
   shoppingListId   String                          @db.Uuid
   catalogProductId String?                         @db.Uuid
   lockedProductVariantId String?                   @db.Uuid
+  optimizedProductVariantId String?                @db.Uuid
+  optimizedFromBrandPreferenceMode ShoppingListItemBrandPreferenceMode?
+  optimizedAt      DateTime?
   brandPreferenceMode ShoppingListItemBrandPreferenceMode @default(any)
   preferredBrandNames String[]                     @default([])
   requestedName    String

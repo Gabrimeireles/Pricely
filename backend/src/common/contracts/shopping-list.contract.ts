@@ -9,7 +9,7 @@ export interface ShoppingListItemInput {
   requestedName: string;
   catalogProductId?: string;
   lockedProductVariantId?: string;
-  brandPreferenceMode?: 'any' | 'exact';
+  brandPreferenceMode?: 'any' | 'preferred' | 'exact';
   preferredBrandNames?: string[];
   purchaseStatus?: 'pending' | 'purchased';
   quantity?: number;
@@ -27,7 +27,10 @@ export interface ShoppingListItem {
   id: string;
   catalogProductId?: string;
   lockedProductVariantId?: string;
-  brandPreferenceMode: 'any' | 'exact';
+  optimizedProductVariantId?: string;
+  optimizedFromBrandPreferenceMode?: 'any' | 'preferred' | 'exact';
+  optimizedAt?: string;
+  brandPreferenceMode: 'any' | 'preferred' | 'exact';
   preferredBrandNames: string[];
   imageUrl?: string;
   requestedName: string;

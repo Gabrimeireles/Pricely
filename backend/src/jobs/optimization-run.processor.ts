@@ -41,6 +41,48 @@ export class OptimizationRunProcessor {
       optimizationRun.mode,
     );
     const completedAt = new Date();
+    const offersById = new Map(offers.map((offer) => [offer.id, offer]));
+    const itemsById = new Map(shoppingList.items.map((item) => [item.id, item]));
+    const shoppingListItemDelegate = (
+      this.prisma as unknown as {
+        shoppingListItem?: {
+          update: (input: {
+            where: { id: string };
+            data: {
+              lockedProductVariantId: string;
+              optimizedProductVariantId: string;
+              optimizedFromBrandPreferenceMode: 'any' | 'preferred' | 'exact';
+              optimizedAt: Date;
+            };
+          }) => Prisma.PrismaPromise<unknown>;
+        };
+      }
+    ).shoppingListItem;
+    const optimizedVariantUpdates = shoppingListItemDelegate
+      ? computed.selections.map((selection) => {
+        const offer = selection.productOfferId
+          ? offersById.get(selection.productOfferId)
+          : undefined;
+        const item = itemsById.get(selection.shoppingListItemId);
+
+        return selection.selectionStatus === 'selected' &&
+          offer?.productVariantId &&
+          item?.brandPreferenceMode === 'any'
+          ? shoppingListItemDelegate.update({
+              where: {
+                id: selection.shoppingListItemId,
+              },
+              data: {
+                lockedProductVariantId: offer.productVariantId,
+                optimizedProductVariantId: offer.productVariantId,
+                optimizedFromBrandPreferenceMode: item.brandPreferenceMode,
+                optimizedAt: completedAt,
+              },
+            })
+          : null;
+      })
+      .filter((query) => query !== null)
+      : [];
 
     await this.prisma.$transaction([
       this.prisma.optimizationSelection.deleteMany({
@@ -104,6 +146,7 @@ export class OptimizationRunProcessor {
           status: 'ready',
         },
       }),
+      ...optimizedVariantUpdates,
     ]);
 
     this.logger.log(

@@ -74,7 +74,7 @@ type EditableListItem = {
   name: string;
   catalogProductId?: string;
   lockedProductVariantId?: string;
-  brandPreferenceMode: 'any' | 'exact';
+  brandPreferenceMode: 'any' | 'preferred' | 'exact';
   preferredBrandNames: string[];
   imageUrl?: string;
   quantity: number;
@@ -92,7 +92,7 @@ function getCatalogProductPreviewImage(product: CatalogProductSearchResponse) {
 
 function describeBrandRule(
   item: {
-    brandPreferenceMode?: 'any' | 'exact';
+    brandPreferenceMode?: 'any' | 'preferred' | 'exact';
     preferredBrandNames?: string[];
   },
   exactVariantName?: string,
@@ -340,14 +340,14 @@ function savingsComparisonLabel(selection: {
     return null;
   }
 
-  if (selection.regionalAveragePriceAmount !== undefined) {
-    return `${formatCurrency(selection.regionalAveragePriceAmount)} media da variante · ${formatCurrency(
+  if (selection.comparisonPriceAmount !== undefined) {
+    return `${formatCurrency(selection.comparisonPriceAmount)} segundo menor elegivel · ${formatCurrency(
       savings,
     )} abaixo`;
   }
 
-  if (selection.comparisonPriceAmount !== undefined) {
-    return `${formatCurrency(selection.comparisonPriceAmount)} maior preço encontrado · ${formatCurrency(
+  if (selection.regionalAveragePriceAmount !== undefined) {
+    return `${formatCurrency(selection.regionalAveragePriceAmount)} media da variante · ${formatCurrency(
       savings,
     )} abaixo`;
   }
@@ -1085,7 +1085,7 @@ export function OfferDetailPage() {
               <p className="text-sm font-medium text-emerald-700">
                 Economize{' '}
                 {formatCurrency(offer.activeOffer.savingsVsComparison)} versus o
-                maior preço encontrado para esta variante.
+                segundo menor preco elegivel para esta variante.
               </p>
             ) : null}
             {offer.activeOffer.regionalAveragePriceAmount ? (

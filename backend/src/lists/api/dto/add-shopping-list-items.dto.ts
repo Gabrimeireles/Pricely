@@ -25,7 +25,7 @@ class ShoppingListItemInputDto implements ShoppingListItemInput {
 
   @IsOptional()
   @IsString()
-  brandPreferenceMode?: 'any' | 'exact';
+  brandPreferenceMode?: 'any' | 'preferred' | 'exact';
 
   @IsOptional()
   @IsArray()
