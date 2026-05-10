@@ -223,8 +223,23 @@ jobs:
 
           docker compose --env-file .env up -d --force-recreate backend web
           docker compose --env-file .env ps
+
+          echo "Waiting for web preview..."
+          for attempt in $(seq 1 30); do
+            if docker compose --env-file .env exec -T web sh -lc \
+              "test -f dist/index.html && node -e \"fetch('http://127.0.0.1:5173').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\"" </dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "Web preview did not become ready"
+              docker compose --env-file .env logs --tail=120 web
+              exit 1
+            fi
+            sleep 5
+          done
+
           docker compose --env-file .env exec -T web sh -lc \
-            "printenv | sort | grep -E '^(VITE_|NODE_ENV)'; test -d dist && sed -n '1,20p' dist/index.html" </dev/null
+            "printenv | sort | grep -E '^(VITE_|NODE_ENV)'; sed -n '1,20p' dist/index.html" </dev/null
           docker image prune -f
           ENDSSH
 
