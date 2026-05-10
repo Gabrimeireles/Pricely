@@ -49,7 +49,10 @@ type ShoppingListApiResponse = {
     requestedName: string;
     catalogProductId?: string;
     lockedProductVariantId?: string;
-    brandPreferenceMode?: 'any' | 'exact';
+    optimizedProductVariantId?: string;
+    optimizedFromBrandPreferenceMode?: 'any' | 'preferred' | 'exact';
+    optimizedAt?: string;
+    brandPreferenceMode?: 'any' | 'preferred' | 'exact';
     preferredBrandNames?: string[];
     imageUrl?: string;
     quantity?: number;
@@ -728,7 +731,7 @@ export async function replaceShoppingList(
       requestedName: string;
       catalogProductId?: string;
       lockedProductVariantId?: string;
-      brandPreferenceMode?: 'any' | 'exact';
+      brandPreferenceMode?: 'any' | 'preferred' | 'exact';
       preferredBrandNames?: string[];
       purchaseStatus?: 'pending' | 'purchased';
       quantity?: number;
@@ -1206,6 +1209,9 @@ export function mapShoppingList(
       name: item.requestedName,
       catalogProductId: item.catalogProductId,
       lockedProductVariantId: item.lockedProductVariantId,
+      optimizedProductVariantId: item.optimizedProductVariantId,
+      optimizedFromBrandPreferenceMode: item.optimizedFromBrandPreferenceMode,
+      optimizedAt: item.optimizedAt,
       brandPreferenceMode: item.brandPreferenceMode ?? 'any',
       preferredBrandNames: item.preferredBrandNames ?? [],
       imageUrl: item.imageUrl,

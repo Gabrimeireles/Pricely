@@ -185,12 +185,13 @@ export class MultiMarketOptimizerService {
       selectionStatus: 'selected',
       estimatedCost: Number((cheapestOffer.price * quantity).toFixed(2)),
       priceAmount: Number(cheapestOffer.price.toFixed(2)),
-      comparisonPriceAmount: comparison.highestPriceAmount,
+      comparisonPriceAmount: comparison.secondCheapestPriceAmount,
       regionalAveragePriceAmount: comparison.averagePriceAmount,
       savingsVsComparison: Number(
         Math.max(
           0,
-          (comparison.highestPriceAmount - cheapestOffer.price) * quantity,
+          (comparison.secondCheapestPriceAmount - cheapestOffer.price) *
+            quantity,
         ).toFixed(2),
       ),
       sourceLabel: cheapestOffer.sourceReceiptLineItemId,
@@ -221,9 +222,14 @@ export class MultiMarketOptimizerService {
         ? offer.productVariantId === selectedOffer.productVariantId
         : offer.canonicalName === selectedOffer.canonicalName,
     );
-    const prices = comparableOffers.map((offer) => offer.price);
-    const highestPriceAmount =
-      prices.length > 0 ? Math.max(...prices) : selectedOffer.price;
+    const prices = comparableOffers
+      .map((offer) => offer.price)
+      .sort((left, right) => left - right);
+    const secondCheapestPriceAmount =
+      comparableOffers
+        .filter((offer) => offer.id !== selectedOffer.id)
+        .map((offer) => offer.price)
+        .sort((left, right) => left - right)[0] ?? selectedOffer.price;
     const averagePriceAmount =
       prices.length > 0
         ? Number(
@@ -234,7 +240,7 @@ export class MultiMarketOptimizerService {
         : selectedOffer.price;
 
     return {
-      highestPriceAmount: Number(highestPriceAmount.toFixed(2)),
+      secondCheapestPriceAmount: Number(secondCheapestPriceAmount.toFixed(2)),
       averagePriceAmount,
     };
   }

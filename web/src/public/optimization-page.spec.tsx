@@ -127,7 +127,7 @@ describe('OptimizationPage', () => {
     expect(screen.getByText('Selecionado: Cafe Pilao 500g · 500 g')).toBeTruthy();
     expect(screen.getByText('Trust alto')).toBeTruthy();
     expect(screen.getByText('78/100')).toBeTruthy();
-    expect(screen.getByText(/media da variante/)).toBeTruthy();
+    expect(screen.getByText(/segundo menor elegivel/)).toBeTruthy();
     expect(screen.queryByText(/selected_confirmed_offer/i)).toBeNull();
     expect(screen.queryByText(/selected/i)).toBeNull();
   });
