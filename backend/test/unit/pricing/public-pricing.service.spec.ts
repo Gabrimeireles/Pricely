@@ -132,6 +132,29 @@ describe('PublicPricingService', () => {
           promotionalPriceAmount: 15.9,
         }),
       ],
+      groupedOffers: [
+        expect.objectContaining({
+          id: 'variant-1',
+          productVariantId: 'variant-1',
+          productName: 'Cafe torrado',
+          variantName: 'Cafe 500g',
+          establishmentCount: 1,
+          cheapestPriceAmount: 15.9,
+          averagePriceAmount: 15.9,
+          highestPriceAmount: 15.9,
+          bestOffer: expect.objectContaining({
+            id: 'offer-1',
+            storeName: 'Mercado Centro',
+          }),
+          alternativeOffers: [],
+          offers: [
+            expect.objectContaining({
+              id: 'offer-1',
+              storeName: 'Mercado Centro',
+            }),
+          ],
+        }),
+      ],
     });
 
     await expect(service.getOfferDetail('offer-1')).resolves.toEqual(

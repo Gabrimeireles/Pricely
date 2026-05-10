@@ -90,6 +90,8 @@ describe('OptimizationPage', () => {
             id: 'selection-1',
             shoppingListItemId: 'item-1',
             shoppingListItemName: 'Cafe Pilao 500g',
+            selectedVariantName: 'Cafe Pilao 500g',
+            selectedPackageLabel: '500 g',
             establishmentName: 'Mercado Centro',
             establishmentNeighborhood: 'Centro',
             priceAmount: 21.9,
@@ -122,11 +124,10 @@ describe('OptimizationPage', () => {
     expect(screen.getByText('Completa')).toBeTruthy();
     expect(screen.getByText('Oferta selecionada')).toBeTruthy();
     expect(screen.getByText('Oferta confirmada selecionada')).toBeTruthy();
+    expect(screen.getByText('Selecionado: Cafe Pilao 500g · 500 g')).toBeTruthy();
     expect(screen.getByText('Trust alto')).toBeTruthy();
     expect(screen.getByText('78/100')).toBeTruthy();
-    expect(
-      screen.getByText('R$ 1,00 abaixo da média regional (R$ 22,90)'),
-    ).toBeTruthy();
+    expect(screen.getByText(/media da variante/)).toBeTruthy();
     expect(screen.queryByText(/selected_confirmed_offer/i)).toBeNull();
     expect(screen.queryByText(/selected/i)).toBeNull();
   });

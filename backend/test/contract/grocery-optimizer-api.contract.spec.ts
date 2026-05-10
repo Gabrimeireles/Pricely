@@ -85,6 +85,14 @@ describe('Grocery optimizer API contract', () => {
           selections: expect.any(Array),
         }),
       );
+
+      if (latestResponse.body.selections.length > 0) {
+        expect(latestResponse.body.selections[0]).toEqual(
+          expect.objectContaining({
+            shoppingListItemName: expect.any(String),
+          }),
+        );
+      }
     } finally {
       await app.close();
     }
@@ -139,10 +147,24 @@ describe('Grocery optimizer API contract', () => {
           activeEstablishmentCount: expect.any(Number),
           offerCoverageStatus: expect.stringMatching(/live|collecting_data/),
           offers: expect.any(Array),
+          groupedOffers: expect.any(Array),
         }),
       );
 
       if (regionalOffersResponse.body.offers.length > 0) {
+        expect(regionalOffersResponse.body.groupedOffers[0]).toEqual(
+          expect.objectContaining({
+            productName: expect.any(String),
+            bestOffer: expect.objectContaining({
+              id: expect.any(String),
+              priceAmount: expect.any(Number),
+              storeName: expect.any(String),
+            }),
+            offers: expect.any(Array),
+            establishmentCount: expect.any(Number),
+          }),
+        );
+
         const offerId = regionalOffersResponse.body.offers[0].id as string;
         const offerDetailResponse = await request(app.getHttpServer())
           .get(`/offers/${offerId}`)

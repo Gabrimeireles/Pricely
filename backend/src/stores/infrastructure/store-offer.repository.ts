@@ -368,7 +368,9 @@ export class StoreOfferRepository {
     factor: number,
   ): string {
     const receiptText =
-      evidenceCount === 1
+      evidenceCount === 0
+        ? 'sem nota fiscal recente vinculada; usando evidencia operacional'
+        : evidenceCount === 1
         ? '1 nota fiscal confiavel'
         : `${evidenceCount} notas fiscais confiaveis`;
     const freshnessText =

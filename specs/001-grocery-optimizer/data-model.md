@@ -53,6 +53,7 @@
   - `cityName`: Human-readable city name
   - `neighborhood`: Neighborhood or district
   - `addressLine`: Optional address detail
+  - `postalCode`: Optional CEP/postal code for future distance and coverage previews
   - `latitude`: Optional decimal latitude for distance-based optimization
   - `longitude`: Optional decimal longitude for distance-based optimization
   - `locationSource`: Optional source label such as `admin`, `geocoded_address`, or

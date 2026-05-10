@@ -11,6 +11,9 @@ export interface OptimizationSelection {
   shoppingListItemId: string;
   productOfferId?: string;
   shoppingListItemName: string;
+  selectedOfferName?: string;
+  selectedVariantName?: string;
+  selectedPackageLabel?: string;
   establishmentName?: string;
   establishmentNeighborhood?: string;
   estimatedCost?: number;

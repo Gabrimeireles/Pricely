@@ -77,6 +77,9 @@ type OptimizationResultApiResponse = {
     id?: string;
     shoppingListItemId: string;
     shoppingListItemName: string;
+    selectedOfferName?: string;
+    selectedVariantName?: string;
+    selectedPackageLabel?: string;
     establishmentName?: string;
     establishmentNeighborhood?: string;
     estimatedCost?: number;
@@ -132,7 +135,11 @@ type RegionOffersApiResponse = {
   };
   activeEstablishmentCount: number;
   offerCoverageStatus: 'live' | 'collecting_data';
-  offers: Array<{
+  offers: RegionalOfferApiResponse[];
+  groupedOffers?: RegionalOfferGroupApiResponse[];
+};
+
+type RegionalOfferApiResponse = {
     id: string;
     catalogProductId: string;
     productVariantId: string;
@@ -150,7 +157,23 @@ type RegionOffersApiResponse = {
     storeName: string;
     neighborhood: string;
     confidenceLevel: 'high' | 'medium' | 'low';
-  }>;
+};
+
+type RegionalOfferGroupApiResponse = {
+  id: string;
+  catalogProductId: string;
+  productVariantId: string;
+  productName: string;
+  variantName?: string;
+  imageUrl?: string;
+  packageLabel: string;
+  bestOffer: RegionalOfferApiResponse;
+  alternativeOffers: RegionalOfferApiResponse[];
+  offers: RegionalOfferApiResponse[];
+  establishmentCount: number;
+  cheapestPriceAmount: number;
+  averagePriceAmount: number;
+  highestPriceAmount: number;
 };
 
 type OfferDetailApiResponse = {

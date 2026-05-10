@@ -173,6 +173,12 @@ export class OptimizationResultService {
           shoppingListItemId: selection.shoppingListItemId,
           productOfferId: selection.productOfferId ?? undefined,
           shoppingListItemName: selection.shoppingListItem.requestedName,
+          selectedOfferName: selection.productOffer?.displayName,
+          selectedVariantName:
+            selection.productOffer?.productVariant?.displayName,
+          selectedPackageLabel:
+            selection.productOffer?.productVariant?.packageLabel ??
+            selection.productOffer?.packageLabel,
           establishmentName: selection.productOffer?.establishment.unitName,
           establishmentNeighborhood:
             selection.productOffer?.establishment.neighborhood,
