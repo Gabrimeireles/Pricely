@@ -44,6 +44,8 @@ export interface ShoppingList {
   latestEstimatedSavings: number;
   latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
   latestOptimizedAt?: string;
+  completedAt?: string;
+  paidTotal?: number;
   items: ShoppingListItem[];
   createdAt: string;
   updatedAt: string;

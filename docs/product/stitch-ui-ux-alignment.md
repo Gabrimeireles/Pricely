@@ -238,6 +238,15 @@ became usable. The first production fix is to serve the web container with
 `npm run build` plus `vite preview` and keep an opt-in Playwright check that fails if
 development assets appear on the public URL again.
 
+Post-deploy validation on 2026-05-10 confirmed the public URL now serves production
+assets from `/assets/index-*.js` and no longer exposes `@vite/client`, `@react-refresh`,
+`/src/*`, or `/node_modules/.vite/*`. CORS preflight for
+`https://apipricely.grmeireles.dev/regions` returned
+`Access-Control-Allow-Origin: https://pricely.grmeireles.dev`. The first cold
+Playwright run still showed a high FCP around 6.8s, while the immediate warm run passed
+the current 3s budget. Keep a follow-up budget for cold-start/container and CDN
+behavior instead of treating the production-build fix as the full performance story.
+
 Investigation targets:
 
 - initial JS bundle size and route-level code splitting
