@@ -111,18 +111,18 @@ const optimizationModeCopy: Record<
   { title: string; summary: string; tradeoff: string }
 > = {
   local: {
-    title: 'Local',
-    summary: 'Prioriza concluir a compra com o menor deslocamento possível.',
-    tradeoff: 'Menos paradas, mesmo que o total não seja o menor da região.',
+    title: 'Uma loja perto de mim',
+    summary: 'Usa uma loja elegivel dentro do raio local configurado.',
+    tradeoff: 'Menos deslocamento quando houver cobertura de localizacao.',
   },
   global_unique: {
-    title: 'Global único',
-    summary: 'Procura a melhor loja única para equilibrar cobertura e preço.',
+    title: 'Uma loja na cidade',
+    summary: 'Procura a melhor loja unica para equilibrar cobertura e preco.',
     tradeoff:
       'Evita dividir a compra, mas pode ficar acima do menor custo total.',
   },
   global_full: {
-    title: 'Global completo',
+    title: 'Menor total na cidade',
     summary: 'Busca o menor custo total item a item na cidade selecionada.',
     tradeoff: 'Pode exigir mais de uma parada para capturar a melhor economia.',
   },

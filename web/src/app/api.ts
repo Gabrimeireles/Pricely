@@ -475,6 +475,39 @@ type AdminUserResponse = {
   } | null;
 };
 
+type UserLocationPreferenceResponse = {
+  id: string;
+  regionId: string;
+  regionSlug: string;
+  regionName: string;
+  label: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  postalCode?: string | null;
+  coverageRadiusKm: number;
+  activeEstablishmentCount: number;
+  isDefault: boolean;
+  locationSource: 'manual' | 'browser_geolocation' | 'postal_code_fallback';
+  createdAt: string;
+  updatedAt: string;
+};
+
+type CoveragePreviewResponse = {
+  regionId: string;
+  coverageRadiusKm: number;
+  activeEstablishmentCount: number;
+  fallbackUsed: boolean;
+  fallbackReason?: 'missing_coordinates' | 'postal_code_only';
+  establishments: Array<{
+    id: string;
+    brandName: string;
+    unitName: string;
+    neighborhood: string;
+    postalCode?: string | null;
+    distanceKm?: number | null;
+  }>;
+};
+
 type AdminEstablishmentResponse = {
   id: string;
   brandName: string;
@@ -757,6 +790,53 @@ export async function reportShoppingListItemPriceMismatch(
 ) {
   return apiFetch<{ id: string; createdAt: string }>(
     `/shopping-lists/${listId}/items/${itemId}/price-reports`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function fetchLocationPreferences(token: string) {
+  return apiFetch<UserLocationPreferenceResponse[]>('/locations', {}, token);
+}
+
+export async function previewLocationCoverage(
+  token: string,
+  input: {
+    regionId: string;
+    latitude?: number;
+    longitude?: number;
+    postalCode?: string;
+    coverageRadiusKm?: number;
+  },
+) {
+  return apiFetch<CoveragePreviewResponse>(
+    '/locations/coverage-preview',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function createLocationPreference(
+  token: string,
+  input: {
+    regionId: string;
+    label: string;
+    latitude?: number;
+    longitude?: number;
+    postalCode?: string;
+    coverageRadiusKm?: number;
+    isDefault?: boolean;
+    locationSource?: 'manual' | 'browser_geolocation' | 'postal_code_fallback';
+  },
+) {
+  return apiFetch<UserLocationPreferenceResponse>(
+    '/locations',
     {
       method: 'POST',
       body: JSON.stringify(input),
@@ -1146,6 +1226,7 @@ export function mapShoppingList(
 export type {
   AdminShoppingListAuditResponse,
   AdminUserResponse,
+  CoveragePreviewResponse,
   AdminEstablishmentResponse,
   AdminMetricsResponse,
   AdminOfferResponse,
@@ -1162,4 +1243,5 @@ export type {
   ProductVariantResponse,
   RegionOffersApiResponse,
   CatalogProductSearchResponse,
+  UserLocationPreferenceResponse,
 };

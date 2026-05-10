@@ -18,18 +18,20 @@ export const optimizationModes: Array<{
 }> = [
   {
     id: 'local',
-    label: 'Local',
-    description: 'Compra completa no mercado mais prático para hoje.',
+    label: 'Uma loja perto de mim',
+    description:
+      'Usa uma loja elegivel dentro do raio local quando houver localizacao.',
   },
   {
     id: 'global_unique',
-    label: 'Global único',
-    description: 'Melhor loja única para equilibrar cobertura e preço.',
+    label: 'Uma loja na cidade',
+    description:
+      'Escolhe uma unica loja na cidade para equilibrar cobertura e preco.',
   },
   {
     id: 'global_full',
-    label: 'Global completo',
-    description: 'Menor custo total, mesmo dividindo a compra em várias lojas.',
+    label: 'Menor total na cidade',
+    description: 'Menor custo total, mesmo dividindo a compra em varias lojas.',
   },
 ];
 

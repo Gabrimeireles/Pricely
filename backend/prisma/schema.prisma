@@ -180,6 +180,7 @@ model UserAccount {
   priceMismatchReports PriceMismatchReport[]
   entitlements      UserEntitlement[]
   optimizationTokenLedger OptimizationTokenLedgerEntry[]
+  locationPreferences UserLocationPreference[]
   preferredRegion  Region?           @relation("UserPreferredRegion", fields: [preferredRegionId], references: [id], onDelete: SetNull)
 }
 
@@ -197,6 +198,7 @@ model Region {
   shoppingLists   ShoppingList[]
   optimizationRuns OptimizationRun[]
   preferredByUsers UserAccount[]     @relation("UserPreferredRegion")
+  userLocationPreferences UserLocationPreference[]
 }
 
 model Establishment {
@@ -221,6 +223,27 @@ model Establishment {
   preferredRuns  OptimizationRun[] @relation("PreferredEstablishment")
 
   @@index([regionId, isActive])
+}
+
+model UserLocationPreference {
+  id                       String   @id @default(uuid()) @db.Uuid
+  userId                   String   @db.Uuid
+  regionId                 String   @db.Uuid
+  label                    String
+  latitude                 Decimal? @db.Decimal(9, 6)
+  longitude                Decimal? @db.Decimal(9, 6)
+  postalCode               String?
+  coverageRadiusKm         Decimal  @default(5.00) @db.Decimal(5, 2)
+  activeEstablishmentCount Int      @default(0)
+  isDefault                Boolean  @default(false)
+  locationSource           String   @default("manual")
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  region                   Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  user                     UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isDefault])
+  @@index([regionId])
 }
 
 model CatalogProduct {

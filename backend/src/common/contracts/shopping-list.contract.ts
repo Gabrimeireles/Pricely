@@ -1,4 +1,9 @@
 export type OptimizationMode = 'local' | 'global_unique' | 'global_full';
+export type OptimizationModeRequest =
+  | OptimizationMode
+  | 'local_unique'
+  | 'local_multi'
+  | 'global_multi';
 
 export interface ShoppingListItemInput {
   requestedName: string;
