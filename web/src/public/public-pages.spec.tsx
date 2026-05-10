@@ -83,6 +83,10 @@ describe('public pages', () => {
     ).toBeTruthy();
     expect(screen.getByText(/0 estabelecimentos ativos/)).toBeTruthy();
     expect(screen.getByText('Piloto')).toBeTruthy();
+    expect(screen.getByText(/Cidade em ativação/)).toBeTruthy();
+    expect(
+      screen.getByText(/2 estabelecimentos ativos com ofertas na cidade/),
+    ).toBeTruthy();
   });
 
   it('renders regional offers with empty-state friendly city context', async () => {

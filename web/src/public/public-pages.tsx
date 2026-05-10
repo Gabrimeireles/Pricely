@@ -1056,9 +1056,19 @@ export function CitiesPage() {
             <CardContent className="grid gap-4 text-sm">
               <div>
                 <div className="font-medium">Estabelecimentos suportados</div>
-                <div className="text-muted-foreground">
-                  {city.stores.join(', ')}
-                </div>
+                {city.stores.length > 0 ? (
+                  <div className="text-muted-foreground">
+                    {city.stores.join(', ')}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border/80 bg-muted/30 p-3 text-muted-foreground">
+                    {city.activeStoreCount > 0
+                      ? `${city.activeStoreCount} estabelecimentos ativos com ofertas na cidade. A lista nominal aparece nas ofertas e será detalhada aqui conforme a cobertura pública for enriquecida.`
+                      : city.status === 'pilot'
+                        ? 'Cidade em ativação: estamos cadastrando estabelecimentos e validando as primeiras ofertas antes de liberar comparações.'
+                        : 'Cidade planejada: ainda sem estabelecimentos ativos para comparação.'}
+                  </div>
+                )}
               </div>
               <div>
                 <div className="font-medium">Status da cidade</div>
@@ -1191,13 +1201,16 @@ export function ListsPage() {
             </div>
             <CardTitle>Uso de otimizações</CardTitle>
             <CardDescription>
-              O plano gratuito inclui 2 listas otimizadas por mês. A compra
-              Premium ainda está desativada enquanto o billing é validado.
+              {profile.entitlementPlan === 'premium'
+                ? 'Sua conta Premium está ativa. Você pode otimizar listas sem limite enquanto o billing permanece em validação operacional.'
+                : 'O plano gratuito inclui 2 listas otimizadas por mês. A compra Premium ainda está desativada enquanto o billing é validado.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button disabled variant="outline">
-              Comprar Premium
+              {profile.entitlementPlan === 'premium'
+                ? 'Gerenciar Premium'
+                : 'Comprar Premium'}
             </Button>
           </CardContent>
         </Card>
