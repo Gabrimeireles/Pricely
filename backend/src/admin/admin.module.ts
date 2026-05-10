@@ -5,6 +5,7 @@ import { EstablishmentsModule } from '../establishments/establishments.module';
 import { PrismaModule } from '../persistence/prisma.module';
 import { PricingModule } from '../pricing/pricing.module';
 import { RegionsModule } from '../regions/regions.module';
+import { UsersModule } from '../users/users.module';
 import { AdminDashboardService } from './application/admin-dashboard.service';
 import { AdminDashboardController } from './api/admin-dashboard.controller';
 import { AdminAccessController } from './admin-access.controller';
@@ -17,6 +18,7 @@ import { AdminAccessController } from './admin-access.controller';
     CatalogModule,
     PricingModule,
     RegionsModule,
+    UsersModule,
   ],
   providers: [AdminDashboardService],
   controllers: [AdminAccessController, AdminDashboardController],

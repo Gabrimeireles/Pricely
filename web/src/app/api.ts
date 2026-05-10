@@ -434,6 +434,47 @@ type AdminShoppingListAuditResponse = {
   } | null;
 };
 
+type AdminUserResponse = {
+  id: string;
+  email: string;
+  displayName: string;
+  role: 'customer' | 'admin';
+  status: 'active' | 'suspended';
+  preferredRegion?: {
+    id: string;
+    slug: string;
+    name: string;
+    stateCode: string;
+  } | null;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  counts: {
+    shoppingLists: number;
+    optimizationRuns: number;
+    receiptRecords: number;
+    priceMismatchReports: number;
+  };
+  entitlement: {
+    plan: 'free' | 'premium';
+    status: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired';
+    source: string;
+    availableOptimizationTokens: number | null;
+    monthlyFreeOptimizationTokens: number;
+    billingEnabled: boolean;
+    checkoutEnabled: boolean;
+    lastPaymentAt: string | null;
+    lastPaymentStatus: 'billing_disabled' | 'none' | 'paid' | 'failed';
+  };
+  latestOptimization?: {
+    id: string;
+    mode: OptimizationModeId;
+    status: 'queued' | 'running' | 'completed' | 'failed';
+    createdAt: string;
+    completedAt?: string;
+  } | null;
+};
+
 type AdminEstablishmentResponse = {
   id: string;
   brandName: string;
@@ -807,6 +848,40 @@ export async function fetchAdminShoppingLists(token: string) {
   );
 }
 
+export async function fetchAdminUsers(token: string) {
+  return apiFetch<AdminUserResponse[]>('/admin/users', {}, token);
+}
+
+export async function setAdminUserPremium(
+  token: string,
+  id: string,
+  enabled: boolean,
+) {
+  return apiFetch<AdminUserResponse>(
+    `/admin/users/${id}/premium`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    },
+    token,
+  );
+}
+
+export async function grantAdminUserTokens(
+  token: string,
+  id: string,
+  input: { amount: number; reason?: string },
+) {
+  return apiFetch<AdminUserResponse>(
+    `/admin/users/${id}/tokens`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
 export async function createAdminRegion(
   token: string,
   input: Record<string, unknown>,
@@ -1070,6 +1145,7 @@ export function mapShoppingList(
 
 export type {
   AdminShoppingListAuditResponse,
+  AdminUserResponse,
   AdminEstablishmentResponse,
   AdminMetricsResponse,
   AdminOfferResponse,

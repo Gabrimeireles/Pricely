@@ -9,6 +9,7 @@ import {
   ShieldCheckIcon,
   StoreIcon,
   SunMediumIcon,
+  UsersIcon,
   WorkflowIcon,
 } from 'lucide-react';
 
@@ -64,6 +65,11 @@ const adminNav = [
     to: '/dashboard/listas',
     label: 'Operacoes de listas',
     icon: ListChecksIcon,
+  },
+  {
+    to: '/dashboard/usuarios',
+    label: 'Usuarios',
+    icon: UsersIcon,
   },
   {
     to: '/dashboard/fila',

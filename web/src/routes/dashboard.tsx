@@ -8,6 +8,7 @@ import {
   AdminQueueDetailPage,
   AdminQueuePage,
   AdminRegionsPage,
+  AdminUsersPage,
 } from '@/dashboard/dashboard-pages';
 
 export const dashboardRoute = {
@@ -37,6 +38,10 @@ export const dashboardRoute = {
     {
       path: 'listas',
       element: <AdminListsPage />,
+    },
+    {
+      path: 'usuarios',
+      element: <AdminUsersPage />,
     },
     {
       path: 'fila',

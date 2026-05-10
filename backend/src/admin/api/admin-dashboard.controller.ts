@@ -5,12 +5,13 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { IsBoolean, IsIn, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
@@ -21,6 +22,12 @@ type UploadedMediaFile = {
   originalname: string;
   mimetype: string;
   buffer: Buffer;
+};
+
+type AuthenticatedAdminRequest = {
+  user: {
+    id: string;
+  };
 };
 
 class CreateRegionDto {
@@ -321,6 +328,21 @@ class UpdateOfferDto {
   isActive?: boolean;
 }
 
+class UpdateUserPremiumDto {
+  @IsBoolean()
+  enabled!: boolean;
+}
+
+class GrantUserTokensDto {
+  @IsInt()
+  @Min(1)
+  amount!: number;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -350,6 +372,37 @@ export class AdminDashboardController {
   @Get('shopping-lists')
   async listShoppingListAudits() {
     return this.adminDashboardService.listShoppingListAudits();
+  }
+
+  @Get('users')
+  async listUsers() {
+    return this.adminDashboardService.listUsers();
+  }
+
+  @Patch('users/:id/premium')
+  async setUserPremium(
+    @Param('id') id: string,
+    @Body() body: UpdateUserPremiumDto,
+    @Req() request: AuthenticatedAdminRequest,
+  ) {
+    return this.adminDashboardService.setUserPremium(
+      id,
+      body,
+      request.user.id,
+    );
+  }
+
+  @Post('users/:id/tokens')
+  async grantUserTokens(
+    @Param('id') id: string,
+    @Body() body: GrantUserTokensDto,
+    @Req() request: AuthenticatedAdminRequest,
+  ) {
+    return this.adminDashboardService.grantUserOptimizationTokens(
+      id,
+      body,
+      request.user.id,
+    );
   }
 
   @Get('regions')

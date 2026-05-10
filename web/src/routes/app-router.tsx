@@ -119,6 +119,13 @@ const dashboardChildren: RouteObject[] = [
     },
   },
   {
+    path: 'usuarios',
+    lazy: async () => {
+      const { AdminUsersPage } = await import('@/dashboard/dashboard-pages');
+      return { Component: AdminUsersPage };
+    },
+  },
+  {
     path: 'fila',
     lazy: async () => {
       const { AdminQueuePage } = await import('@/dashboard/dashboard-pages');
