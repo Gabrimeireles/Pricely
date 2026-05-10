@@ -179,7 +179,9 @@ function trustEvidenceLabel(selection: {
 }) {
   const evidenceCount = selection.trustEvidenceCount ?? 0;
   const receiptText =
-    evidenceCount === 1
+    evidenceCount === 0
+      ? 'Sem nota fiscal recente vinculada; usando evidência operacional'
+      : evidenceCount === 1
       ? '1 nota valida'
       : `${evidenceCount} notas validas`;
 
@@ -339,15 +341,15 @@ function savingsComparisonLabel(selection: {
   }
 
   if (selection.regionalAveragePriceAmount !== undefined) {
-    return `${formatCurrency(savings)} abaixo da média regional (${formatCurrency(
-      selection.regionalAveragePriceAmount,
-    )})`;
+    return `${formatCurrency(selection.regionalAveragePriceAmount)} media da variante · ${formatCurrency(
+      savings,
+    )} abaixo`;
   }
 
   if (selection.comparisonPriceAmount !== undefined) {
-    return `${formatCurrency(savings)} abaixo do maior preço encontrado (${formatCurrency(
-      selection.comparisonPriceAmount,
-    )})`;
+    return `${formatCurrency(selection.comparisonPriceAmount)} maior preço encontrado · ${formatCurrency(
+      savings,
+    )} abaixo`;
   }
 
   return `${formatCurrency(savings)} de economia estimada nas ofertas disponíveis`;
@@ -771,25 +773,46 @@ export function OffersPage() {
   const city = cityId
     ? (cities.find((entry) => entry.id === cityId) ?? getCityById(cityId))
     : null;
-  const [offers, setOffers] = useState<RegionOffersApiResponse['offers']>([]);
+  const [offerGroups, setOfferGroups] = useState<
+    NonNullable<RegionOffersApiResponse['groupedOffers']>
+  >([]);
+  const [storeFilter, setStoreFilter] = useState('all');
 
   useEffect(() => {
     let disposed = false;
 
     const load = async () => {
       if (!cityId) {
-        setOffers([]);
+        setOfferGroups([]);
         return;
       }
 
       try {
         const response = await fetchRegionOffers(cityId);
         if (!disposed) {
-          setOffers(response.offers);
+          setOfferGroups(
+            response.groupedOffers ??
+              response.offers.map((offer) => ({
+                id: offer.productVariantId,
+                catalogProductId: offer.catalogProductId,
+                productVariantId: offer.productVariantId,
+                productName: offer.productName,
+                variantName: offer.variantName,
+                imageUrl: offer.imageUrl,
+                packageLabel: offer.packageLabel,
+                bestOffer: offer,
+                alternativeOffers: [],
+                offers: [offer],
+                establishmentCount: 1,
+                cheapestPriceAmount: offer.priceAmount,
+                averagePriceAmount: offer.priceAmount,
+                highestPriceAmount: offer.priceAmount,
+              })),
+          );
         }
       } catch {
         if (!disposed) {
-          setOffers([]);
+          setOfferGroups([]);
         }
       }
     };
@@ -800,6 +823,37 @@ export function OffersPage() {
       disposed = true;
     };
   }, [cityId]);
+
+  const storeOptions = Array.from(
+    new Set(
+      offerGroups.flatMap((group) =>
+        group.offers.map((offer) => offer.storeName),
+      ),
+    ),
+  ).sort((left, right) => left.localeCompare(right));
+  const visibleOfferGroups =
+    storeFilter === 'all'
+      ? offerGroups
+      : offerGroups
+          .map((group) => {
+            const filteredOffers = group.offers.filter(
+              (offer) => offer.storeName === storeFilter,
+            );
+
+            if (filteredOffers.length === 0) {
+              return null;
+            }
+
+            return {
+              ...group,
+              bestOffer: filteredOffers[0],
+              offers: filteredOffers,
+              alternativeOffers: filteredOffers.slice(1),
+              establishmentCount: filteredOffers.length,
+              cheapestPriceAmount: filteredOffers[0].priceAmount,
+            };
+          })
+          .filter((group): group is NonNullable<typeof group> => Boolean(group));
 
   return (
     <div className="flex flex-col gap-6">
@@ -824,49 +878,107 @@ export function OffersPage() {
         </Alert>
       ) : null}
 
+      {cityId ? (
+        <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card/90 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="font-medium">Filtro por estabelecimento</div>
+            <div className="text-sm text-muted-foreground">
+              Cada produto aparece uma vez, com o menor preço primeiro e outras
+              lojas abertas no detalhe.
+            </div>
+          </div>
+          <select
+            className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+            onChange={(event) => setStoreFilter(event.target.value)}
+            value={storeFilter}
+          >
+            <option value="all">Todos os estabelecimentos</option>
+            {storeOptions.map((storeName) => (
+              <option key={storeName} value={storeName}>
+                {storeName}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+
       <div className="grid gap-4 lg:grid-cols-3">
-        {offers.map((offer) => (
-          <Card key={offer.id} className="overflow-hidden">
+        {visibleOfferGroups.map((group) => (
+          <Card key={group.id} className="overflow-hidden">
             <div className="aspect-[16/9] overflow-hidden">
               <img
-                alt={offer.productName}
+                alt={group.productName}
                 className="h-full w-full object-cover"
-                src={resolveProductImage(offer.imageUrl)}
+                src={resolveProductImage(group.imageUrl)}
               />
             </div>
             <CardHeader>
-              <CardTitle>{offer.productName}</CardTitle>
+              <CardTitle>{group.productName}</CardTitle>
               <CardDescription>
-                {offer.storeName} · {offer.neighborhood}
+                {group.variantName ?? group.packageLabel}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3">
               <div className="flex flex-wrap gap-2">
                 {freshnessBadge('fresh')}
                 {confidenceBadge(
-                  offer.confidenceLevel === 'high'
+                  group.bestOffer.confidenceLevel === 'high'
                     ? 'alta'
-                    : offer.confidenceLevel === 'medium'
+                    : group.bestOffer.confidenceLevel === 'medium'
                       ? 'media'
                       : 'baixa',
                 )}
+                <Badge variant="secondary">
+                  {group.establishmentCount}{' '}
+                  {group.establishmentCount === 1
+                    ? 'estabelecimento'
+                    : 'estabelecimentos'}
+                </Badge>
               </div>
               <PriceDisplay
-                basePriceAmount={offer.basePriceAmount}
-                priceAmount={offer.priceAmount}
-                promotionalPriceAmount={offer.promotionalPriceAmount}
+                basePriceAmount={group.bestOffer.basePriceAmount}
+                priceAmount={group.bestOffer.priceAmount}
+                promotionalPriceAmount={group.bestOffer.promotionalPriceAmount}
               />
-              {offer.savingsVsRegionalAverage &&
-              offer.savingsVsRegionalAverage > 0 ? (
+              <div className="text-sm text-muted-foreground">
+                Menor preço em {group.bestOffer.storeName} ·{' '}
+                {group.bestOffer.neighborhood}
+              </div>
+              {group.averagePriceAmount > group.cheapestPriceAmount ? (
                 <div className="text-sm text-emerald-700">
-                  {formatCurrency(offer.savingsVsRegionalAverage)} abaixo da
-                  média da cidade
+                  {formatCurrency(
+                    group.averagePriceAmount - group.cheapestPriceAmount,
+                  )}{' '}
+                  abaixo da média desta variante (
+                  {formatCurrency(group.averagePriceAmount)})
                 </div>
+              ) : null}
+              {group.alternativeOffers.length > 0 ? (
+                <details className="rounded-lg border border-border/70 p-3 text-sm">
+                  <summary className="cursor-pointer font-medium">
+                    Ver outros estabelecimentos
+                  </summary>
+                  <div className="mt-3 grid gap-2">
+                    {group.alternativeOffers.map((offer) => (
+                      <div
+                        key={offer.id}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <span className="text-muted-foreground">
+                          {offer.storeName} · {offer.neighborhood}
+                        </span>
+                        <span className="font-medium">
+                          {formatCurrency(offer.priceAmount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               ) : null}
             </CardContent>
             <CardFooter className="justify-end">
               <Button asChild size="sm" variant="outline">
-                <Link to={`/ofertas/${offer.id}`}>
+                <Link to={`/ofertas/${group.bestOffer.id}`}>
                   Detalhe
                   <ChevronRightIcon data-icon="inline-end" />
                 </Link>
@@ -875,6 +987,17 @@ export function OffersPage() {
           </Card>
         ))}
       </div>
+      {cityId && visibleOfferGroups.length === 0 ? (
+        <Alert>
+          <MapPinIcon />
+          <AlertTitle>Nenhuma oferta agrupada disponível</AlertTitle>
+          <AlertDescription>
+            {city?.status === 'pilot'
+              ? 'Esta cidade está em ativação. Vamos exibir ofertas assim que houver validação suficiente.'
+              : 'Troque o filtro de estabelecimento ou escolha outra cidade para comparar preços.'}
+          </AlertDescription>
+        </Alert>
+      ) : null}
     </div>
   );
 }
@@ -2477,6 +2600,15 @@ export function OptimizationPage() {
                                 <span className="font-medium">
                                   {selection.shoppingListItemName}
                                 </span>
+                                {selection.selectedVariantName ? (
+                                  <span className="text-xs text-muted-foreground">
+                                    Selecionado:{' '}
+                                    {selection.selectedVariantName}
+                                    {selection.selectedPackageLabel
+                                      ? ` · ${selection.selectedPackageLabel}`
+                                      : ''}
+                                  </span>
+                                ) : null}
                                 <span className="text-xs text-muted-foreground">
                                   {describeBrandRule(
                                     listItemsById.get(

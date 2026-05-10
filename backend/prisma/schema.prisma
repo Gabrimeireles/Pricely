@@ -207,6 +207,10 @@ model Establishment {
   cityName       String
   neighborhood   String
   addressLine    String?
+  postalCode     String?
+  latitude       Decimal?        @db.Decimal(9, 6)
+  longitude      Decimal?        @db.Decimal(9, 6)
+  locationSource String?
   regionId       String          @db.Uuid
   isActive       Boolean         @default(true)
   createdAt      DateTime        @default(now())

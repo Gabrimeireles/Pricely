@@ -39,6 +39,12 @@ export class PublicPricingService {
       orderBy: [{ observedAt: 'desc' }, { priceAmount: 'asc' }],
     });
     const comparisonByVariant = this.buildComparisonByVariant(offers);
+    const projectedOffers = offers.map((offer) =>
+      this.projectRegionalOffer(
+        offer,
+        comparisonByVariant.get(offer.productVariantId),
+      ),
+    );
 
     const response = {
       region: {
@@ -54,12 +60,8 @@ export class PublicPricingService {
         },
       }),
       offerCoverageStatus: offers.length > 0 ? 'live' : 'collecting_data',
-      offers: offers.map((offer) =>
-        this.projectRegionalOffer(
-          offer,
-          comparisonByVariant.get(offer.productVariantId),
-        ),
-      ),
+      offers: projectedOffers,
+      groupedOffers: this.groupRegionalOffers(projectedOffers),
     };
 
     this.logger.log(
@@ -278,5 +280,64 @@ export class PublicPricingService {
       neighborhood: offer.establishment.neighborhood,
       confidenceLevel: offer.confidenceLevel,
     };
+  }
+
+  private groupRegionalOffers(
+    offers: Array<ReturnType<PublicPricingService['projectRegionalOffer']>>,
+  ) {
+    const grouped = new Map<
+      string,
+      Array<ReturnType<PublicPricingService['projectRegionalOffer']>>
+    >();
+
+    for (const offer of offers) {
+      const key = offer.productVariantId;
+      grouped.set(key, [...(grouped.get(key) ?? []), offer]);
+    }
+
+    return [...grouped.values()]
+      .map((entries) => {
+        const sorted = [...entries].sort((left, right) => {
+          if (left.priceAmount !== right.priceAmount) {
+            return left.priceAmount - right.priceAmount;
+          }
+
+          return (
+            new Date(right.observedAt).getTime() -
+            new Date(left.observedAt).getTime()
+          );
+        });
+        const bestOffer = sorted[0];
+        const prices = sorted.map((entry) => entry.priceAmount);
+        const averagePriceAmount = Number(
+          (
+            prices.reduce((sum, price) => sum + price, 0) / prices.length
+          ).toFixed(2),
+        );
+
+        return {
+          id: bestOffer.productVariantId,
+          catalogProductId: bestOffer.catalogProductId,
+          productVariantId: bestOffer.productVariantId,
+          productName: bestOffer.productName,
+          variantName: bestOffer.variantName,
+          imageUrl: bestOffer.imageUrl,
+          packageLabel: bestOffer.packageLabel,
+          bestOffer,
+          alternativeOffers: sorted.slice(1),
+          offers: sorted,
+          establishmentCount: sorted.length,
+          cheapestPriceAmount: bestOffer.priceAmount,
+          averagePriceAmount,
+          highestPriceAmount: Math.max(...prices),
+        };
+      })
+      .sort((left, right) => {
+        if (left.productName !== right.productName) {
+          return left.productName.localeCompare(right.productName);
+        }
+
+        return left.cheapestPriceAmount - right.cheapestPriceAmount;
+      });
   }
 }

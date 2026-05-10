@@ -50,6 +50,7 @@ export class OptimizationRunRepository {
             productOffer: {
               include: {
                 establishment: true,
+                productVariant: true,
               },
             },
           },

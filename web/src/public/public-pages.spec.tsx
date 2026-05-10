@@ -116,6 +116,85 @@ describe('public pages', () => {
     ).toBeTruthy();
   });
 
+  it('groups regional offers by product variant and exposes store alternatives', async () => {
+    fetchRegionOffers.mockResolvedValue({
+      region: {
+        id: 'sao-paulo-sp',
+        slug: 'sao-paulo-sp',
+        name: 'Sao Paulo',
+        stateCode: 'SP',
+      },
+      activeEstablishmentCount: 2,
+      offerCoverageStatus: 'live',
+      offers: [],
+      groupedOffers: [
+        {
+          id: 'variant-1',
+          catalogProductId: 'product-1',
+          productVariantId: 'variant-1',
+          productName: 'Arroz tipo 1 5kg',
+          variantName: 'Arroz Camil tipo 1 5kg',
+          imageUrl: 'https://example.com/arroz.png',
+          packageLabel: '5 kg',
+          bestOffer: {
+            id: 'offer-1',
+            catalogProductId: 'product-1',
+            productVariantId: 'variant-1',
+            productName: 'Arroz tipo 1 5kg',
+            variantName: 'Arroz Camil tipo 1 5kg',
+            imageUrl: 'https://example.com/arroz.png',
+            displayName: 'Arroz Camil tipo 1 5kg',
+            packageLabel: '5 kg',
+            priceAmount: 21.9,
+            basePriceAmount: 21.9,
+            observedAt: '2026-05-10T00:00:00.000Z',
+            sourceLabel: 'Seed',
+            storeName: 'Unidade Vila Mariana',
+            neighborhood: 'Vila Mariana',
+            confidenceLevel: 'high',
+          },
+          alternativeOffers: [
+            {
+              id: 'offer-2',
+              catalogProductId: 'product-1',
+              productVariantId: 'variant-1',
+              productName: 'Arroz tipo 1 5kg',
+              variantName: 'Arroz Camil tipo 1 5kg',
+              imageUrl: 'https://example.com/arroz.png',
+              displayName: 'Arroz Camil tipo 1 5kg',
+              packageLabel: '5 kg',
+              priceAmount: 22.9,
+              basePriceAmount: 24.9,
+              promotionalPriceAmount: 22.9,
+              observedAt: '2026-05-10T00:00:00.000Z',
+              sourceLabel: 'Seed',
+              storeName: 'Unidade Pinheiros',
+              neighborhood: 'Pinheiros',
+              confidenceLevel: 'medium',
+            },
+          ],
+          offers: [],
+          establishmentCount: 2,
+          cheapestPriceAmount: 21.9,
+          averagePriceAmount: 22.4,
+          highestPriceAmount: 22.9,
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <OffersPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Arroz tipo 1 5kg')).toBeTruthy();
+    expect(screen.getByText('2 estabelecimentos')).toBeTruthy();
+    expect(screen.getByText(/Menor preço em Unidade Vila Mariana/)).toBeTruthy();
+    expect(screen.getByText(/R\$ 0,50 abaixo da média/)).toBeTruthy();
+    expect(screen.getByText('Ver outros estabelecimentos')).toBeTruthy();
+  });
+
   it('renders detailed public offer content', async () => {
     fetchOfferDetail.mockResolvedValue({
       id: 'offer-1',
