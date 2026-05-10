@@ -519,7 +519,7 @@ be tested deeply.
 
 - [X] T193 Profile the public `https://pricely.grmeireles.dev/` load path with Lighthouse or Playwright navigation timing, capturing LCP, TTI, JS payload, critical API latency, image timing, and Cloudflare/API response timing in `web/e2e/` and `docs/product/stitch-ui-ux-alignment.md`
 - [X] T194 Reduce public landing and shell load latency by auditing bundle size, route-level loading, context fetch waterfalls, image dimensions/weights, skeleton states, and unnecessary initial API calls in `web/src/public/`, `web/src/app/`, and `web/src/routes/`
-- [ ] T195 Add mobile responsiveness QA for landing, city chooser, offers, offer comparison, list editor, optimization result, checklist, profile/entitlement, admin tables, and auth screens in `web/e2e/` and `web/src/`
+- [X] T195 Add mobile responsiveness QA for landing, city chooser, offers, offer comparison, list editor, optimization result, checklist, profile/entitlement, admin tables, and auth screens in `web/e2e/` and `web/src/`
 - [X] T196 Expand seed data with additional cities across active, activating, and collecting-data states in `backend/prisma/seed.js`
 - [X] T197 Expand seed data with more establishments per active city, including CNPJ, neighborhood, address/CEP, and future-ready latitude/longitude placeholders in `backend/prisma/seed.js`
 - [~] T198 Expand seed data with broader catalog products, variants, package sizes, images, aliases, categories, and enough repeated comparable products to stress product/variant management in `backend/prisma/seed.js`
