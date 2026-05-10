@@ -210,6 +210,7 @@ export class AdminDashboardService {
                   include: {
                     productVariant: true,
                     establishment: true,
+                    receiptRecord: true,
                   },
                 },
               },
@@ -303,11 +304,26 @@ export class AdminDashboardService {
                       neighborhood:
                         selection.productOffer.establishment.neighborhood,
                       priceAmount: Number(selection.productOffer.priceAmount),
+                      confidenceLevel: selection.productOffer.confidenceLevel,
+                      sourceType: selection.productOffer.sourceType,
                       sourceLabel:
                         selection.productOffer.sourceReference ??
                         selection.productOffer.sourceType,
                       observedAt:
                         selection.productOffer.observedAt.toISOString(),
+                      receiptEvidence: selection.productOffer.receiptRecord
+                        ? {
+                            id: selection.productOffer.receiptRecord.id,
+                            moderationStatus:
+                              selection.productOffer.receiptRecord
+                                .moderationStatus,
+                            trustLevel:
+                              selection.productOffer.receiptRecord.trustLevel,
+                            reviewReason:
+                              selection.productOffer.receiptRecord
+                                .reviewReason,
+                          }
+                        : null,
                     }
                   : null,
               }),
