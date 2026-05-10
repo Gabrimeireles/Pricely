@@ -407,6 +407,27 @@ Tasks:
   receipt contribution, profile/token state, and dark mode.
 - Keep existing backend, web, mobile, and homolog smoke checks green.
 
+## Mobile Screenshot QA Notes
+
+Use these notes until mobile golden tests are wired into CI:
+
+- Home/onboarding: capture light and dark mode with the active city visible, no
+  marketing-only first screen, and a clear next shopping action.
+- List editor: capture empty, populated, and matched-item states; verify item images,
+  quantity controls, and save/optimize actions remain reachable on one-handed screens.
+- Optimization result: capture complete, partial, and missing-offer states; selected
+  variant, trust factor, source, and freshness must fit without truncating prices.
+- Checklist: capture pending, all purchased, price mismatch reported, and optional
+  paid-total states; completion should lead naturally to receipt contribution.
+- Receipt contribution: capture accepted, pending review, duplicate, quarantined,
+  rejected, and low-confidence outcomes; do not show reward promises before T162.
+- Profile/premium: capture free, premium active, token exhausted, and billing-disabled
+  states; premium users must not see free-plan upgrade copy.
+- Location readiness: capture city-only, permission denied, unavailable GPS, manual
+  location, and radius-preview disabled states; avoid distance claims until T170-T177.
+- Admin-equivalent mobile QA is not required for shopper release, but dashboard tables
+  should be checked in mobile web through the responsive Playwright spec.
+
 ## Open Scope Decisions
 
 - Decide whether Phase 24 should include the first implementation of location widgets
