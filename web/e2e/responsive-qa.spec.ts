@@ -300,6 +300,13 @@ async function expectNoHorizontalOverflow(page: Page) {
     .toBe(true);
 }
 
+async function attachViewportScreenshot(page: Page, name: string) {
+  await test.info().attach(name, {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
+}
+
 for (const viewport of [
   { name: 'mobile', width: 390, height: 844 },
   { name: 'desktop', width: 1366, height: 900 },
@@ -359,6 +366,10 @@ for (const viewport of [
         page.getByText(/Selecionado: Cafe Pilao 500g/),
       ).toBeVisible();
       await expectNoHorizontalOverflow(page);
+      await attachViewportScreenshot(
+        page,
+        `public-optimization-${viewport.name}.png`,
+      );
     });
 
     test('keeps admin tables and operations readable without horizontal overflow', async ({
@@ -377,6 +388,7 @@ for (const viewport of [
       await expect(page.getByLabel('Buscar no catalogo')).toBeVisible();
       await expect(page.getByText('1 variantes')).toBeVisible();
       await expectNoHorizontalOverflow(page);
+      await attachViewportScreenshot(page, `admin-catalog-${viewport.name}.png`);
     });
   });
 }
