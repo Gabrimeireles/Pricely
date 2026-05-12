@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { type ReceiptRecordEntity } from '../receipts/domain/receipt-record.entity';
 import { ReceiptRecordRepository } from '../receipts/infrastructure/receipt-record.repository';
 import { StoreOfferRepository } from '../stores/infrastructure/store-offer.repository';
+import { EntitlementsService } from '../users/entitlements.service';
 
 @Injectable()
 export class ReceiptIngestionProcessor {
@@ -11,6 +12,7 @@ export class ReceiptIngestionProcessor {
   constructor(
     private readonly receiptRecordRepository: ReceiptRecordRepository,
     private readonly storeOfferRepository: StoreOfferRepository,
+    private readonly entitlementsService: EntitlementsService,
   ) {}
 
   async process(receiptRecordId: string): Promise<void> {
@@ -42,7 +44,25 @@ export class ReceiptIngestionProcessor {
       storeId: record.storeId,
       storeName: record.storeName,
     });
+    await this.grantRewardIfEligible(record);
     this.logger.log(`Receipt ${receiptRecordId} processed into store offers`);
+  }
+
+  private async grantRewardIfEligible(record: ReceiptRecordEntity) {
+    if (
+      record.trustLevel !== 'trusted' ||
+      record.moderationStatus !== 'accepted' ||
+      record.rewardEligibilityStatus !== 'eligible_pending'
+    ) {
+      return;
+    }
+
+    await this.entitlementsService.grantReceiptBonusTokens({
+      userId: record.userId,
+      receiptRecordId: record.id,
+      amount: 1,
+    });
+    await this.receiptRecordRepository.markRewardGranted(record.id);
   }
 
   private async persistStoreOffers(

@@ -243,6 +243,7 @@ describe('AdminDashboardService', () => {
         setManualPremium: jest.fn(),
         grantAdminOptimizationTokens: jest.fn(),
       } as never,
+      {} as never,
     );
 
     await expect(service.getMetrics()).resolves.toEqual({
@@ -418,6 +419,7 @@ describe('AdminDashboardService', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
 
     await service.createRegion({
@@ -487,6 +489,7 @@ describe('AdminDashboardService', () => {
       {} as never,
       {} as never,
       entitlementsService as never,
+      {} as never,
     );
 
     await service.setUserPremium('user-1', { enabled: true }, 'admin-1');

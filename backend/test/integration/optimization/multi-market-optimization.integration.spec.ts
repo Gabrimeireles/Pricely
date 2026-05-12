@@ -4,6 +4,8 @@ import { createUs1TestApp } from '../../support/us1-app.factory';
 
 describe('Multi-market optimization integration', () => {
   it('creates a list, ingests receipts, and returns the cheapest valid plan', async () => {
+    const previousProcessingMode = process.env.RECEIPT_PROCESSING_MODE;
+    process.env.RECEIPT_PROCESSING_MODE = 'automatic';
     const { app, queues, auth } = await createUs1TestApp();
 
     try {
@@ -87,6 +89,11 @@ describe('Multi-market optimization integration', () => {
         }),
       );
     } finally {
+      if (previousProcessingMode === undefined) {
+        delete process.env.RECEIPT_PROCESSING_MODE;
+      } else {
+        process.env.RECEIPT_PROCESSING_MODE = previousProcessingMode;
+      }
       await app.close();
     }
   });

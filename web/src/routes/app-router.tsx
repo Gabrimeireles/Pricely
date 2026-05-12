@@ -51,6 +51,13 @@ const publicChildren: RouteObject[] = [
     },
   },
   {
+    path: 'notas',
+    lazy: async () => {
+      const { ReceiptSubmissionPage } = await import('@/public/public-pages');
+      return { Component: ReceiptSubmissionPage };
+    },
+  },
+  {
     path: 'listas/:listId',
     lazy: async () => {
       const { ListEditorPage } = await import('@/public/public-pages');

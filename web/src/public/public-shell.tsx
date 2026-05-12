@@ -3,6 +3,7 @@ import { MapPinIcon, MoonStarIcon, ShieldCheckIcon, SparklesIcon, SunMediumIcon 
 
 import { usePricely } from '@/app/pricely-context';
 import { useTheme } from '@/app/theme-context';
+import pricelyIcon from '@/assets/pricely-icon.png';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,7 +26,11 @@ function AppLogo() {
   return (
     <Link className="flex items-center gap-3" to="/">
       <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-        <span className="text-sm font-semibold">P</span>
+        <img
+          alt=""
+          className="size-8 rounded-md object-cover"
+          src={pricelyIcon}
+        />
       </div>
       <div className="flex flex-col gap-0.5">
         <span className="text-sm font-semibold tracking-tight">Pricely</span>
@@ -64,6 +69,9 @@ export function PublicLayout() {
               </NavLink>
               <NavLink className={linkClassName} to="/listas">
                 Minhas listas
+              </NavLink>
+              <NavLink className={linkClassName} to="/notas">
+                Notas fiscais
               </NavLink>
               {currentUser?.role === 'admin' ? (
                 <NavLink className={linkClassName} to="/dashboard">

@@ -31,19 +31,20 @@ describe('Receipt ingestion integration', () => {
         parseStatus: 'parsed',
         trustLevel: 'trusted',
         moderationStatus: 'accepted',
-        rewardEligibilityStatus: 'granted',
+        rewardEligibilityStatus: 'eligible_pending',
         rewardPoints: 100,
         rewardOptimizationTokens: 1,
         rewardMessage:
-          'Nota validada: voce ganhou 100 pontos e 1 credito de otimizacao.',
-        reviewReason: 'receipt_reward_granted',
+          'Nota recebida: reward em processamento ate a liberacao e validacao.',
+        reviewReason: 'receipt_reward_ready',
+        processingStatus: 'waiting_manual_release',
         dataNotice:
           'Prices and receipt data are based on receipts provided by users.',
       });
       expect(response.body.id).toEqual(expect.stringContaining('rr_'));
-      expect(response.body.jobId).toEqual(expect.any(String));
+      expect(response.body.jobId).toBeUndefined();
       expect(response.body.confidenceScore).toBeGreaterThan(0.8);
-      expect(queues.receiptQueue.add).toHaveBeenCalledTimes(1);
+      expect(queues.receiptQueue.add).not.toHaveBeenCalled();
     } finally {
       await app.close();
     }

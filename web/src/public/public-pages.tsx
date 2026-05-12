@@ -8,6 +8,7 @@ import {
   LogInIcon,
   MapPinIcon,
   ShieldAlertIcon,
+  UploadIcon,
 } from 'lucide-react';
 
 import {
@@ -29,6 +30,7 @@ import {
   fetchRegionOffers,
   requestCityInclusion,
   searchCatalogProducts,
+  submitReceipt,
 } from '@/app/api';
 import { usePricely } from '@/app/pricely-context';
 import type {
@@ -1380,6 +1382,258 @@ export function SignUpPage() {
       }
       title="Criar conta"
     />
+  );
+}
+
+export function ReceiptSubmissionPage() {
+  const { accessToken } = usePricely();
+  const [form, setForm] = useState({
+    storeName: '',
+    storeCnpj: '',
+    purchaseDate: '',
+    qrCodeUrl: '',
+    rawProductName: '',
+    ean: '',
+    quantity: '1',
+    unitPrice: '',
+  });
+  const [submission, setSubmission] = useState<{
+    status: 'idle' | 'submitting' | 'submitted' | 'failed';
+    message?: string;
+  }>({ status: 'idle' });
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!accessToken) {
+      return;
+    }
+
+    setSubmission({ status: 'submitting' });
+    try {
+      const hasManualItem = form.rawProductName.trim() && form.unitPrice.trim();
+      const response = await submitReceipt(accessToken, {
+        storeName: form.storeName || undefined,
+        storeCnpj: form.storeCnpj || undefined,
+        purchaseDate: form.purchaseDate || undefined,
+        qrCodeUrl: form.qrCodeUrl || undefined,
+        items: hasManualItem
+          ? [
+              {
+                rawProductName: form.rawProductName,
+                ean: form.ean || undefined,
+                quantity: Number(form.quantity || 1),
+                unitPrice: Number(form.unitPrice),
+              },
+            ]
+          : undefined,
+      });
+
+      setSubmission({
+        status: 'submitted',
+        message:
+          response.processingStatus === 'waiting_manual_release'
+            ? 'Nota recebida. Ela fica aguardando liberação manual antes do processamento.'
+            : response.rewardMessage ?? 'Nota enviada para processamento.',
+      });
+      setForm({
+        storeName: '',
+        storeCnpj: '',
+        purchaseDate: '',
+        qrCodeUrl: '',
+        rawProductName: '',
+        ean: '',
+        quantity: '1',
+        unitPrice: '',
+      });
+    } catch (error) {
+      setSubmission({
+        status: 'failed',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Nao foi possivel enviar a nota fiscal.',
+      });
+    }
+  };
+
+  return (
+    <RequireAuthentication
+      description="Entre para contribuir com notas fiscais e acompanhar rewards depois da validação."
+      title="Envio de nota fiscal precisa da sua conta"
+    >
+      <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Enviar nota fiscal</CardTitle>
+            <CardDescription>
+              O MVP recebe a nota agora e mantém em fila manual. Um admin libera
+              o processamento antes de gerar ofertas e validar rewards.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-4" onSubmit={handleSubmit}>
+              <Field>
+                <FieldLabel htmlFor="receipt-qrcode">QR code ou URL NFC-e</FieldLabel>
+                <Textarea
+                  id="receipt-qrcode"
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      qrCodeUrl: event.target.value,
+                    }))
+                  }
+                  placeholder="Cole a URL lida do QR code da NFC-e"
+                  value={form.qrCodeUrl}
+                />
+              </Field>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="receipt-store">Estabelecimento</FieldLabel>
+                  <Input
+                    id="receipt-store"
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        storeName: event.target.value,
+                      }))
+                    }
+                    placeholder="Mercado Centro"
+                    value={form.storeName}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="receipt-date">Data da compra</FieldLabel>
+                  <Input
+                    id="receipt-date"
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        purchaseDate: event.target.value,
+                      }))
+                    }
+                    type="date"
+                    value={form.purchaseDate}
+                  />
+                </Field>
+              </div>
+              <Field>
+                <FieldLabel htmlFor="receipt-cnpj">CNPJ</FieldLabel>
+                <Input
+                  id="receipt-cnpj"
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      storeCnpj: event.target.value,
+                    }))
+                  }
+                  placeholder="00.000.000/0001-00"
+                  value={form.storeCnpj}
+                />
+              </Field>
+              <div className="rounded-lg border border-border/70 bg-muted/30 p-4">
+                <div className="mb-3 text-sm font-medium">
+                  Item manual para MVP
+                </div>
+                <div className="grid gap-4 md:grid-cols-[1fr_120px_120px]">
+                  <Field>
+                    <FieldLabel htmlFor="receipt-item">Produto</FieldLabel>
+                    <Input
+                      id="receipt-item"
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          rawProductName: event.target.value,
+                        }))
+                      }
+                      placeholder="Arroz tipo 1 5kg"
+                      value={form.rawProductName}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="receipt-quantity">Qtd.</FieldLabel>
+                    <Input
+                      id="receipt-quantity"
+                      min="0.001"
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          quantity: event.target.value,
+                        }))
+                      }
+                      step="0.001"
+                      type="number"
+                      value={form.quantity}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="receipt-price">Preço</FieldLabel>
+                    <Input
+                      id="receipt-price"
+                      min="0.01"
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          unitPrice: event.target.value,
+                        }))
+                      }
+                      step="0.01"
+                      type="number"
+                      value={form.unitPrice}
+                    />
+                  </Field>
+                </div>
+              </div>
+              <Button disabled={submission.status === 'submitting'} type="submit">
+                <UploadIcon className="size-4" />
+                Enviar nota
+              </Button>
+            </form>
+            {submission.status === 'submitted' ? (
+              <Alert className="mt-4">
+                <BadgeCheckIcon />
+                <AlertTitle>Nota recebida</AlertTitle>
+                <AlertDescription>{submission.message}</AlertDescription>
+              </Alert>
+            ) : null}
+            {submission.status === 'failed' ? (
+              <Alert className="mt-4" variant="destructive">
+                <AlertCircleIcon />
+                <AlertTitle>Falha no envio</AlertTitle>
+                <AlertDescription>{submission.message}</AlertDescription>
+              </Alert>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-emerald-50/80 shadow-sm">
+          <CardHeader>
+            <CardTitle>Como o reward funciona</CardTitle>
+            <CardDescription>
+              Envio recebido, reward em processamento, nota validada e reward
+              concedido depois da liberação/admin e processamento da fila.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 text-sm">
+            {[
+              'Nota enviada fica aguardando liberação manual.',
+              'Admin confere leitura, matcher e qualidade dos itens.',
+              'Processamento gera ofertas e compara preços.',
+              'Nota confiável concede 100 pontos e 1 crédito.',
+            ].map((step, index) => (
+              <div
+                className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-white/70 p-3"
+                key={step}
+              >
+                <Badge className="bg-emerald-100 text-emerald-950 hover:bg-emerald-100">
+                  {index + 1}
+                </Badge>
+                <span>{step}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </RequireAuthentication>
   );
 }
 

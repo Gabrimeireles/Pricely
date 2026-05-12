@@ -18,6 +18,7 @@ const fetchAdminMetrics = vi.fn();
 const fetchAdminQueueHealth = vi.fn();
 const fetchAdminProcessingJobs = vi.fn();
 const fetchAdminReceiptProcessing = vi.fn();
+const releaseAdminReceiptProcessing = vi.fn();
 const fetchAdminRegions = vi.fn();
 const fetchAdminEstablishments = vi.fn();
 const fetchAdminOffers = vi.fn();
@@ -48,6 +49,8 @@ vi.mock('@/app/api', () => ({
   fetchAdminProcessingJobDetail: vi.fn(),
   fetchAdminReceiptProcessing: (...args: unknown[]) =>
     fetchAdminReceiptProcessing(...args),
+  releaseAdminReceiptProcessing: (...args: unknown[]) =>
+    releaseAdminReceiptProcessing(...args),
   fetchAdminRegions: (...args: unknown[]) => fetchAdminRegions(...args),
   fetchAdminEstablishments: (...args: unknown[]) =>
     fetchAdminEstablishments(...args),
@@ -77,6 +80,7 @@ describe('Admin dashboard pages', () => {
     fetchAdminQueueHealth.mockReset();
     fetchAdminProcessingJobs.mockReset();
     fetchAdminReceiptProcessing.mockReset();
+    releaseAdminReceiptProcessing.mockReset();
     fetchAdminRegions.mockReset();
     fetchAdminEstablishments.mockReset();
     fetchAdminOffers.mockReset();

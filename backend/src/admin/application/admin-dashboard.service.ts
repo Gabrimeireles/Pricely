@@ -5,6 +5,7 @@ import { CatalogMediaService } from '../../catalog/application/catalog-media.ser
 import { EstablishmentsService } from '../../establishments/application/establishments.service';
 import { PrismaService } from '../../persistence/prisma.service';
 import { OfferManagementService } from '../../pricing/application/offer-management.service';
+import { ReceiptIngestionService } from '../../receipts/application/receipt-ingestion.service';
 import { RegionsAdminService } from '../../regions/application/regions-admin.service';
 import { EntitlementsService } from '../../users/entitlements.service';
 
@@ -20,6 +21,7 @@ export class AdminDashboardService {
     private readonly catalogMediaService: CatalogMediaService,
     private readonly offerManagementService: OfferManagementService,
     private readonly entitlementsService: EntitlementsService,
+    private readonly receiptIngestionService: ReceiptIngestionService,
   ) {}
 
   async getMetrics() {
@@ -416,6 +418,17 @@ export class AdminDashboardService {
     );
 
     return projectedReceipts;
+  }
+
+  async releaseReceiptForProcessing(receiptRecordId: string) {
+    const receipt =
+      await this.receiptIngestionService.releaseForProcessing(receiptRecordId);
+
+    this.logger.log(
+      `Receipt ${receiptRecordId} released for manual processing queue`,
+    );
+
+    return receipt;
   }
 
   private receiptRewardProjection(status: string) {
