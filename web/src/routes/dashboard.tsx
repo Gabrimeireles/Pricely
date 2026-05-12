@@ -11,10 +11,12 @@ import {
   AdminRegionsPage,
   AdminUsersPage,
 } from '@/dashboard/dashboard-pages';
+import { RouteErrorPage } from './route-error';
 
 export const dashboardRoute = {
   path: '/dashboard',
   element: <AdminLayout />,
+  errorElement: <RouteErrorPage />,
   children: [
     {
       index: true,
@@ -63,6 +65,10 @@ export const dashboardRoute = {
     {
       path: 'catalogo',
       element: <AdminCatalogPage />,
+    },
+    {
+      path: '*',
+      element: <RouteErrorPage />,
     },
   ],
 };

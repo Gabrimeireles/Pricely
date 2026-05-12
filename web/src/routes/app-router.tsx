@@ -1,5 +1,7 @@
 import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 
+import { RouteErrorPage } from './route-error';
+
 const publicChildren: RouteObject[] = [
   {
     index: true,
@@ -77,6 +79,10 @@ const publicChildren: RouteObject[] = [
       const { OptimizationPage } = await import('@/public/public-pages');
       return { Component: OptimizationPage };
     },
+  },
+  {
+    path: '*',
+    element: <RouteErrorPage />,
   },
 ];
 
@@ -167,11 +173,16 @@ const dashboardChildren: RouteObject[] = [
       return { Component: AdminCatalogPage };
     },
   },
+  {
+    path: '*',
+    element: <RouteErrorPage />,
+  },
 ];
 
 export const appRouter = createBrowserRouter([
   {
     path: '/',
+    errorElement: <RouteErrorPage />,
     lazy: async () => {
       const { PublicLayout } = await import('@/public/public-shell');
       return { Component: PublicLayout };
@@ -180,10 +191,15 @@ export const appRouter = createBrowserRouter([
   },
   {
     path: '/dashboard',
+    errorElement: <RouteErrorPage />,
     lazy: async () => {
       const { AdminLayout } = await import('@/dashboard/admin-shell');
       return { Component: AdminLayout };
     },
     children: dashboardChildren,
+  },
+  {
+    path: '*',
+    element: <RouteErrorPage />,
   },
 ]);
