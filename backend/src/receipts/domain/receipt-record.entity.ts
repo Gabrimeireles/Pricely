@@ -34,7 +34,13 @@ export interface ReceiptRecordEntity {
   reviewReason?: string;
   rawSourceReference?: string;
   processingJobId?: string;
-  processingStatus?: 'queued' | 'running' | 'completed' | 'failed' | 'retrying';
+  processingStatus?:
+    | 'waiting_manual_release'
+    | 'queued'
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'retrying';
   processingLogs: string[];
   lineItems: ReceiptLineItemEntity[];
   createdAt: string;

@@ -369,6 +369,11 @@ export class AdminDashboardController {
     return this.adminDashboardService.listReceiptProcessingReviews();
   }
 
+  @Post('receipt-processing/:id/release')
+  async releaseReceiptForProcessing(@Param('id') id: string) {
+    return this.adminDashboardService.releaseReceiptForProcessing(id);
+  }
+
   @Get('queue-health')
   async queueHealth() {
     return this.adminDashboardService.getQueueHealth();

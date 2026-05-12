@@ -53,7 +53,13 @@ export interface ReceiptRecord {
   rewardMessage?: string;
   reviewReason?: string;
   jobId?: string;
-  processingStatus?: 'queued' | 'running' | 'completed' | 'failed' | 'retrying';
+  processingStatus?:
+    | 'waiting_manual_release'
+    | 'queued'
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'retrying';
   dataNotice: string;
 }
 

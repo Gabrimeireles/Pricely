@@ -545,6 +545,16 @@ Premium access and extra optimization credits are support/admin operations for n
 - [X] T209 Add a dedicated admin receipt-processing queue/detail surface for receipt content, line-item quality, moderation status, and reward readiness in `backend/src/admin/` and `web/src/dashboard/`
 - [X] T210 Add public city-request/contact flow while keeping city creation admin-only in `backend/src/regions/`, `backend/src/admin/`, and `web/src/public/`
 
+### Phase 27: Receipt Submission, Manual Processing Release, and Brand Assets
+
+- [X] T211 Add public web receipt-submission flow for QR/NFC-e URL and manual MVP item entry, returning `waiting_manual_release`, reward-pending feedback, and authenticated state handling in `web/src/public/`, `web/src/app/`, and `backend/src/receipts/`
+- [X] T212 Change receipt ingestion to manual processing by default, keeping an `RECEIPT_PROCESSING_MODE=automatic` escape hatch for future automatic queueing in `backend/src/receipts/` and `backend/src/jobs/`
+- [X] T213 Add admin release action so received receipts can be manually sent to the receipt-processing queue, with pending/released states in `backend/src/admin/` and `web/src/dashboard/`
+- [ ] T214 Expand admin receipt detail with extracted payload, product matcher result, missing-product maker actions, and price up/down comparison against current offers in `backend/src/admin/` and `web/src/dashboard/`
+- [ ] T215 Add mobile QR-code receipt submission flow that posts the scanned NFC-e URL to backend and shows submitted -> waiting release -> processing -> reward validated states in `mobile/lib/features/receipts/`
+- [X] T216 Adopt `web/src/assets/pricely-icon.png` as the official brand icon in web shell/header and plan reuse for favicon/mobile app assets.
+- [ ] T217 Continue location web/mobile UX refactors with explicit location/radius preview, manual fallback, denied-permission states, and no-proximity claims until distance-aware optimization is fully active.
+
 ---
 
 ## Dependencies & Execution Order

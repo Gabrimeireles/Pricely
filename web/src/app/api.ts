@@ -434,6 +434,37 @@ type AdminReceiptProcessingResponse = {
   };
 };
 
+type ReceiptSubmissionResponse = {
+  id: string;
+  storeName?: string;
+  storeCnpj?: string;
+  parseStatus: 'queued' | 'parsed' | 'partial' | 'failed';
+  trustLevel?: 'untrusted' | 'pending_review' | 'trusted' | 'rejected';
+  moderationStatus?:
+    | 'pending'
+    | 'accepted'
+    | 'quarantined'
+    | 'duplicate'
+    | 'rejected';
+  rewardEligibilityStatus?:
+    | 'disabled'
+    | 'ineligible'
+    | 'eligible_pending'
+    | 'granted';
+  rewardPoints?: number;
+  rewardOptimizationTokens?: number;
+  rewardMessage?: string;
+  reviewReason?: string;
+  jobId?: string;
+  processingStatus?:
+    | 'waiting_manual_release'
+    | 'queued'
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'retrying';
+};
+
 type AdminQueueHealthResponse = {
   queuedJobs: number;
   runningJobs: number;
@@ -737,6 +768,38 @@ export async function requestCityInclusion(input: {
   });
 }
 
+export async function submitReceipt(
+  token: string,
+  input: {
+    storeName?: string;
+    storeCnpj?: string;
+    purchaseDate?: string;
+    qrCodeUrl?: string;
+    accessKey?: string;
+    items?: Array<{
+      rawProductName: string;
+      ean?: string;
+      quantity?: number;
+      unitPrice: number;
+      originalUnitPrice?: number;
+      promotionalUnitPrice?: number;
+      packageSize?: string;
+    }>;
+  },
+) {
+  return apiFetch<ReceiptSubmissionResponse>(
+    '/receipts',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        ...input,
+        sourceType: input.qrCodeUrl ? 'qr_code_url' : 'manual_entry',
+      }),
+    },
+    token,
+  );
+}
+
 export async function fetchRegionOffers(regionSlug: string) {
   return apiFetch<RegionOffersApiResponse>(`/regions/${regionSlug}/offers`);
 }
@@ -986,6 +1049,17 @@ export async function fetchAdminReceiptProcessing(token: string) {
   return apiFetch<AdminReceiptProcessingResponse[]>(
     '/admin/receipt-processing',
     {},
+    token,
+  );
+}
+
+export async function releaseAdminReceiptProcessing(token: string, id: string) {
+  return apiFetch<ReceiptSubmissionResponse>(
+    `/admin/receipt-processing/${id}/release`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
     token,
   );
 }
@@ -1324,6 +1398,7 @@ export type {
   PublicRegionApiResponse,
   PublicImpactResponse,
   ProductVariantResponse,
+  ReceiptSubmissionResponse,
   RegionOffersApiResponse,
   CatalogProductSearchResponse,
   UserLocationPreferenceResponse,

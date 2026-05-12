@@ -4,20 +4,32 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CitiesPage, OfferDetailPage, OffersPage } from './public-pages';
+import {
+  CitiesPage,
+  OfferDetailPage,
+  OffersPage,
+  ReceiptSubmissionPage,
+} from './public-pages';
 
 const fetchRegionOffers = vi.fn();
 const fetchOfferDetail = vi.fn();
 const requestCityInclusion = vi.fn();
+const submitReceipt = vi.fn();
 
 const setCityId = vi.fn();
 
 vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
+    accessToken: 'token',
     cityId: 'campinas-sp',
     setCityId,
-    currentUser: null,
-    isAuthenticated: false,
+    currentUser: {
+      id: 'user-1',
+      email: 'cliente@pricely.local',
+      displayName: 'Cliente',
+      role: 'customer',
+    },
+    isAuthenticated: true,
     isBootstrapping: false,
     cities: [
       {
@@ -54,6 +66,7 @@ vi.mock('@/app/api', async () => {
     fetchOfferDetail: (...args: unknown[]) => fetchOfferDetail(...args),
     requestCityInclusion: (...args: unknown[]) =>
       requestCityInclusion(...args),
+    submitReceipt: (...args: unknown[]) => submitReceipt(...args),
   };
 });
 
@@ -62,6 +75,7 @@ describe('public pages', () => {
     fetchRegionOffers.mockReset();
     fetchOfferDetail.mockReset();
     requestCityInclusion.mockReset();
+    submitReceipt.mockReset();
     setCityId.mockReset();
   });
 
@@ -128,6 +142,54 @@ describe('public pages', () => {
       }),
     );
     expect(screen.getByText('Pedido registrado')).toBeTruthy();
+  });
+
+  it('submits a receipt and shows manual-release status', async () => {
+    submitReceipt.mockResolvedValue({
+      id: 'receipt-1',
+      processingStatus: 'waiting_manual_release',
+      rewardEligibilityStatus: 'eligible_pending',
+      rewardMessage:
+        'Nota recebida: reward em processamento ate a liberacao e validacao.',
+    });
+
+    render(
+      <MemoryRouter>
+        <ReceiptSubmissionPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Estabelecimento'), {
+      target: { value: 'Mercado Centro' },
+    });
+    fireEvent.change(screen.getByLabelText('Produto'), {
+      target: { value: 'Arroz tipo 1 5kg' },
+    });
+    fireEvent.change(screen.getByLabelText('Preço'), {
+      target: { value: '21.9' },
+    });
+    fireEvent.click(screen.getByText('Enviar nota'));
+
+    await waitFor(() =>
+      expect(submitReceipt).toHaveBeenCalledWith('token', {
+        storeName: 'Mercado Centro',
+        storeCnpj: undefined,
+        purchaseDate: undefined,
+        qrCodeUrl: undefined,
+        items: [
+          {
+            rawProductName: 'Arroz tipo 1 5kg',
+            ean: undefined,
+            quantity: 1,
+            unitPrice: 21.9,
+          },
+        ],
+      }),
+    );
+    expect(screen.getByText('Nota recebida')).toBeTruthy();
+    expect(
+      screen.getAllByText(/aguardando liberação manual/).length,
+    ).toBeGreaterThan(0);
   });
 
   it('renders regional offers with empty-state friendly city context', async () => {

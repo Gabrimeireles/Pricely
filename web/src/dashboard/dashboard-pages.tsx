@@ -46,6 +46,7 @@ import {
   fetchAdminShoppingLists,
   fetchAdminUsers,
   grantAdminUserTokens,
+  releaseAdminReceiptProcessing,
   setAdminUserPremium,
   updateAdminOffer,
   updateAdminEstablishment,
@@ -2241,9 +2242,29 @@ export function AdminListsPage() {
 }
 
 export function AdminReceiptsPage() {
-  const { data: receipts, error } = useAdminData<
+  const { accessToken } = usePricely();
+  const {
+    data: receipts,
+    error,
+    reload,
+  } = useAdminData<
     AdminReceiptProcessingResponse[]
   >(fetchAdminReceiptProcessing, []);
+  const [releasingId, setReleasingId] = useState<string | null>(null);
+
+  const releaseReceipt = async (receiptId: string) => {
+    if (!accessToken) {
+      return;
+    }
+
+    setReleasingId(receiptId);
+    try {
+      await releaseAdminReceiptProcessing(accessToken, receiptId);
+      await reload();
+    } finally {
+      setReleasingId(null);
+    }
+  };
 
   const pendingReviewCount = receipts.filter((receipt) =>
     ['pending', 'quarantined'].includes(receipt.moderationStatus),
@@ -2348,7 +2369,16 @@ export function AdminReceiptsPage() {
                       <ExternalLinkIcon className="size-4" />
                     </a>
                   </Button>
-                ) : null}
+                ) : (
+                  <Button
+                    disabled={releasingId === receipt.id}
+                    onClick={() => void releaseReceipt(receipt.id)}
+                    size="sm"
+                    type="button"
+                  >
+                    Liberar processamento
+                  </Button>
+                )}
               </div>
 
               <div className="mt-4 grid gap-3 md:grid-cols-4">

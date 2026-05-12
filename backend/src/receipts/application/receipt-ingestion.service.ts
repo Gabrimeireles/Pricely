@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { type Queue } from 'bullmq';
 
 import {
@@ -12,7 +12,6 @@ import {
 import { toSlug } from '../../common/utils/slug.util';
 import { ProductMatchService } from '../../catalog/application/product-match.service';
 import { ProcessingJobsService } from '../../processing/application/processing-jobs.service';
-import { EntitlementsService } from '../../users/entitlements.service';
 import { type ReceiptRecordEntity } from '../domain/receipt-record.entity';
 import { ReceiptRecordRepository } from '../infrastructure/receipt-record.repository';
 import { QrCodeParserService } from './qr-code-parser.service';
@@ -32,7 +31,6 @@ export class ReceiptIngestionService {
     private readonly receiptContributionQualityService: ReceiptContributionQualityService,
     private readonly receiptRecordRepository: ReceiptRecordRepository,
     private readonly processingJobsService: ProcessingJobsService,
-    private readonly entitlementsService: EntitlementsService,
     @Inject(RECEIPT_PROCESSING_QUEUE)
     private readonly receiptProcessingQueue: Queue<ReceiptProcessingJob>,
   ) {}
@@ -120,7 +118,64 @@ export class ReceiptIngestionService {
     };
 
     await this.receiptRecordRepository.create(assessedRecord);
-    const reward = await this.grantReceiptRewardIfEligible(assessedRecord);
+    const processingJob = this.isAutomaticReceiptProcessingEnabled()
+      ? await this.enqueueReceiptProcessing(receiptRecordId)
+      : null;
+
+    this.logger.log(
+      `Receipt ${receiptRecordId} ingested with status ${assessedRecord.parseStatus} and processing mode ${processingJob ? 'automatic' : 'manual'}`,
+    );
+
+    return {
+      id: assessedRecord.id,
+      storeId: assessedRecord.storeId,
+      storeName: assessedRecord.storeName,
+      storeCnpj: assessedRecord.storeCnpj,
+      accessKey: assessedRecord.accessKey,
+      sefazUrl: assessedRecord.sefazUrl,
+      purchaseDate: assessedRecord.purchaseDate,
+      parseStatus: assessedRecord.parseStatus,
+      confidenceScore: assessedRecord.confidenceScore,
+      trustLevel: assessedRecord.trustLevel,
+      moderationStatus: assessedRecord.moderationStatus,
+      rewardEligibilityStatus: assessedRecord.rewardEligibilityStatus,
+      rewardPoints: assessedRecord.rewardEligibilityStatus === 'eligible_pending' ? 100 : 0,
+      rewardOptimizationTokens:
+        assessedRecord.rewardEligibilityStatus === 'eligible_pending' ? 1 : 0,
+      rewardMessage:
+        assessedRecord.rewardEligibilityStatus === 'eligible_pending'
+          ? 'Nota recebida: reward em processamento ate a liberacao e validacao.'
+          : 'Nota recebida para revisao.',
+      reviewReason: assessedRecord.reviewReason,
+      jobId: processingJob?.id,
+      processingStatus: processingJob ? 'queued' : 'waiting_manual_release',
+      dataNotice:
+        'Prices and receipt data are based on receipts provided by users.',
+    };
+  }
+
+  async releaseForProcessing(receiptRecordId: string): Promise<ReceiptRecord> {
+    const record = await this.receiptRecordRepository.findById(receiptRecordId);
+    if (!record) {
+      throw new NotFoundException(`Receipt ${receiptRecordId} was not found`);
+    }
+
+    if (record.processingJobId) {
+      return this.projectReceiptRecord(record);
+    }
+
+    const processingJob = await this.enqueueReceiptProcessing(receiptRecordId);
+    const releasedRecord =
+      await this.receiptRecordRepository.findById(receiptRecordId);
+
+    return {
+      ...this.projectReceiptRecord(releasedRecord ?? record),
+      jobId: processingJob.id,
+      processingStatus: 'queued',
+    };
+  }
+
+  private async enqueueReceiptProcessing(receiptRecordId: string) {
     const processingJob = await this.processingJobsService.createQueuedJob({
       queueName: 'receipt-processing',
       jobType: 'receipt_processing',
@@ -148,70 +203,40 @@ export class ReceiptIngestionService {
       },
     );
 
-    this.logger.log(
-      `Receipt ${receiptRecordId} ingested with status ${assessedRecord.parseStatus} and ${assessedRecord.lineItems.length} line items`,
-    );
+    return processingJob;
+  }
 
+  private projectReceiptRecord(record: ReceiptRecordEntity): ReceiptRecord {
     return {
-      id: assessedRecord.id,
-      storeId: assessedRecord.storeId,
-      storeName: assessedRecord.storeName,
-      storeCnpj: assessedRecord.storeCnpj,
-      accessKey: assessedRecord.accessKey,
-      sefazUrl: assessedRecord.sefazUrl,
-      purchaseDate: assessedRecord.purchaseDate,
-      parseStatus: assessedRecord.parseStatus,
-      confidenceScore: assessedRecord.confidenceScore,
-      trustLevel: assessedRecord.trustLevel,
-      moderationStatus: assessedRecord.moderationStatus,
-      rewardEligibilityStatus: reward.status,
-      rewardPoints: reward.points,
-      rewardOptimizationTokens: reward.optimizationTokens,
-      rewardMessage: reward.message,
-      reviewReason: reward.reviewReason ?? assessedRecord.reviewReason,
-      jobId: processingJob.id,
-      processingStatus: 'queued',
+      id: record.id,
+      storeId: record.storeId,
+      storeName: record.storeName,
+      storeCnpj: record.storeCnpj,
+      accessKey: record.accessKey,
+      sefazUrl: record.sefazUrl,
+      purchaseDate: record.purchaseDate,
+      parseStatus: record.parseStatus,
+      confidenceScore: record.confidenceScore,
+      trustLevel: record.trustLevel,
+      moderationStatus: record.moderationStatus,
+      rewardEligibilityStatus: record.rewardEligibilityStatus,
+      rewardPoints: record.rewardEligibilityStatus === 'eligible_pending' ? 100 : 0,
+      rewardOptimizationTokens:
+        record.rewardEligibilityStatus === 'eligible_pending' ? 1 : 0,
+      rewardMessage:
+        record.rewardEligibilityStatus === 'granted'
+          ? 'Nota validada: voce ganhou 100 pontos e 1 credito de otimizacao.'
+          : 'Nota recebida: reward em processamento ate a liberacao e validacao.',
+      reviewReason: record.reviewReason,
+      jobId: record.processingJobId,
+      processingStatus: record.processingStatus ?? 'waiting_manual_release',
       dataNotice:
         'Prices and receipt data are based on receipts provided by users.',
     };
   }
 
-  private async grantReceiptRewardIfEligible(record: ReceiptRecordEntity): Promise<{
-    status: NonNullable<ReceiptRecord['rewardEligibilityStatus']>;
-    points: number;
-    optimizationTokens: number;
-    message: string;
-    reviewReason?: string;
-  }> {
-    if (
-      record.trustLevel !== 'trusted' ||
-      record.moderationStatus !== 'accepted' ||
-      record.rewardEligibilityStatus !== 'eligible_pending'
-    ) {
-      return {
-        status: record.rewardEligibilityStatus ?? 'disabled',
-        points: 0,
-        optimizationTokens: 0,
-        message:
-          'A nota foi registrada, mas ainda nao atingiu qualidade suficiente para recompensa.',
-      };
-    }
-
-    await this.entitlementsService.grantReceiptBonusTokens({
-      userId: record.userId,
-      receiptRecordId: record.id,
-      amount: 1,
-    });
-    await this.receiptRecordRepository.markRewardGranted(record.id);
-
-    return {
-      status: 'granted',
-      points: 100,
-      optimizationTokens: 1,
-      message:
-        'Nota validada: voce ganhou 100 pontos e 1 credito de otimizacao.',
-      reviewReason: 'receipt_reward_granted',
-    };
+  private isAutomaticReceiptProcessingEnabled(): boolean {
+    return process.env.RECEIPT_PROCESSING_MODE === 'automatic';
   }
 
   private inferSourceType(
