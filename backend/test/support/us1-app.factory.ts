@@ -1185,6 +1185,9 @@ export async function createUs1TestApp(): Promise<{
     registerCustomer: (
       email?: string,
     ) => Promise<{ accessToken: string; user: Record<string, unknown> }>;
+    registerAdmin: (
+      email?: string,
+    ) => Promise<{ accessToken: string; user: Record<string, unknown> }>;
   };
 }> {
   process.env.JWT_ACCESS_SECRET = 'test-jwt-secret';
@@ -1306,6 +1309,34 @@ export async function createUs1TestApp(): Promise<{
         return {
           accessToken: response.body.accessToken as string,
           user: response.body.user as Record<string, unknown>,
+        };
+      },
+      registerAdmin: async (email = `admin-${Date.now()}@pricely.local`) => {
+        const response = await request(app.getHttpServer())
+          .post('/auth/register')
+          .send({
+            email,
+            password: 'strong-password',
+            displayName: 'Admin de teste',
+          })
+          .expect(201);
+
+        await userAccountMock.userAccount.update({
+          where: { id: response.body.user.id as string },
+          data: { role: 'admin' },
+        });
+
+        const login = await request(app.getHttpServer())
+          .post('/auth/login')
+          .send({
+            email,
+            password: 'strong-password',
+          })
+          .expect(200);
+
+        return {
+          accessToken: login.body.accessToken as string,
+          user: login.body.user as Record<string, unknown>,
         };
       },
     },
