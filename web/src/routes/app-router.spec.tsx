@@ -2,14 +2,52 @@
 
 import { cleanup, render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PricelyProvider } from '@/app/pricely-context';
 import { ThemeProvider } from '@/app/theme-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 import { dashboardRoute } from './dashboard';
 import { publicRoute } from './public';
+
+let pricelyState = {
+  accessToken: null as string | null,
+  currentUser: null as null | {
+    id: string;
+    email: string;
+    displayName: string;
+    role: 'customer' | 'admin';
+  },
+  isAuthenticated: false,
+};
+
+vi.mock('@/app/pricely-context', () => ({
+  usePricely: () => ({
+    ...pricelyState,
+    cities: [],
+    lists: [],
+    profile: {
+      totalEstimatedSavings: 0,
+      listsCreated: 0,
+      receiptsShared: 0,
+      invalidPromotionReports: 0,
+      entitlementPlan: 'free',
+      entitlementStatus: 'active',
+      availableOptimizationTokens: 0,
+      monthlyFreeOptimizationTokens: 2,
+      billingEnabled: false,
+      checkoutEnabled: false,
+    },
+  }),
+}));
+
+vi.mock('@/app/api', async () => {
+  const actual = await vi.importActual('@/app/api');
+  return {
+    ...actual,
+    fetchAdminReceiptProcessing: vi.fn().mockResolvedValue([]),
+  };
+});
 
 vi.mock('@/app/theme-context', async () => {
   const actual = await vi.importActual('@/app/theme-context');
@@ -44,13 +82,19 @@ function renderRoute(initialEntry: string) {
   return render(
     <TooltipProvider>
       <ThemeProvider>
-        <PricelyProvider>
-          <RouterProvider router={router} />
-        </PricelyProvider>
+        <RouterProvider router={router} />
       </ThemeProvider>
     </TooltipProvider>,
   );
 }
+
+beforeEach(() => {
+  pricelyState = {
+    accessToken: null,
+    currentUser: null,
+    isAuthenticated: false,
+  };
+});
 
 afterEach(() => {
   cleanup();
@@ -73,5 +117,40 @@ describe('application routes', () => {
         'O dashboard administrativo so pode ser acessado por contas admin no web.',
       ),
     ).toBeTruthy();
+  });
+
+  it('renders the admin receipts route registered in the dashboard navigation', async () => {
+    pricelyState = {
+      accessToken: 'token',
+      currentUser: {
+        id: 'admin-1',
+        email: 'admin@pricely.local',
+        displayName: 'Admin',
+        role: 'admin',
+      },
+      isAuthenticated: true,
+    };
+
+    renderRoute('/dashboard/notas');
+
+    expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
+  });
+
+  it('renders a custom route error instead of the React Router default page', () => {
+    pricelyState = {
+      accessToken: 'token',
+      currentUser: {
+        id: 'admin-1',
+        email: 'admin@pricely.local',
+        displayName: 'Admin',
+        role: 'admin',
+      },
+      isAuthenticated: true,
+    };
+
+    renderRoute('/dashboard/rota-inexistente');
+
+    expect(screen.getByText('Pagina nao encontrada')).toBeTruthy();
+    expect(screen.queryByText('Unexpected Application Error!')).toBeNull();
   });
 });
