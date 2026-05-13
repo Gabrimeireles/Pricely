@@ -27,7 +27,11 @@ class AppServices {
       authController: authController,
       backendGateway: backendGateway,
     );
-    receiptFlowController = ReceiptFlowController(workflowGateway);
+    receiptFlowController = ReceiptFlowController(
+      workflowGateway,
+      authController: authController,
+      backendGateway: backendGateway,
+    );
     optimizationController = OptimizationController(
       cacheService: localCacheService,
       shoppingListController: shoppingListController,

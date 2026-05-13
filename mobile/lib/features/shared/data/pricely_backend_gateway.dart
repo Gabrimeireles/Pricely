@@ -1,6 +1,7 @@
 import '../../../core/networking/api_environment.dart';
 import '../../../core/networking/http_api_client.dart';
 import '../../optimization/domain/optimization_result.dart';
+import '../../receipts/domain/receipt_submission.dart';
 import '../../shopping_lists/domain/shopping_list_draft.dart';
 
 class PricelyBackendGateway {
@@ -58,6 +59,39 @@ class PricelyBackendGateway {
     return AuthUser.fromJson(response);
   }
 
+  List<Map<String, dynamic>> _parseManualReceiptItems(String? rawReceipt) {
+    if (rawReceipt == null || rawReceipt.trim().isEmpty) {
+      return <Map<String, dynamic>>[];
+    }
+
+    return rawReceipt
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .map((line) {
+          final parts = line.split(RegExp(r'\s+'));
+          final unitPrice = parts.isEmpty
+              ? null
+              : double.tryParse(parts.last.replaceAll(',', '.'));
+          if (unitPrice == null || parts.length < 2) {
+            return null;
+          }
+
+          final rawProductName = parts.sublist(0, parts.length - 1).join(' ');
+          if (rawProductName.trim().isEmpty) {
+            return null;
+          }
+
+          return <String, dynamic>{
+            'rawProductName': rawProductName,
+            'quantity': 1,
+            'unitPrice': unitPrice,
+          };
+        })
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
   Future<List<PublicRegionSummary>> fetchPublicRegions() async {
     final response = await _apiClient.get<List<dynamic>>('/regions');
     return response
@@ -103,6 +137,34 @@ class PricelyBackendGateway {
     final response =
         await _apiClient.get<Map<String, dynamic>>('/offers/$offerId');
     return PublicOfferDetail.fromJson(response);
+  }
+
+  Future<ReceiptSubmissionSummary> submitReceipt({
+    required String accessToken,
+    String? storeName,
+    String? qrCodeUrl,
+    String? rawReceipt,
+  }) async {
+    final items = _parseManualReceiptItems(rawReceipt);
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/receipts',
+      accessToken: accessToken,
+      body: <String, dynamic>{
+        if (storeName != null && storeName.trim().isNotEmpty)
+          'storeName': storeName.trim(),
+        if (qrCodeUrl != null && qrCodeUrl.trim().isNotEmpty)
+          'qrCodeUrl': qrCodeUrl.trim(),
+        'sourceType': qrCodeUrl != null && qrCodeUrl.trim().isNotEmpty
+            ? 'qr_code_url'
+            : 'manual_entry',
+        if (items.isNotEmpty) 'items': items,
+      },
+    );
+
+    return ReceiptSubmissionSummary.fromJson(
+      response,
+      fallbackQrCodeUrl: qrCodeUrl,
+    );
   }
 
   Future<List<ShoppingListDraft>> fetchShoppingLists(String accessToken) async {
