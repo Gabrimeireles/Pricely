@@ -430,16 +430,14 @@ Use these notes until mobile golden tests are wired into CI:
 
 ## Open Scope Decisions
 
-- Decide whether Phase 24 should include the first implementation of location widgets
-  or only design-ready disabled states before Phase 23 lands.
-- Decide whether receipt contribution should be reachable from the main public web nav
-  before the reward flow is connected.
-- Decide whether admin review for receipt-derived offers should be its own top-level
-  route or live under queue/list operations.
-- Decide whether "Trust factor" remains the UI label or becomes "Confianca da oferta"
-  for shopper-facing copy.
-- Decide whether optimization should update shopping-list items directly or persist a
-  separate optimized-checklist projection that leaves the original requested list
-  untouched.
-- Decide whether item comparison should primarily use next-best eligible alternative,
-  city median, or regional average.
+- Phase 24 may include location widgets only as city/location/radius preview states.
+  Proximity claims stay disabled until Phase 23 backend distance filtering is active.
+- Receipt contribution is reachable from public web navigation and from completed
+  checklist handoff, with reward language gated by processing quality.
+- Admin receipt review uses its own top-level dashboard route while queue/list
+  operations retain linked diagnostics.
+- Shopper-facing copy uses "Confianca da oferta" instead of raw "Trust factor".
+- Optimization may update the working optimized checklist with selected variants, but
+  the original "any variant" intent remains available for future re-optimization.
+- Item comparison primarily uses the next-best eligible alternative; city/regional
+  average remains secondary informational context.

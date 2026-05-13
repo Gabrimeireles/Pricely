@@ -132,42 +132,30 @@ export function PublicLayout() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 py-8 lg:px-6 lg:py-10">
-        <div className="grid gap-3 rounded-xl border border-border/70 bg-card/90 p-4 shadow-sm lg:grid-cols-3">
-          <div className="rounded-lg border border-border/70 bg-background/70 p-4">
-            <div className="flex items-start gap-3">
-              <SparklesIcon className="mt-0.5 shrink-0 text-primary" />
-              <div className="flex min-w-0 flex-col gap-1">
-                <span className="text-sm font-medium">Sua compra continua de onde você parou</span>
-                <span className="text-sm leading-6 text-muted-foreground">
-                  A cidade escolhida, as listas salvas e o checklist acompanham a mesma conta em todas as plataformas.
-                </span>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 lg:px-6 lg:py-8">
+        <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card/90 px-4 py-3 text-sm shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <SparklesIcon className="size-4 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <div className="truncate font-medium">Contexto da compra</div>
+              <div className="truncate text-muted-foreground">
+                Listas, checklist e cidade ficam sincronizados na sua conta.
               </div>
             </div>
           </div>
-          <div className="rounded-lg border border-border/70 bg-background/70 p-4">
-            <div className="flex items-start gap-3">
-              <MapPinIcon className="mt-0.5 shrink-0 text-primary" />
-              <div className="flex min-w-0 flex-col gap-1">
-                <span className="text-sm font-medium">Cidade ativa</span>
-                <span className="text-sm leading-6 text-muted-foreground">{citySummary}</span>
-              </div>
-            </div>
-          </div>
-          <div className="rounded-lg border border-border/70 bg-background/70 p-4">
-            <div className="flex items-start gap-3">
-              <ShieldCheckIcon className="mt-0.5 shrink-0 text-primary" />
-              <div className="flex min-w-0 flex-col gap-1">
-                <span className="text-sm font-medium">Cobertura visível</span>
-                <span className="text-sm leading-6 text-muted-foreground">
-                  {activeCity?.coverageStatus === 'live'
-                    ? 'Ofertas com evidência disponível.'
-                    : activeCity
-                      ? 'Cidade ativa, ainda coletando dados de cobertura.'
-                      : 'Selecione uma cidade para ver o nível de cobertura.'}
-                </span>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-md border border-border/70 bg-background/80 px-2.5 py-1">
+              <MapPinIcon className="size-3.5" />
+              {citySummary}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-md border border-border/70 bg-background/80 px-2.5 py-1">
+              <ShieldCheckIcon className="size-3.5" />
+              {activeCity?.coverageStatus === 'live'
+                ? 'Ofertas com evidencia'
+                : activeCity
+                  ? 'Coletando cobertura'
+                  : 'Selecione uma cidade'}
+            </span>
           </div>
         </div>
 

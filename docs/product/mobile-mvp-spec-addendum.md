@@ -51,8 +51,12 @@ The app must be honest about data quality. If a price, promotion, product match,
 1. User opens Pricely.
 2. App explains the value: save on groceries with transparent local price evidence.
 3. User logs in or creates an account.
-4. User selects a supported city or grants location.
-5. App opens the dashboard with local offers and a CTA to create a list.
+4. User selects a supported city manually or grants optional location access.
+5. If location is denied or unavailable, manual city selection remains available.
+6. If the city is unsupported or still activating, the app shows a contribution or
+   city-request state instead of empty offer cards.
+7. App opens the dashboard with local offers when available and a CTA to create a
+   list.
 
 ### 2. Create and Optimize a List
 
@@ -64,10 +68,15 @@ The app must be honest about data quality. If a price, promotion, product match,
 
 ### 3. Contribute a Receipt
 
-1. User uploads a receipt image/PDF or enters receipt data manually.
-2. App shows status: uploaded, queued, reading, sanitizing, ready for review, or failed.
+1. User scans an NFC-e QR code, uploads a receipt image/PDF, or enters receipt data
+   manually.
+2. App submits the receipt to the backend and shows status: submitted, waiting manual
+   release, processing, ready for review, partial, failed, duplicate, rejected, or
+   reward validated.
 3. App asks for correction when product matches are uncertain.
-4. Accepted data improves store offers and product normalization.
+4. Accepted data may improve store offers and product normalization only after quality
+   scoring.
+5. Receipt rewards stay pending until processing confirms useful, non-duplicated data.
 
 ### 4. Report Invalid Offer
 
@@ -94,6 +103,11 @@ Use stack navigation inside each tab. Preserve tab state when switching tabs. Pl
 - Low-confidence matches require review before they influence optimization as confirmed data.
 - Stale data must be labeled with freshness age or a clear warning.
 - User reports must affect offer trust and be visible to admin/review workflows.
+- Shopper-facing trust copy must explain source, validation age, receipt evidence, and
+  decay. Do not display "0 notas fiscais confiaveis"; use copy such as "sem
+  validacoes por nota fiscal ainda" with source context.
+- LLM-assisted matching can suggest candidates, but confirmed state requires evidence,
+  confidence, and review gates.
 
 ## Supported Cities
 
@@ -105,6 +119,33 @@ The product must explicitly model supported cities. A user may:
 - contribute receipts even if offer coverage is limited.
 
 Location permission is optional. Manual city selection must always be available.
+Active cities may show offers and supported establishments. Activating cities must
+show "em ativacao" messaging and must not imply offer availability. Inactive cities
+must not appear in the normal shopper selector.
+
+When location-aware optimization is active, the default radius is 5 km. Until then,
+mobile copy must avoid proximity claims and describe local results as city/local
+context.
+
+## Account, Profile, and Offline Behavior
+
+- The same account owns web and mobile lists, active city, optimization history,
+  premium state, tokens, receipts, and rewards.
+- Admin accounts on mobile behave as shoppers and do not expose admin surfaces.
+- Profile must show total savings, lists created, optimized lists, receipts
+  contributed, city/location settings, premium state, and token balance.
+- Draft lists should remain locally recoverable during poor network conditions.
+- Receipt upload, offer report, and optimization actions must show retryable states
+  when the network fails.
+
+## Mobile Accessibility and Performance
+
+- Touch targets should be at least 44 px.
+- Statuses must not rely on color alone; include readable labels or icons.
+- Text must respect platform font scaling without hiding prices or primary actions.
+- List creation and optimization-result rendering should remain usable within the
+  2-minute success metric for a normal grocery list.
+- Receipt status updates should be pollable without blocking navigation.
 
 ## Product Sanitization Strategy
 
@@ -127,4 +168,3 @@ LLMs may assist with suggestions, but LLM output must be treated as proposed evi
 - Users can see their total saved amount from profile.
 - Users can report an invalid promotion from any offer card in 2 taps plus reason selection.
 - Unsupported city state is understandable and does not block account creation or receipt contribution.
-

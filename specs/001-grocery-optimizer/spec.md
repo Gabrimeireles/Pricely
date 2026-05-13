@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-grocery-optimizer`  
 **Created**: 2026-04-03  
-**Updated**: 2026-05-04
+**Updated**: 2026-05-13
 **Status**: Draft  
 **Input**: Replanned backend and product scope for a grocery optimization platform with
 shared customer/admin accounts, regional catalog activation, store-level pricing,
@@ -165,6 +165,10 @@ job-aware APIs without client-side optimization logic.
   dashboards can track pending, running, failed, and completed work.
 - **FR-008**: The system MUST support three optimization modes aligned with the product
   language: `local`, `global_unique`, and `global_full`.
+- **FR-008a**: `local` MUST remain city/local-context based until location-aware
+  radius filtering is fully implemented; `global_unique` MUST optimize toward one
+  eligible establishment for the list when possible; `global_full` MUST optimize each
+  item independently across eligible establishments.
 - **FR-009**: The system MUST maintain a canonical product catalog representing common
   grocery products independently of any one establishment.
 - **FR-010**: The catalog MUST distinguish between a generic comparable product and one
@@ -179,6 +183,9 @@ job-aware APIs without client-side optimization logic.
   admin management.
 - **FR-013**: Each region MUST include an `implantationStatus` with at least `active`,
   `activating`, and `inactive`.
+- **FR-013a**: `active` regions MAY show establishments, offers, and optimization
+  surfaces; `activating` regions MUST show activation placeholders and MUST NOT imply
+  offer availability; `inactive` regions MUST be hidden from normal shopper selectors.
 - **FR-014**: Public region selection endpoints MUST exclude regions whose
   `implantationStatus` is `inactive`.
 - **FR-015**: Public region selection endpoints MUST return the number of active
@@ -186,6 +193,8 @@ job-aware APIs without client-side optimization logic.
 - **FR-016**: The system MUST allow a visible region to have zero active
   establishments and MUST expose that count explicitly so the client can instruct the
   user to change regions.
+- **FR-016a**: Visible zero-store regions MUST be presented as activation or coverage
+  collection states, not as failed empty screens.
 - **FR-017**: Establishments MUST include `isActive` state so inactive units are not
   treated as valid current shopping options.
 - **FR-018**: The system MUST expose public regional offers filtered to active
@@ -197,6 +206,9 @@ job-aware APIs without client-side optimization logic.
   unverified store-product relationships.
 - **FR-021**: The system MUST surface data freshness and confidence on offers and
   optimization selections.
+- **FR-021a**: Shopper-facing confidence copy MUST explain source type, receipt
+  evidence count, last validation age, trust decay, and missing-evidence reasons using
+  the label `Confianca da oferta` or equivalent PT-BR copy.
 - **FR-022**: The system MUST allow admins to create, update, activate, deactivate, and
   inspect regions, establishments, products, and current product offers.
 - **FR-023**: The admin dashboard backend MUST return operational metrics including at
@@ -211,9 +223,15 @@ job-aware APIs without client-side optimization logic.
 - **FR-026**: The system MUST persist translated or parsed receipt data when receipt
   ingestion is used, but QR-code-based online receipt lookup is OUT OF SCOPE for the
   MVP.
+- **FR-026a**: Receipt submissions MUST enter manual-release processing by default;
+  automatic receipt queueing MAY exist behind configuration but MUST remain disabled
+  for MVP operations unless explicitly enabled.
 - **FR-027**: The optimization result MUST include the chosen mode, total estimated
   cost, savings or trade-off information where available, item-level selections, and
   clear incomplete-data notices.
+- **FR-027a**: Item-level savings MUST compare the selected offer against the second
+  cheapest eligible alternative when such an alternative exists; city or regional
+  average may be shown separately as informational context.
 - **FR-028**: The frontend contract for region selection MUST support showing labels
   such as `São Paulo - 20` and warning states such as `Nenhum estabelecimento ativo`
   when the selected visible region has zero active stores.
@@ -254,6 +272,8 @@ job-aware APIs without client-side optimization logic.
   images, stronger separation between items, and clearer purchased/unpurchased states.
 - **FR-037**: The app MAY request location permission to preselect the shopper city,
   but the chosen city MUST remain explicit and editable.
+- **FR-037a**: Establishments and user preferences MUST support geolocation with CEP
+  fallback, using a 5 km default radius once location-aware optimization is active.
 - **FR-038**: The create-list flow MUST default to the user-selected city and MUST NOT
   require choosing an optimization mode during initial list creation.
 - **FR-039**: Admin list operations MUST include queue state, list ownership, and
@@ -269,6 +289,9 @@ job-aware APIs without client-side optimization logic.
   result.
 - **FR-043**: Premium users MUST be able to run optimizations without consuming free
   tokens, subject to explicit fair-use and abuse controls.
+- **FR-043a**: Billing checkout remains disabled until the billing phase is resumed;
+  premium access and extra optimization tokens MAY be granted by explicit admin action
+  during the MVP.
 - **FR-044**: Billing integration MUST synchronize subscription and payment states into
   the entitlement model through idempotent payment event processing.
 - **FR-045**: User-facing monetization UI MUST show token balance, premium status,
@@ -278,6 +301,9 @@ job-aware APIs without client-side optimization logic.
   warnings when such data affects the result.
 - **FR-047**: Receipt-derived offer updates MUST pass contribution-quality checks before
   changing current offers or granting optimization-token rewards.
+- **FR-047a**: Receipt rewards MUST remain pending until the receipt is processed,
+  useful, non-duplicated, and quality-scored; rejected, duplicate, fraudulent, or
+  low-quality submissions MUST NOT grant rewards.
 - **FR-048**: Admins MUST be able to inspect receipt-derived offer candidates,
   suspicious submissions, billing/entitlement state, and token adjustments from support
   surfaces.
@@ -286,6 +312,13 @@ job-aware APIs without client-side optimization logic.
 - **FR-050**: Security validation MUST cover authentication, role boundaries, payment
   webhooks, SQL injection, HTML injection, token double-spend, and admin privilege
   escalation.
+- **FR-051**: Admin user-management operations MUST support support-safe inspection of
+  user lists, locations, optimizations, premium status, receipt activity, and explicit
+  admin token grants.
+- **FR-052**: Admin mutations MUST be auditable with actor id, target id, action, and
+  timestamp.
+- **FR-053**: Users MUST NOT be able to self-promote, edit entitlement source fields,
+  or bypass token-ledger derived access rules.
 
 ### Non-Functional Requirements
 
@@ -320,7 +353,7 @@ job-aware APIs without client-side optimization logic.
 - **Region**: Publicly selectable geographic area with implantation status and active
   establishment count.
 - **Establishment**: Specific supermarket unit or branch with brand identity, unit
-  identity, CNPJ, region, and active state.
+  identity, CNPJ, region, address/CEP, geolocation fields, and active state.
 - **Catalog Product**: Generic comparable grocery item chosen first by shoppers and
   used as the optimization comparison anchor.
 - **Product Variant**: Specific branded or packaging-level product variant that can be
@@ -400,6 +433,12 @@ job-aware APIs without client-side optimization logic.
   deferred beyond the MVP.
 - Manual admin CRUD for catalog, stores, and current offers is sufficient to support an
   MVP dataset even before automated receipt ingestion becomes central.
+- MVP receipt submission starts with manual admin release to processing. Automatic
+  processing is a tested future mode, not the operational default.
+- Billing checkout is intentionally disabled while admin-managed premium and token
+  grants support MVP validation.
+- See `docs/product/mvp-validation-decisions.md` for the confirmed May 2026 decisions
+  that unblock the checklist-driven UX refactor phase.
 
 ## Implementation Constraints *(mandatory)*
 

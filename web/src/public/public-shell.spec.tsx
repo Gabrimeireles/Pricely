@@ -144,6 +144,10 @@ describe('PublicLayout', () => {
       </MemoryRouter>,
     );
 
+    expect(screen.getByText('Contexto da compra')).toBeTruthy();
+    expect(
+      screen.queryByText('Sua compra continua de onde você parou'),
+    ).toBeNull();
     expect(screen.getAllByText(/0 estabelecimentos ativos/).length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Escolha sua cidade' }), {
