@@ -7,6 +7,9 @@ export interface OptimizeShoppingListRequest {
   mode: OptimizationModeRequest;
   preferredEstablishmentId?: string;
   regionId?: string;
+  locationPreferenceId?: string;
+  userLocationPreferenceId?: string;
+  coverageRadiusKm?: number;
 }
 
 export interface OptimizationSelection {
@@ -19,6 +22,7 @@ export interface OptimizationSelection {
   selectedPackageLabel?: string;
   establishmentName?: string;
   establishmentNeighborhood?: string;
+  distanceKm?: number;
   estimatedCost?: number;
   priceAmount?: number;
   comparisonPriceAmount?: number;
@@ -44,6 +48,9 @@ export interface OptimizationExplanationPayload {
     mode: OptimizationMode;
     singleStoreRequired: boolean;
     selectedStoreId?: string;
+    userLocationPreferenceId?: string;
+    coverageRadiusKm?: number;
+    candidateEstablishmentCount?: number;
     exactVariantItemIds: string[];
     unresolvedItemPolicy: 'flag_missing_or_review';
   };
@@ -52,6 +59,7 @@ export interface OptimizationExplanationPayload {
     productOfferId: string;
     storeId?: string;
     storeName?: string;
+    distanceKm?: number;
     priceAmount?: number;
     estimatedCost?: number;
     savingsVsComparison?: number;
@@ -68,6 +76,7 @@ export interface OptimizationExplanationPayload {
     productOfferId?: string;
     storeId?: string;
     storeName?: string;
+    distanceKm?: number;
     priceAmount?: number;
     reason: string;
   }>;

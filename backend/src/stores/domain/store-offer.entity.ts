@@ -11,6 +11,10 @@ export interface StoreOfferEntity {
   variantName?: string;
   storeId: string;
   storeName: string;
+  storeRegionId?: string;
+  storeLatitude?: number;
+  storeLongitude?: number;
+  distanceKm?: number;
   canonicalName: string;
   matchingCanonicalNames?: string[];
   displayName: string;

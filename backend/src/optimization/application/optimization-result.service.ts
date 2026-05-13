@@ -1,4 +1,11 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { type Queue } from 'bullmq';
 
 import {
@@ -66,6 +73,13 @@ export class OptimizationResultService {
     }
 
     const mode = this.normalizeMode(request.mode);
+    const locationSnapshot = await this.resolveLocationSnapshot(
+      userId,
+      regionId,
+      mode,
+      request.locationPreferenceId ?? request.userLocationPreferenceId,
+      request.coverageRadiusKm,
+    );
 
     const processingJob = await this.processingJobsService.createQueuedJob({
       queueName: 'optimization',
@@ -80,6 +94,10 @@ export class OptimizationResultService {
         userId,
         mode,
         regionId,
+        userLocationPreferenceId: locationSnapshot?.id,
+        coverageRadiusKm: locationSnapshot?.coverageRadiusKm,
+        candidateEstablishmentCount:
+          locationSnapshot?.candidateEstablishmentCount,
         preferredEstablishmentId: request.preferredEstablishmentId ?? null,
         jobId: processingJob.id,
       });
@@ -122,12 +140,155 @@ export class OptimizationResultService {
 
   private normalizeMode(mode: OptimizeShoppingListRequest['mode']): OptimizationMode {
     const aliases: Record<string, OptimizationMode> = {
-      local_unique: 'local',
-      local_multi: 'global_unique',
-      global_multi: 'global_full',
+      local: 'local_unique',
+      global_full: 'global_multi',
     };
 
     return aliases[mode] ?? (mode as OptimizationMode);
+  }
+
+  private async resolveLocationSnapshot(
+    userId: string,
+    regionId: string,
+    mode: OptimizationMode,
+    locationPreferenceId?: string,
+    requestedRadiusKm?: number,
+  ): Promise<
+    | {
+        id: string;
+        coverageRadiusKm: Prisma.Decimal;
+        candidateEstablishmentCount: number;
+      }
+    | undefined
+  > {
+    if (mode !== 'local_unique' && mode !== 'local_multi') {
+      return undefined;
+    }
+
+    const preference = locationPreferenceId
+      ? await this.prisma.userLocationPreference.findFirst({
+          where: {
+            id: locationPreferenceId,
+            userId,
+            regionId,
+          },
+        })
+      : await this.prisma.userLocationPreference.findFirst({
+          where: {
+            userId,
+            regionId,
+            isDefault: true,
+          },
+          orderBy: {
+            updatedAt: 'desc',
+          },
+        });
+
+    if (!preference) {
+      throw new BadRequestException(
+        'Configure a location preference before using local optimization modes',
+      );
+    }
+
+    if (preference.latitude === null || preference.longitude === null) {
+      throw new BadRequestException(
+        'Local optimization requires a saved location with latitude and longitude',
+      );
+    }
+
+    const coverageRadiusKm = requestedRadiusKm
+      ? new Prisma.Decimal(requestedRadiusKm)
+      : preference.coverageRadiusKm;
+    if (
+      Number(coverageRadiusKm) < 1 ||
+      Number(coverageRadiusKm) > 25 ||
+      !Number.isFinite(Number(coverageRadiusKm))
+    ) {
+      throw new BadRequestException(
+        'Coverage radius must be between 1 and 25 km',
+      );
+    }
+    const candidateEstablishmentCount =
+      await this.countCandidateEstablishments({
+        regionId,
+        latitude: Number(preference.latitude),
+        longitude: Number(preference.longitude),
+        coverageRadiusKm: Number(coverageRadiusKm),
+      });
+
+    if (candidateEstablishmentCount === 0) {
+      throw new BadRequestException(
+        'No active establishments with coordinates are available inside the selected coverage radius',
+      );
+    }
+
+    return {
+      id: preference.id,
+      coverageRadiusKm,
+      candidateEstablishmentCount,
+    };
+  }
+
+  private async countCandidateEstablishments(input: {
+    regionId: string;
+    latitude: number;
+    longitude: number;
+    coverageRadiusKm: number;
+  }): Promise<number> {
+    const establishments = await this.prisma.establishment.findMany({
+      where: {
+        regionId: input.regionId,
+        isActive: true,
+        latitude: {
+          not: null,
+        },
+        longitude: {
+          not: null,
+        },
+      },
+      select: {
+        latitude: true,
+        longitude: true,
+      },
+    });
+
+    return establishments.filter((store) => {
+      const distanceKm = this.distanceInKm(
+        input.latitude,
+        input.longitude,
+        Number(store.latitude),
+        Number(store.longitude),
+      );
+
+      return distanceKm <= input.coverageRadiusKm;
+    }).length;
+  }
+
+  private distanceInKm(
+    originLatitude: number,
+    originLongitude: number,
+    destinationLatitude: number,
+    destinationLongitude: number,
+  ) {
+    const earthRadiusKm = 6371;
+    const latDelta = this.toRadians(destinationLatitude - originLatitude);
+    const lonDelta = this.toRadians(destinationLongitude - originLongitude);
+    const originLat = this.toRadians(originLatitude);
+    const destinationLat = this.toRadians(destinationLatitude);
+    const haversine =
+      Math.sin(latDelta / 2) * Math.sin(latDelta / 2) +
+      Math.cos(originLat) *
+        Math.cos(destinationLat) *
+        Math.sin(lonDelta / 2) *
+        Math.sin(lonDelta / 2);
+
+    return (
+      earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+    );
+  }
+
+  private toRadians(value: number) {
+    return (value * Math.PI) / 180;
   }
 
   async getLatest(
@@ -195,6 +356,10 @@ export class OptimizationResultService {
           establishmentName: selection.productOffer?.establishment.unitName,
           establishmentNeighborhood:
             selection.productOffer?.establishment.neighborhood,
+          distanceKm:
+            selection.distanceKm !== null
+              ? Number(selection.distanceKm)
+              : undefined,
           estimatedCost:
             selection.estimatedCost !== null
               ? Number(selection.estimatedCost)
