@@ -55,7 +55,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserAccount'
-  /location-preferences:
+  /locations:
     get:
       summary: List user-configured locations and coverage radius settings
       responses:
@@ -82,7 +82,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserLocationPreference'
-  /location-preferences/coverage-preview:
+  /locations/coverage-preview:
     post:
       summary: Preview active establishment coverage for a candidate location/radius
       requestBody:
@@ -675,42 +675,65 @@ components:
           type: string
         neighborhood:
           type: string
+        addressLine:
+          type: string
+        postalCode:
+          type: string
         latitude:
           type: number
         longitude:
           type: number
         locationSource:
           type: string
-          enum: [admin, geocoded_address, manual]
+          enum: [admin, geocoded_address, manual, seed]
         regionId:
           type: string
         isActive:
           type: boolean
     UserLocationPreference:
       type: object
-      required: [id, userId, regionId, label, latitude, longitude, coverageRadiusKm, activeEstablishmentCount, isDefault]
+      required: [id, regionId, regionSlug, regionName, label, coverageRadiusKm, activeEstablishmentCount, isDefault, locationSource, createdAt, updatedAt]
       properties:
         id:
           type: string
-        userId:
-          type: string
         regionId:
+          type: string
+        regionSlug:
+          type: string
+        regionName:
           type: string
         label:
           type: string
         latitude:
           type: number
+          nullable: true
         longitude:
           type: number
+          nullable: true
+        postalCode:
+          type: string
+          nullable: true
         coverageRadiusKm:
           type: number
+          default: 5
+          minimum: 1
+          maximum: 25
         activeEstablishmentCount:
           type: integer
         isDefault:
           type: boolean
+        locationSource:
+          type: string
+          enum: [manual, browser_geolocation, postal_code_fallback]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
     UpsertLocationPreferenceRequest:
       type: object
-      required: [regionId, label, latitude, longitude, coverageRadiusKm]
+      required: [regionId, label]
       properties:
         regionId:
           type: string
@@ -720,13 +743,21 @@ components:
           type: number
         longitude:
           type: number
+        postalCode:
+          type: string
         coverageRadiusKm:
           type: number
+          default: 5
+          minimum: 1
+          maximum: 25
         isDefault:
           type: boolean
+        locationSource:
+          type: string
+          enum: [manual, browser_geolocation, postal_code_fallback]
     CoveragePreviewRequest:
       type: object
-      required: [regionId, latitude, longitude, coverageRadiusKm]
+      required: [regionId]
       properties:
         regionId:
           type: string
@@ -734,11 +765,16 @@ components:
           type: number
         longitude:
           type: number
+        postalCode:
+          type: string
         coverageRadiusKm:
           type: number
+          default: 5
+          minimum: 1
+          maximum: 25
     CoveragePreview:
       type: object
-      required: [regionId, coverageRadiusKm, activeEstablishmentCount]
+      required: [regionId, coverageRadiusKm, activeEstablishmentCount, fallbackUsed, establishments]
       properties:
         regionId:
           type: string
@@ -746,6 +782,31 @@ components:
           type: number
         activeEstablishmentCount:
           type: integer
+        fallbackUsed:
+          type: boolean
+        fallbackReason:
+          type: string
+          enum: [missing_coordinates, postal_code_only]
+        establishments:
+          type: array
+          items:
+            type: object
+            required: [id, brandName, unitName, neighborhood]
+            properties:
+              id:
+                type: string
+              brandName:
+                type: string
+              unitName:
+                type: string
+              neighborhood:
+                type: string
+              postalCode:
+                type: string
+                nullable: true
+              distanceKm:
+                type: number
+                nullable: true
     CatalogProduct:
       type: object
       required: [id, name, slug, category, isActive]
