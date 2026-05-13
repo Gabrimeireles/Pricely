@@ -51,6 +51,13 @@ void main() {
       find.textContaining('contribuir com recibos'),
       findsOneWidget,
     );
+    await tester.scrollUntilVisible(
+      find.text('Localização e raio'),
+      220,
+    );
+    expect(find.text('Localização e raio'), findsOneWidget);
+    expect(find.text('Raio local padrão: 5 km.'), findsOneWidget);
+    expect(find.textContaining('distância não altera a otimização'), findsOneWidget);
   });
 
   testWidgets('renders active city offers and opens the offer detail sheet', (tester) async {
@@ -61,6 +68,11 @@ void main() {
 
     expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
     expect(find.textContaining('2 lojas'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.textContaining('2 lojas candidatas na cidade'),
+      220,
+    );
+    expect(find.textContaining('2 lojas candidatas na cidade'), findsOneWidget);
     expect(app.discoveryController.offers, hasLength(1));
     expect(app.discoveryController.offers.single.productName, 'Cafe torrado');
     final detail =

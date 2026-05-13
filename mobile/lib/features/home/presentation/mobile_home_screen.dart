@@ -406,6 +406,8 @@ class _HomeTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+          _LocationPreviewCard(region: region),
+          const SizedBox(height: 20),
           Row(
             children: <Widget>[
               Expanded(
@@ -1401,6 +1403,56 @@ class _SignalChip extends StatelessWidget {
         label,
         style:
             Theme.of(context).textTheme.labelLarge?.copyWith(color: foreground),
+      ),
+    );
+  }
+}
+
+class _LocationPreviewCard extends StatelessWidget {
+  const _LocationPreviewCard({required this.region});
+
+  final PublicRegionSummary? region;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.my_location_outlined, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Localização e raio',
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            region == null
+                ? 'Escolha uma cidade para carregar o preview local.'
+                : '${region!.name} · ${region!.stateCode} · ${region!.activeEstablishmentCount} lojas candidatas na cidade.',
+          ),
+          const SizedBox(height: 8),
+          const Text('Raio local padrão: 5 km.'),
+          const SizedBox(height: 8),
+          Text(
+            'No MVP atual, a permissão de localização fica manual e a distância não altera a otimização. A busca continua baseada na cidade selecionada.',
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
       ),
     );
   }

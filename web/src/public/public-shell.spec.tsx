@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -135,6 +135,7 @@ describe('PublicLayout', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    cleanup();
   });
 
   it('shows active city coverage and allows changing the selected city', async () => {
@@ -145,6 +146,9 @@ describe('PublicLayout', () => {
     );
 
     expect(screen.getByText('Contexto da compra')).toBeTruthy();
+    expect(screen.getByText('Localização para otimização local')).toBeTruthy();
+    expect(screen.getByText(/raio local padrão 5 km/i)).toBeTruthy();
+    expect(screen.getByText(/distância ainda não altera a otimização/i)).toBeTruthy();
     expect(
       screen.queryByText('Sua compra continua de onde você parou'),
     ).toBeNull();
@@ -155,5 +159,18 @@ describe('PublicLayout', () => {
     });
 
     await waitFor(() => expect(setCityId).toHaveBeenCalledWith('sao-paulo-sp'));
+  });
+
+  it('keeps browser location as an explicit preview state', () => {
+    render(
+      <MemoryRouter>
+        <PublicLayout />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /usar localização/i }));
+
+    expect(screen.getByText(/Permissão:/)).toBeTruthy();
+    expect(screen.getByText(/indisponível|manual|negada/)).toBeTruthy();
   });
 });

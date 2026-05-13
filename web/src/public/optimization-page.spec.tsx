@@ -61,8 +61,11 @@ describe('OptimizationPage', () => {
       screen.getByText('Compra mensal - São Paulo. Compare o melhor total, a cobertura e a economia estimada da sua compra.'),
     ).toBeTruthy();
     expect(
-      screen.getByText('Usa uma loja elegivel dentro do raio local configurado.'),
+      screen.getByText(
+        'Prepara a compra em uma loja da cidade com raio local padrão de 5 km.',
+      ),
     ).toBeTruthy();
+    expect(screen.getByText(/distância ainda aparece como preview/i)).toBeTruthy();
     expect(
       screen.getByText('Procura a melhor loja unica para equilibrar cobertura e preco.'),
     ).toBeTruthy();

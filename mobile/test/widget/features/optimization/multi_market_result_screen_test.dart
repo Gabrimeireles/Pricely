@@ -93,7 +93,11 @@ void main() {
     expect(find.text('Mercado Azul'), findsOneWidget);
     expect(find.text('Super Verde'), findsOneWidget);
     expect(find.textContaining('Economia estimada'), findsOneWidget);
+    expect(find.text('Localização e raio'), findsOneWidget);
+    expect(find.text('Raio local padrão: 5 km.'), findsOneWidget);
+    expect(find.textContaining('não promete loja mais próxima'), findsOneWidget);
     expect(find.textContaining('variante exata: Camil · Arroz'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('- Leite vegetal'), 220);
     expect(find.text('- Leite vegetal'), findsOneWidget);
   });
 }
