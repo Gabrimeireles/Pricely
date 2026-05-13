@@ -445,6 +445,122 @@ describe('AdminDashboardService', () => {
     expect(logSpy).toHaveBeenCalledWith('Admin updated region region-1');
   });
 
+  it('projects receipt line extraction, maker action, and price comparison for admin review', async () => {
+    const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    const prisma = {
+      receiptRecord: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'receipt-1',
+            storeName: 'Mercado Centro',
+            storeCnpj: '00.000.000/0001-00',
+            parseStatus: 'parsed',
+            trustLevel: 'trusted',
+            moderationStatus: 'accepted',
+            rewardEligibilityStatus: 'eligible_pending',
+            reviewReason: null,
+            purchaseDate: new Date('2026-05-09T10:00:00Z'),
+            createdAt: new Date('2026-05-09T10:05:00Z'),
+            updatedAt: new Date('2026-05-09T10:06:00Z'),
+            user: {
+              id: 'user-1',
+              displayName: 'Cliente 1',
+              email: 'cliente1@pricely.local',
+            },
+            processingJob: null,
+            lineItems: [
+              {
+                id: 'line-1',
+                rawProductName: 'CAFE PILAO 500G',
+                normalizedName: 'Cafe Pilao 500g',
+                ean: '7891000000000',
+                quantity: { toString: () => '1' },
+                unitPrice: { toString: () => '15.90' },
+                originalUnitPrice: { toString: () => '18.90' },
+                promotionalUnitPrice: { toString: () => '15.90' },
+                matchConfidence: { toString: () => '0.91' },
+                productOffers: [
+                  {
+                    id: 'offer-1',
+                    catalogProductId: 'product-1',
+                    productVariantId: 'variant-1',
+                    establishmentId: 'store-1',
+                    displayName: 'Cafe Pilao 500g',
+                    packageLabel: '500 g',
+                    priceAmount: { toString: () => '15.90' },
+                    observedAt: new Date('2026-05-09T10:06:00Z'),
+                    catalogProduct: { name: 'Cafe torrado' },
+                    productVariant: {
+                      displayName: 'Cafe Pilao 500g',
+                      brandName: 'Pilao',
+                    },
+                    establishment: {
+                      unitName: 'Mercado Centro',
+                      neighborhood: 'Centro',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      },
+      productOffer: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            productVariantId: 'variant-1',
+            establishmentId: 'store-1',
+            priceAmount: { toString: () => '16.90' },
+            observedAt: new Date('2026-05-01T10:06:00Z'),
+          },
+        ]),
+      },
+    };
+
+    const service = new AdminDashboardService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(service.listReceiptProcessingReviews()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'receipt-1',
+        quality: expect.objectContaining({
+          lineItemCount: 1,
+          highConfidenceLineItemCount: 1,
+        }),
+        lineItems: [
+          expect.objectContaining({
+            rawProductName: 'CAFE PILAO 500G',
+            matcherStatus: 'matched_offer',
+            makerAction: 'offer_created',
+            offers: [
+              expect.objectContaining({
+                priceAmount: 15.9,
+                comparison: {
+                  previousPriceAmount: 16.9,
+                  newPriceAmount: 15.9,
+                  deltaAmount: -1,
+                  direction: 'down',
+                  previousObservedAt: '2026-05-01T10:06:00.000Z',
+                },
+              }),
+            ],
+          }),
+        ],
+      }),
+    ]);
+    expect(logSpy).toHaveBeenCalledWith(
+      'Admin receipt processing requested: 1 records returned',
+    );
+  });
+
   it('delegates premium and token adjustments to entitlement service', async () => {
     const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     const prisma = {

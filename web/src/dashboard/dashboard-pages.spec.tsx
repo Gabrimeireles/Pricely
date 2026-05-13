@@ -120,6 +120,8 @@ describe('Admin dashboard pages', () => {
     render(<AdminOverviewPage />);
 
     expect(await screen.findByText('Saude das filas')).toBeTruthy();
+    expect(screen.getByText('Prioridades operacionais')).toBeTruthy();
+    expect(screen.getAllByText('Jobs aguardando').length).toBeGreaterThan(0);
     expect(screen.getByText('Cobertura da operacao')).toBeTruthy();
     expect(screen.getByText('Sinais do dia')).toBeTruthy();
     expect(screen.getByText('Painel comparativo')).toBeTruthy();
@@ -389,6 +391,42 @@ describe('Admin dashboard pages', () => {
           optimizationTokens: 1,
           label: '100 pontos + 1 credito pendente',
         },
+        lineItems: [
+          {
+            id: 'line-1',
+            rawProductName: 'CAFE PILAO 500G',
+            normalizedName: 'Cafe Pilao 500g',
+            ean: '7891000000000',
+            quantity: 1,
+            unitPrice: 15.9,
+            originalUnitPrice: 18.9,
+            promotionalUnitPrice: 15.9,
+            matchConfidence: 0.91,
+            matcherStatus: 'matched_offer',
+            makerAction: 'offer_created',
+            offers: [
+              {
+                id: 'offer-1',
+                catalogProductName: 'Cafe torrado',
+                variantName: 'Cafe Pilao 500g',
+                brandName: 'Pilao',
+                establishmentName: 'Mercado Centro',
+                neighborhood: 'Centro',
+                displayName: 'Cafe Pilao 500g',
+                packageLabel: '500 g',
+                priceAmount: 15.9,
+                observedAt: '2026-05-09T10:06:00.000Z',
+                comparison: {
+                  previousPriceAmount: 16.9,
+                  newPriceAmount: 15.9,
+                  deltaAmount: -1,
+                  direction: 'down',
+                  previousObservedAt: '2026-05-01T10:06:00.000Z',
+                },
+              },
+            ],
+          },
+        ],
       },
     ]);
 
@@ -400,6 +438,13 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('100 pontos + 1 credito pendente')).toBeTruthy();
     expect(screen.getByText('eligible_pending')).toBeTruthy();
     expect(screen.getByText('Ver leitura')).toBeTruthy();
+    expect(screen.getByText('1 itens extraídos · 1 com oferta gerada')).toBeTruthy();
+
+    fireEvent.click(screen.getByText('Ver leitura e matcher'));
+    expect(await screen.findByText('CAFE PILAO 500G')).toBeTruthy();
+    expect(screen.getByText('Oferta criada')).toBeTruthy();
+    expect(screen.getByText('Preço caiu')).toBeTruthy();
+    expect(screen.getByText(/R\$ 16,90 anterior/)).toBeTruthy();
   });
 
   it('renders admin users and supports premium and token actions', async () => {
