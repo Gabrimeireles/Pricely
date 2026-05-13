@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 
 import { ProductNormalizerService } from '../../catalog/application/product-normalizer.service';
 import { PrismaService } from '../../persistence/prisma.service';
+import { type OptimizationMode } from '../../common/contracts';
 import {
   type ShoppingListEntity,
   type ShoppingListItemEntity,
@@ -43,7 +44,7 @@ export class ShoppingListRepository {
     userId: string;
     name: string;
     preferredRegionId?: string;
-    lastMode: 'local' | 'global_unique' | 'global_full';
+    lastMode: OptimizationMode;
   }): Promise<ShoppingListEntity> {
     const list = await this.prisma.shoppingList.create({
       data: {
@@ -149,7 +150,7 @@ export class ShoppingListRepository {
     data: {
       name?: string;
       preferredRegionId?: string;
-      lastMode?: 'local' | 'global_unique' | 'global_full';
+      lastMode?: OptimizationMode;
       items: ShoppingListItemEntity[];
     },
   ): Promise<ShoppingListEntity | null> {
@@ -290,7 +291,7 @@ export class ShoppingListRepository {
 
   private toEntity(
     record: ShoppingListRecord,
-    fallbackMode: 'local' | 'global_unique' | 'global_full' = 'global_full',
+    fallbackMode: OptimizationMode = 'global_multi',
   ): ShoppingListEntity {
     const latestRun = record.optimizationRuns[0];
 

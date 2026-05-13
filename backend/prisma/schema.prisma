@@ -69,6 +69,9 @@ enum OptimizationMode {
   local
   global_unique
   global_full
+  local_unique
+  local_multi
+  global_multi
 }
 
 enum OptimizationRunStatus {
@@ -171,75 +174,75 @@ enum CityInclusionRequestStatus {
 }
 
 model UserAccount {
-  id               String            @id @default(uuid()) @db.Uuid
-  email            String            @unique
-  passwordHash     String
-  displayName      String
-  role             UserRole          @default(customer)
-  status           UserStatus        @default(active)
-  preferredRegionId String?          @db.Uuid
-  lastLoginAt      DateTime?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  shoppingLists    ShoppingList[]
-  optimizationRuns OptimizationRun[]
-  receiptRecords   ReceiptRecord[]
-  priceMismatchReports PriceMismatchReport[]
-  entitlements      UserEntitlement[]
+  id                      String                         @id @default(uuid()) @db.Uuid
+  email                   String                         @unique
+  passwordHash            String
+  displayName             String
+  role                    UserRole                       @default(customer)
+  status                  UserStatus                     @default(active)
+  preferredRegionId       String?                        @db.Uuid
+  lastLoginAt             DateTime?
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  shoppingLists           ShoppingList[]
+  optimizationRuns        OptimizationRun[]
+  receiptRecords          ReceiptRecord[]
+  priceMismatchReports    PriceMismatchReport[]
+  entitlements            UserEntitlement[]
   optimizationTokenLedger OptimizationTokenLedgerEntry[]
-  locationPreferences UserLocationPreference[]
-  preferredRegion  Region?           @relation("UserPreferredRegion", fields: [preferredRegionId], references: [id], onDelete: SetNull)
+  locationPreferences     UserLocationPreference[]
+  preferredRegion         Region?                        @relation("UserPreferredRegion", fields: [preferredRegionId], references: [id], onDelete: SetNull)
 }
 
 model Region {
-  id              String          @id @default(uuid()) @db.Uuid
-  slug            String          @unique
-  name            String
-  stateCode       String          @db.VarChar(2)
-  countryCode     String          @default("BR") @db.VarChar(2)
-  implantationStatus RegionStatus @default(activating)
-  publicSortOrder Int             @default(0)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  establishments  Establishment[]
-  shoppingLists   ShoppingList[]
-  optimizationRuns OptimizationRun[]
-  preferredByUsers UserAccount[]     @relation("UserPreferredRegion")
+  id                      String                   @id @default(uuid()) @db.Uuid
+  slug                    String                   @unique
+  name                    String
+  stateCode               String                   @db.VarChar(2)
+  countryCode             String                   @default("BR") @db.VarChar(2)
+  implantationStatus      RegionStatus             @default(activating)
+  publicSortOrder         Int                      @default(0)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  establishments          Establishment[]
+  shoppingLists           ShoppingList[]
+  optimizationRuns        OptimizationRun[]
+  preferredByUsers        UserAccount[]            @relation("UserPreferredRegion")
   userLocationPreferences UserLocationPreference[]
 }
 
 model CityInclusionRequest {
-  id          String                     @id @default(uuid()) @db.Uuid
-  cityName    String
-  stateCode   String                     @db.VarChar(2)
-  contactName String?
+  id           String                     @id @default(uuid()) @db.Uuid
+  cityName     String
+  stateCode    String                     @db.VarChar(2)
+  contactName  String?
   contactEmail String?
-  message     String?
-  status      CityInclusionRequestStatus @default(requested)
-  createdAt   DateTime                   @default(now())
-  updatedAt   DateTime                   @updatedAt
+  message      String?
+  status       CityInclusionRequestStatus @default(requested)
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
 
   @@index([stateCode, cityName])
   @@index([status, createdAt])
 }
 
 model Establishment {
-  id             String          @id @default(uuid()) @db.Uuid
+  id             String            @id @default(uuid()) @db.Uuid
   brandName      String
   unitName       String
-  cnpj           String          @unique
+  cnpj           String            @unique
   cityName       String
   neighborhood   String
   addressLine    String?
   postalCode     String?
-  latitude       Decimal?        @db.Decimal(9, 6)
-  longitude      Decimal?        @db.Decimal(9, 6)
+  latitude       Decimal?          @db.Decimal(9, 6)
+  longitude      Decimal?          @db.Decimal(9, 6)
   locationSource String?
-  regionId       String          @db.Uuid
-  isActive       Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  region         Region          @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  regionId       String            @db.Uuid
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  region         Region            @relation(fields: [regionId], references: [id], onDelete: Restrict)
   productOffers  ProductOffer[]
   receiptRecords ReceiptRecord[]
   preferredRuns  OptimizationRun[] @relation("PreferredEstablishment")
@@ -248,36 +251,37 @@ model Establishment {
 }
 
 model UserLocationPreference {
-  id                       String   @id @default(uuid()) @db.Uuid
-  userId                   String   @db.Uuid
-  regionId                 String   @db.Uuid
+  id                       String            @id @default(uuid()) @db.Uuid
+  userId                   String            @db.Uuid
+  regionId                 String            @db.Uuid
   label                    String
-  latitude                 Decimal? @db.Decimal(9, 6)
-  longitude                Decimal? @db.Decimal(9, 6)
+  latitude                 Decimal?          @db.Decimal(9, 6)
+  longitude                Decimal?          @db.Decimal(9, 6)
   postalCode               String?
-  coverageRadiusKm         Decimal  @default(5.00) @db.Decimal(5, 2)
-  activeEstablishmentCount Int      @default(0)
-  isDefault                Boolean  @default(false)
-  locationSource           String   @default("manual")
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
-  region                   Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
-  user                     UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coverageRadiusKm         Decimal           @default(5.00) @db.Decimal(5, 2)
+  activeEstablishmentCount Int               @default(0)
+  isDefault                Boolean           @default(false)
+  locationSource           String            @default("manual")
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  region                   Region            @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  user                     UserAccount       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  optimizationRuns         OptimizationRun[]
 
   @@index([userId, isDefault])
   @@index([regionId])
 }
 
 model CatalogProduct {
-  id                String           @id @default(uuid()) @db.Uuid
-  slug              String           @unique
+  id                String                @id @default(uuid()) @db.Uuid
+  slug              String                @unique
   name              String
   category          String
   defaultUnit       String?
   imageUrl          String?
-  isActive          Boolean          @default(true)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  isActive          Boolean               @default(true)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
   aliases           CatalogProductAlias[]
   productVariants   ProductVariant[]
   productOffers     ProductOffer[]
@@ -287,30 +291,30 @@ model CatalogProduct {
 }
 
 model CatalogProductAlias {
-  id              String                 @id @default(uuid()) @db.Uuid
-  catalogProductId String                @db.Uuid
-  alias           String
-  sourceType      ProductAliasSourceType
-  confidenceScore Decimal                @db.Decimal(5, 2)
-  createdAt       DateTime               @default(now())
-  catalogProduct  CatalogProduct         @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
+  id               String                 @id @default(uuid()) @db.Uuid
+  catalogProductId String                 @db.Uuid
+  alias            String
+  sourceType       ProductAliasSourceType
+  confidenceScore  Decimal                @db.Decimal(5, 2)
+  createdAt        DateTime               @default(now())
+  catalogProduct   CatalogProduct         @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
 
   @@unique([catalogProductId, alias])
 }
 
 model ProductVariant {
-  id                String           @id @default(uuid()) @db.Uuid
-  catalogProductId  String           @db.Uuid
-  slug              String           @unique
+  id                String             @id @default(uuid()) @db.Uuid
+  catalogProductId  String             @db.Uuid
+  slug              String             @unique
   displayName       String
   brandName         String?
   variantLabel      String?
   packageLabel      String?
   imageUrl          String?
-  isActive          Boolean          @default(true)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  catalogProduct    CatalogProduct   @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  catalogProduct    CatalogProduct     @relation(fields: [catalogProductId], references: [id], onDelete: Cascade)
   productOffers     ProductOffer[]
   shoppingListItems ShoppingListItem[] @relation("LockedProductVariant")
 
@@ -318,34 +322,34 @@ model ProductVariant {
 }
 
 model ProductOffer {
-  id                 String                  @id @default(uuid()) @db.Uuid
-  catalogProductId   String                  @db.Uuid
-  productVariantId   String                  @db.Uuid
-  establishmentId    String                  @db.Uuid
-  displayName        String
-  packageLabel       String
-  priceAmount        Decimal                 @db.Decimal(10, 2)
-  basePriceAmount    Decimal?                @db.Decimal(10, 2)
-  promotionalPriceAmount Decimal?            @db.Decimal(10, 2)
-  currencyCode       String                  @default("BRL") @db.VarChar(3)
-  availabilityStatus OfferAvailabilityStatus
-  confidenceLevel    OfferConfidenceLevel
-  sourceType         String
-  sourceReference    String?
-  receiptRecordId    String?                 @db.Uuid
-  receiptLineItemId  String?                 @db.Uuid
-  moderationStatus   ReceiptModerationStatus?
-  contributionConfidence Decimal?            @db.Decimal(5, 2)
-  observedAt         DateTime
-  expiresAt          DateTime?
-  isActive           Boolean                 @default(true)
-  updatedAt          DateTime                @updatedAt
-  establishment      Establishment           @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
-  catalogProduct     CatalogProduct          @relation(fields: [catalogProductId], references: [id], onDelete: Restrict)
-  productVariant     ProductVariant          @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
+  id                     String                   @id @default(uuid()) @db.Uuid
+  catalogProductId       String                   @db.Uuid
+  productVariantId       String                   @db.Uuid
+  establishmentId        String                   @db.Uuid
+  displayName            String
+  packageLabel           String
+  priceAmount            Decimal                  @db.Decimal(10, 2)
+  basePriceAmount        Decimal?                 @db.Decimal(10, 2)
+  promotionalPriceAmount Decimal?                 @db.Decimal(10, 2)
+  currencyCode           String                   @default("BRL") @db.VarChar(3)
+  availabilityStatus     OfferAvailabilityStatus
+  confidenceLevel        OfferConfidenceLevel
+  sourceType             String
+  sourceReference        String?
+  receiptRecordId        String?                  @db.Uuid
+  receiptLineItemId      String?                  @db.Uuid
+  moderationStatus       ReceiptModerationStatus?
+  contributionConfidence Decimal?                 @db.Decimal(5, 2)
+  observedAt             DateTime
+  expiresAt              DateTime?
+  isActive               Boolean                  @default(true)
+  updatedAt              DateTime                 @updatedAt
+  establishment          Establishment            @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  catalogProduct         CatalogProduct           @relation(fields: [catalogProductId], references: [id], onDelete: Restrict)
+  productVariant         ProductVariant           @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
   optimizationSelections OptimizationSelection[]
-  receiptRecord      ReceiptRecord?          @relation(fields: [receiptRecordId], references: [id], onDelete: SetNull)
-  receiptLineItem    ReceiptLineItem?        @relation(fields: [receiptLineItemId], references: [id], onDelete: SetNull)
+  receiptRecord          ReceiptRecord?           @relation(fields: [receiptRecordId], references: [id], onDelete: SetNull)
+  receiptLineItem        ReceiptLineItem?         @relation(fields: [receiptLineItemId], references: [id], onDelete: SetNull)
 
   @@index([catalogProductId, isActive, observedAt])
   @@index([productVariantId, isActive, observedAt])
@@ -356,48 +360,48 @@ model ProductOffer {
 }
 
 model ShoppingList {
-  id                String           @id @default(uuid()) @db.Uuid
-  userId            String           @db.Uuid
-  name              String
-  preferredRegionId String?          @db.Uuid
-  status            ShoppingListStatus @default(draft)
-  completedAt       DateTime?
-  paidTotal         Decimal?         @db.Decimal(10, 2)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  shoppingListItems ShoppingListItem[]
-  optimizationRuns  OptimizationRun[]
+  id                   String                @id @default(uuid()) @db.Uuid
+  userId               String                @db.Uuid
+  name                 String
+  preferredRegionId    String?               @db.Uuid
+  status               ShoppingListStatus    @default(draft)
+  completedAt          DateTime?
+  paidTotal            Decimal?              @db.Decimal(10, 2)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  shoppingListItems    ShoppingListItem[]
+  optimizationRuns     OptimizationRun[]
   priceMismatchReports PriceMismatchReport[]
-  preferredRegion   Region?          @relation(fields: [preferredRegionId], references: [id], onDelete: SetNull)
-  user              UserAccount      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferredRegion      Region?               @relation(fields: [preferredRegionId], references: [id], onDelete: SetNull)
+  user                 UserAccount           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, updatedAt])
 }
 
 model ShoppingListItem {
-  id               String                          @id @default(uuid()) @db.Uuid
-  shoppingListId   String                          @db.Uuid
-  catalogProductId String?                         @db.Uuid
-  lockedProductVariantId String?                   @db.Uuid
-  optimizedProductVariantId String?                @db.Uuid
+  id                               String                               @id @default(uuid()) @db.Uuid
+  shoppingListId                   String                               @db.Uuid
+  catalogProductId                 String?                              @db.Uuid
+  lockedProductVariantId           String?                              @db.Uuid
+  optimizedProductVariantId        String?                              @db.Uuid
   optimizedFromBrandPreferenceMode ShoppingListItemBrandPreferenceMode?
-  optimizedAt      DateTime?
-  brandPreferenceMode ShoppingListItemBrandPreferenceMode @default(any)
-  preferredBrandNames String[]                     @default([])
-  requestedName    String
-  quantity         Decimal?                        @db.Decimal(10, 2)
-  unitLabel        String?
-  notes            String?
-  purchaseStatus   ShoppingListItemPurchaseStatus  @default(pending)
-  purchasedAt      DateTime?
-  resolutionStatus ShoppingListItemResolutionStatus @default(unresolved)
-  createdAt        DateTime                        @default(now())
-  updatedAt        DateTime                        @updatedAt
-  optimizationSelections OptimizationSelection[]
-  priceMismatchReports PriceMismatchReport[]
-  catalogProduct   CatalogProduct?                 @relation(fields: [catalogProductId], references: [id], onDelete: SetNull)
-  lockedProductVariant ProductVariant?             @relation("LockedProductVariant", fields: [lockedProductVariantId], references: [id], onDelete: SetNull)
-  shoppingList     ShoppingList                    @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  optimizedAt                      DateTime?
+  brandPreferenceMode              ShoppingListItemBrandPreferenceMode  @default(any)
+  preferredBrandNames              String[]                             @default([])
+  requestedName                    String
+  quantity                         Decimal?                             @db.Decimal(10, 2)
+  unitLabel                        String?
+  notes                            String?
+  purchaseStatus                   ShoppingListItemPurchaseStatus       @default(pending)
+  purchasedAt                      DateTime?
+  resolutionStatus                 ShoppingListItemResolutionStatus     @default(unresolved)
+  createdAt                        DateTime                             @default(now())
+  updatedAt                        DateTime                             @updatedAt
+  optimizationSelections           OptimizationSelection[]
+  priceMismatchReports             PriceMismatchReport[]
+  catalogProduct                   CatalogProduct?                      @relation(fields: [catalogProductId], references: [id], onDelete: SetNull)
+  lockedProductVariant             ProductVariant?                      @relation("LockedProductVariant", fields: [lockedProductVariantId], references: [id], onDelete: SetNull)
+  shoppingList                     ShoppingList                         @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
 
   @@index([shoppingListId])
   @@index([catalogProductId])
@@ -423,127 +427,133 @@ model PriceMismatchReport {
 }
 
 model OptimizationRun {
-  id                       String                     @id @default(uuid()) @db.Uuid
-  shoppingListId           String                     @db.Uuid
-  userId                   String                     @db.Uuid
-  mode                     OptimizationMode
-  regionId                 String                     @db.Uuid
-  preferredEstablishmentId String?                    @db.Uuid
-  jobId                    String?                    @unique @db.Uuid
-  status                   OptimizationRunStatus      @default(queued)
-  totalEstimatedCost       Decimal?                   @db.Decimal(10, 2)
-  estimatedSavings         Decimal?                   @db.Decimal(10, 2)
-  coverageStatus           OptimizationCoverageStatus @default(none)
-  summary                  String?
-  explanationPayload       Json?
-  createdAt                DateTime                   @default(now())
-  completedAt              DateTime?
-  optimizationSelections   OptimizationSelection[]
-  tokenLedgerEntries       OptimizationTokenLedgerEntry[]
-  processingJob            ProcessingJob?             @relation(fields: [jobId], references: [id], onDelete: SetNull)
-  preferredEstablishment   Establishment?             @relation("PreferredEstablishment", fields: [preferredEstablishmentId], references: [id], onDelete: SetNull)
-  region                   Region                     @relation(fields: [regionId], references: [id], onDelete: Restrict)
-  shoppingList             ShoppingList               @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
-  user                     UserAccount                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                          String                         @id @default(uuid()) @db.Uuid
+  shoppingListId              String                         @db.Uuid
+  userId                      String                         @db.Uuid
+  mode                        OptimizationMode
+  regionId                    String                         @db.Uuid
+  userLocationPreferenceId    String?                        @db.Uuid
+  coverageRadiusKm            Decimal?                       @db.Decimal(5, 2)
+  candidateEstablishmentCount Int?
+  preferredEstablishmentId    String?                        @db.Uuid
+  jobId                       String?                        @unique @db.Uuid
+  status                      OptimizationRunStatus          @default(queued)
+  totalEstimatedCost          Decimal?                       @db.Decimal(10, 2)
+  estimatedSavings            Decimal?                       @db.Decimal(10, 2)
+  coverageStatus              OptimizationCoverageStatus     @default(none)
+  summary                     String?
+  explanationPayload          Json?
+  createdAt                   DateTime                       @default(now())
+  completedAt                 DateTime?
+  optimizationSelections      OptimizationSelection[]
+  tokenLedgerEntries          OptimizationTokenLedgerEntry[]
+  processingJob               ProcessingJob?                 @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  preferredEstablishment      Establishment?                 @relation("PreferredEstablishment", fields: [preferredEstablishmentId], references: [id], onDelete: SetNull)
+  region                      Region                         @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  userLocationPreference      UserLocationPreference?        @relation(fields: [userLocationPreferenceId], references: [id], onDelete: SetNull)
+  shoppingList                ShoppingList                   @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  user                        UserAccount                    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([shoppingListId, createdAt])
   @@index([status, createdAt])
+  @@index([userLocationPreferenceId])
 }
 
 model UserEntitlement {
-  id             String                @id @default(uuid()) @db.Uuid
-  userId         String                @db.Uuid
-  plan           UserEntitlementPlan
-  status         UserEntitlementStatus
-  source         String
-  externalRef    String?
-  startsAt       DateTime              @default(now())
-  endsAt         DateTime?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  user           UserAccount           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String                @id @default(uuid()) @db.Uuid
+  userId      String                @db.Uuid
+  plan        UserEntitlementPlan
+  status      UserEntitlementStatus
+  source      String
+  externalRef String?
+  startsAt    DateTime              @default(now())
+  endsAt      DateTime?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  user        UserAccount           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, plan, status])
   @@index([externalRef])
 }
 
 model OptimizationTokenLedgerEntry {
-  id                       String                         @id @default(uuid()) @db.Uuid
-  userId                   String                         @db.Uuid
+  id                       String                        @id @default(uuid()) @db.Uuid
+  userId                   String                        @db.Uuid
   action                   OptimizationTokenLedgerAction
   amount                   Int
-  idempotencyKey           String                         @unique
+  idempotencyKey           String                        @unique
   source                   String
-  relatedOptimizationRunId String?                        @db.Uuid
+  relatedOptimizationRunId String?                       @db.Uuid
   expiresAt                DateTime?
-  createdAt                DateTime                       @default(now())
-  user                     UserAccount                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  relatedOptimizationRun   OptimizationRun?               @relation(fields: [relatedOptimizationRunId], references: [id], onDelete: SetNull)
+  createdAt                DateTime                      @default(now())
+  user                     UserAccount                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedOptimizationRun   OptimizationRun?              @relation(fields: [relatedOptimizationRunId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([relatedOptimizationRunId])
 }
 
 model OptimizationSelection {
-  id                String                      @id @default(uuid()) @db.Uuid
-  optimizationRunId String                      @db.Uuid
-  shoppingListItemId String                     @db.Uuid
-  productOfferId    String?                     @db.Uuid
-  status            OptimizationSelectionStatus
-  estimatedCost     Decimal?                    @db.Decimal(10, 2)
-  comparisonPriceAmount Decimal?                 @db.Decimal(10, 2)
-  regionalAveragePriceAmount Decimal?            @db.Decimal(10, 2)
-  savingsVsComparison Decimal?                   @db.Decimal(10, 2)
-  confidenceNotice  String?
-  optimizationRun   OptimizationRun             @relation(fields: [optimizationRunId], references: [id], onDelete: Cascade)
-  productOffer      ProductOffer?               @relation(fields: [productOfferId], references: [id], onDelete: SetNull)
-  shoppingListItem  ShoppingListItem            @relation(fields: [shoppingListItemId], references: [id], onDelete: Cascade)
+  id                         String                      @id @default(uuid()) @db.Uuid
+  optimizationRunId          String                      @db.Uuid
+  shoppingListItemId         String                      @db.Uuid
+  productOfferId             String?                     @db.Uuid
+  distanceKm                 Decimal?                    @db.Decimal(6, 2)
+  status                     OptimizationSelectionStatus
+  estimatedCost              Decimal?                    @db.Decimal(10, 2)
+  comparisonPriceAmount      Decimal?                    @db.Decimal(10, 2)
+  regionalAveragePriceAmount Decimal?                    @db.Decimal(10, 2)
+  savingsVsComparison        Decimal?                    @db.Decimal(10, 2)
+  confidenceNotice           String?
+  optimizationRun            OptimizationRun             @relation(fields: [optimizationRunId], references: [id], onDelete: Cascade)
+  productOffer               ProductOffer?               @relation(fields: [productOfferId], references: [id], onDelete: SetNull)
+  shoppingListItem           ShoppingListItem            @relation(fields: [shoppingListItemId], references: [id], onDelete: Cascade)
 
   @@index([optimizationRunId])
 }
 
 model ProcessingJob {
-  id            String              @id @default(uuid()) @db.Uuid
-  queueName     String
-  jobType       ProcessingJobType
-  resourceType  String
-  resourceId    String
-  status        ProcessingJobStatus @default(queued)
-  attemptCount  Int                 @default(0)
-  failureReason String?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  finishedAt    DateTime?
+  id              String              @id @default(uuid()) @db.Uuid
+  queueName       String
+  jobType         ProcessingJobType
+  resourceType    String
+  resourceId      String
+  status          ProcessingJobStatus @default(queued)
+  attemptCount    Int                 @default(0)
+  failureReason   String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  finishedAt      DateTime?
   optimizationRun OptimizationRun?
-  receiptRecord ReceiptRecord?
+  receiptRecord   ReceiptRecord?
 }
 
 model ReceiptRecord {
-  id              String            @id @default(uuid()) @db.Uuid
-  userId          String            @db.Uuid
-  establishmentId String?           @db.Uuid
-  sourceType      ReceiptSourceType
-  parseStatus     ReceiptParseStatus @default(queued)
-  storeName       String?
-  storeCnpj       String?
-  accessKey       String?
-  sefazUrl        String?
-  purchaseDate    DateTime?
-  jobId           String?           @unique @db.Uuid
-  rawReference    String?
-  confidenceScore Decimal?          @db.Decimal(5, 2)
-  duplicateKey    String?
-  trustLevel      ReceiptContributionTrustLevel @default(untrusted)
-  moderationStatus ReceiptModerationStatus @default(pending)
+  id                      String                         @id @default(uuid()) @db.Uuid
+  userId                  String                         @db.Uuid
+  establishmentId         String?                        @db.Uuid
+  sourceType              ReceiptSourceType
+  parseStatus             ReceiptParseStatus             @default(queued)
+  storeName               String?
+  storeCnpj               String?
+  accessKey               String?
+  sefazUrl                String?
+  purchaseDate            DateTime?
+  jobId                   String?                        @unique @db.Uuid
+  rawReference            String?
+  confidenceScore         Decimal?                       @db.Decimal(5, 2)
+  duplicateKey            String?
+  trustLevel              ReceiptContributionTrustLevel  @default(untrusted)
+  moderationStatus        ReceiptModerationStatus        @default(pending)
   rewardEligibilityStatus ReceiptRewardEligibilityStatus @default(disabled)
-  reviewReason    String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  establishment   Establishment?    @relation(fields: [establishmentId], references: [id], onDelete: SetNull)
-  lineItems       ReceiptLineItem[]
-  productOffers   ProductOffer[]
-  processingJob   ProcessingJob?    @relation(fields: [jobId], references: [id], onDelete: SetNull)
-  user            UserAccount       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewReason            String?
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  establishment           Establishment?                 @relation(fields: [establishmentId], references: [id], onDelete: SetNull)
+  lineItems               ReceiptLineItem[]
+  productOffers           ProductOffer[]
+  processingJob           ProcessingJob?                 @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  user                    UserAccount                    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([establishmentId, createdAt])
   @@index([userId, createdAt])
@@ -555,22 +565,22 @@ model ReceiptRecord {
 }
 
 model ReceiptLineItem {
-  id                     String        @id @default(uuid()) @db.Uuid
-  receiptRecordId        String        @db.Uuid
-  ean                    String?
-  rawProductName         String
-  normalizedName         String
-  packageSize            String?
-  quantity               Decimal       @db.Decimal(10, 3)
-  unitPrice              Decimal       @db.Decimal(10, 2)
-  originalUnitPrice      Decimal?      @db.Decimal(10, 2)
-  promotionalUnitPrice   Decimal?      @db.Decimal(10, 2)
-  lineTotal              Decimal       @db.Decimal(10, 2)
-  currency               String        @default("BRL") @db.VarChar(3)
-  matchConfidence        Decimal       @db.Decimal(5, 2)
-  createdAt              DateTime      @default(now())
-  receiptRecord          ReceiptRecord @relation(fields: [receiptRecordId], references: [id], onDelete: Cascade)
-  productOffers          ProductOffer[]
+  id                   String         @id @default(uuid()) @db.Uuid
+  receiptRecordId      String         @db.Uuid
+  ean                  String?
+  rawProductName       String
+  normalizedName       String
+  packageSize          String?
+  quantity             Decimal        @db.Decimal(10, 3)
+  unitPrice            Decimal        @db.Decimal(10, 2)
+  originalUnitPrice    Decimal?       @db.Decimal(10, 2)
+  promotionalUnitPrice Decimal?       @db.Decimal(10, 2)
+  lineTotal            Decimal        @db.Decimal(10, 2)
+  currency             String         @default("BRL") @db.VarChar(3)
+  matchConfidence      Decimal        @db.Decimal(5, 2)
+  createdAt            DateTime       @default(now())
+  receiptRecord        ReceiptRecord  @relation(fields: [receiptRecordId], references: [id], onDelete: Cascade)
+  productOffers        ProductOffer[]
 
   @@index([receiptRecordId])
   @@index([ean])

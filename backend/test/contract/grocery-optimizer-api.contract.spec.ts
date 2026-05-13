@@ -16,7 +16,7 @@ describe('Grocery optimizer API contract', () => {
         .send({
           name: 'Contract list',
           preferredRegionId: 'sao-paulo-sp',
-          lastMode: 'global_full',
+          lastMode: 'global_multi',
         })
         .expect(201);
 
@@ -26,7 +26,7 @@ describe('Grocery optimizer API contract', () => {
           name: 'Contract list',
           preferredRegionId: 'sao-paulo-sp',
           status: 'draft',
-          lastMode: 'global_full',
+          lastMode: 'global_multi',
           latestEstimatedSavings: 0,
           items: expect.any(Array),
         }),
@@ -56,7 +56,7 @@ describe('Grocery optimizer API contract', () => {
       const optimizationResponse = await request(app.getHttpServer())
         .post(`/shopping-lists/${shoppingListId}/optimize`)
         .set('Authorization', `Bearer ${session.accessToken}`)
-        .send({ mode: 'global_full' })
+        .send({ mode: 'global_multi' })
         .expect(201);
 
       expect(optimizationResponse.body).toEqual(
@@ -64,7 +64,7 @@ describe('Grocery optimizer API contract', () => {
           id: expect.any(String),
           jobId: expect.any(String),
           shoppingListId,
-          mode: 'global_full',
+          mode: 'global_multi',
           status: expect.stringMatching(/queued|running|completed|failed/),
           queuedAt: expect.any(String),
         }),
@@ -79,7 +79,7 @@ describe('Grocery optimizer API contract', () => {
         expect.objectContaining({
           id: optimizationResponse.body.id,
           shoppingListId,
-          mode: 'global_full',
+          mode: 'global_multi',
           coverageStatus: expect.stringMatching(/complete|partial|none/),
           createdAt: expect.any(String),
           selections: expect.any(Array),

@@ -141,11 +141,18 @@ export class StoreOfferRepository {
 
   async findByListItems(
     items: Array<{ catalogProductId?: string; normalizedName?: string }>,
+    scope?: {
+      regionId?: string;
+      establishmentIds?: string[];
+    },
   ): Promise<StoreOfferEntity[]> {
     const catalogProductIds = new Set(items.map((item) => item.catalogProductId).filter(Boolean));
     const canonicalNames = new Set(items.map((item) => item.normalizedName).filter(Boolean));
 
     if (catalogProductIds.size === 0 && canonicalNames.size === 0) {
+      return [];
+    }
+    if (scope?.establishmentIds && scope.establishmentIds.length === 0) {
       return [];
     }
 
@@ -167,6 +174,11 @@ export class StoreOfferRepository {
         ].filter(Boolean) as Prisma.ProductOfferWhereInput[],
         establishment: {
           isActive: true,
+          regionId: scope?.regionId,
+          id:
+            scope?.establishmentIds && scope.establishmentIds.length > 0
+              ? { in: scope.establishmentIds }
+              : undefined,
           region: {
             implantationStatus: {
               not: 'inactive',
@@ -219,6 +231,15 @@ export class StoreOfferRepository {
       variantName: offer.productVariant.displayName,
       storeId: offer.establishmentId,
       storeName: offer.establishment.unitName,
+      storeRegionId: offer.establishment.regionId,
+      storeLatitude:
+        offer.establishment.latitude !== null
+          ? Number(offer.establishment.latitude)
+          : undefined,
+      storeLongitude:
+        offer.establishment.longitude !== null
+          ? Number(offer.establishment.longitude)
+          : undefined,
       canonicalName: normalizedProductName,
       matchingCanonicalNames,
       displayName: offer.displayName,

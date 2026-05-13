@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { type OptimizationModeRequest, type OptimizeShoppingListRequest } from '../../../common/contracts';
 
@@ -20,4 +20,18 @@ export class OptimizeShoppingListDto implements OptimizeShoppingListRequest {
   @IsOptional()
   @IsString()
   regionId?: string;
+
+  @IsOptional()
+  @IsString()
+  locationPreferenceId?: string;
+
+  @IsOptional()
+  @IsString()
+  userLocationPreferenceId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(25)
+  coverageRadiusKm?: number;
 }

@@ -7,6 +7,7 @@ import {
 
 import {
   type CreateShoppingListRequest,
+  type OptimizationMode,
   type ShoppingListItemInput,
 } from '../../common/contracts';
 import { ProductNormalizerService } from '../../catalog/application/product-normalizer.service';
@@ -40,7 +41,7 @@ export class ShoppingListsService {
         userId,
         name: request.name.trim(),
         preferredRegionId,
-        lastMode: request.lastMode ?? 'global_full',
+        lastMode: request.lastMode ?? 'global_multi',
       });
     } catch (error) {
       this.logger.error(
@@ -236,7 +237,7 @@ export class ShoppingListsService {
     input: {
       name?: string;
       preferredRegionId?: string;
-      lastMode?: 'local' | 'global_unique' | 'global_full';
+      lastMode?: OptimizationMode;
       items: ShoppingListItemInput[];
     },
   ): Promise<ShoppingListEntity> {

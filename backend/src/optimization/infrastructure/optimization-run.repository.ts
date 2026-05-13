@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../persistence/prisma.service';
 import { type OptimizationRunEntity } from '../domain/optimization-run.entity';
@@ -10,8 +11,17 @@ export class OptimizationRunRepository {
   async createQueuedRun(input: {
     shoppingListId: string;
     userId: string;
-    mode: 'local' | 'global_unique' | 'global_full';
+    mode:
+      | 'local'
+      | 'global_unique'
+      | 'global_full'
+      | 'local_unique'
+      | 'local_multi'
+      | 'global_multi';
     regionId: string;
+    userLocationPreferenceId?: string;
+    coverageRadiusKm?: Prisma.Decimal;
+    candidateEstablishmentCount?: number;
     preferredEstablishmentId?: string | null;
     jobId: string;
   }): Promise<OptimizationRunEntity> {
@@ -21,6 +31,9 @@ export class OptimizationRunRepository {
         userId: input.userId,
         mode: input.mode,
         regionId: input.regionId,
+        userLocationPreferenceId: input.userLocationPreferenceId ?? null,
+        coverageRadiusKm: input.coverageRadiusKm ?? null,
+        candidateEstablishmentCount: input.candidateEstablishmentCount ?? null,
         preferredEstablishmentId: input.preferredEstablishmentId ?? null,
         jobId: input.jobId,
         status: 'queued',
@@ -69,8 +82,17 @@ export class OptimizationRunRepository {
     id: string;
     shoppingListId: string;
     userId: string;
-    mode: 'local' | 'global_unique' | 'global_full';
+    mode:
+      | 'local'
+      | 'global_unique'
+      | 'global_full'
+      | 'local_unique'
+      | 'local_multi'
+      | 'global_multi';
     regionId: string;
+    userLocationPreferenceId?: string | null;
+    coverageRadiusKm?: { toString(): string } | null;
+    candidateEstablishmentCount?: number | null;
     preferredEstablishmentId: string | null;
     jobId: string | null;
     status: 'queued' | 'running' | 'completed' | 'failed';
@@ -88,6 +110,13 @@ export class OptimizationRunRepository {
       userId: record.userId,
       mode: record.mode,
       regionId: record.regionId,
+      userLocationPreferenceId: record.userLocationPreferenceId,
+      coverageRadiusKm:
+        record.coverageRadiusKm !== null && record.coverageRadiusKm !== undefined
+          ? Number(record.coverageRadiusKm)
+          : undefined,
+      candidateEstablishmentCount:
+        record.candidateEstablishmentCount ?? undefined,
       preferredEstablishmentId: record.preferredEstablishmentId,
       jobId: record.jobId,
       status: record.status,

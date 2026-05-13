@@ -1,9 +1,13 @@
-export type OptimizationMode = 'local' | 'global_unique' | 'global_full';
-export type OptimizationModeRequest =
-  | OptimizationMode
+export type LegacyOptimizationMode = 'local' | 'global_unique' | 'global_full';
+export type LocationAwareOptimizationMode =
   | 'local_unique'
   | 'local_multi'
   | 'global_multi';
+export type OptimizationMode =
+  | LegacyOptimizationMode
+  | LocationAwareOptimizationMode;
+export type OptimizationModeRequest =
+  | OptimizationMode;
 
 export interface ShoppingListItemInput {
   requestedName: string;
