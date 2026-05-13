@@ -432,6 +432,38 @@ type AdminReceiptProcessingResponse = {
     optimizationTokens: number;
     label: string;
   };
+  lineItems: Array<{
+    id: string;
+    rawProductName: string;
+    normalizedName: string;
+    ean?: string | null;
+    quantity: number;
+    unitPrice: number;
+    originalUnitPrice?: number | null;
+    promotionalUnitPrice?: number | null;
+    matchConfidence: number;
+    matcherStatus: 'matched_offer' | 'matched_name_only' | 'needs_product_review';
+    makerAction: 'offer_created' | 'link_existing_product' | 'create_or_match_product';
+    offers: Array<{
+      id: string;
+      catalogProductName: string;
+      variantName: string;
+      brandName?: string | null;
+      establishmentName: string;
+      neighborhood: string;
+      displayName: string;
+      packageLabel: string;
+      priceAmount: number;
+      observedAt: string;
+      comparison: {
+        previousPriceAmount?: number | null;
+        newPriceAmount: number;
+        deltaAmount?: number | null;
+        direction: 'new' | 'up' | 'down' | 'same';
+        previousObservedAt?: string | null;
+      };
+    }>;
+  }>;
 };
 
 type ReceiptSubmissionResponse = {
