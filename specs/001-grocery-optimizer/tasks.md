@@ -499,7 +499,7 @@ rules into implementation tasks against the real product.
 - [~] T181 Render persisted optimization explanations as shopper evidence modules with trust factor, source type, receipt/observation count, freshness decay, confidence notice, selected variant, true comparison math, and report/upload actions in `web/src/public/` and `mobile/lib/features/optimization/`
 - [~] T182 Render admin decision evidence modules with selected offers, rejected alternatives, trust decay, receipt provenance, moderation status, and source labels in `web/src/dashboard/`
 - [~] T183 Refactor receipt contribution surfaces so accepted, pending-review, duplicate, rejected, and low-confidence outcomes are visual and actionable without promising token rewards before T162 in `web/src/public/`, `web/src/dashboard/`, and `mobile/lib/features/receipts/`
-- [ ] T184 Add Phase 23-ready location widgets as explicit city/location/radius preview states, keeping proximity claims disabled until T170-T177 add persisted coordinates and distance-aware optimization in `web/src/public/` and `mobile/lib/features/`
+- [~] T184 Add Phase 23-ready location widgets as explicit city/location/radius preview states, keeping proximity claims disabled until T170-T177 add persisted coordinates and distance-aware optimization in `web/src/public/` and `mobile/lib/features/`
 - [~] T185 Refactor admin overview into an action-first operations surface that elevates stale offers, low-trust offers, failed jobs, quarantined receipts, catalog image gaps, and city coverage issues in `web/src/dashboard/`
 - [~] T186 Refactor public city and offer surfaces so activating cities have explicit placeholders, supported-establishment sections show active stores or activation states, offers are grouped by product/variant with cheapest eligible establishment first, and establishment filters/comparison panels replace duplicate offer cards in `web/src/public/` and `web/src/app/`
 - [~] T187 Refactor public web surfaces toward the audited direction for landing, city selection, offers explorer, offer detail, lists, list editor, optimization result, receipt states, location widgets, premium/free entitlement copy, and disabled billing gate in `web/src/public/`
@@ -553,7 +553,7 @@ Premium access and extra optimization credits are support/admin operations for n
 - [~] T214 Expand admin receipt detail with extracted payload, product matcher result, missing-product maker actions, and price up/down comparison against current offers in `backend/src/admin/` and `web/src/dashboard/`
 - [ ] T215 Add mobile QR-code receipt submission flow that posts the scanned NFC-e URL to backend and shows submitted -> waiting release -> processing -> reward validated states in `mobile/lib/features/receipts/`
 - [X] T216 Adopt `web/src/assets/pricely-icon.png` as the official brand icon in web shell/header and plan reuse for favicon/mobile app assets.
-- [ ] T217 Continue location web/mobile UX refactors with explicit location/radius preview, manual fallback, denied-permission states, and no-proximity claims until distance-aware optimization is fully active.
+- [~] T217 Continue location web/mobile UX refactors with explicit location/radius preview, manual fallback, denied-permission states, and no-proximity claims until distance-aware optimization is fully active.
 
 ---
 

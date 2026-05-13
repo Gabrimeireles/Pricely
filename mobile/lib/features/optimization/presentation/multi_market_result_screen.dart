@@ -128,6 +128,27 @@ class MultiMarketResultView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Localização e raio',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                const Text('Raio local padrão: 5 km.'),
+                const SizedBox(height: 6),
+                const Text(
+                  'A distância ainda é apenas preview neste MVP. O resultado usa a cidade da lista e não promete loja mais próxima.',
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         for (final plan in result.storePlans) ...<Widget>[
           Card(
             child: Padding(

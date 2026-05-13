@@ -91,6 +91,9 @@ describe('ListEditorPage', () => {
     );
 
     expect(screen.getByText('1. Defina o contexto da compra')).toBeTruthy();
+    expect(screen.getByText('Preview de localização')).toBeTruthy();
+    expect(screen.getByText('Raio local padrão: 5 km')).toBeTruthy();
+    expect(screen.getByText(/distância ainda não altera a otimização/i)).toBeTruthy();
     expect(screen.getByText('2. Adicione itens reais da sua compra')).toBeTruthy();
     expect(screen.getByText('3. Salve agora ou otimize depois')).toBeTruthy();
 

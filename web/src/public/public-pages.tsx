@@ -5,6 +5,7 @@ import {
   ArrowRightIcon,
   BadgeCheckIcon,
   ChevronRightIcon,
+  LocateFixedIcon,
   LogInIcon,
   MapPinIcon,
   ShieldAlertIcon,
@@ -115,8 +116,10 @@ const optimizationModeCopy: Record<
 > = {
   local: {
     title: 'Uma loja perto de mim',
-    summary: 'Usa uma loja elegivel dentro do raio local configurado.',
-    tradeoff: 'Menos deslocamento quando houver cobertura de localizacao.',
+    summary:
+      'Prepara a compra em uma loja da cidade com raio local padrão de 5 km.',
+    tradeoff:
+      'A distância ainda aparece como preview; a otimização usa a cidade selecionada até a regra geográfica ficar ativa.',
   },
   global_unique: {
     title: 'Uma loja na cidade',
@@ -2218,6 +2221,9 @@ export function ListEditorPage() {
   const selectedExactVariantLabel = selectedVariant
     ? `${selectedVariant.brandName ? `${selectedVariant.brandName} · ` : ''}${selectedVariant.displayName}`
     : undefined;
+  const selectedCity = selectedCityId
+    ? cities.find((entry) => entry.id === selectedCityId)
+    : null;
 
   const persistList = async (optimizeAfterSave: boolean) => {
     setError(null);
@@ -2441,6 +2447,30 @@ export function ListEditorPage() {
                 ))}
               </select>
             </Field>
+            <div className="rounded-lg border border-border/70 bg-background/80 p-3 md:col-span-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <LocateFixedIcon className="size-4 text-primary" />
+                Preview de localização
+              </div>
+              <div className="mt-2 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+                <span>
+                  Cidade:{' '}
+                  {selectedCity
+                    ? `${selectedCity.name} · ${selectedCity.stateCode}`
+                    : 'selecione uma cidade'}
+                </span>
+                <span>Raio local padrão: 5 km</span>
+                <span>
+                  {selectedCity
+                    ? `${selectedCity.activeStoreCount} lojas candidatas na cidade`
+                    : 'sem cobertura carregada'}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Nesta fase, o raio é exibido para orientar a escolha. A distância
+                ainda não altera a otimização nem gera promessa de proximidade.
+              </p>
+            </div>
           </CardContent>
         </Card>
 

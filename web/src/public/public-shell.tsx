@@ -1,5 +1,13 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { MapPinIcon, MoonStarIcon, ShieldCheckIcon, SparklesIcon, SunMediumIcon } from 'lucide-react';
+import {
+  LocateFixedIcon,
+  MapPinIcon,
+  MoonStarIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  SunMediumIcon,
+} from 'lucide-react';
+import { useState } from 'react';
 
 import { usePricely } from '@/app/pricely-context';
 import { useTheme } from '@/app/theme-context';
@@ -47,12 +55,31 @@ export function PublicLayout() {
   const { cityId, cities, currentUser, isAuthenticated, isBootstrapping, setCityId, signOut } =
     usePricely();
   const { theme, toggleTheme } = useTheme();
+  const [locationPermissionState, setLocationPermissionState] = useState<
+    'manual' | 'requesting' | 'allowed' | 'denied' | 'unsupported'
+  >('manual');
   const activeCity = cityId ? cities.find((city) => city.id === cityId) ?? null : null;
   const shouldRequireCitySelection =
     isAuthenticated && !isBootstrapping && !cityId && cities.length > 0;
   const citySummary = activeCity
     ? `${activeCity.name} - ${activeCity.activeStoreCount} estabelecimentos ativos`
     : 'Escolha uma cidade para carregar ofertas e listas com contexto local';
+  const radiusSummary = activeCity
+    ? `${activeCity.activeStoreCount} lojas candidatas na cidade · raio local padrão 5 km`
+    : 'Raio local padrão 5 km disponível após escolher a cidade';
+  const requestBrowserLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationPermissionState('unsupported');
+      return;
+    }
+
+    setLocationPermissionState('requesting');
+    navigator.geolocation.getCurrentPosition(
+      () => setLocationPermissionState('allowed'),
+      () => setLocationPermissionState('denied'),
+      { enableHighAccuracy: false, maximumAge: 300000, timeout: 8000 },
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.14),transparent_28%),radial-gradient(circle_at_85%_15%,rgba(37,99,235,0.10),transparent_22%),linear-gradient(180deg,#f8fafb_0%,#f3f8f6_48%,#eef7f8_100%)]">
@@ -157,6 +184,44 @@ export function PublicLayout() {
                   : 'Selecione uma cidade'}
             </span>
           </div>
+        </div>
+
+        <div className="grid gap-3 rounded-lg border border-border/70 bg-background/85 px-4 py-3 text-sm shadow-sm lg:grid-cols-[1.2fr_1fr_auto] lg:items-center">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 font-medium">
+              <LocateFixedIcon className="size-4 text-primary" />
+              Localização para otimização local
+            </div>
+            <div className="mt-1 text-muted-foreground">
+              {radiusSummary}. A distância ainda não altera a otimização; usamos a cidade selecionada até a regra geográfica ficar ativa.
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-muted-foreground">
+            <span className="rounded-md border border-border/70 bg-card px-2.5 py-1">
+              Cidade: {activeCity ? `${activeCity.name} · ${activeCity.stateCode}` : 'manual pendente'}
+            </span>
+            <span className="rounded-md border border-border/70 bg-card px-2.5 py-1">
+              Permissão: {locationPermissionState === 'allowed'
+                ? 'capturada para preview'
+                : locationPermissionState === 'denied'
+                  ? 'negada'
+                  : locationPermissionState === 'unsupported'
+                    ? 'indisponível'
+                    : locationPermissionState === 'requesting'
+                      ? 'solicitando'
+                      : 'manual'}
+            </span>
+          </div>
+          <Button
+            disabled={locationPermissionState === 'requesting'}
+            onClick={requestBrowserLocation}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <LocateFixedIcon data-icon="inline-start" />
+            Usar localização
+          </Button>
         </div>
 
         <Outlet />
