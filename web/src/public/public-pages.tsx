@@ -1981,7 +1981,7 @@ export function ChecklistPage() {
             </Alert>
           ) : null}
 
-          <Card className="border-border/70 bg-card/95">
+          <Card className="sticky bottom-3 z-20 border-border/70 bg-card/95 shadow-sm">
             <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="font-medium">
@@ -2014,6 +2014,22 @@ export function ChecklistPage() {
               ) : null}
             </CardContent>
           </Card>
+
+          {list.completedAt ? (
+            <Alert>
+              <UploadIcon />
+              <AlertTitle>Compra concluída</AlertTitle>
+              <AlertDescription className="space-y-3">
+                <p>
+                  Use a nota fiscal para validar os preços encontrados e ajudar
+                  a melhorar a confiança das próximas ofertas.
+                </p>
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/notas">Enviar nota fiscal</Link>
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
           <div className="grid gap-4">
             {list.items.map((item) => {
