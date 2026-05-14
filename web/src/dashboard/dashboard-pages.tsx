@@ -147,6 +147,66 @@ function jobStatusLabel(status: AdminProcessingJobResponse['status']) {
   return labels[status];
 }
 
+function jobStatusBadgeVariant(status: AdminProcessingJobResponse['status']) {
+  if (status === 'failed') {
+    return 'destructive' as const;
+  }
+
+  if (status === 'retrying') {
+    return 'outline' as const;
+  }
+
+  return 'secondary' as const;
+}
+
+function optimizationSelectionStatusLabel(
+  status: NonNullable<
+    AdminProcessingJobDetailResponse['optimizationRun']
+  >['selections'][number]['status'],
+) {
+  const labels: Record<
+    NonNullable<
+      AdminProcessingJobDetailResponse['optimizationRun']
+    >['selections'][number]['status'],
+    string
+  > = {
+    missing: 'Sem oferta',
+    review: 'Revisar',
+    selected: 'Selecionada',
+  };
+
+  return labels[status];
+}
+
+function receiptTrustLabel(
+  trustLevel: AdminReceiptProcessingResponse['trustLevel'],
+) {
+  const labels: Record<AdminReceiptProcessingResponse['trustLevel'], string> = {
+    pending_review: 'Revisão pendente',
+    rejected: 'Rejeitada',
+    trusted: 'Confiável',
+    untrusted: 'Baixa confiança',
+  };
+
+  return labels[trustLevel];
+}
+
+function rewardEligibilityLabel(
+  status: AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+    string
+  > = {
+    disabled: 'Rewards desativados',
+    eligible_pending: 'Elegível pendente',
+    granted: 'Reward concedido',
+    ineligible: 'Inelegível',
+  };
+
+  return labels[status];
+}
+
 function JobResourceIcon({ job }: { job: AdminProcessingJobResponse }) {
   if (job.receiptRecord || job.resourceType.includes('receipt')) {
     return <ReceiptTextIcon className="size-4" />;
@@ -2015,10 +2075,11 @@ function adminUserPlanLabel(user: AdminUserResponse) {
 
 export function AdminUsersPage() {
   const { accessToken } = usePricely();
-  const { data: users, error, reload } = useAdminData<AdminUserResponse[]>(
-    fetchAdminUsers,
-    [],
-  );
+  const {
+    data: users,
+    error,
+    reload,
+  } = useAdminData<AdminUserResponse[]>(fetchAdminUsers, []);
   const [tokenAmounts, setTokenAmounts] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
 
@@ -2093,19 +2154,28 @@ export function AdminUsersPage() {
             <div className="rounded-lg border border-border/70 p-4">
               <div className="text-sm text-muted-foreground">Premium</div>
               <div className="text-2xl font-semibold">
-                {users.filter((user) => user.entitlement.plan === 'premium').length}
+                {
+                  users.filter((user) => user.entitlement.plan === 'premium')
+                    .length
+                }
               </div>
             </div>
             <div className="rounded-lg border border-border/70 p-4">
               <div className="text-sm text-muted-foreground">Listas</div>
               <div className="text-2xl font-semibold">
-                {users.reduce((sum, user) => sum + user.counts.shoppingLists, 0)}
+                {users.reduce(
+                  (sum, user) => sum + user.counts.shoppingLists,
+                  0,
+                )}
               </div>
             </div>
             <div className="rounded-lg border border-border/70 p-4">
               <div className="text-sm text-muted-foreground">Notas fiscais</div>
               <div className="text-2xl font-semibold">
-                {users.reduce((sum, user) => sum + user.counts.receiptRecords, 0)}
+                {users.reduce(
+                  (sum, user) => sum + user.counts.receiptRecords,
+                  0,
+                )}
               </div>
             </div>
           </div>
@@ -2136,7 +2206,9 @@ export function AdminUsersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">{adminUserLocationLabel(user)}</div>
+                      <div className="text-sm">
+                        {adminUserLocationLabel(user)}
+                      </div>
                       <div className="text-xs text-muted-foreground">
                         ultimo acesso{' '}
                         {user.lastLoginAt
@@ -2170,7 +2242,8 @@ export function AdminUsersPage() {
                         {user.entitlement.lastPaymentAt ?? 'Sem cobranca ativa'}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {user.entitlement.lastPaymentStatus === 'billing_disabled'
+                        {user.entitlement.lastPaymentStatus ===
+                        'billing_disabled'
                           ? 'Billing desativado'
                           : user.entitlement.lastPaymentStatus}
                       </div>
@@ -2375,9 +2448,10 @@ export function AdminReceiptsPage() {
     data: receipts,
     error,
     reload,
-  } = useAdminData<
-    AdminReceiptProcessingResponse[]
-  >(fetchAdminReceiptProcessing, []);
+  } = useAdminData<AdminReceiptProcessingResponse[]>(
+    fetchAdminReceiptProcessing,
+    [],
+  );
   const [releasingId, setReleasingId] = useState<string | null>(null);
   const [expandedReceiptId, setExpandedReceiptId] = useState<string | null>(
     null,
@@ -2518,27 +2592,22 @@ export function AdminReceiptsPage() {
                   <div className="mt-1 font-medium">{receipt.parseStatus}</div>
                 </div>
                 <div className="rounded-md border border-border/70 p-3">
-                  <div className="text-xs text-muted-foreground">
-                    Qualidade
-                  </div>
+                  <div className="text-xs text-muted-foreground">Qualidade</div>
                   <div className="mt-1 font-medium">
                     {receiptQualityLabel(receipt)}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    média {Math.round(receipt.quality.averageMatchConfidence * 100)}%
+                    média{' '}
+                    {Math.round(receipt.quality.averageMatchConfidence * 100)}%
                   </div>
                 </div>
                 <div className="rounded-md border border-border/70 p-3">
-                  <div className="text-xs text-muted-foreground">
-                    Confiança
-                  </div>
+                  <div className="text-xs text-muted-foreground">Confiança</div>
                   <div className="mt-1 font-medium">{receipt.trustLevel}</div>
                 </div>
                 <div className="rounded-md border border-border/70 p-3">
                   <div className="text-xs text-muted-foreground">Reward</div>
-                  <div className="mt-1 font-medium">
-                    {receipt.reward.label}
-                  </div>
+                  <div className="mt-1 font-medium">{receipt.reward.label}</div>
                   <div className="text-xs text-muted-foreground">
                     {receipt.rewardEligibilityStatus}
                   </div>
@@ -2553,7 +2622,10 @@ export function AdminReceiptsPage() {
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3">
                 <div className="text-sm text-muted-foreground">
                   {receipt.lineItems.length} itens extraídos ·{' '}
-                  {receipt.lineItems.filter((item) => item.offers.length > 0).length}{' '}
+                  {
+                    receipt.lineItems.filter((item) => item.offers.length > 0)
+                      .length
+                  }{' '}
                   com oferta gerada
                 </div>
                 <Button
@@ -2828,15 +2900,7 @@ export function AdminQueuePage() {
                     </div>
                   </div>
                 </div>
-                <Badge
-                  variant={
-                    job.status === 'failed'
-                      ? 'destructive'
-                      : job.status === 'retrying'
-                        ? 'outline'
-                        : 'secondary'
-                  }
-                >
+                <Badge variant={jobStatusBadgeVariant(job.status)}>
                   {jobStatusLabel(job.status)}
                 </Badge>
               </div>
@@ -2916,7 +2980,63 @@ export function AdminQueueDetailPage() {
     <div className="grid gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>Detalhe do job</CardTitle>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle>{jobResourceTitle(job)}</CardTitle>
+              <CardDescription>
+                {jobOwnerLabel(job)} · {job.queueName} · tentativa{' '}
+                {job.attemptCount}
+              </CardDescription>
+            </div>
+            <Badge variant={jobStatusBadgeVariant(job.status)}>
+              {jobStatusLabel(job.status)}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="text-sm text-muted-foreground">Recurso</div>
+              <div className="mt-1 font-medium">{jobResourceTitle(job)}</div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="text-sm text-muted-foreground">Solicitado</div>
+              <div className="mt-1 font-medium">
+                {formatFreshnessLabel(job.createdAt)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="text-sm text-muted-foreground">Concluído</div>
+              <div className="mt-1 font-medium">
+                {job.finishedAt
+                  ? formatFreshnessLabel(job.finishedAt)
+                  : 'Ainda sem conclusão'}
+              </div>
+            </div>
+          </div>
+          {job.failureReason ? (
+            <Alert variant="destructive">
+              <AlertTriangleIcon />
+              <AlertTitle>Falha operacional</AlertTitle>
+              <AlertDescription>{job.failureReason}</AlertDescription>
+            </Alert>
+          ) : null}
+          <div className="rounded-lg border border-border/70 bg-muted/20 p-4">
+            <div className="text-sm font-medium">Dados técnicos</div>
+            <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
+              <span>job_id: {job.id}</span>
+              <span>
+                resource: {job.resourceType} · {job.resourceId}
+              </span>
+              <span>job_type: {job.jobType}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Contexto técnico</CardTitle>
           <CardDescription>
             {job.queueName} · {job.jobType} · tentativa {job.attemptCount}
           </CardDescription>
@@ -2966,7 +3086,8 @@ export function AdminQueueDetailPage() {
           <CardHeader>
             <CardTitle>Otimização</CardTitle>
             <CardDescription>
-              run {job.optimizationRun.id} · modo {job.optimizationRun.mode} ·{' '}
+              {job.shoppingList?.name ?? job.resourceId} · modo{' '}
+              {job.optimizationRun.mode.replace(/_/g, ' ')} · cobertura{' '}
               {job.optimizationRun.coverageStatus}
             </CardDescription>
           </CardHeader>
@@ -2994,7 +3115,7 @@ export function AdminQueueDetailPage() {
             {job.optimizationRun.summary ? (
               <Alert>
                 <InfoIcon />
-                <AlertTitle>Resumo do thinking</AlertTitle>
+                <AlertTitle>Resumo da decisão</AlertTitle>
                 <AlertDescription>
                   {job.optimizationRun.summary}
                 </AlertDescription>
@@ -3025,7 +3146,7 @@ export function AdminQueueDetailPage() {
                                 : 'destructive'
                           }
                         >
-                          {selection.status}
+                          {optimizationSelectionStatusLabel(selection.status)}
                         </Badge>
                         {selection.offer?.confidenceLevel ? (
                           <span className="text-xs text-muted-foreground">
@@ -3061,8 +3182,13 @@ export function AdminQueueDetailPage() {
                         {selection.offer?.receiptEvidence ? (
                           <span className="text-xs text-muted-foreground">
                             Nota{' '}
-                            {selection.offer.receiptEvidence.moderationStatus} ·{' '}
-                            {selection.offer.receiptEvidence.trustLevel}
+                            {receiptModerationLabel(
+                              selection.offer.receiptEvidence.moderationStatus,
+                            )}{' '}
+                            ·{' '}
+                            {receiptTrustLabel(
+                              selection.offer.receiptEvidence.trustLevel,
+                            )}
                           </span>
                         ) : null}
                       </div>
@@ -3081,7 +3207,8 @@ export function AdminQueueDetailPage() {
             <CardTitle>Recibo contribuído</CardTitle>
             <CardDescription>
               {job.receiptRecord.storeName ?? 'Loja não identificada'} ·{' '}
-              {job.receiptRecord.parseStatus} · {job.receiptRecord.trustLevel}
+              {job.receiptRecord.parseStatus} ·{' '}
+              {receiptTrustLabel(job.receiptRecord.trustLevel)}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -3089,19 +3216,21 @@ export function AdminQueueDetailPage() {
               <div className="rounded-lg border border-border/70 p-4">
                 <div className="text-sm text-muted-foreground">Moderacao</div>
                 <div className="mt-1 text-lg font-semibold">
-                  {job.receiptRecord.moderationStatus}
+                  {receiptModerationLabel(job.receiptRecord.moderationStatus)}
                 </div>
               </div>
               <div className="rounded-lg border border-border/70 p-4">
                 <div className="text-sm text-muted-foreground">Confianca</div>
                 <div className="mt-1 text-lg font-semibold">
-                  {job.receiptRecord.trustLevel}
+                  {receiptTrustLabel(job.receiptRecord.trustLevel)}
                 </div>
               </div>
               <div className="rounded-lg border border-border/70 p-4">
                 <div className="text-sm text-muted-foreground">Reward</div>
                 <div className="mt-1 text-lg font-semibold">
-                  {job.receiptRecord.rewardEligibilityStatus}
+                  {rewardEligibilityLabel(
+                    job.receiptRecord.rewardEligibilityStatus,
+                  )}
                 </div>
               </div>
             </div>
