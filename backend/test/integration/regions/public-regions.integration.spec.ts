@@ -23,6 +23,11 @@ describe('Public regions and pricing integration', () => {
             implantationStatus: 'active',
             establishments: [
               {
+                id: 'est-1',
+                brandName: 'Mercado',
+                unitName: 'Mercado Centro',
+                neighborhood: 'Centro',
+                cityName: 'Sao Paulo',
                 productOffers: [{ id: 'offer-1' }],
               },
             ],
@@ -177,13 +182,22 @@ describe('Public regions and pricing integration', () => {
   });
 
   it('lists visible regions and excludes inactive ones', async () => {
-    const response = await request(app.getHttpServer()).get('/regions').expect(200);
+    const response = await request(app.getHttpServer())
+      .get('/regions')
+      .expect(200);
 
     expect(response.body).toEqual([
       expect.objectContaining({
         slug: 'sao-paulo-sp',
         activeEstablishmentCount: 1,
         offerCoverageStatus: 'live',
+        establishments: [
+          expect.objectContaining({
+            unitName: 'Mercado Centro',
+            neighborhood: 'Centro',
+            offerCount: 1,
+          }),
+        ],
       }),
       expect.objectContaining({
         slug: 'campinas-sp',

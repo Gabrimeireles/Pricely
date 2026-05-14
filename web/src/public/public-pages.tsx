@@ -516,6 +516,60 @@ function savingsComparisonLabel(selection: {
   return `${formatCurrency(savings)} de economia estimada nas ofertas disponíveis`;
 }
 
+type PublicOfferGroup = NonNullable<
+  RegionOffersApiResponse['groupedOffers']
+>[number];
+
+function getComparableOffers(group: PublicOfferGroup) {
+  return group.offers.length > 0
+    ? group.offers
+    : [group.bestOffer, ...group.alternativeOffers];
+}
+
+function buildOfferGroupFromOffers(
+  group: PublicOfferGroup,
+  offers: PublicOfferGroup['offers'],
+): PublicOfferGroup | null {
+  if (offers.length === 0) {
+    return null;
+  }
+
+  const sorted = [...offers].sort((left, right) => {
+    if (left.priceAmount !== right.priceAmount) {
+      return left.priceAmount - right.priceAmount;
+    }
+
+    return (
+      new Date(right.observedAt).getTime() - new Date(left.observedAt).getTime()
+    );
+  });
+  const prices = sorted.map((offer) => offer.priceAmount);
+  const cheapestPriceAmount = sorted[0].priceAmount;
+  const secondCheapestPriceAmount = sorted[1]?.priceAmount;
+  const averagePriceAmount = Number(
+    (prices.reduce((sum, price) => sum + price, 0) / prices.length).toFixed(2),
+  );
+
+  return {
+    ...group,
+    bestOffer: sorted[0],
+    alternativeOffers: sorted.slice(1),
+    offers: sorted,
+    establishmentCount: sorted.length,
+    cheapestPriceAmount,
+    secondCheapestPriceAmount,
+    savingsVsSecondCheapest: Number(
+      Math.max(
+        0,
+        (secondCheapestPriceAmount ?? cheapestPriceAmount) -
+          cheapestPriceAmount,
+      ).toFixed(2),
+    ),
+    averagePriceAmount,
+    highestPriceAmount: Math.max(...prices),
+  };
+}
+
 function RequireAuthentication({
   children,
   title,
@@ -966,6 +1020,8 @@ export function OffersPage() {
                 offers: [offer],
                 establishmentCount: 1,
                 cheapestPriceAmount: offer.priceAmount,
+                secondCheapestPriceAmount: undefined,
+                savingsVsSecondCheapest: 0,
                 averagePriceAmount: offer.priceAmount,
                 highestPriceAmount: offer.priceAmount,
               })),
@@ -988,7 +1044,7 @@ export function OffersPage() {
   const storeOptions = Array.from(
     new Set(
       offerGroups.flatMap((group) =>
-        group.offers.map((offer) => offer.storeName),
+        getComparableOffers(group).map((offer) => offer.storeName),
       ),
     ),
   ).sort((left, right) => left.localeCompare(right));
@@ -997,22 +1053,11 @@ export function OffersPage() {
       ? offerGroups
       : offerGroups
           .map((group) => {
-            const filteredOffers = group.offers.filter(
+            const filteredOffers = getComparableOffers(group).filter(
               (offer) => offer.storeName === storeFilter,
             );
 
-            if (filteredOffers.length === 0) {
-              return null;
-            }
-
-            return {
-              ...group,
-              bestOffer: filteredOffers[0],
-              offers: filteredOffers,
-              alternativeOffers: filteredOffers.slice(1),
-              establishmentCount: filteredOffers.length,
-              cheapestPriceAmount: filteredOffers[0].priceAmount,
-            };
+            return buildOfferGroupFromOffers(group, filteredOffers);
           })
           .filter((group): group is NonNullable<typeof group> =>
             Boolean(group),
@@ -1048,6 +1093,9 @@ export function OffersPage() {
             <div className="text-sm text-muted-foreground">
               Cada produto aparece uma vez, com o menor preço primeiro e outras
               lojas abertas no detalhe.
+              {storeFilter === 'all'
+                ? ` ${storeOptions.length} estabelecimentos disponíveis neste recorte.`
+                : ` Recorte atual: ${storeFilter}.`}
             </div>
           </div>
           <select
@@ -1107,13 +1155,38 @@ export function OffersPage() {
                 Menor preço em {group.bestOffer.storeName} ·{' '}
                 {group.bestOffer.neighborhood}
               </div>
-              {group.averagePriceAmount > group.cheapestPriceAmount ? (
-                <div className="text-sm text-emerald-700">
-                  {formatCurrency(
-                    group.averagePriceAmount - group.cheapestPriceAmount,
-                  )}{' '}
-                  abaixo da média desta variante (
-                  {formatCurrency(group.averagePriceAmount)})
+              {(group.savingsVsSecondCheapest ?? 0) > 0 &&
+              group.secondCheapestPriceAmount ? (
+                <div className="text-sm font-medium text-emerald-700">
+                  {formatCurrency(group.savingsVsSecondCheapest ?? 0)} abaixo do
+                  próximo menor preço (
+                  {formatCurrency(group.secondCheapestPriceAmount)}).
+                </div>
+              ) : group.establishmentCount > 1 ? (
+                <div className="text-sm text-muted-foreground">
+                  Menor preço empatado entre estabelecimentos elegíveis.
+                </div>
+              ) : null}
+              {group.averagePriceAmount > 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  Média da variante na cidade:{' '}
+                  {formatCurrency(group.averagePriceAmount)}
+                  {group.averagePriceAmount > group.cheapestPriceAmount ? (
+                    <>
+                      {' '}
+                      ·{' '}
+                      {formatCurrency(
+                        group.averagePriceAmount - group.cheapestPriceAmount,
+                      )}{' '}
+                      acima do menor preço
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+              {group.bestOffer.sourceLabel ? (
+                <div className="text-sm text-muted-foreground">
+                  Origem: {group.bestOffer.sourceLabel} ·{' '}
+                  {formatDateTime(group.bestOffer.observedAt)}
                 </div>
               ) : null}
               {group.alternativeOffers.length > 0 ? (
@@ -1130,9 +1203,17 @@ export function OffersPage() {
                         <span className="text-muted-foreground">
                           {offer.storeName} · {offer.neighborhood}
                         </span>
-                        <span className="font-medium">
-                          {formatCurrency(offer.priceAmount)}
-                        </span>
+                        <div className="text-right">
+                          <div className="font-medium">
+                            {formatCurrency(offer.priceAmount)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            +
+                            {formatCurrency(
+                              offer.priceAmount - group.cheapestPriceAmount,
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1375,8 +1456,29 @@ export function CitiesPage() {
               <div>
                 <div className="font-medium">Estabelecimentos suportados</div>
                 {city.stores.length > 0 ? (
-                  <div className="text-muted-foreground">
-                    {city.stores.join(', ')}
+                  <div className="mt-2 grid gap-2">
+                    {city.stores.map((store) => (
+                      <div
+                        key={store.id ?? `${city.id}-${store.name}`}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-border/70 p-3"
+                      >
+                        <div>
+                          <div className="font-medium text-foreground">
+                            {store.name}
+                          </div>
+                          <div className="text-muted-foreground">
+                            {store.neighborhood ?? 'Bairro em validação'}
+                          </div>
+                        </div>
+                        <Badge
+                          variant={store.offerCount ? 'secondary' : 'outline'}
+                        >
+                          {store.offerCount
+                            ? `${store.offerCount} ofertas`
+                            : 'Em ativação'}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="rounded-lg border border-dashed border-border/80 bg-muted/30 p-3 text-muted-foreground">

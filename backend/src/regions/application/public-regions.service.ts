@@ -49,16 +49,28 @@ export class PublicRegionsService {
         implantationStatus: region.implantationStatus,
         activeEstablishmentCount,
         offerCoverageStatus: liveOffersCount > 0 ? 'live' : 'collecting_data',
+        establishments: region.establishments.map((establishment) => ({
+          id: establishment.id,
+          brandName: establishment.brandName,
+          unitName: establishment.unitName,
+          neighborhood: establishment.neighborhood,
+          cityName: establishment.cityName,
+          offerCount: establishment.productOffers.length,
+        })),
       };
     });
 
-    this.logger.log(`Public regions requested: ${projectedRegions.length} regions visible`);
+    this.logger.log(
+      `Public regions requested: ${projectedRegions.length} regions visible`,
+    );
 
     const zeroStoreRegions = projectedRegions.filter(
       (region) => region.activeEstablishmentCount === 0,
     ).length;
     if (zeroStoreRegions > 0) {
-      this.logger.warn(`Public regions response contains ${zeroStoreRegions} zero-store regions`);
+      this.logger.warn(
+        `Public regions response contains ${zeroStoreRegions} zero-store regions`,
+      );
     }
 
     return projectedRegions;
@@ -82,7 +94,9 @@ export class PublicRegionsService {
     ]);
 
     const impact = {
-      totalEstimatedSavings: Number(aggregatedSavings._sum.estimatedSavings ?? 0),
+      totalEstimatedSavings: Number(
+        aggregatedSavings._sum.estimatedSavings ?? 0,
+      ),
       optimizedListsCount,
     };
 

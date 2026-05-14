@@ -18,7 +18,13 @@ export interface SupportedCity {
   coverageStatus: 'live' | 'collecting_data';
   regionLabel: string;
   status: 'supported' | 'pilot' | 'soon';
-  stores: string[];
+  stores: Array<{
+    id?: string;
+    name: string;
+    brandName?: string;
+    neighborhood?: string;
+    offerCount?: number;
+  }>;
   neighborhoods: string[];
 }
 

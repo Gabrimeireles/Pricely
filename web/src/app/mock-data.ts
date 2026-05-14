@@ -45,7 +45,15 @@ export const supportedCities: SupportedCity[] = [
     coverageStatus: 'live',
     regionLabel: 'Capital expandida',
     status: 'supported',
-    stores: ['Atacadão Butantã', 'Assaí Jaguaré', 'Carrefour Pinheiros'],
+    stores: [
+      { name: 'Atacadão Butantã', neighborhood: 'Butantã', offerCount: 18 },
+      { name: 'Assaí Jaguaré', neighborhood: 'Jaguaré', offerCount: 14 },
+      {
+        name: 'Carrefour Pinheiros',
+        neighborhood: 'Pinheiros',
+        offerCount: 12,
+      },
+    ],
     neighborhoods: ['Butantã', 'Pinheiros', 'Jaguaré'],
   },
   {
@@ -57,7 +65,10 @@ export const supportedCities: SupportedCity[] = [
     coverageStatus: 'live',
     regionLabel: 'Metropolitana',
     status: 'supported',
-    stores: ['Pague Menos Centro', 'Savegnago Taquaral'],
+    stores: [
+      { name: 'Pague Menos Centro', neighborhood: 'Centro', offerCount: 8 },
+      { name: 'Savegnago Taquaral', neighborhood: 'Taquaral', offerCount: 6 },
+    ],
     neighborhoods: ['Centro', 'Taquaral'],
   },
   {
@@ -69,7 +80,10 @@ export const supportedCities: SupportedCity[] = [
     coverageStatus: 'collecting_data',
     regionLabel: 'Piloto assistido',
     status: 'pilot',
-    stores: ['Supernosso Savassi', 'EPA Centro'],
+    stores: [
+      { name: 'Supernosso Savassi', neighborhood: 'Savassi', offerCount: 0 },
+      { name: 'EPA Centro', neighborhood: 'Centro', offerCount: 0 },
+    ],
     neighborhoods: ['Savassi', 'Centro'],
   },
   {
@@ -81,7 +95,7 @@ export const supportedCities: SupportedCity[] = [
     coverageStatus: 'collecting_data',
     regionLabel: 'Em preparação',
     status: 'soon',
-    stores: ['Lançamento em breve'],
+    stores: [],
     neighborhoods: ['Água Verde'],
   },
 ];
@@ -279,7 +293,10 @@ export const initialShoppingLists: ShoppingList[] = [
   },
 ];
 
-export const optimizationScenariosByList: Record<string, OptimizationScenario[]> = {
+export const optimizationScenariosByList: Record<
+  string,
+  OptimizationScenario[]
+> = {
   'lista-semana': [
     {
       mode: 'local_unique',
@@ -583,7 +600,9 @@ export const adminQueueIssues: AdminQueueIssue[] = [
 ];
 
 export function getCityById(cityId: string) {
-  return supportedCities.find((city) => city.id === cityId) ?? supportedCities[0];
+  return (
+    supportedCities.find((city) => city.id === cityId) ?? supportedCities[0]
+  );
 }
 
 export function getOffersForCity(cityId: string) {

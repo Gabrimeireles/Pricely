@@ -178,8 +178,21 @@ export function PricelyProvider({ children }: PropsWithChildren) {
                 : region.implantationStatus === 'activating'
                   ? 'pilot'
                   : 'soon',
-            stores: [],
-            neighborhoods: [],
+            stores:
+              region.establishments?.map((establishment) => ({
+                id: establishment.id,
+                name: establishment.unitName,
+                brandName: establishment.brandName,
+                neighborhood: establishment.neighborhood,
+                offerCount: establishment.offerCount,
+              })) ?? [],
+            neighborhoods: Array.from(
+              new Set(
+                region.establishments
+                  ?.map((establishment) => establishment.neighborhood)
+                  .filter(Boolean) ?? [],
+              ),
+            ),
           })),
         );
       } catch {

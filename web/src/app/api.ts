@@ -123,6 +123,14 @@ type PublicRegionApiResponse = {
   implantationStatus: 'active' | 'activating' | 'inactive';
   activeEstablishmentCount: number;
   offerCoverageStatus: 'live' | 'collecting_data';
+  establishments?: Array<{
+    id: string;
+    brandName: string;
+    unitName: string;
+    neighborhood: string;
+    cityName: string;
+    offerCount: number;
+  }>;
 };
 
 type PublicImpactResponse = {
@@ -164,6 +172,9 @@ type RegionalOfferApiResponse = {
   basePriceAmount?: number;
   promotionalPriceAmount?: number;
   savingsVsRegionalAverage?: number;
+  regionalAveragePriceAmount?: number;
+  comparisonPriceAmount?: number;
+  savingsVsComparison?: number;
   observedAt: string;
   sourceLabel: string;
   storeName: string;
@@ -184,6 +195,8 @@ type RegionalOfferGroupApiResponse = {
   offers: RegionalOfferApiResponse[];
   establishmentCount: number;
   cheapestPriceAmount: number;
+  secondCheapestPriceAmount?: number;
+  savingsVsSecondCheapest?: number;
   averagePriceAmount: number;
   highestPriceAmount: number;
 };
@@ -443,8 +456,14 @@ type AdminReceiptProcessingResponse = {
     originalUnitPrice?: number | null;
     promotionalUnitPrice?: number | null;
     matchConfidence: number;
-    matcherStatus: 'matched_offer' | 'matched_name_only' | 'needs_product_review';
-    makerAction: 'offer_created' | 'link_existing_product' | 'create_or_match_product';
+    matcherStatus:
+      | 'matched_offer'
+      | 'matched_name_only'
+      | 'needs_product_review';
+    makerAction:
+      | 'offer_created'
+      | 'link_existing_product'
+      | 'create_or_match_product';
     offers: Array<{
       id: string;
       catalogProductName: string;
