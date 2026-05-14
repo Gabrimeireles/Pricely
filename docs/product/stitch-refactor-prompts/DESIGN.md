@@ -208,6 +208,10 @@ Never promise points or credits before quality scoring says the receipt is usefu
 - Use two or three columns when it improves scanning.
 - Keep primary action near the current workflow.
 - Admin screens can use dense tables.
+- Design web/admin screens for a desktop canvas around 1440px wide, but make the layout implementation-ready down to tablet and mobile breakpoints.
+- Web designs must include responsive behavior notes for desktop, tablet and mobile.
+- Avoid fixed-width layouts that would break on smaller screens.
+- Header, tables, filters, action bars and cards must have clear responsive adaptations.
 
 ### Mobile
 
@@ -217,6 +221,25 @@ Never promise points or credits before quality scoring says the receipt is usefu
 - List rows become compact cards.
 - Tables become stacked rows.
 - No horizontal overflow.
+- Design mobile screens for a real phone viewport around 390px wide.
+- Keep content inside the mobile viewport; no desktop-width tables, no hidden horizontal overflow, no text clipping.
+- Use native mobile structure: top compact context, scrollable content, bottom navigation or bottom sticky CTA.
+- Mobile should not be a shrunken desktop design.
+
+### Light and Dark Mode
+
+Every screen must be generated with light and dark mode readiness.
+
+- Light mode is the primary preview.
+- Dark mode must be specified through tokens, not inverted ad hoc colors.
+- Dark mode keeps the same semantic colors:
+  - teal for primary/trusted;
+  - lime for success;
+  - amber for pending/warning;
+  - coral for critical/error.
+- Dark mode surfaces should be deep neutral green/charcoal, not pure black.
+- Borders and shadows must remain subtle in both modes.
+- Evidence, warning and critical states must remain readable in both modes.
 
 ## 7. Accessibility
 

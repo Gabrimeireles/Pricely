@@ -23,6 +23,20 @@ Use estes arquivos como prompts independentes no Stitch. O fluxo recomendado:
 
 Regra de escopo: o protótipo novo substitui as telas antigas como direção visual. Não tentar preservar layout antigo se ele conflitar com o fluxo atual do MVP.
 
+## Diretriz obrigatória em todo prompt
+
+Ao colar qualquer prompt no Stitch, inclua esta instrução junto:
+
+```text
+Crie somente a tela citada neste prompt. Nao crie telas extras, nao crie fluxo inteiro automaticamente e nao misture web com mobile.
+
+Se o prompt for web/admin desktop: use canvas desktop, respeite layout responsivo pronto para implementacao em desktop, tablet e mobile, e inclua diretrizes de modo claro e escuro.
+
+Se o prompt for mobile: use viewport real de telefone, aproximadamente 390px de largura, sem overflow horizontal, com bottom navigation ou CTA fixo quando fizer sentido, e inclua diretrizes de modo claro e escuro.
+
+Todos os componentes devem caber no viewport, textos nao podem estourar containers, tabelas precisam virar linhas/cards no responsivo, e nenhuma tela deve depender de hover para acao principal.
+```
+
 ## Como usar o DESIGN.md
 
 Opção recomendada:
