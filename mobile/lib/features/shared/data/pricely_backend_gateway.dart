@@ -59,6 +59,32 @@ class PricelyBackendGateway {
     return AuthUser.fromJson(response);
   }
 
+  Future<UserLocationPreferenceSummary> upsertLocationPreference({
+    required String accessToken,
+    required String regionId,
+    required String label,
+    required double latitude,
+    required double longitude,
+    required double coverageRadiusKm,
+    required bool isDefault,
+    required String locationSource,
+  }) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/locations',
+      accessToken: accessToken,
+      body: <String, dynamic>{
+        'regionId': regionId,
+        'label': label,
+        'latitude': latitude,
+        'longitude': longitude,
+        'coverageRadiusKm': coverageRadiusKm,
+        'isDefault': isDefault,
+        'locationSource': locationSource,
+      },
+    );
+    return UserLocationPreferenceSummary.fromJson(response);
+  }
+
   List<Map<String, dynamic>> _parseManualReceiptItems(String? rawReceipt) {
     if (rawReceipt == null || rawReceipt.trim().isEmpty) {
       return <Map<String, dynamic>>[];
@@ -251,11 +277,21 @@ class PricelyBackendGateway {
     required String accessToken,
     required String listId,
     required String mode,
+    String? userLocationPreferenceId,
+    double? coverageRadiusKm,
   }) async {
+    final body = <String, dynamic>{'mode': mode};
+    if (userLocationPreferenceId != null) {
+      body['userLocationPreferenceId'] = userLocationPreferenceId;
+    }
+    if (coverageRadiusKm != null) {
+      body['coverageRadiusKm'] = coverageRadiusKm;
+    }
+
     await _apiClient.post<Map<String, dynamic>>(
       '${ApiEnvironment.shoppingListsPath}/$listId/optimize',
       accessToken: accessToken,
-      body: <String, dynamic>{'mode': mode},
+      body: body,
     );
     return _waitForOptimizationResult(
       accessToken: accessToken,
@@ -585,6 +621,49 @@ class PublicRegionSummary {
           (json['activeEstablishmentCount'] as num? ?? 0).toInt(),
       offerCoverageStatus:
           json['offerCoverageStatus'] as String? ?? 'collecting_data',
+    );
+  }
+}
+
+class UserLocationPreferenceSummary {
+  UserLocationPreferenceSummary({
+    required this.id,
+    required this.regionId,
+    required this.regionSlug,
+    required this.label,
+    required this.latitude,
+    required this.longitude,
+    required this.coverageRadiusKm,
+    required this.activeEstablishmentCount,
+    required this.isDefault,
+    required this.locationSource,
+  });
+
+  final String id;
+  final String regionId;
+  final String regionSlug;
+  final String label;
+  final double? latitude;
+  final double? longitude;
+  final double coverageRadiusKm;
+  final int activeEstablishmentCount;
+  final bool isDefault;
+  final String locationSource;
+
+  factory UserLocationPreferenceSummary.fromJson(Map<String, dynamic> json) {
+    return UserLocationPreferenceSummary(
+      id: json['id'] as String,
+      regionId: json['regionId'] as String,
+      regionSlug: json['regionSlug'] as String? ?? '',
+      label: json['label'] as String? ?? 'Local atual',
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      coverageRadiusKm:
+          (json['coverageRadiusKm'] as num? ?? 5).toDouble(),
+      activeEstablishmentCount:
+          (json['activeEstablishmentCount'] as num? ?? 0).toInt(),
+      isDefault: json['isDefault'] as bool? ?? false,
+      locationSource: json['locationSource'] as String? ?? 'manual',
     );
   }
 }

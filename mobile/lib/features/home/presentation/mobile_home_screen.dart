@@ -3,6 +3,7 @@
 import '../../../app/router.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../discovery/application/market_discovery_controller.dart';
+import '../../location/application/mobile_location_controller.dart';
 import '../../optimization/application/optimization_controller.dart';
 import '../../optimization/domain/optimization_result.dart';
 import '../../receipts/application/receipt_flow_controller.dart';
@@ -18,6 +19,7 @@ class MobileHomeScreen extends StatefulWidget {
     required this.shoppingListController,
     required this.optimizationController,
     required this.receiptFlowController,
+    required this.locationController,
     super.key,
   });
 
@@ -26,6 +28,7 @@ class MobileHomeScreen extends StatefulWidget {
   final ShoppingListController shoppingListController;
   final OptimizationController optimizationController;
   final ReceiptFlowController receiptFlowController;
+  final MobileLocationController locationController;
 
   @override
   State<MobileHomeScreen> createState() => _MobileHomeScreenState();
@@ -51,6 +54,7 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
         widget.shoppingListController,
         widget.optimizationController,
         widget.receiptFlowController,
+        widget.locationController,
       ]),
       builder: (context, _) {
         final user = widget.authController.currentUser;
@@ -74,6 +78,7 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
             authController: widget.authController,
             discoveryController: widget.discoveryController,
             shoppingListController: widget.shoppingListController,
+            locationController: widget.locationController,
             onOpenAuth: () =>
                 Navigator.of(context).pushNamed(AppRouter.authRoute),
             onOpenList: () => setState(() => _currentIndex = 1),
@@ -88,6 +93,7 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
             authController: widget.authController,
             controller: widget.optimizationController,
             listController: widget.shoppingListController,
+            locationController: widget.locationController,
           ),
           _ReceiptTab(controller: widget.receiptFlowController),
           _ProfileTab(
@@ -245,6 +251,7 @@ class _HomeTab extends StatelessWidget {
     required this.authController,
     required this.discoveryController,
     required this.shoppingListController,
+    required this.locationController,
     required this.onOpenAuth,
     required this.onOpenList,
     required this.onOpenResults,
@@ -253,6 +260,7 @@ class _HomeTab extends StatelessWidget {
   final AuthController authController;
   final MarketDiscoveryController discoveryController;
   final ShoppingListController shoppingListController;
+  final MobileLocationController locationController;
   final VoidCallback onOpenAuth;
   final VoidCallback onOpenList;
   final VoidCallback onOpenResults;
@@ -406,7 +414,11 @@ class _HomeTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _LocationPreviewCard(region: region),
+          _LocationPreviewCard(
+            authController: authController,
+            controller: locationController,
+            region: region,
+          ),
           const SizedBox(height: 20),
           Row(
             children: <Widget>[
@@ -813,11 +825,13 @@ class _OptimizationTab extends StatelessWidget {
     required this.authController,
     required this.controller,
     required this.listController,
+    required this.locationController,
   });
 
   final AuthController authController;
   final OptimizationController controller;
   final ShoppingListController listController;
+  final MobileLocationController locationController;
 
   @override
   Widget build(BuildContext context) {
@@ -877,6 +891,18 @@ class _OptimizationTab extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 16),
+              if (_requiresLocation(listController.draft.lastMode) &&
+                  locationController.preferenceIdForRegionSlug(
+                        listController.draft.regionId,
+                      ) ==
+                      null) ...<Widget>[
+                Text(
+                  'Salve sua localizacao na aba Inicio para usar este modo local.',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.error),
+                ),
+                const SizedBox(height: 12),
+              ],
               FilledButton.icon(
                 onPressed:
                     authController.isAuthenticated ? controller.optimize : null,
@@ -959,6 +985,12 @@ class _OptimizationTab extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  bool _requiresLocation(String mode) {
+    return mode == 'local' ||
+        mode == 'local_unique' ||
+        mode == 'local_multi';
   }
 }
 
@@ -1436,8 +1468,14 @@ class _SignalChip extends StatelessWidget {
 }
 
 class _LocationPreviewCard extends StatelessWidget {
-  const _LocationPreviewCard({required this.region});
+  const _LocationPreviewCard({
+    required this.authController,
+    required this.controller,
+    required this.region,
+  });
 
+  final AuthController authController;
+  final MobileLocationController controller;
   final PublicRegionSummary? region;
 
   @override
@@ -1467,21 +1505,100 @@ class _LocationPreviewCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(
-            region == null
-                ? 'Escolha uma cidade para carregar o preview local.'
-                : '${region!.name} · ${region!.stateCode} · ${region!.activeEstablishmentCount} lojas candidatas na cidade.',
-          ),
+          Text(_coverageSummary),
           const SizedBox(height: 8),
           const Text('Raio local padrao: 5 km.'),
           const SizedBox(height: 8),
           Text(
-            'Quando houver localizacao salva, modos locais usam lojas dentro do raio. O modo cidade ignora distancia e compara a regiao selecionada.',
+            controller.message ??
+                'Quando houver localizacao salva, modos locais usam lojas dentro do raio. O modo cidade ignora distancia e compara a regiao selecionada.',
             style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: <Widget>[
+              _SignalChip(
+                label: _statusLabel(controller.status),
+                foreground: _statusColor(controller.status),
+                background: const Color(0xFFF1F4F2),
+              ),
+              OutlinedButton.icon(
+                onPressed: authController.isAuthenticated &&
+                        region != null &&
+                        !controller.isRequesting
+                    ? () => controller.captureAndSave()
+                    : null,
+                icon: controller.isRequesting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.my_location_outlined),
+                label: Text(
+                  controller.isRequesting
+                      ? 'Solicitando...'
+                      : 'Usar localizacao atual',
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  String get _coverageSummary {
+    final activePreference = controller.activePreference;
+    if (activePreference != null &&
+        (region == null || activePreference.regionSlug == region!.slug)) {
+      return '${activePreference.activeEstablishmentCount} lojas dentro de ${activePreference.coverageRadiusKm.toStringAsFixed(0)} km.';
+    }
+
+    if (region == null) {
+      return 'Escolha uma cidade para carregar o preview local.';
+    }
+    return '${region!.name} · ${region!.stateCode} · ${region!.activeEstablishmentCount} lojas candidatas na cidade.';
+  }
+
+  String _statusLabel(MobileLocationStatus status) {
+    switch (status) {
+      case MobileLocationStatus.allowed:
+        return 'Localizacao salva';
+      case MobileLocationStatus.denied:
+        return 'Permissao negada';
+      case MobileLocationStatus.restricted:
+        return 'Permissao restrita';
+      case MobileLocationStatus.serviceDisabled:
+        return 'GPS desligado';
+      case MobileLocationStatus.unavailable:
+        return 'Indisponivel';
+      case MobileLocationStatus.requesting:
+        return 'Solicitando';
+      case MobileLocationStatus.error:
+        return 'Erro';
+      case MobileLocationStatus.manual:
+        return 'Manual';
+    }
+  }
+
+  Color _statusColor(MobileLocationStatus status) {
+    switch (status) {
+      case MobileLocationStatus.allowed:
+        return const Color(0xFF005C55);
+      case MobileLocationStatus.denied:
+      case MobileLocationStatus.restricted:
+      case MobileLocationStatus.serviceDisabled:
+      case MobileLocationStatus.unavailable:
+      case MobileLocationStatus.error:
+        return const Color(0xFFB42318);
+      case MobileLocationStatus.requesting:
+      case MobileLocationStatus.manual:
+        return const Color(0xFF003EA8);
+    }
   }
 }
 
