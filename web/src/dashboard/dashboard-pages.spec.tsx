@@ -370,16 +370,24 @@ describe('Admin dashboard pages', () => {
     render(<AdminCatalogPage />);
 
     expect(await screen.findByLabelText('Buscar no catalogo')).toBeTruthy();
+    expect(screen.getByText('Bancada de variantes')).toBeTruthy();
+    expect(screen.getByLabelText('Buscar variantes')).toBeTruthy();
     expect(screen.getByText('1 variantes')).toBeTruthy();
-    expect(screen.queryByText('Cafe Pilao 500g')).toBeNull();
+    expect(screen.getByText('Cafe Pilao 500g')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Buscar variantes'), {
+      target: { value: 'pilao' },
+    });
+    expect(await screen.findByText('Editar variante')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Buscar no catalogo'), {
       target: { value: 'pilao' },
     });
-    expect(await screen.findByText(/Cafe Pilao 500g/)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getAllByText(/Cafe Pilao 500g/).length).toBeGreaterThan(0);
+    });
 
     render(<AdminPricesPage />);
-    expect(await screen.findByAltText('Cafe Pilao 500g')).toBeTruthy();
-    expect(screen.getByText(/Pilao/)).toBeTruthy();
+    expect((await screen.findAllByAltText('Cafe Pilao 500g')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Pilao/).length).toBeGreaterThan(0);
   });
 
   it('renders dedicated regions and establishments views', async () => {

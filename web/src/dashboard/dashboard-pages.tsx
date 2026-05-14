@@ -1137,10 +1137,15 @@ export function AdminCatalogPage() {
     packageLabel: '',
   });
   const [catalogQuery, setCatalogQuery] = useState('');
+  const [variantQuery, setVariantQuery] = useState('');
   const [expandedCatalogProductId, setExpandedCatalogProductId] = useState<
     string | null
   >(null);
   const normalizedCatalogQuery = catalogQuery.trim().toLowerCase();
+  const normalizedVariantQuery = variantQuery.trim().toLowerCase();
+  const productNameById = new Map(
+    products.map((product) => [product.id, product.name]),
+  );
   const visibleProducts = normalizedCatalogQuery
     ? products.filter((product) => {
         const productVariants = variants.filter(
@@ -1160,6 +1165,17 @@ export function AdminCatalogPage() {
         ].some((value) => value.toLowerCase().includes(normalizedCatalogQuery));
       })
     : products;
+  const visibleVariants = normalizedVariantQuery
+    ? variants.filter((variant) =>
+        [
+          variant.displayName,
+          variant.brandName ?? '',
+          variant.packageLabel ?? '',
+          variant.slug ?? '',
+          productNameById.get(variant.catalogProductId) ?? '',
+        ].some((value) => value.toLowerCase().includes(normalizedVariantQuery)),
+      )
+    : variants;
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
@@ -1378,6 +1394,93 @@ export function AdminCatalogPage() {
                 {editingVariantId ? 'Salvar variante' : 'Criar variante'}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Bancada de variantes</CardTitle>
+            <CardDescription>
+              Use esta visão quando o produto base tiver muitas marcas ou
+              embalagens. A edição abre o formulário acima.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="grid gap-3 rounded-lg border border-border/70 bg-muted/20 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+              <Input
+                aria-label="Buscar variantes"
+                placeholder="Buscar variante, marca, apresentação ou produto"
+                value={variantQuery}
+                onChange={(event) => setVariantQuery(event.target.value)}
+              />
+              <Badge variant="secondary">
+                {visibleVariants.length} de {variants.length} variantes
+              </Badge>
+            </div>
+            <div className="grid max-h-[520px] gap-2 overflow-auto pr-1">
+              {visibleVariants.map((variant) => (
+                <div
+                  key={variant.id}
+                  className="grid gap-3 rounded-lg border border-border/70 bg-background/80 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <img
+                        alt={variant.displayName}
+                        className="size-12 rounded-lg border border-border/70 object-cover"
+                        src={resolveProductImage(variant.imageUrl)}
+                      />
+                      <div className="grid gap-1">
+                        <div className="text-sm font-medium">
+                          {variant.displayName}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {productNameById.get(variant.catalogProductId) ??
+                            'Produto não encontrado'}{' '}
+                          · {variant.brandName ?? 'Marca livre'} ·{' '}
+                          {variant.packageLabel ?? 'Apresentação não informada'}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant={variant.isActive ? 'secondary' : 'outline'}>
+                      {variant.isActive ? 'Ativa' : 'Inativa'}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingVariantId(variant.id);
+                        setVariantForm({
+                          catalogProductId: variant.catalogProductId,
+                          slug: variant.slug ?? '',
+                          displayName: variant.displayName,
+                          brandName: variant.brandName ?? '',
+                          variantLabel: variant.variantLabel ?? '',
+                          packageLabel: variant.packageLabel ?? '',
+                        });
+                        setVariantImageFile(null);
+                      }}
+                    >
+                      Editar variante
+                    </Button>
+                    <Button
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setCatalogQuery(variant.displayName);
+                        setExpandedCatalogProductId(variant.catalogProductId);
+                      }}
+                    >
+                      Ver no produto
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
