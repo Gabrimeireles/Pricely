@@ -245,6 +245,8 @@ describe('public pages', () => {
       id: 'receipt-1',
       processingStatus: 'waiting_manual_release',
       rewardEligibilityStatus: 'eligible_pending',
+      rewardPoints: 100,
+      rewardOptimizationTokens: 1,
       rewardMessage:
         'Nota recebida: reward em processamento ate a liberacao e validacao.',
     });
@@ -286,6 +288,10 @@ describe('public pages', () => {
     expect(
       screen.getAllByText(/aguardando liberação manual/).length,
     ).toBeGreaterThan(0);
+    expect(screen.getByText('Fila')).toBeTruthy();
+    expect(screen.getByText('Reward')).toBeTruthy();
+    expect(screen.getByText('Admin libera no dashboard')).toBeTruthy();
+    expect(screen.getByText(/Reward previsto após validação/)).toBeTruthy();
   });
 
   it('renders regional offers with empty-state friendly city context', async () => {

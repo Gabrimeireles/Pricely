@@ -1657,6 +1657,20 @@ export function ReceiptSubmissionPage() {
   const [submission, setSubmission] = useState<{
     status: 'idle' | 'submitting' | 'submitted' | 'failed';
     message?: string;
+    processingStatus?:
+      | 'waiting_manual_release'
+      | 'queued'
+      | 'running'
+      | 'completed'
+      | 'failed'
+      | 'retrying';
+    rewardEligibilityStatus?:
+      | 'disabled'
+      | 'ineligible'
+      | 'eligible_pending'
+      | 'granted';
+    rewardPoints?: number;
+    rewardOptimizationTokens?: number;
   }>({ status: 'idle' });
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -1691,6 +1705,10 @@ export function ReceiptSubmissionPage() {
           response.processingStatus === 'waiting_manual_release'
             ? 'Nota recebida. Ela fica aguardando liberação manual antes do processamento.'
             : (response.rewardMessage ?? 'Nota enviada para processamento.'),
+        processingStatus: response.processingStatus,
+        rewardEligibilityStatus: response.rewardEligibilityStatus,
+        rewardPoints: response.rewardPoints,
+        rewardOptimizationTokens: response.rewardOptimizationTokens,
       });
       setForm({
         storeName: '',
@@ -1853,11 +1871,62 @@ export function ReceiptSubmissionPage() {
               </Button>
             </form>
             {submission.status === 'submitted' ? (
-              <Alert className="mt-4">
-                <BadgeCheckIcon />
-                <AlertTitle>Nota recebida</AlertTitle>
-                <AlertDescription>{submission.message}</AlertDescription>
-              </Alert>
+              <div className="mt-4 grid gap-3">
+                <Alert>
+                  <BadgeCheckIcon />
+                  <AlertTitle>Nota recebida</AlertTitle>
+                  <AlertDescription>{submission.message}</AlertDescription>
+                </Alert>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                    <div className="text-sm font-medium">Fila</div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {submission.processingStatus === 'waiting_manual_release'
+                        ? 'Aguardando liberação manual'
+                        : submission.processingStatus === 'queued'
+                          ? 'Liberada para processamento'
+                          : submission.processingStatus === 'running'
+                            ? 'Processando leitura'
+                            : submission.processingStatus === 'completed'
+                              ? 'Processada'
+                              : submission.processingStatus === 'failed'
+                                ? 'Falhou'
+                                : submission.processingStatus === 'retrying'
+                                  ? 'Tentando novamente'
+                                  : 'Recebida'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                    <div className="text-sm font-medium">Reward</div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {submission.rewardEligibilityStatus === 'granted'
+                        ? 'Validado e concedido'
+                        : submission.rewardEligibilityStatus ===
+                            'eligible_pending'
+                          ? 'Em processamento'
+                          : submission.rewardEligibilityStatus === 'ineligible'
+                            ? 'Sem elegibilidade'
+                            : 'Aguardando qualidade'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                    <div className="text-sm font-medium">Próximo passo</div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {submission.processingStatus === 'waiting_manual_release'
+                        ? 'Admin libera no dashboard'
+                        : 'Acompanhar validação no histórico'}
+                    </div>
+                  </div>
+                </div>
+                {submission.rewardEligibilityStatus === 'eligible_pending' ? (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
+                    Reward previsto após validação:{' '}
+                    {submission.rewardPoints ?? 100} pontos e{' '}
+                    {submission.rewardOptimizationTokens ?? 1} crédito de
+                    otimização.
+                  </div>
+                ) : null}
+              </div>
             ) : null}
             {submission.status === 'failed' ? (
               <Alert className="mt-4" variant="destructive">
@@ -1879,10 +1948,10 @@ export function ReceiptSubmissionPage() {
           </CardHeader>
           <CardContent className="grid gap-3 text-sm">
             {[
-              'Nota enviada fica aguardando liberação manual.',
-              'Admin confere leitura, matcher e qualidade dos itens.',
-              'Processamento gera ofertas e compara preços.',
-              'Nota confiável concede 100 pontos e 1 crédito.',
+              'Nota enviada entra na fila manual.',
+              'Admin libera o processamento no dashboard.',
+              'Matcher compara itens com catálogo e cria ofertas quando aplicável.',
+              'Reward sai de processamento para validado quando a nota é confiável.',
             ].map((step, index) => (
               <div
                 className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-white/70 p-3"
@@ -2403,6 +2472,17 @@ export function ChecklistPage() {
                   Use a nota fiscal para validar os preços encontrados e ajudar
                   a melhorar a confiança das próximas ofertas.
                 </p>
+                <div className="grid gap-2 text-sm sm:grid-cols-3">
+                  <span className="rounded-md border border-border/70 bg-background px-3 py-2">
+                    Envio recebido
+                  </span>
+                  <span className="rounded-md border border-border/70 bg-background px-3 py-2">
+                    Reward em processamento
+                  </span>
+                  <span className="rounded-md border border-border/70 bg-background px-3 py-2">
+                    Reward validado após nota confiável
+                  </span>
+                </div>
                 <Button asChild size="sm" variant="outline">
                   <Link to="/notas">Enviar nota fiscal</Link>
                 </Button>
