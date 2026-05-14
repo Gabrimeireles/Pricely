@@ -85,6 +85,7 @@ type OptimizationResultApiResponse = {
     selectedPackageLabel?: string;
     establishmentName?: string;
     establishmentNeighborhood?: string;
+    distanceKm?: number;
     estimatedCost?: number;
     priceAmount?: number;
     comparisonPriceAmount?: number;
@@ -1014,12 +1015,16 @@ export async function runOptimization(
   token: string,
   listId: string,
   mode: OptimizationModeId,
+  input?: {
+    userLocationPreferenceId?: string;
+    coverageRadiusKm?: number;
+  },
 ) {
   await apiFetch<OptimizationRunAcceptedResponse>(
     `/shopping-lists/${listId}/optimize`,
     {
       method: 'POST',
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify({ mode, ...input }),
     },
     token,
   );

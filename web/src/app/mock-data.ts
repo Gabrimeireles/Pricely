@@ -17,19 +17,19 @@ export const optimizationModes: Array<{
   description: string;
 }> = [
   {
-    id: 'local',
+    id: 'local_unique',
     label: 'Uma loja perto de mim',
     description:
       'Usa uma loja elegivel dentro do raio local quando houver localizacao.',
   },
   {
-    id: 'global_unique',
-    label: 'Uma loja na cidade',
+    id: 'local_multi',
+    label: 'Menor preco perto de mim',
     description:
-      'Escolhe uma unica loja na cidade para equilibrar cobertura e preco.',
+      'Escolhe item a item entre lojas dentro do raio local configurado.',
   },
   {
-    id: 'global_full',
+    id: 'global_multi',
     label: 'Menor total na cidade',
     description: 'Menor custo total, mesmo dividindo a compra em varias lojas.',
   },
@@ -38,6 +38,7 @@ export const optimizationModes: Array<{
 export const supportedCities: SupportedCity[] = [
   {
     id: 'sao-paulo-sp',
+    regionId: 'sao-paulo-sp',
     name: 'São Paulo',
     stateCode: 'SP',
     activeStoreCount: 3,
@@ -49,6 +50,7 @@ export const supportedCities: SupportedCity[] = [
   },
   {
     id: 'campinas-sp',
+    regionId: 'campinas-sp',
     name: 'Campinas',
     stateCode: 'SP',
     activeStoreCount: 2,
@@ -60,6 +62,7 @@ export const supportedCities: SupportedCity[] = [
   },
   {
     id: 'belo-horizonte-mg',
+    regionId: 'belo-horizonte-mg',
     name: 'Belo Horizonte',
     stateCode: 'MG',
     activeStoreCount: 1,
@@ -71,6 +74,7 @@ export const supportedCities: SupportedCity[] = [
   },
   {
     id: 'curitiba-pr',
+    regionId: 'curitiba-pr',
     name: 'Curitiba',
     stateCode: 'PR',
     activeStoreCount: 0,
@@ -207,7 +211,7 @@ export const initialShoppingLists: ShoppingList[] = [
     id: 'lista-semana',
     name: 'Compra da semana',
     cityId: 'sao-paulo-sp',
-    lastMode: 'global_full',
+    lastMode: 'global_multi',
     updatedAt: '2026-04-25T08:45:00-03:00',
     expectedSavings: 18.4,
     items: [
@@ -246,7 +250,7 @@ export const initialShoppingLists: ShoppingList[] = [
     id: 'lista-mensal',
     name: 'Reposição mensal',
     cityId: 'campinas-sp',
-    lastMode: 'global_unique',
+    lastMode: 'local_unique',
     updatedAt: '2026-04-24T19:30:00-03:00',
     expectedSavings: 27.9,
     items: [
@@ -278,7 +282,7 @@ export const initialShoppingLists: ShoppingList[] = [
 export const optimizationScenariosByList: Record<string, OptimizationScenario[]> = {
   'lista-semana': [
     {
-      mode: 'local',
+      mode: 'local_unique',
       label: 'Local',
       summary: 'Tudo no Atacadão Butantã, com cobertura boa e ida curta.',
       totalEstimatedCost: 63.8,
@@ -337,7 +341,7 @@ export const optimizationScenariosByList: Record<string, OptimizationScenario[]>
       ],
     },
     {
-      mode: 'global_unique',
+      mode: 'local_multi',
       label: 'Global único',
       summary: 'Carrefour Pinheiros entrega o melhor total em loja única.',
       totalEstimatedCost: 59.4,
@@ -401,7 +405,7 @@ export const optimizationScenariosByList: Record<string, OptimizationScenario[]>
       ],
     },
     {
-      mode: 'global_full',
+      mode: 'global_multi',
       label: 'Global completo',
       summary: 'Melhor custo total dividindo entre Assaí e Carrefour.',
       totalEstimatedCost: 54.7,
@@ -466,8 +470,8 @@ export const optimizationScenariosByList: Record<string, OptimizationScenario[]>
   ],
   'lista-mensal': [
     {
-      mode: 'local',
-      label: 'Local',
+      mode: 'local_unique',
+      label: 'Uma loja local',
       summary: 'Savegnago concentra a reposição com menos deslocamento.',
       totalEstimatedCost: 142.4,
       estimatedSavings: 11.6,

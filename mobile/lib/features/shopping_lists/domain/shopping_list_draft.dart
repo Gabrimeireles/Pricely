@@ -18,7 +18,7 @@ class ShoppingListDraft {
       id: null,
       title: 'Lista da semana',
       regionId: 'sao-paulo-sp',
-      lastMode: 'global_full',
+      lastMode: 'global_multi',
       items: <ShoppingListItemDraft>[],
     );
   }
@@ -28,7 +28,7 @@ class ShoppingListDraft {
       id: json['id'] as String?,
       title: json['title'] as String? ?? 'Lista da semana',
       regionId: json['regionId'] as String? ?? 'sao-paulo-sp',
-      lastMode: json['lastMode'] as String? ?? 'global_full',
+      lastMode: json['lastMode'] as String? ?? 'global_multi',
       items: (json['items'] as List<dynamic>? ?? <dynamic>[])
           .map((item) =>
               ShoppingListItemDraft.fromJson(item as Map<String, dynamic>))

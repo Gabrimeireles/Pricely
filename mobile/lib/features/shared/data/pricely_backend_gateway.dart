@@ -301,7 +301,7 @@ class PricelyBackendGateway {
       id: json['id'] as String,
       title: json['name'] as String? ?? 'Minha lista',
       regionId: json['preferredRegionId'] as String? ?? '',
-      lastMode: json['lastMode'] as String? ?? 'global_full',
+      lastMode: json['lastMode'] as String? ?? 'global_multi',
       items: items
           .map(
             (item) => ShoppingListItemDraft(
@@ -352,6 +352,7 @@ class PricelyBackendGateway {
           unit: 'un',
           unitPrice: priceAmount.toDouble(),
           subtotal: priceAmount.toDouble(),
+          distanceKm: (selection['distanceKm'] as num?)?.toDouble(),
           confidenceLabel:
               selection['confidenceNotice'] as String? ?? 'confirmado',
           decisionReason: selection['decisionReason'] as String?,

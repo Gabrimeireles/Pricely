@@ -139,10 +139,10 @@ class MultiMarketResultView extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
-                const Text('Raio local padrão: 5 km.'),
+                const Text('Raio local padrao: 5 km.'),
                 const SizedBox(height: 6),
                 const Text(
-                  'A distância ainda é apenas preview neste MVP. O resultado usa a cidade da lista e não promete loja mais próxima.',
+                  'Modos locais usam a localizacao salva e lojas dentro do raio. O modo cidade ignora distancia e compara toda a regiao.',
                 ),
               ],
             ),
@@ -183,7 +183,7 @@ class MultiMarketResultView extends StatelessWidget {
                               : null,
                           title: Text(selection.itemName),
                           subtitle: Text(
-                            '${selection.quantity} ${selection.unit} - ${_brandRuleLabel(draftItem)} - confiança ${selection.confidenceLabel}',
+                            '${selection.quantity} ${selection.unit} - ${_brandRuleLabel(draftItem)} - ${_distanceLabel(selection)} - confianca ${selection.confidenceLabel}',
                           ),
                           trailing: Text(_formatCurrency(selection.subtotal)),
                         );
@@ -237,5 +237,13 @@ class MultiMarketResultView extends StatelessWidget {
       return 'variante exata: ${item.name}';
     }
     return 'qualquer variante';
+  }
+
+  String _distanceLabel(OptimizationSelection selection) {
+    final distance = selection.distanceKm;
+    if (distance == null) {
+      return 'modo cidade';
+    }
+    return '${distance.toStringAsFixed(1)} km';
   }
 }

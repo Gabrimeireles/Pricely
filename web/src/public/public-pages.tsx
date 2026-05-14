@@ -117,17 +117,35 @@ const optimizationModeCopy: Record<
   local: {
     title: 'Uma loja perto de mim',
     summary:
-      'Prepara a compra em uma loja da cidade com raio local padrão de 5 km.',
+      'Modo legado: usa a semantica de uma loja local quando houver localizacao salva.',
+    tradeoff: 'Mantido apenas por compatibilidade com listas antigas.',
+  },
+  local_unique: {
+    title: 'Uma loja perto de mim',
+    summary:
+      'Prepara a compra em uma unica loja dentro do raio local configurado.',
     tradeoff:
-      'A distância ainda aparece como preview; a otimização usa a cidade selecionada até a regra geográfica ficar ativa.',
+      'Exige localizacao salva e pode priorizar cobertura antes do menor preco total.',
   },
   global_unique: {
     title: 'Uma loja na cidade',
     summary: 'Procura a melhor loja unica para equilibrar cobertura e preco.',
     tradeoff:
-      'Evita dividir a compra, mas pode ficar acima do menor custo total.',
+      'Modo legado mantido por compatibilidade com resultados antigos.',
+  },
+  local_multi: {
+    title: 'Menor preco perto de mim',
+    summary:
+      'Escolhe item a item entre lojas dentro do raio local configurado.',
+    tradeoff:
+      'Pode dividir a compra em mais de uma loja dentro do raio escolhido.',
   },
   global_full: {
+    title: 'Menor total na cidade',
+    summary: 'Modo legado equivalente ao menor total na cidade.',
+    tradeoff: 'Mantido por compatibilidade com listas antigas.',
+  },
+  global_multi: {
     title: 'Menor total na cidade',
     summary: 'Busca o menor custo total item a item na cidade selecionada.',
     tradeoff: 'Pode exigir mais de uma parada para capturar a melhor economia.',
@@ -3098,6 +3116,11 @@ export function OptimizationPage() {
                                   {selection.establishmentNeighborhood ??
                                     'bairro não informado'}
                                 </span>
+                                {selection.distanceKm !== undefined ? (
+                                  <span className="text-xs text-muted-foreground">
+                                    {selection.distanceKm.toFixed(1)} km do local salvo
+                                  </span>
+                                ) : null}
                               </div>
                             ) : (
                               'Sem loja definida'

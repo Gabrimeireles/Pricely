@@ -15,7 +15,7 @@ const list = {
   name: 'Compra responsiva',
   preferredRegionId: 'sao-paulo-sp',
   status: 'ready',
-  lastMode: 'global_full',
+  lastMode: 'global_multi',
   latestEstimatedSavings: 12.4,
   latestOptimizationStatus: 'completed',
   latestOptimizedAt: '2026-05-10T10:00:00.000Z',
@@ -157,7 +157,7 @@ async function mockResponsiveApi(page: Page) {
       return json({
         id: 'run-1',
         shoppingListId: 'list-1',
-        mode: 'global_full',
+        mode: 'global_multi',
         status: 'completed',
         totalEstimatedCost: 15.9,
         estimatedSavings: 1.2,
@@ -238,7 +238,7 @@ async function mockResponsiveApi(page: Page) {
           shoppingList: { id: 'list-1', name: 'Compra responsiva' },
           optimizationRun: {
             id: 'run-1',
-            mode: 'global_full',
+            mode: 'global_multi',
             status: 'completed',
             createdAt: '2026-05-10T10:00:00.000Z',
             completedAt: '2026-05-10T10:03:00.000Z',
