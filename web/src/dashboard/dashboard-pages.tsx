@@ -305,6 +305,21 @@ function priceDirectionLabel(
   return labels[direction];
 }
 
+function receiptMakerActionButtonLabel(
+  action: AdminReceiptProcessingResponse['lineItems'][number]['makerAction'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['lineItems'][number]['makerAction'],
+    string
+  > = {
+    create_or_match_product: 'Abrir criação de produto',
+    link_existing_product: 'Revisar vínculo',
+    offer_created: 'Ver oferta criada',
+  };
+
+  return labels[action];
+}
+
 export function AdminOverviewPage() {
   const { data, error } = useAdminData<AdminMetricsResponse | null>(
     fetchAdminMetrics,
@@ -2769,6 +2784,58 @@ export function AdminReceiptsPage() {
 
               {expandedReceiptId === receipt.id ? (
                 <div className="mt-4 grid gap-3">
+                  <div className="grid gap-3 rounded-md border border-border/70 bg-card/70 p-3 md:grid-cols-4">
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Payload extraído
+                      </div>
+                      <div className="mt-1 font-medium">
+                        {receipt.extractedPayload.lineItemCount} itens ·{' '}
+                        {formatCurrency(
+                          receipt.extractedPayload.totalLineAmount,
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Chave NFC-e
+                      </div>
+                      <div className="mt-1 truncate font-medium">
+                        {receipt.extractedPayload.accessKey ?? 'Não informada'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Origem
+                      </div>
+                      <div className="mt-1 truncate font-medium">
+                        {receipt.extractedPayload.sefazUrl
+                          ? 'QR/NFC-e'
+                          : (receipt.extractedPayload.rawReference ??
+                            'Entrada manual')}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Matcher
+                      </div>
+                      <div className="mt-1 font-medium">
+                        {
+                          receipt.lineItems.filter(
+                            (item) => item.matcherStatus === 'matched_offer',
+                          ).length
+                        }{' '}
+                        ofertas ·{' '}
+                        {
+                          receipt.lineItems.filter(
+                            (item) =>
+                              item.matcherStatus === 'needs_product_review',
+                          ).length
+                        }{' '}
+                        para revisar
+                      </div>
+                    </div>
+                  </div>
                   {receipt.lineItems.length === 0 ? (
                     <div className="rounded-md border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">
                       Nenhum item extraído da nota fiscal ainda.
@@ -2815,6 +2882,9 @@ export function AdminReceiptsPage() {
                           <div className="mt-1 font-medium">
                             {formatCurrency(item.unitPrice)}
                           </div>
+                          <div className="text-xs text-muted-foreground">
+                            total {formatCurrency(item.lineTotal)}
+                          </div>
                           {item.originalUnitPrice &&
                           item.originalUnitPrice !== item.unitPrice ? (
                             <div className="text-xs text-muted-foreground">
@@ -2829,6 +2899,22 @@ export function AdminReceiptsPage() {
                           <div className="mt-1 font-medium">
                             {receiptMakerActionLabel(item.makerAction)}
                           </div>
+                          <Button
+                            asChild
+                            className="mt-2"
+                            size="sm"
+                            variant="outline"
+                          >
+                            <a
+                              href={
+                                item.makerAction === 'offer_created'
+                                  ? '/dashboard/precos'
+                                  : '/dashboard/catalogo'
+                              }
+                            >
+                              {receiptMakerActionButtonLabel(item.makerAction)}
+                            </a>
+                          </Button>
                         </div>
                         <div className="rounded-md border border-border/70 p-3">
                           <div className="text-xs text-muted-foreground">

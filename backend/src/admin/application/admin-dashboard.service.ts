@@ -324,8 +324,7 @@ export class AdminDashboardService {
                             trustLevel:
                               selection.productOffer.receiptRecord.trustLevel,
                             reviewReason:
-                              selection.productOffer.receiptRecord
-                                .reviewReason,
+                              selection.productOffer.receiptRecord.reviewReason,
                           }
                         : null,
                     }
@@ -358,6 +357,7 @@ export class AdminDashboardService {
             ean: true,
             quantity: true,
             unitPrice: true,
+            lineTotal: true,
             originalUnitPrice: true,
             promotionalUnitPrice: true,
             matchConfidence: true,
@@ -434,7 +434,9 @@ export class AdminDashboardService {
     }
 
     const projectedReceipts = receipts.map((receipt) => {
-      const confidences = receipt.lineItems.map((item) => Number(item.matchConfidence));
+      const confidences = receipt.lineItems.map((item) =>
+        Number(item.matchConfidence),
+      );
       const lineItemCount = confidences.length;
       const highConfidenceLineItemCount = confidences.filter(
         (confidence) => confidence >= 0.75,
@@ -448,6 +450,11 @@ export class AdminDashboardService {
                 lineItemCount
               ).toFixed(2),
             );
+      const totalLineAmount = Number(
+        receipt.lineItems
+          .reduce((sum, item) => sum + Number(item.lineTotal), 0)
+          .toFixed(2),
+      );
 
       return {
         id: receipt.id,
@@ -478,11 +485,19 @@ export class AdminDashboardService {
           usefulDataRatio:
             lineItemCount === 0
               ? 0
-              : Number((highConfidenceLineItemCount / lineItemCount).toFixed(2)),
+              : Number(
+                  (highConfidenceLineItemCount / lineItemCount).toFixed(2),
+                ),
         },
-        reward: this.receiptRewardProjection(
-          receipt.rewardEligibilityStatus,
-        ),
+        reward: this.receiptRewardProjection(receipt.rewardEligibilityStatus),
+        extractedPayload: {
+          accessKey: receipt.accessKey,
+          sefazUrl: receipt.sefazUrl,
+          rawReference: receipt.rawReference,
+          purchaseDate: receipt.purchaseDate?.toISOString() ?? null,
+          lineItemCount,
+          totalLineAmount,
+        },
         lineItems: receipt.lineItems.map((item) => ({
           id: item.id,
           rawProductName: item.rawProductName,
@@ -490,6 +505,7 @@ export class AdminDashboardService {
           ean: item.ean,
           quantity: Number(item.quantity),
           unitPrice: Number(item.unitPrice),
+          lineTotal: Number(item.lineTotal),
           originalUnitPrice:
             item.originalUnitPrice === null
               ? null
@@ -548,7 +564,8 @@ export class AdminDashboardService {
                       : deltaAmount < 0
                         ? 'down'
                         : 'same',
-                previousObservedAt: comparison?.observedAt.toISOString() ?? null,
+                previousObservedAt:
+                  comparison?.observedAt.toISOString() ?? null,
               },
             };
           }),
@@ -748,18 +765,19 @@ export class AdminDashboardService {
       },
     });
 
-    const tokenBalances = await this.prisma.optimizationTokenLedgerEntry.groupBy({
-      by: ['userId'],
-      where: {
-        userId: {
-          in: users.map((user) => user.id),
+    const tokenBalances =
+      await this.prisma.optimizationTokenLedgerEntry.groupBy({
+        by: ['userId'],
+        where: {
+          userId: {
+            in: users.map((user) => user.id),
+          },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-      _sum: {
-        amount: true,
-      },
-    });
+        _sum: {
+          amount: true,
+        },
+      });
     const tokenBalanceByUser = new Map(
       tokenBalances.map((entry) => [
         entry.userId,

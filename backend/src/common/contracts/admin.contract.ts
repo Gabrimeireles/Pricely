@@ -133,6 +133,14 @@ export interface AdminReceiptProcessingContract {
     optimizationTokens: number;
     label: string;
   };
+  extractedPayload: {
+    accessKey: string | null;
+    sefazUrl: string | null;
+    rawReference: string | null;
+    purchaseDate: string | null;
+    lineItemCount: number;
+    totalLineAmount: number;
+  };
   lineItems: Array<{
     id: string;
     rawProductName: string;
@@ -140,11 +148,18 @@ export interface AdminReceiptProcessingContract {
     ean: string | null;
     quantity: number;
     unitPrice: number;
+    lineTotal: number;
     originalUnitPrice: number | null;
     promotionalUnitPrice: number | null;
     matchConfidence: number;
-    matcherStatus: 'matched_offer' | 'matched_name_only' | 'needs_product_review';
-    makerAction: 'offer_created' | 'link_existing_product' | 'create_or_match_product';
+    matcherStatus:
+      | 'matched_offer'
+      | 'matched_name_only'
+      | 'needs_product_review';
+    makerAction:
+      | 'offer_created'
+      | 'link_existing_product'
+      | 'create_or_match_product';
     offers: Array<{
       id: string;
       catalogProductName: string;
