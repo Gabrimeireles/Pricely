@@ -193,7 +193,9 @@ describe('OptimizationRunProcessor', () => {
       }),
     };
     const storeOfferRepository = {
-      findByListItems: jest.fn().mockResolvedValue([{ id: 'offer-1', catalogProductId: 'product-1' }]),
+      findByListItems: jest
+        .fn()
+        .mockResolvedValue([{ id: 'offer-1', catalogProductId: 'product-1' }]),
     };
     const multiMarketOptimizerService = {
       optimize: jest.fn().mockReturnValue({
@@ -246,11 +248,110 @@ describe('OptimizationRunProcessor', () => {
     );
     expect(multiMarketOptimizerService.optimize).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'list-1' }),
-      [expect.objectContaining({ id: 'offer-1', catalogProductId: 'product-1' })],
+      [
+        expect.objectContaining({
+          id: 'offer-1',
+          catalogProductId: 'product-1',
+        }),
+      ],
       'global_full',
       {
         candidateEstablishmentCount: 1,
       },
+    );
+  });
+
+  it('persists optimized variants without locking future any-variant optimizations', async () => {
+    const transaction = jest.fn().mockResolvedValue([]);
+    const optimizedItemUpdate = jest.fn().mockResolvedValue(undefined);
+    const prisma = {
+      optimizationRun: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      optimizationSelection: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        createMany: jest.fn().mockResolvedValue(undefined),
+      },
+      shoppingList: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      shoppingListItem: {
+        update: optimizedItemUpdate,
+      },
+      $transaction: transaction,
+    };
+
+    const shoppingListsService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'list-1',
+        items: [
+          {
+            id: 'item-1',
+            requestedName: 'Arroz',
+            normalizedName: 'arroz',
+            brandPreferenceMode: 'any',
+          },
+        ],
+      }),
+    };
+    const storeOfferRepository = {
+      findByListItems: jest.fn().mockResolvedValue([
+        {
+          id: 'offer-1',
+          productVariantId: 'variant-camil',
+          storeId: 'store-1',
+        },
+      ]),
+    };
+    const multiMarketOptimizerService = {
+      optimize: jest.fn().mockReturnValue({
+        totalEstimatedCost: 21.9,
+        estimatedSavings: 1,
+        coverageStatus: 'complete',
+        explanationSummary: '1 item encontrado.',
+        selections: [
+          {
+            shoppingListItemId: 'item-1',
+            productOfferId: 'offer-1',
+            selectionStatus: 'selected',
+            estimatedCost: 21.9,
+          },
+        ],
+      }),
+    };
+    const optimizationRunRepository = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'run-1',
+        userId: 'user-1',
+        shoppingListId: 'list-1',
+        mode: 'global_multi',
+        regionId: 'region-1',
+      }),
+    };
+
+    const processor = new OptimizationRunProcessor(
+      prisma as never,
+      shoppingListsService as never,
+      storeOfferRepository as never,
+      multiMarketOptimizerService as never,
+      optimizationRunRepository as never,
+    );
+
+    await processor.process('run-1');
+
+    expect(optimizedItemUpdate).toHaveBeenCalledWith({
+      where: { id: 'item-1' },
+      data: {
+        optimizedProductVariantId: 'variant-camil',
+        optimizedFromBrandPreferenceMode: 'any',
+        optimizedAt: expect.any(Date),
+      },
+    });
+    expect(optimizedItemUpdate.mock.calls[0][0].data).not.toHaveProperty(
+      'lockedProductVariantId',
+    );
+    expect(transaction.mock.calls[0][0]).toContain(
+      optimizedItemUpdate.mock.results[0].value,
     );
   });
 

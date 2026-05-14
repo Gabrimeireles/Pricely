@@ -51,6 +51,7 @@ vi.mock('@/app/pricely-context', () => ({
           {
             shoppingListItemId: 'item-1',
             shoppingListItemName: 'Arroz tipo 1 1kg',
+            selectedVariantName: 'Arroz Camil 1kg',
             priceAmount: 21.9,
             selectionStatus: 'selected',
           },
@@ -91,6 +92,9 @@ describe('ChecklistPage', () => {
     expect(screen.getByText('Use o checklist dentro do mercado')).toBeTruthy();
     expect(screen.getByText('Arroz tipo 1 1kg')).toBeTruthy();
     expect(screen.getByText('0 de 1 itens comprados')).toBeTruthy();
+    expect(
+      screen.getByText('Variante otimizada: Arroz Camil 1kg'),
+    ).toBeTruthy();
     expect(screen.getByText('Preço previsto: R$ 21,90')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('checkbox'));
