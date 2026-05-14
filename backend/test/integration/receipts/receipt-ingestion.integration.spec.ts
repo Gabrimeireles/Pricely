@@ -104,6 +104,12 @@ describe('Receipt ingestion integration', () => {
         id: receipt.body.id,
         processingStatus: 'queued',
         jobId: expect.any(String),
+        rewardEligibilityStatus: 'granted',
+        rewardPoints: 100,
+        rewardOptimizationTokens: 1,
+        rewardMessage:
+          'Nota validada: voce ganhou 100 pontos e 1 credito de otimizacao.',
+        reviewReason: 'receipt_reward_granted',
       });
       expect(queues.receiptQueue.add).toHaveBeenCalledTimes(1);
     } finally {
