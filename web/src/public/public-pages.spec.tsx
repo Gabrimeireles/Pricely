@@ -294,6 +294,41 @@ describe('public pages', () => {
     expect(screen.getByText(/Reward previsto após validação/)).toBeTruthy();
   });
 
+  it('shows granted receipt reward points and optimization credit', async () => {
+    submitReceipt.mockResolvedValue({
+      id: 'receipt-validated',
+      processingStatus: 'completed',
+      rewardEligibilityStatus: 'granted',
+      rewardPoints: 100,
+      rewardOptimizationTokens: 1,
+      rewardMessage:
+        'Nota validada: voce ganhou 100 pontos e 1 credito de otimizacao.',
+    });
+
+    render(
+      <MemoryRouter>
+        <ReceiptSubmissionPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Estabelecimento'), {
+      target: { value: 'Mercado Validado' },
+    });
+    fireEvent.change(screen.getByLabelText('Produto'), {
+      target: { value: 'Cafe torrado' },
+    });
+    fireEvent.change(screen.getByLabelText('Preço'), {
+      target: { value: '15.9' },
+    });
+    fireEvent.click(screen.getByText('Enviar nota'));
+
+    await waitFor(() => expect(submitReceipt).toHaveBeenCalledTimes(1));
+    expect(screen.getByText('Validado e concedido')).toBeTruthy();
+    expect(screen.getByText(/Reward validado/)).toBeTruthy();
+    expect(screen.getAllByText(/100 pontos/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/1 crédito de otimização/)).toBeTruthy();
+  });
+
   it('renders regional offers with empty-state friendly city context', async () => {
     fetchRegionOffers.mockResolvedValue({
       region: {

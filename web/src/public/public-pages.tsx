@@ -1918,9 +1918,12 @@ export function ReceiptSubmissionPage() {
                     </div>
                   </div>
                 </div>
-                {submission.rewardEligibilityStatus === 'eligible_pending' ? (
+                {submission.rewardEligibilityStatus === 'eligible_pending' ||
+                submission.rewardEligibilityStatus === 'granted' ? (
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
-                    Reward previsto após validação:{' '}
+                    {submission.rewardEligibilityStatus === 'granted'
+                      ? 'Reward validado: '
+                      : 'Reward previsto após validação: '}
                     {submission.rewardPoints ?? 100} pontos e{' '}
                     {submission.rewardOptimizationTokens ?? 1} crédito de
                     otimização.

@@ -139,13 +139,7 @@ export class ReceiptIngestionService {
       trustLevel: assessedRecord.trustLevel,
       moderationStatus: assessedRecord.moderationStatus,
       rewardEligibilityStatus: assessedRecord.rewardEligibilityStatus,
-      rewardPoints: assessedRecord.rewardEligibilityStatus === 'eligible_pending' ? 100 : 0,
-      rewardOptimizationTokens:
-        assessedRecord.rewardEligibilityStatus === 'eligible_pending' ? 1 : 0,
-      rewardMessage:
-        assessedRecord.rewardEligibilityStatus === 'eligible_pending'
-          ? 'Nota recebida: reward em processamento ate a liberacao e validacao.'
-          : 'Nota recebida para revisao.',
+      ...this.projectReward(assessedRecord.rewardEligibilityStatus),
       reviewReason: assessedRecord.reviewReason,
       jobId: processingJob?.id,
       processingStatus: processingJob ? 'queued' : 'waiting_manual_release',
@@ -220,13 +214,7 @@ export class ReceiptIngestionService {
       trustLevel: record.trustLevel,
       moderationStatus: record.moderationStatus,
       rewardEligibilityStatus: record.rewardEligibilityStatus,
-      rewardPoints: record.rewardEligibilityStatus === 'eligible_pending' ? 100 : 0,
-      rewardOptimizationTokens:
-        record.rewardEligibilityStatus === 'eligible_pending' ? 1 : 0,
-      rewardMessage:
-        record.rewardEligibilityStatus === 'granted'
-          ? 'Nota validada: voce ganhou 100 pontos e 1 credito de otimizacao.'
-          : 'Nota recebida: reward em processamento ate a liberacao e validacao.',
+      ...this.projectReward(record.rewardEligibilityStatus),
       reviewReason: record.reviewReason,
       jobId: record.processingJobId,
       processingStatus: record.processingStatus ?? 'waiting_manual_release',
@@ -237,6 +225,47 @@ export class ReceiptIngestionService {
 
   private isAutomaticReceiptProcessingEnabled(): boolean {
     return process.env.RECEIPT_PROCESSING_MODE === 'automatic';
+  }
+
+  private projectReward(
+    status: ReceiptRecordEntity['rewardEligibilityStatus'],
+  ): Pick<
+    ReceiptRecord,
+    'rewardPoints' | 'rewardOptimizationTokens' | 'rewardMessage'
+  > {
+    if (status === 'granted') {
+      return {
+        rewardPoints: 100,
+        rewardOptimizationTokens: 1,
+        rewardMessage:
+          'Nota validada: voce ganhou 100 pontos e 1 credito de otimizacao.',
+      };
+    }
+
+    if (status === 'eligible_pending') {
+      return {
+        rewardPoints: 100,
+        rewardOptimizationTokens: 1,
+        rewardMessage:
+          'Nota recebida: reward em processamento ate a liberacao e validacao.',
+      };
+    }
+
+    if (status === 'ineligible') {
+      return {
+        rewardPoints: 0,
+        rewardOptimizationTokens: 0,
+        rewardMessage:
+          'Nota recebida, mas sem reward por duplicidade ou falta de dados uteis.',
+      };
+    }
+
+    return {
+      rewardPoints: 0,
+      rewardOptimizationTokens: 0,
+      rewardMessage:
+        'Nota recebida para revisao de qualidade antes de liberar reward.',
+    };
   }
 
   private inferSourceType(
