@@ -5,9 +5,13 @@ import {
   ArrowRightIcon,
   BadgeCheckIcon,
   ChevronRightIcon,
+  CheckCircle2Icon,
+  FlagIcon,
+  GaugeIcon,
   LocateFixedIcon,
   LogInIcon,
   MapPinIcon,
+  ReceiptTextIcon,
   ShieldAlertIcon,
   UploadIcon,
 } from 'lucide-react';
@@ -22,6 +26,7 @@ import { getCityById, optimizationModes } from '@/app/mock-data';
 import {
   type CatalogProductSearchResponse,
   type OfferDetailApiResponse,
+  type OptimizationResultApiResponse,
   type PublicImpactResponse,
   type ProductVariantResponse,
   type RegionOffersApiResponse,
@@ -87,6 +92,9 @@ type EditableListItem = {
   note?: string;
 };
 
+type OptimizationSelectionView =
+  OptimizationResultApiResponse['selections'][number];
+
 function getCatalogProductPreviewImage(product: CatalogProductSearchResponse) {
   return (
     product.imageUrl ??
@@ -130,8 +138,7 @@ const optimizationModeCopy: Record<
   global_unique: {
     title: 'Uma loja na cidade',
     summary: 'Procura a melhor loja unica para equilibrar cobertura e preco.',
-    tradeoff:
-      'Modo legado mantido por compatibilidade com resultados antigos.',
+    tradeoff: 'Modo legado mantido por compatibilidade com resultados antigos.',
   },
   local_multi: {
     title: 'Menor preco perto de mim',
@@ -206,8 +213,8 @@ function trustEvidenceLabel(selection: {
     evidenceCount === 0
       ? 'Preço ainda sem nota fiscal aceita; origem operacional sustenta a oferta'
       : evidenceCount === 1
-      ? '1 nota fiscal aceita apoia este preço'
-      : `${evidenceCount} notas fiscais aceitas apoiam este preço`;
+        ? '1 nota fiscal aceita apoia este preço'
+        : `${evidenceCount} notas fiscais aceitas apoiam este preço`;
 
   if (selection.trustFreshnessDays === undefined) {
     return receiptText;
@@ -219,6 +226,131 @@ function trustEvidenceLabel(selection: {
       : `última validação há ${selection.trustFreshnessDays}d`;
 
   return `${receiptText} · ${freshnessText}`;
+}
+
+function NextBestActionStrip({
+  eyebrow = 'Próximo passo',
+  title,
+  description,
+  primaryAction,
+  secondaryAction,
+  steps,
+}: {
+  eyebrow?: string;
+  title: string;
+  description: string;
+  primaryAction: { label: string; to: string };
+  secondaryAction?: { label: string; to: string };
+  steps: Array<{
+    label: string;
+    status: 'done' | 'current' | 'pending';
+  }>;
+}) {
+  const statusTone = {
+    done: 'border-lime-200 bg-lime-50 text-lime-950',
+    current: 'border-teal-200 bg-teal-50 text-teal-950',
+    pending: 'border-border/70 bg-background text-muted-foreground',
+  };
+
+  return (
+    <div className="rounded-lg border border-border/70 bg-card/95 p-4 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="grid gap-2">
+          <Badge variant="secondary" className="w-fit">
+            {eyebrow}
+          </Badge>
+          <div>
+            <div className="font-heading text-lg font-semibold">{title}</div>
+            <p className="text-sm text-muted-foreground">{description}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {steps.map((step) => (
+              <span
+                className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${statusTone[step.status]}`}
+                key={step.label}
+              >
+                {step.status === 'done' ? (
+                  <CheckCircle2Icon className="size-3.5" />
+                ) : null}
+                {step.label}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {secondaryAction ? (
+            <Button asChild variant="outline">
+              <Link to={secondaryAction.to}>{secondaryAction.label}</Link>
+            </Button>
+          ) : null}
+          <Button asChild>
+            <Link to={primaryAction.to}>{primaryAction.label}</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ShopperEvidenceModule({
+  listId,
+  selection,
+}: {
+  listId: string;
+  selection: OptimizationSelectionView;
+}) {
+  const hasReceiptEvidence = (selection.trustEvidenceCount ?? 0) > 0;
+  const freshnessText =
+    selection.trustFreshnessDays === undefined
+      ? 'Sem data de validação'
+      : selection.trustFreshnessDays === 0
+        ? 'Validado hoje'
+        : `Validado há ${selection.trustFreshnessDays}d`;
+
+  return (
+    <div className="grid gap-3 rounded-lg border border-border/70 bg-background/80 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {selection.trustFactor !== undefined
+          ? trustFactorBadge(selection.trustLevel)
+          : null}
+        {selection.trustFactor !== undefined ? (
+          <Badge variant="outline">
+            <GaugeIcon className="size-3.5" />
+            {selection.trustFactor}/100
+          </Badge>
+        ) : null}
+      </div>
+      <div className="grid gap-2 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <ReceiptTextIcon className="size-3.5" />
+          {selection.sourceLabel ?? 'Origem ainda sem evidência suficiente'}
+        </span>
+        <span>
+          {hasReceiptEvidence
+            ? trustEvidenceLabel(selection)
+            : 'Sem validações por nota fiscal ainda; a oferta depende de seed, admin ou observação operacional.'}
+        </span>
+        <span>{freshnessText}</span>
+        {selection.confidenceNotice ? (
+          <span>{confidenceNoticeLabel(selection.confidenceNotice)}</span>
+        ) : null}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild size="sm" variant="outline">
+          <Link to={`/listas/${listId}/checklist`}>
+            <FlagIcon className="size-3.5" />
+            Reportar preço
+          </Link>
+        </Button>
+        <Button asChild size="sm" variant="ghost">
+          <Link to="/notas">
+            <UploadIcon className="size-3.5" />
+            Enviar nota
+          </Link>
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function PriceDisplay({
@@ -882,7 +1014,9 @@ export function OffersPage() {
               cheapestPriceAmount: filteredOffers[0].priceAmount,
             };
           })
-          .filter((group): group is NonNullable<typeof group> => Boolean(group));
+          .filter((group): group is NonNullable<typeof group> =>
+            Boolean(group),
+          );
 
   return (
     <div className="flex flex-col gap-6">
@@ -1454,7 +1588,7 @@ export function ReceiptSubmissionPage() {
         message:
           response.processingStatus === 'waiting_manual_release'
             ? 'Nota recebida. Ela fica aguardando liberação manual antes do processamento.'
-            : response.rewardMessage ?? 'Nota enviada para processamento.',
+            : (response.rewardMessage ?? 'Nota enviada para processamento.'),
       });
       setForm({
         storeName: '',
@@ -1494,7 +1628,9 @@ export function ReceiptSubmissionPage() {
           <CardContent>
             <form className="grid gap-4" onSubmit={handleSubmit}>
               <Field>
-                <FieldLabel htmlFor="receipt-qrcode">QR code ou URL NFC-e</FieldLabel>
+                <FieldLabel htmlFor="receipt-qrcode">
+                  QR code ou URL NFC-e
+                </FieldLabel>
                 <Textarea
                   id="receipt-qrcode"
                   onChange={(event) =>
@@ -1509,7 +1645,9 @@ export function ReceiptSubmissionPage() {
               </Field>
               <div className="grid gap-4 md:grid-cols-2">
                 <Field>
-                  <FieldLabel htmlFor="receipt-store">Estabelecimento</FieldLabel>
+                  <FieldLabel htmlFor="receipt-store">
+                    Estabelecimento
+                  </FieldLabel>
                   <Input
                     id="receipt-store"
                     onChange={(event) =>
@@ -1604,7 +1742,10 @@ export function ReceiptSubmissionPage() {
                   </Field>
                 </div>
               </div>
-              <Button disabled={submission.status === 'submitting'} type="submit">
+              <Button
+                disabled={submission.status === 'submitting'}
+                type="submit"
+              >
                 <UploadIcon className="size-4" />
                 Enviar nota
               </Button>
@@ -1661,6 +1802,65 @@ export function ReceiptSubmissionPage() {
 export function ListsPage() {
   const { cityId, currentUser, lists, profile } = usePricely();
   const currentCity = cityId ? getCityById(cityId) : null;
+  const nextList =
+    lists.find((list) => list.latestOptimizationStatus !== 'completed') ??
+    lists[0];
+  const shopperAction = !nextList
+    ? {
+        title: 'Crie sua primeira lista de compra',
+        description:
+          'Comece pela cidade, adicione produtos comparáveis e salve a lista para otimizar em seguida.',
+        primaryAction: { label: 'Nova lista', to: '/listas/nova' },
+        secondaryAction: undefined,
+        steps: [
+          { label: 'Lista', status: 'current' as const },
+          { label: 'Otimização', status: 'pending' as const },
+          { label: 'Checklist', status: 'pending' as const },
+          { label: 'Nota fiscal', status: 'pending' as const },
+        ],
+      }
+    : {
+        title:
+          nextList.latestOptimizationStatus === 'completed'
+            ? 'Use o checklist no mercado'
+            : 'Otimize a lista antes de comprar',
+        description:
+          nextList.latestOptimizationStatus === 'completed'
+            ? 'A lista já tem uma recomendação. Confira os itens no mercado, reporte divergências e finalize com a nota fiscal.'
+            : 'Compare preços por cidade ou por raio local antes de abrir o checklist.',
+        primaryAction: {
+          label:
+            nextList.latestOptimizationStatus === 'completed'
+              ? 'Abrir checklist'
+              : 'Otimizar lista',
+          to:
+            nextList.latestOptimizationStatus === 'completed'
+              ? `/listas/${nextList.id}/checklist`
+              : `/otimizacao/${nextList.id}`,
+        },
+        secondaryAction: {
+          label: 'Editar lista',
+          to: `/listas/${nextList.id}`,
+        },
+        steps: [
+          { label: 'Lista', status: 'done' as const },
+          {
+            label: 'Otimização',
+            status:
+              nextList.latestOptimizationStatus === 'completed'
+                ? ('done' as const)
+                : ('current' as const),
+          },
+          {
+            label: 'Checklist',
+            status:
+              nextList.latestOptimizationStatus === 'completed'
+                ? ('current' as const)
+                : ('pending' as const),
+          },
+          { label: 'Nota fiscal', status: 'pending' as const },
+        ],
+      };
 
   return (
     <RequireAuthentication
@@ -1682,6 +1882,8 @@ export function ListsPage() {
             <Link to="/listas/nova">Nova lista</Link>
           </Button>
         </div>
+
+        <NextBestActionStrip {...shopperAction} />
 
         <div className="grid gap-4 lg:grid-cols-4">
           <Card className="border-border/70 bg-card/90 shadow-sm">
@@ -1865,7 +2067,8 @@ export function ChecklistPage() {
   const list = lists.find((entry) => entry.id === listId);
   const optimizationResult = optimizationResults[listId];
   const purchasedCount =
-    list?.items.filter((item) => item.purchaseStatus === 'purchased').length ?? 0;
+    list?.items.filter((item) => item.purchaseStatus === 'purchased').length ??
+    0;
   const allItemsPurchased = Boolean(
     list && list.items.length > 0 && purchasedCount === list.items.length,
   );
@@ -1986,6 +2189,50 @@ export function ChecklistPage() {
             </Button>
           </div>
 
+          <NextBestActionStrip
+            title={
+              list.completedAt
+                ? 'Compra fechada, valide com a nota fiscal'
+                : allItemsPurchased
+                  ? 'Todos os itens marcados, conclua a lista'
+                  : 'Use o checklist dentro do mercado'
+            }
+            description={
+              list.completedAt
+                ? 'A nota fiscal confirma preços, melhora o trust factor e deixa o reward em validação.'
+                : allItemsPurchased
+                  ? 'O total pago é opcional. Depois disso, envie a nota fiscal para reforçar as ofertas.'
+                  : 'Marque os produtos, reporte divergências de preço e finalize quando a compra estiver completa.'
+            }
+            primaryAction={{
+              label: list.completedAt
+                ? 'Enviar nota fiscal'
+                : allItemsPurchased
+                  ? 'Concluir lista'
+                  : 'Continuar checklist',
+              to: list.completedAt ? '/notas' : '#checklist-actions',
+            }}
+            secondaryAction={{
+              label: 'Ver otimização',
+              to: `/otimizacao/${list.id}`,
+            }}
+            steps={[
+              { label: 'Lista', status: 'done' },
+              {
+                label: 'Otimização',
+                status: optimizationResult ? 'done' : 'pending',
+              },
+              {
+                label: 'Checklist',
+                status: list.completedAt ? 'done' : 'current',
+              },
+              {
+                label: 'Nota fiscal',
+                status: list.completedAt ? 'current' : 'pending',
+              },
+            ]}
+          />
+
           {error ? (
             <Alert variant="destructive">
               <ShieldAlertIcon />
@@ -2002,7 +2249,10 @@ export function ChecklistPage() {
             </Alert>
           ) : null}
 
-          <Card className="sticky bottom-3 z-20 border-border/70 bg-card/95 shadow-sm">
+          <Card
+            id="checklist-actions"
+            className="sticky bottom-3 z-20 border-border/70 bg-card/95 shadow-sm"
+          >
             <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="font-medium">
@@ -2430,6 +2680,52 @@ export function ListEditorPage() {
           </div>
         </div>
 
+        <NextBestActionStrip
+          title={
+            items.length > 0
+              ? 'Lista pronta para salvar e comparar'
+              : 'Adicione produtos para liberar a otimização'
+          }
+          description={
+            items.length > 0
+              ? 'Depois de salvar, siga direto para a comparação ou deixe a lista pronta para comprar depois.'
+              : 'A otimização fica disponível quando a lista tem cidade, nome e pelo menos um item.'
+          }
+          primaryAction={{
+            label:
+              items.length > 0 ? 'Continuar para otimização' : 'Adicionar item',
+            to: '#draft-item-name',
+          }}
+          secondaryAction={
+            editingList
+              ? {
+                  label: 'Abrir checklist',
+                  to: `/listas/${editingList.id}/checklist`,
+                }
+              : undefined
+          }
+          steps={[
+            {
+              label: 'Cidade',
+              status: selectedCityId ? 'done' : 'current',
+            },
+            {
+              label: 'Itens',
+              status:
+                items.length > 0
+                  ? 'done'
+                  : selectedCityId
+                    ? 'current'
+                    : 'pending',
+            },
+            {
+              label: 'Otimização',
+              status: items.length > 0 ? 'current' : 'pending',
+            },
+            { label: 'Checklist', status: 'pending' },
+          ]}
+        />
+
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
             <CardTitle>1. Defina o contexto da compra</CardTitle>
@@ -2485,8 +2781,9 @@ export function ListEditorPage() {
                 </span>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Nesta fase, o raio é exibido para orientar a escolha. A distância
-                ainda não altera a otimização nem gera promessa de proximidade.
+                Nesta fase, o raio é exibido para orientar a escolha. A
+                distância ainda não altera a otimização nem gera promessa de
+                proximidade.
               </p>
             </div>
           </CardContent>
@@ -2807,6 +3104,47 @@ export function ListEditorPage() {
           </CardHeader>
         </Card>
 
+        <div className="sticky bottom-3 z-20 rounded-lg border border-border/70 bg-card/95 p-3 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm">
+              <div className="font-medium">
+                {items.length} itens na lista
+                {selectedCity ? ` · ${selectedCity.name}` : ''}
+              </div>
+              <div className="text-muted-foreground">
+                Salve para continuar no checklist ou compare preços agora.
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                disabled={
+                  isSaving ||
+                  !selectedCityId ||
+                  items.length === 0 ||
+                  !name.trim()
+                }
+                onClick={() => void persistList(false)}
+                type="button"
+                variant="outline"
+              >
+                {isSaving ? 'Salvando...' : 'Salvar lista'}
+              </Button>
+              <Button
+                disabled={
+                  isSaving ||
+                  !selectedCityId ||
+                  items.length === 0 ||
+                  !name.trim()
+                }
+                onClick={() => void persistList(true)}
+                type="button"
+              >
+                {isSaving ? 'Salvando...' : 'Salvar e otimizar agora'}
+              </Button>
+            </div>
+          </div>
+        </div>
+
         {error ? (
           <Alert variant="destructive">
             <ShieldAlertIcon />
@@ -2903,7 +3241,48 @@ export function OptimizationPage() {
             </Button>
           </div>
 
-          <Card>
+          <NextBestActionStrip
+            title={
+              result && !isProcessingResult
+                ? 'Recomendação pronta para virar checklist'
+                : 'Escolha um modo para comparar a lista'
+            }
+            description={
+              result && !isProcessingResult
+                ? 'Leve a recomendação para o mercado, marque o que comprou e reporte qualquer preço diferente.'
+                : 'O resultado mostra preço, loja, fonte e confiança antes de você começar a compra.'
+            }
+            primaryAction={{
+              label:
+                result && !isProcessingResult
+                  ? 'Abrir checklist'
+                  : 'Manter modo recomendado',
+              to:
+                result && !isProcessingResult
+                  ? `/listas/${list.id}/checklist`
+                  : '#optimization-modes',
+            }}
+            secondaryAction={{ label: 'Enviar nota', to: '/notas' }}
+            steps={[
+              { label: 'Lista', status: 'done' },
+              {
+                label: 'Otimização',
+                status:
+                  result && !isProcessingResult
+                    ? 'done'
+                    : isProcessingResult
+                      ? 'current'
+                      : 'current',
+              },
+              {
+                label: 'Checklist',
+                status: result && !isProcessingResult ? 'current' : 'pending',
+              },
+              { label: 'Nota fiscal', status: 'pending' },
+            ]}
+          />
+
+          <Card id="optimization-modes">
             <CardHeader>
               <CardTitle>Escolha o modo</CardTitle>
               <CardDescription>
@@ -3025,7 +3404,8 @@ export function OptimizationPage() {
                 <CardHeader>
                   <CardTitle>Decisões por item</CardTitle>
                   <CardDescription>
-                    Cada item mostra loja, preço, origem e status de confiança.
+                    Cada item separa pedido original, variante selecionada,
+                    loja, comparação verdadeira e evidência da oferta.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
@@ -3065,8 +3445,7 @@ export function OptimizationPage() {
                                 </span>
                                 {selection.selectedVariantName ? (
                                   <span className="text-xs text-muted-foreground">
-                                    Selecionado:{' '}
-                                    {selection.selectedVariantName}
+                                    Selecionado: {selection.selectedVariantName}
                                     {selection.selectedPackageLabel
                                       ? ` · ${selection.selectedPackageLabel}`
                                       : ''}
@@ -3118,7 +3497,8 @@ export function OptimizationPage() {
                                 </span>
                                 {selection.distanceKm !== undefined ? (
                                   <span className="text-xs text-muted-foreground">
-                                    {selection.distanceKm.toFixed(1)} km do local salvo
+                                    {selection.distanceKm.toFixed(1)} km do
+                                    local salvo
                                   </span>
                                 ) : null}
                               </div>
@@ -3144,26 +3524,10 @@ export function OptimizationPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-col items-start gap-1">
-                              <span>
-                                {selection.sourceLabel ??
-                                  'Sem evidência suficiente'}
-                              </span>
-                              {selection.trustFactor !== undefined ? (
-                                <>
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    {trustFactorBadge(selection.trustLevel)}
-                                    <span className="text-xs text-muted-foreground">
-                                      {selection.trustFactor}/100
-                                    </span>
-                                  </div>
-                                  <span className="text-xs text-muted-foreground">
-                                    {selection.trustExplanation ??
-                                      trustEvidenceLabel(selection)}
-                                  </span>
-                                </>
-                              ) : null}
-                            </div>
+                            <ShopperEvidenceModule
+                              listId={list.id}
+                              selection={selection}
+                            />
                           </TableCell>
                           <TableCell>
                             {selection.observedAt

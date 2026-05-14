@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CitiesPage,
+  ListsPage,
   OfferDetailPage,
   OffersPage,
   ReceiptSubmissionPage,
@@ -31,6 +38,37 @@ vi.mock('@/app/pricely-context', () => ({
     },
     isAuthenticated: true,
     isBootstrapping: false,
+    profile: {
+      listsCreated: 1,
+      totalEstimatedSavings: 18.5,
+      entitlementPlan: 'free',
+      availableOptimizationTokens: 1,
+      monthlyFreeOptimizationTokens: 2,
+    },
+    lists: [
+      {
+        id: 'list-1',
+        name: 'Compra semanal',
+        cityId: 'sao-paulo-sp',
+        lastMode: 'global_multi',
+        updatedAt: '2026-05-10T10:00:00.000Z',
+        expectedSavings: 12.4,
+        latestOptimizationStatus: 'completed',
+        items: [
+          {
+            id: 'item-1',
+            name: 'Arroz tipo 1 5kg',
+            quantity: 1,
+            unitLabel: 'un',
+            purchaseStatus: 'pending',
+            status: 'resolved',
+            imageUrl: 'https://example.com/arroz.png',
+            brandPreferenceMode: 'any',
+            preferredBrandNames: [],
+          },
+        ],
+      },
+    ],
     cities: [
       {
         id: 'campinas-sp',
@@ -64,8 +102,7 @@ vi.mock('@/app/api', async () => {
     ...actual,
     fetchRegionOffers: (...args: unknown[]) => fetchRegionOffers(...args),
     fetchOfferDetail: (...args: unknown[]) => fetchOfferDetail(...args),
-    requestCityInclusion: (...args: unknown[]) =>
-      requestCityInclusion(...args),
+    requestCityInclusion: (...args: unknown[]) => requestCityInclusion(...args),
     submitReceipt: (...args: unknown[]) => submitReceipt(...args),
   };
 });
@@ -93,10 +130,11 @@ describe('public pages', () => {
 
     expect(screen.getByText('Cidades suportadas')).toBeTruthy();
     expect(
-      screen.getByText((_, element) =>
-        element?.getAttribute('data-slot') == 'card-title' &&
-        element?.textContent?.includes('Campinas') == true &&
-        element?.textContent?.includes('SP') == true,
+      screen.getByText(
+        (_, element) =>
+          element?.getAttribute('data-slot') == 'card-title' &&
+          element?.textContent?.includes('Campinas') == true &&
+          element?.textContent?.includes('SP') == true,
       ),
     ).toBeTruthy();
     expect(screen.getByText(/0 estabelecimentos ativos/)).toBeTruthy();
@@ -142,6 +180,21 @@ describe('public pages', () => {
       }),
     );
     expect(screen.getByText('Pedido registrado')).toBeTruthy();
+  });
+
+  it('renders the shopper next action lane on lists', () => {
+    render(
+      <MemoryRouter>
+        <ListsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Use o checklist no mercado')).toBeTruthy();
+    expect(screen.getByText('Lista')).toBeTruthy();
+    expect(screen.getByText('Otimização')).toBeTruthy();
+    expect(screen.getAllByText('Checklist').length).toBeGreaterThan(0);
+    expect(screen.getByText('Nota fiscal')).toBeTruthy();
+    expect(screen.getAllByText('Abrir checklist').length).toBeGreaterThan(0);
   });
 
   it('submits a receipt and shows manual-release status', async () => {
@@ -293,7 +346,9 @@ describe('public pages', () => {
 
     expect(await screen.findByText('Arroz tipo 1 5kg')).toBeTruthy();
     expect(screen.getByText('2 estabelecimentos')).toBeTruthy();
-    expect(screen.getByText(/Menor preço em Unidade Vila Mariana/)).toBeTruthy();
+    expect(
+      screen.getByText(/Menor preço em Unidade Vila Mariana/),
+    ).toBeTruthy();
     expect(screen.getByText(/R\$ 0,50 abaixo da média/)).toBeTruthy();
     expect(screen.getByText('Ver outros estabelecimentos')).toBeTruthy();
   });
@@ -360,10 +415,11 @@ describe('public pages', () => {
 
     await waitFor(() => expect(screen.getByText('Cafe torrado')).toBeTruthy());
     expect(
-      screen.getByText((_, element) =>
-        element?.getAttribute('data-slot') == 'card-description' &&
-        element?.textContent?.includes('Mercado Centro') == true &&
-        element?.textContent?.includes('Centro') == true,
+      screen.getByText(
+        (_, element) =>
+          element?.getAttribute('data-slot') == 'card-description' &&
+          element?.textContent?.includes('Mercado Centro') == true &&
+          element?.textContent?.includes('Centro') == true,
       ),
     ).toBeTruthy();
     expect(screen.getByText('Preços do produto na cidade')).toBeTruthy();

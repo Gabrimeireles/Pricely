@@ -72,6 +72,7 @@ export interface ShoppingList {
   lastMode: OptimizationModeId;
   updatedAt: string;
   expectedSavings: number;
+  latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
   completedAt?: string;
   paidTotal?: number;
   items: ShoppingListItem[];
