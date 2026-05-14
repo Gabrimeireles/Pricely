@@ -1963,6 +1963,8 @@ export function ListsPage() {
           { label: 'Nota fiscal', status: 'pending' as const },
         ],
       };
+  const isPremium = profile.entitlementPlan === 'premium';
+  const billingEnabled = profile.billingEnabled && profile.checkoutEnabled;
 
   return (
     <RequireAuthentication
@@ -2036,28 +2038,32 @@ export function ListsPage() {
           <CardHeader className="gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="bg-emerald-100 text-emerald-950 hover:bg-emerald-100">
-                {profile.entitlementPlan === 'premium'
-                  ? 'Premium ativo'
-                  : 'Plano gratuito'}
+                {isPremium ? 'Premium ativo' : 'Plano gratuito'}
               </Badge>
               <Badge variant="secondary">
-                {profile.entitlementPlan === 'premium'
+                {isPremium
                   ? 'Otimizações ilimitadas'
                   : `${profile.availableOptimizationTokens} de ${profile.monthlyFreeOptimizationTokens} listas no mês`}
               </Badge>
             </div>
-            <CardTitle>Uso de otimizações</CardTitle>
+            <CardTitle>
+              {isPremium ? 'Benefícios Premium' : 'Uso do plano gratuito'}
+            </CardTitle>
             <CardDescription>
-              {profile.entitlementPlan === 'premium'
-                ? 'Sua conta Premium está ativa. Você pode otimizar listas sem limite enquanto o billing permanece em validação operacional.'
-                : 'O plano gratuito inclui 2 listas otimizadas por mês. A compra Premium ainda está desativada enquanto o billing é validado.'}
+              {isPremium
+                ? 'Sua conta Premium está ativa. Você pode otimizar listas sem limite e manter o histórico sincronizado na conta.'
+                : billingEnabled
+                  ? 'O plano gratuito inclui 2 listas otimizadas por mês. Você pode fazer upgrade quando quiser liberar uso ilimitado.'
+                  : 'O plano gratuito inclui 2 listas otimizadas por mês. O upgrade Premium permanece temporariamente indisponível enquanto o billing é validado.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button disabled variant="outline">
-              {profile.entitlementPlan === 'premium'
-                ? 'Gerenciar Premium'
-                : 'Comprar Premium'}
+              {isPremium
+                ? 'Premium ativo'
+                : billingEnabled
+                  ? 'Comprar Premium'
+                  : 'Premium indisponível'}
             </Button>
           </CardContent>
         </Card>

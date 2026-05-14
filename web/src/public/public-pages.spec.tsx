@@ -24,6 +24,9 @@ const requestCityInclusion = vi.fn();
 const submitReceipt = vi.fn();
 
 const setCityId = vi.fn();
+const pricelyMockState = vi.hoisted(() => ({
+  profileOverride: null as Record<string, unknown> | null,
+}));
 
 vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
@@ -42,8 +45,12 @@ vi.mock('@/app/pricely-context', () => ({
       listsCreated: 1,
       totalEstimatedSavings: 18.5,
       entitlementPlan: 'free',
+      entitlementStatus: 'active',
       availableOptimizationTokens: 1,
       monthlyFreeOptimizationTokens: 2,
+      billingEnabled: false,
+      checkoutEnabled: false,
+      ...pricelyMockState.profileOverride,
     },
     lists: [
       {
@@ -127,6 +134,7 @@ describe('public pages', () => {
     requestCityInclusion.mockReset();
     submitReceipt.mockReset();
     setCityId.mockReset();
+    pricelyMockState.profileOverride = null;
   });
 
   afterEach(() => {
@@ -207,6 +215,29 @@ describe('public pages', () => {
     expect(screen.getAllByText('Checklist').length).toBeGreaterThan(0);
     expect(screen.getByText('Nota fiscal')).toBeTruthy();
     expect(screen.getAllByText('Abrir checklist').length).toBeGreaterThan(0);
+  });
+
+  it('renders premium entitlement copy without free-plan messaging', () => {
+    pricelyMockState.profileOverride = {
+      entitlementPlan: 'premium',
+      availableOptimizationTokens: 999,
+      billingEnabled: false,
+      checkoutEnabled: false,
+    };
+
+    render(
+      <MemoryRouter>
+        <ListsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByText('Premium ativo').length).toBeGreaterThan(0);
+    expect(screen.getByText('Benefícios Premium')).toBeTruthy();
+    expect(screen.getByText('Otimizações ilimitadas')).toBeTruthy();
+    expect(
+      screen.queryByText(/O plano gratuito inclui 2 listas otimizadas/),
+    ).toBeNull();
+    expect(screen.queryByText('Comprar Premium')).toBeNull();
   });
 
   it('submits a receipt and shows manual-release status', async () => {
