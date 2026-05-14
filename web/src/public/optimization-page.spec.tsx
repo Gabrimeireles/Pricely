@@ -61,14 +61,20 @@ describe('OptimizationPage', () => {
       /Compra mensal\s+-\s+S[aã]o Paulo\. Compare o melhor total/,
     );
     expect(
-      screen.getByText('Prepara a compra em uma unica loja dentro do raio local configurado.'),
+      screen.getByText(
+        'Prepara a compra em uma unica loja dentro do raio local configurado.',
+      ),
     ).toBeTruthy();
     expect(screen.getByText(/exige localizacao salva/i)).toBeTruthy();
     expect(
-      screen.getByText('Escolhe item a item entre lojas dentro do raio local configurado.'),
+      screen.getByText(
+        'Escolhe item a item entre lojas dentro do raio local configurado.',
+      ),
     ).toBeTruthy();
     expect(
-      screen.getByText('Busca o menor custo total item a item na cidade selecionada.'),
+      screen.getByText(
+        'Busca o menor custo total item a item na cidade selecionada.',
+      ),
     ).toBeTruthy();
     expect(screen.queryByText(/backend/i)).toBeNull();
     expect(loadLatestOptimization).toHaveBeenCalledWith('list-1');
@@ -126,11 +132,18 @@ describe('OptimizationPage', () => {
     expect(screen.getByText('Completa')).toBeTruthy();
     expect(screen.getByText('Oferta selecionada')).toBeTruthy();
     expect(screen.getByText('Oferta confirmada selecionada')).toBeTruthy();
-    expect(screen.getByText('Selecionado: Cafe Pilao 500g · 500 g')).toBeTruthy();
+    expect(
+      screen.getByText('Recomendação pronta para virar checklist'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('Selecionado: Cafe Pilao 500g · 500 g'),
+    ).toBeTruthy();
     expect(document.body.textContent).toMatch(/Confian[cç]a alta/);
     expect(screen.getByText('78/100')).toBeTruthy();
     expect(screen.getByText('1.4 km do local salvo')).toBeTruthy();
     expect(screen.getByText(/segundo menor elegivel/)).toBeTruthy();
+    expect(screen.getByText('Reportar preço')).toBeTruthy();
+    expect(screen.getAllByText('Enviar nota').length).toBeGreaterThan(0);
     expect(screen.queryByText(/selected_confirmed_offer/i)).toBeNull();
     expect(screen.queryByText(/selected/i)).toBeNull();
   });

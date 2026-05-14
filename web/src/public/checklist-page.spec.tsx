@@ -83,6 +83,7 @@ describe('ChecklistPage', () => {
     );
 
     expect(screen.getByText('Checklist de compra')).toBeTruthy();
+    expect(screen.getByText('Use o checklist dentro do mercado')).toBeTruthy();
     expect(screen.getByText('Arroz tipo 1 1kg')).toBeTruthy();
     expect(screen.getByText('0 de 1 itens comprados')).toBeTruthy();
     expect(screen.getByText('Preço previsto: R$ 21,90')).toBeTruthy();
@@ -113,7 +114,7 @@ describe('ChecklistPage', () => {
         'Ex.: etiqueta mostrava outro valor ou item indisponível',
       ),
       {
-      target: { value: 'Etiqueta mostrava outro preço' },
+        target: { value: 'Etiqueta mostrava outro preço' },
       },
     );
     fireEvent.click(screen.getByText('Enviar reporte'));
