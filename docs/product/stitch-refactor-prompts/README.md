@@ -13,13 +13,14 @@ Projeto misto descartado para uso final:
 - Project ID: `6992023142009606802`
 - Motivo: o Stitch trabalha melhor quando web/admin desktop e mobile ficam em projetos separados.
 
-Use estes arquivos como prompts independentes no Stitch. O fluxo recomendado:
+Use estes arquivos como prompts independentes no Stitch. O fluxo recomendado agora e manual:
 
 1. Criar/aplicar o design system com `DESIGN.md` ou `00-design-system.md`.
-2. No projeto web/admin desktop `8872616086150863294`, criar primeiro as telas web públicas na ordem `01` a `09`.
-3. No mesmo projeto web/admin desktop, criar as telas admin na ordem `10` a `14`.
-4. No projeto mobile `1457528815500978003`, criar as telas mobile na ordem `15` a `18`.
-5. Depois de revisar o visual, selecionar as telas aprovadas e só então implementar no repositório.
+2. No projeto web/admin desktop `8872616086150863294`, use `WEB-CONTEXT-PROMPT.md` como contexto base.
+3. No projeto mobile `1457528815500978003`, use `MOBILE-CONTEXT-PROMPT.md` como contexto base.
+4. Crie cada tela manualmente no Stitch, enviando o contexto base + o pedido especifico da tela.
+5. Componentes compartilhados como header, menu, sidebar, bottom nav, modal e scanner devem ser pedidos separadamente quando voce quiser criar esses componentes.
+6. Depois de revisar o visual, selecionar as telas aprovadas e so entao implementar no repositorio.
 
 Regra de escopo: o protótipo novo substitui as telas antigas como direção visual. Não tentar preservar layout antigo se ele conflitar com o fluxo atual do MVP.
 
@@ -44,15 +45,13 @@ Opção recomendada:
 1. Abra `DESIGN.md`.
 2. Cole o conteúdo no Stitch como base para criar o design system do projeto.
 3. Depois, para cada tela web/admin desktop, cole no projeto `8872616086150863294`:
-   - `00-system-summary.md`
-   - `DESIGN.md`
-   - o prompt específico da tela, por exemplo `03-lists-workspace.md`
+   - `WEB-CONTEXT-PROMPT.md`
+   - o pedido especifico da tela que voce quer criar
 4. Para cada tela mobile, cole no projeto `1457528815500978003`:
-   - `00-system-summary.md`
-   - `DESIGN.md`
-   - o prompt mobile específico, por exemplo `15-mobile-home-location.md`
+   - `MOBILE-CONTEXT-PROMPT.md`
+   - o pedido especifico da tela que voce quer criar
 
-Se o Stitch pedir apenas um prompt curto, use `DESIGN.md` para o design system e depois use cada arquivo numerado como prompt de tela.
+Se o Stitch pedir apenas um prompt curto, use `WEB-CONTEXT-PROMPT.md` ou `MOBILE-CONTEXT-PROMPT.md` e remova detalhes que nao importam para aquela tela.
 
 ## Separação por plataforma
 
