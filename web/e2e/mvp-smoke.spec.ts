@@ -82,7 +82,8 @@ const optimizationResult = {
   totalEstimatedCost: 15.8,
   estimatedSavings: 4.2,
   coverageStatus: 'complete',
-  explanationSummary: 'Menor cesta encontrada com dados de recibos de usuarios.',
+  explanationSummary:
+    'Menor cesta encontrada com dados de recibos de usuarios.',
   createdAt: '2026-05-05T10:00:00.000Z',
   completedAt: '2026-05-05T10:00:02.000Z',
   selections: [
@@ -109,6 +110,7 @@ const optimizationResult = {
       selectionStatus: 'selected',
       confidenceNotice: 'Preco observado em recibo recente.',
       decisionReason: 'selected_confirmed_offer',
+      distanceKm: 0.8,
     },
   ],
 };
@@ -146,6 +148,47 @@ async function mockApi(page: Page) {
       return json(customerUser);
     }
 
+    if (path === '/locations' && method === 'GET') {
+      return json([]);
+    }
+
+    if (path === '/locations' && method === 'POST') {
+      const body = JSON.parse(request.postData() ?? '{}') as {
+        latitude?: number;
+        longitude?: number;
+        coverageRadiusKm?: number;
+      };
+      return json(
+        {
+          id: 'location-1',
+          regionId: region.id,
+          regionSlug: region.slug,
+          regionName: region.name,
+          label: 'Local atual',
+          latitude: body.latitude,
+          longitude: body.longitude,
+          postalCode: null,
+          coverageRadiusKm: body.coverageRadiusKm ?? 5,
+          activeEstablishmentCount: 2,
+          isDefault: true,
+          locationSource: 'browser_geolocation',
+          createdAt: '2026-05-05T10:00:00.000Z',
+          updatedAt: '2026-05-05T10:00:00.000Z',
+        },
+        201,
+      );
+    }
+
+    if (path === '/locations/coverage-preview' && method === 'POST') {
+      return json({
+        regionId: region.id,
+        coverageRadiusKm: 5,
+        activeEstablishmentCount: 2,
+        fallbackUsed: false,
+        establishments: [],
+      });
+    }
+
     if (path === '/regions') {
       return json([region]);
     }
@@ -159,13 +202,20 @@ async function mockApi(page: Page) {
     }
 
     if (path === '/shopping-lists' && method === 'POST') {
-      return json({ ...savedList, id: 'list-2', name: 'Compra semanal', items: [] }, 201);
+      return json(
+        { ...savedList, id: 'list-2', name: 'Compra semanal', items: [] },
+        201,
+      );
     }
 
     if (path === '/shopping-lists/list-2' && method === 'PATCH') {
       const body = JSON.parse(request.postData() ?? '{}') as {
         name: string;
-        items: Array<{ requestedName: string; quantity?: number; unitLabel?: string }>;
+        items: Array<{
+          requestedName: string;
+          quantity?: number;
+          unitLabel?: string;
+        }>;
       };
       return json({
         ...savedList,
@@ -194,14 +244,17 @@ async function mockApi(page: Page) {
     }
 
     if (path === '/shopping-lists/list-1/optimize') {
-      return json({
-        id: 'run-1',
-        jobId: 'job-1',
-        shoppingListId: 'list-1',
-        mode: 'global_multi',
-        status: 'queued',
-        queuedAt: '2026-05-05T10:00:00.000Z',
-      }, 202);
+      return json(
+        {
+          id: 'run-1',
+          jobId: 'job-1',
+          shoppingListId: 'list-1',
+          mode: 'global_multi',
+          status: 'queued',
+          queuedAt: '2026-05-05T10:00:00.000Z',
+        },
+        202,
+      );
     }
 
     if (path === '/shopping-lists/list-1/optimizations/latest') {
@@ -252,7 +305,11 @@ async function mockApi(page: Page) {
           attemptCount: 0,
           createdAt: '2026-05-05T10:00:00.000Z',
           updatedAt: '2026-05-05T10:00:00.000Z',
-          owner: { id: 'user-1', displayName: 'Cliente Pricely', email: 'cliente@pricely.test' },
+          owner: {
+            id: 'user-1',
+            displayName: 'Cliente Pricely',
+            email: 'cliente@pricely.test',
+          },
           receiptRecord: {
             id: 'receipt-1',
             status: 'processed',
@@ -279,7 +336,11 @@ async function mockApi(page: Page) {
         attemptCount: 0,
         createdAt: '2026-05-05T10:00:00.000Z',
         updatedAt: '2026-05-05T10:00:00.000Z',
-        owner: { id: 'user-1', displayName: 'Cliente Pricely', email: 'cliente@pricely.test' },
+        owner: {
+          id: 'user-1',
+          displayName: 'Cliente Pricely',
+          email: 'cliente@pricely.test',
+        },
         receiptRecord: {
           id: 'receipt-1',
           status: 'processed',
@@ -325,20 +386,26 @@ test.beforeEach(async ({ page }) => {
   await mockApi(page);
 });
 
-test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and premium gate', async ({ page }) => {
+test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and premium gate', async ({
+  page,
+}) => {
   await page.goto('/entrar');
   await expect(page.getByText('Entrar no Pricely').first()).toBeVisible();
   await page.getByLabel('E-mail').fill(customerUser.email);
   await page.getByLabel('Senha').fill('password');
   await page.getByRole('button', { name: 'Entrar' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Minhas listas' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
   await expect(page.getByText('2 de 2 listas no mês')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Comprar Premium' })).toBeDisabled();
+  await expect(
+    page.getByRole('button', { name: 'Comprar Premium' }),
+  ).toBeDisabled();
 
   await page.goto('/cidades');
   await expect(page.getByText('Cidades suportadas').first()).toBeVisible();
-  await expect(page.getByText('Sao Paulo · SP')).toBeVisible();
+  await expect(page.getByText('Sao Paulo · SP', { exact: true })).toBeVisible();
 
   await page.goto('/listas/nova');
   await page.getByLabel('Nome da lista').fill('Compra semanal');
@@ -348,23 +415,53 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   await page.getByRole('button', { name: 'Adicionar' }).click();
   await expect(page.getByText('Arroz tipo 1 1kg').first()).toBeVisible();
   await page.getByRole('button', { name: 'Salvar', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Minhas listas' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
 
   await page.goto('/otimizacao/list-1');
-  await expect(page.getByRole('heading', { name: 'Resultado da otimização' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Resultado da otimização' }),
+  ).toBeVisible();
   await page.getByText('Usar este modo').first().click();
   await expect(page.getByText('Decisões por item')).toBeVisible();
   await expect(page.getByText('Oferta confirmada selecionada')).toBeVisible();
-  await expect(page.getByText('Trust alto')).toBeVisible();
+  await expect(page.getByText('Confiança alta')).toBeVisible();
   await expect(page.getByText('82/100', { exact: true })).toBeVisible();
 
   await page.goto('/listas/list-1/checklist');
-  await expect(page.getByRole('heading', { name: 'Checklist de compra' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Checklist de compra' }),
+  ).toBeVisible();
   await page.getByRole('checkbox').click();
-  await expect(page.getByText('Comprado')).toBeVisible();
+  await expect(page.getByText('Comprado', { exact: true })).toBeVisible();
 });
 
-test('MVP admin flow covers route protection and queue detail', async ({ page }) => {
+test('location-aware web flow saves browser coordinates and shows local result distance', async ({
+  page,
+}) => {
+  await page.context().grantPermissions(['geolocation']);
+  await page.context().setGeolocation({
+    latitude: -23.566263,
+    longitude: -46.683677,
+  });
+  await page.addInitScript(() => {
+    window.localStorage.setItem('pricely-auth-token', 'customer-token');
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: /Usar localizacao/i }).click();
+  await expect(page.getByText(/2 lojas dentro de 5 km/)).toBeVisible();
+
+  await page.goto('/otimizacao/list-1');
+  await page.getByText('Menor preco perto de mim').click();
+  await page.getByText('Usar este modo').nth(1).click();
+  await expect(page.getByText('0.8 km do local salvo')).toBeVisible();
+});
+
+test('MVP admin flow covers route protection and queue detail', async ({
+  page,
+}) => {
   await page.goto('/dashboard');
   await expect(page.getByText('Acesso restrito')).toBeVisible();
 
@@ -374,11 +471,16 @@ test('MVP admin flow covers route protection and queue detail', async ({ page })
 
   await page.goto('/dashboard/fila');
   await expect(page.getByText('Saude da fila')).toBeVisible();
-  await expect(page.getByText('recibo receipt-1')).toBeVisible();
+  await expect(page.getByText('Nota fiscal: Mercado Centro')).toBeVisible();
+  await expect(
+    page.getByText('ID tecnico: receipt · receipt-1 · job job-1'),
+  ).toBeVisible();
   await page.goto('/dashboard/fila/job-1');
 
   await expect(page.getByText('Mercado Centro')).toBeVisible();
   await expect(page.getByText('Recibo contribuído')).toBeVisible();
   await expect(page.getByText('suspicious_price_detected')).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'Arroz tipo 1 1kg', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('cell', { name: 'Arroz tipo 1 1kg', exact: true }),
+  ).toBeVisible();
 });

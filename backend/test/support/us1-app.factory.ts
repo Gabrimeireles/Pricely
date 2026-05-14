@@ -15,6 +15,7 @@ import { QueueModule } from '../../src/common/queue/queue.module';
 import { CatalogModule } from '../../src/catalog/catalog.module';
 import { ProductMatchRepository } from '../../src/catalog/infrastructure/product-match.repository';
 import { JobsModule } from '../../src/jobs/jobs.module';
+import { LocationsModule } from '../../src/locations/locations.module';
 import { OptimizationRunProcessor } from '../../src/jobs/optimization-run.processor';
 import { ListsModule } from '../../src/lists/lists.module';
 import { OptimizationModule } from '../../src/optimization/optimization.module';
@@ -281,8 +282,14 @@ class InMemoryStoreOfferRepository {
   }
 
   async upsert(offer: any) {
-    this.offers.set(offer.id, structuredClone(offer));
-    return structuredClone(offer);
+    const enriched = {
+      ...offer,
+      storeRegionId: offer.storeRegionId ?? 'region-test-1',
+      storeLatitude: offer.storeLatitude ?? -23.566263,
+      storeLongitude: offer.storeLongitude ?? -46.683677,
+    };
+    this.offers.set(offer.id, structuredClone(enriched));
+    return structuredClone(enriched);
   }
 
   async findByCanonicalNames(canonicalNames: string[]) {
@@ -293,6 +300,10 @@ class InMemoryStoreOfferRepository {
 
   async findByListItems(
     items: Array<{ catalogProductId?: string; normalizedName?: string }>,
+    scope?: {
+      regionId?: string;
+      establishmentIds?: string[];
+    },
   ) {
     const catalogProductIds = new Set(
       items.map((item) => item.catalogProductId).filter(Boolean),
@@ -304,9 +315,13 @@ class InMemoryStoreOfferRepository {
     return Array.from(this.offers.values())
       .filter(
         (offer) =>
-          (offer.catalogProductId &&
+          (!scope?.regionId ||
+            this.regionMatches(offer.storeRegionId, scope.regionId)) &&
+          (!scope?.establishmentIds ||
+            scope.establishmentIds.includes(offer.storeId)) &&
+          ((offer.catalogProductId &&
             catalogProductIds.has(offer.catalogProductId)) ||
-          canonicalNames.has(offer.canonicalName),
+            canonicalNames.has(offer.canonicalName)),
       )
       .map((offer) => structuredClone(offer));
   }
@@ -315,6 +330,20 @@ class InMemoryStoreOfferRepository {
     const offer = this.offers.get(id);
     return offer ? structuredClone(offer) : null;
   }
+
+  private regionMatches(
+    offerRegionId: string | undefined,
+    scopeRegionId: string,
+  ) {
+    if (offerRegionId === scopeRegionId) {
+      return true;
+    }
+
+    return (
+      (offerRegionId === 'region-test-1' && scopeRegionId === 'sao-paulo-sp') ||
+      (offerRegionId === 'sao-paulo-sp' && scopeRegionId === 'region-test-1')
+    );
+  }
 }
 
 class PrismaUserAccountMock {
@@ -322,6 +351,7 @@ class PrismaUserAccountMock {
   private readonly processingJobs = new Map<string, any>();
   private readonly optimizationRuns = new Map<string, any>();
   private readonly optimizationSelections: any[] = [];
+  private readonly userLocationPreferences = new Map<string, any>();
   private readonly userEntitlements: any[] = [];
   private readonly optimizationTokenLedgerEntries = new Map<string, any>();
   private readonly regions = [
@@ -342,6 +372,9 @@ class PrismaUserAccountMock {
       cnpj: '00.000.000/0001-00',
       cityName: 'Sao Paulo',
       neighborhood: 'Pinheiros',
+      postalCode: '05422-001',
+      latitude: -23.566263,
+      longitude: -46.683677,
       regionId: 'region-test-1',
       isActive: true,
     },
@@ -618,7 +651,7 @@ class PrismaUserAccountMock {
       ).length,
     findMany: async () =>
       this.establishments.map((entry) => ({
-        ...structuredClone(entry),
+        ...entry,
         region: structuredClone(
           this.regions.find((region) => region.id === entry.regionId),
         ),
@@ -641,6 +674,91 @@ class PrismaUserAccountMock {
       }
       Object.assign(establishment, data);
       return structuredClone(establishment);
+    },
+  };
+
+  readonly userLocationPreference = {
+    findMany: async ({ where }: { where?: { userId?: string } }) =>
+      Array.from(this.userLocationPreferences.values())
+        .filter((entry) => !where?.userId || entry.userId === where.userId)
+        .map((entry) => ({
+          ...structuredClone(entry),
+          region: structuredClone(
+            this.regions.find((region) => region.id === entry.regionId),
+          ),
+        })),
+    findFirst: async ({
+      where,
+    }: {
+      where?: {
+        id?: string;
+        userId?: string;
+        regionId?: string;
+        isDefault?: boolean;
+      };
+    }) => {
+      const preference = Array.from(this.userLocationPreferences.values()).find(
+        (entry) =>
+          (!where?.id || entry.id === where.id) &&
+          (!where?.userId || entry.userId === where.userId) &&
+          (!where?.regionId || entry.regionId === where.regionId) &&
+          (where?.isDefault === undefined ||
+            entry.isDefault === where.isDefault),
+      );
+      return preference
+        ? {
+            ...structuredClone(preference),
+            region: structuredClone(
+              this.regions.find((region) => region.id === preference.regionId),
+            ),
+          }
+        : null;
+    },
+    findUnique: async ({ where }: { where: { id: string } }) => {
+      const preference = this.userLocationPreferences.get(where.id);
+      return preference ? structuredClone(preference) : null;
+    },
+    updateMany: async ({
+      where,
+      data,
+    }: {
+      where?: { userId?: string };
+      data: Record<string, unknown>;
+    }) => {
+      for (const [id, preference] of this.userLocationPreferences.entries()) {
+        if (!where?.userId || preference.userId === where.userId) {
+          this.userLocationPreferences.set(id, { ...preference, ...data });
+        }
+      }
+      return { count: this.userLocationPreferences.size };
+    },
+    create: async ({
+      data,
+      include,
+    }: {
+      data: any;
+      include?: { region?: boolean };
+    }) => {
+      const now = new Date();
+      const preference = {
+        id: crypto.randomUUID(),
+        createdAt: now,
+        updatedAt: now,
+        postalCode: null,
+        ...data,
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
+        coverageRadiusKm: data.coverageRadiusKm ?? 5,
+      };
+      this.userLocationPreferences.set(preference.id, preference);
+      return {
+        ...structuredClone(preference),
+        region: include?.region
+          ? structuredClone(
+              this.regions.find((region) => region.id === preference.regionId),
+            )
+          : undefined,
+      };
     },
   };
 
@@ -875,6 +993,10 @@ class PrismaUserAccountMock {
         estimatedSavings: null,
         summary: null,
         ...data,
+        coverageRadiusKm:
+          data.coverageRadiusKm !== null && data.coverageRadiusKm !== undefined
+            ? Number(data.coverageRadiusKm)
+            : null,
       };
 
       this.optimizationRuns.set(record.id, record);
@@ -885,6 +1007,10 @@ class PrismaUserAccountMock {
       const updated = {
         ...existing,
         ...data,
+        coverageRadiusKm:
+          data.coverageRadiusKm !== null && data.coverageRadiusKm !== undefined
+            ? Number(data.coverageRadiusKm)
+            : existing?.coverageRadiusKm,
       };
 
       this.shoppingListRepository.setOptimizationSummary(
@@ -1170,7 +1296,10 @@ class PrismaUserAccountMock {
     count: async () => 0,
   };
 
-  async $transaction<T>(operations: Promise<T>[]) {
+  async $transaction<T>(operations: Promise<T>[] | ((tx: this) => Promise<T>)) {
+    if (typeof operations === 'function') {
+      return operations(this);
+    }
     return Promise.all(operations);
   }
 }
@@ -1215,6 +1344,9 @@ export async function createUs1TestApp(): Promise<{
       storeId: 'est-test-1',
       storeName: 'Unidade Pinheiros',
       neighborhood: 'Pinheiros',
+      storeRegionId: 'region-test-1',
+      storeLatitude: -23.566263,
+      storeLongitude: -46.683677,
     },
     {
       id: 'offer-test-1',
@@ -1231,6 +1363,9 @@ export async function createUs1TestApp(): Promise<{
       storeId: 'est-test-1',
       storeName: 'Unidade Pinheiros',
       neighborhood: 'Pinheiros',
+      storeRegionId: 'region-test-1',
+      storeLatitude: -23.566263,
+      storeLongitude: -46.683677,
     },
   ]);
   const userAccountMock = new PrismaUserAccountMock(
@@ -1248,6 +1383,7 @@ export async function createUs1TestApp(): Promise<{
       PricingModule,
       RegionsModule,
       StoresModule,
+      LocationsModule,
       ReceiptsModule,
       OptimizationModule,
       JobsModule,
