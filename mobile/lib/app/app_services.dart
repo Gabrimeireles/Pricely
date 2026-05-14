@@ -4,6 +4,8 @@ import '../core/storage/local_cache_service.dart';
 import '../core/storage/shared_preferences_key_value_store.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/discovery/application/market_discovery_controller.dart';
+import '../features/location/application/mobile_location_controller.dart';
+import '../features/location/data/geolocator_mobile_location_service.dart';
 import '../features/optimization/application/optimization_controller.dart';
 import '../features/optimization/data/demo_grocery_workflow_gateway.dart';
 import '../features/receipts/application/receipt_flow_controller.dart';
@@ -22,6 +24,12 @@ class AppServices {
       backendGateway: backendGateway,
     );
     marketDiscoveryController = MarketDiscoveryController(backendGateway);
+    locationController = MobileLocationController(
+      authController: authController,
+      discoveryController: marketDiscoveryController,
+      backendGateway: backendGateway,
+      locationService: const GeolocatorMobileLocationService(),
+    );
     shoppingListController = ShoppingListController(
       cacheService: localCacheService,
       authController: authController,
@@ -37,6 +45,7 @@ class AppServices {
       shoppingListController: shoppingListController,
       backendGateway: backendGateway,
       authController: authController,
+      locationController: locationController,
     );
   }
 
@@ -48,6 +57,7 @@ class AppServices {
 
   late final AuthController authController;
   late final MarketDiscoveryController marketDiscoveryController;
+  late final MobileLocationController locationController;
   late final ShoppingListController shoppingListController;
   late final ReceiptFlowController receiptFlowController;
   late final OptimizationController optimizationController;
