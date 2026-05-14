@@ -991,7 +991,10 @@ components:
       properties:
         mode:
           type: string
-          enum: [local_unique, local_multi, global_multi]
+          description: >
+            Descriptive mode id. Legacy aliases `local` and `global_full` are
+            accepted for backwards compatibility and normalized by the backend.
+          enum: [local_unique, local_multi, global_multi, local, global_full]
         regionId:
           type: string
         userLocationPreferenceId:

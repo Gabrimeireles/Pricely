@@ -111,6 +111,21 @@ function useAdminData<T>(
   return { data, error, reload };
 }
 
+function optimizationModeLabel(mode?: string | null) {
+  const labels: Record<string, string> = {
+    global_full: 'Menor total na cidade',
+    global_multi: 'Menor total na cidade',
+    global_unique: 'Uma loja na cidade',
+    local: 'Uma loja perto de mim',
+    local_multi: 'Menor preco perto de mim',
+    local_unique: 'Uma loja perto de mim',
+  };
+
+  return mode
+    ? (labels[mode] ?? mode.replace(/_/g, ' '))
+    : 'Modo nao informado';
+}
+
 function jobResourceTitle(job: AdminProcessingJobResponse) {
   if (job.shoppingList) {
     return `Lista: ${job.shoppingList.name}`;
@@ -121,7 +136,7 @@ function jobResourceTitle(job: AdminProcessingJobResponse) {
   }
 
   if (job.optimizationRun) {
-    return `Otimizacao ${job.optimizationRun.mode.replace(/_/g, ' ')}`;
+    return `Otimizacao ${optimizationModeLabel(job.optimizationRun.mode)}`;
   }
 
   return `${job.resourceType.replace(/_/g, ' ')} em processamento`;
@@ -3015,7 +3030,7 @@ export function AdminQueuePage() {
               <div className="mt-3 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
                 {job.optimizationRun ? (
                   <span>
-                    Modo {job.optimizationRun.mode.replace(/_/g, ' ')} ·{' '}
+                    Modo {optimizationModeLabel(job.optimizationRun.mode)} ·{' '}
                     {job.optimizationRun.status}
                   </span>
                 ) : null}
@@ -3190,7 +3205,7 @@ export function AdminQueueDetailPage() {
             <CardTitle>Otimização</CardTitle>
             <CardDescription>
               {job.shoppingList?.name ?? job.resourceId} · modo{' '}
-              {job.optimizationRun.mode.replace(/_/g, ' ')} · cobertura{' '}
+              {optimizationModeLabel(job.optimizationRun.mode)} · cobertura{' '}
               {job.optimizationRun.coverageStatus}
             </CardDescription>
           </CardHeader>

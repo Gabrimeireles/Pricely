@@ -218,7 +218,7 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('Jobs recentes')).toBeTruthy();
     expect(screen.getByText('Lista: Compra da semana')).toBeTruthy();
     expect(screen.getByText(/Cliente Teste/)).toBeTruthy();
-    expect(screen.getByText(/Modo global multi/)).toBeTruthy();
+    expect(screen.getByText(/Modo Menor total na cidade/)).toBeTruthy();
     expect(screen.getByLabelText('Abrir detalhe do job job-1')).toBeTruthy();
     expect(screen.queryByText('Go to link')).toBeNull();
   });
@@ -386,7 +386,9 @@ describe('Admin dashboard pages', () => {
     });
 
     render(<AdminPricesPage />);
-    expect((await screen.findAllByAltText('Cafe Pilao 500g')).length).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByAltText('Cafe Pilao 500g')).length,
+    ).toBeGreaterThan(0);
     expect(screen.getAllByText(/Pilao/).length).toBeGreaterThan(0);
   });
 
