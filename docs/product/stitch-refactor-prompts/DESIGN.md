@@ -1,6 +1,14 @@
 # Design System: Pricely MVP UX Refactor
 
-**Project ID:** `6992023142009606802`
+**Web/Admin Desktop Project ID:** `8872616086150863294`
+
+**Mobile Project ID:** `1457528815500978003`
+
+**Deprecated mixed Project ID:** `6992023142009606802`
+
+Use the web/admin desktop project for screens `01` through `14`.
+
+Use the mobile project for screens `15` through `18`.
 
 ## 1. Visual Theme & Atmosphere
 
@@ -240,4 +248,3 @@ Never promise points or credits before quality scoring says the receipt is usefu
 - Do not show raw IDs as primary UI.
 - Do not say "0 notas fiscais confiaveis"; use "Ainda sem nota fiscal aceita apoiando este preco".
 - Do not mention free-plan copy to premium users.
-
