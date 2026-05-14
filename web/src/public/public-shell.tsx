@@ -7,12 +7,13 @@ import {
   SparklesIcon,
   SunMediumIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 
 import { usePricely } from '@/app/pricely-context';
 import { useTheme } from '@/app/theme-context';
 import pricelyIcon from '@/assets/pricely-icon.png';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -42,14 +43,18 @@ function AppLogo() {
       </div>
       <div className="flex flex-col gap-0.5">
         <span className="text-sm font-semibold tracking-tight">Pricely</span>
-        <span className="text-xs text-muted-foreground">economia com contexto real</span>
+        <span className="text-xs text-muted-foreground">
+          economia com contexto real
+        </span>
       </div>
     </Link>
   );
 }
 
 const linkClassName = ({ isActive }: { isActive: boolean }) =>
-  isActive ? 'text-foreground' : 'text-muted-foreground transition-colors hover:text-foreground';
+  isActive
+    ? 'text-foreground'
+    : 'text-muted-foreground transition-colors hover:text-foreground';
 
 export function PublicLayout() {
   const {
@@ -60,14 +65,24 @@ export function PublicLayout() {
     isBootstrapping,
     locationPreferences,
     saveBrowserLocation,
+    savePostalCodeLocation,
     setCityId,
     signOut,
   } = usePricely();
   const { theme, toggleTheme } = useTheme();
   const [locationPermissionState, setLocationPermissionState] = useState<
-    'manual' | 'requesting' | 'allowed' | 'denied' | 'unsupported'
+    | 'manual'
+    | 'requesting'
+    | 'allowed'
+    | 'denied'
+    | 'unsupported'
+    | 'postal_fallback'
   >('manual');
-  const activeCity = cityId ? cities.find((city) => city.id === cityId) ?? null : null;
+  const [postalCode, setPostalCode] = useState('');
+  const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
+  const activeCity = cityId
+    ? (cities.find((city) => city.id === cityId) ?? null)
+    : null;
   const activeLocation = activeCity
     ? (locationPreferences ?? []).find(
         (preference) =>
@@ -87,10 +102,22 @@ export function PublicLayout() {
       ? `${activeLocation.activeEstablishmentCount} lojas dentro de ${activeLocation.coverageRadiusKm} km`
       : `${activeCity.activeStoreCount} lojas na cidade - raio local padrao 5 km aguardando localizacao`
     : radiusSummary;
+  const activeLocationHasCoordinates =
+    activeLocation?.latitude !== null &&
+    activeLocation?.latitude !== undefined &&
+    activeLocation?.longitude !== null &&
+    activeLocation?.longitude !== undefined;
+  const locationRadiusDisplay =
+    activeLocation && !activeLocationHasCoordinates
+      ? `CEP ${activeLocation.postalCode ?? 'salvo'} como fallback: ${activeLocation.activeEstablishmentCount} lojas ativas na cidade, sem calculo de distancia`
+      : locationRadiusSummary;
 
   const requestBrowserLocation = () => {
     if (!navigator.geolocation) {
       setLocationPermissionState('unsupported');
+      setLocationFeedback(
+        'Geolocalizacao indisponivel neste navegador. Use o CEP como fallback manual.',
+      );
       return;
     }
 
@@ -102,12 +129,56 @@ export function PublicLayout() {
           longitude: position.coords.longitude,
           coverageRadiusKm: 5,
         })
-          .then(() => setLocationPermissionState('allowed'))
-          .catch(() => setLocationPermissionState('denied'));
+          .then(() => {
+            setLocationPermissionState('allowed');
+            setLocationFeedback(
+              'Localizacao salva. Modos locais podem calcular distancia dentro do raio.',
+            );
+          })
+          .catch(() => {
+            setLocationPermissionState('denied');
+            setLocationFeedback(
+              'Nao foi possivel salvar a localizacao. Use o CEP como fallback manual.',
+            );
+          });
       },
-      () => setLocationPermissionState('denied'),
+      () => {
+        setLocationPermissionState('denied');
+        setLocationFeedback(
+          'Permissao negada. O CEP mantem cobertura por cidade sem prometer distancia.',
+        );
+      },
       { enableHighAccuracy: false, maximumAge: 300000, timeout: 8000 },
     );
+  };
+
+  const savePostalFallback = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const normalizedPostalCode = postalCode.replace(/\D/g, '');
+    if (normalizedPostalCode.length !== 8) {
+      setLocationFeedback(
+        'Informe um CEP com 8 digitos para usar como fallback.',
+      );
+      return;
+    }
+
+    void savePostalCodeLocation({
+      postalCode: normalizedPostalCode,
+      coverageRadiusKm: 5,
+    })
+      .then(() => {
+        setLocationPermissionState('postal_fallback');
+        setLocationFeedback(
+          'CEP salvo como fallback. A cobertura fica por cidade ate uma localizacao precisa ser liberada.',
+        );
+      })
+      .catch((error: unknown) => {
+        setLocationFeedback(
+          error instanceof Error
+            ? error.message
+            : 'Nao foi possivel salvar o CEP agora.',
+        );
+      });
   };
 
   return (
@@ -138,7 +209,10 @@ export function PublicLayout() {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Select onValueChange={(value) => void setCityId(value)} value={cityId ?? ''}>
+            <Select
+              onValueChange={(value) => void setCityId(value)}
+              value={cityId ?? ''}
+            >
               <SelectTrigger className="w-full sm:w-[320px]">
                 <MapPinIcon />
                 <SelectValue placeholder="Escolha sua cidade" />
@@ -147,7 +221,8 @@ export function PublicLayout() {
                 <SelectGroup>
                   {cities.map((city) => (
                     <SelectItem key={city.id} value={city.id}>
-                      {city.name} - {city.activeStoreCount} estabelecimentos ativos
+                      {city.name} - {city.activeStoreCount} estabelecimentos
+                      ativos
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -155,20 +230,28 @@ export function PublicLayout() {
             </Select>
 
             <Button
-              aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              aria-label={
+                theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
+              }
               className="border-border/80 bg-card/90"
               onClick={toggleTheme}
               size="icon"
               type="button"
               variant="outline"
             >
-              {theme === 'dark' ? <SunMediumIcon className="size-4" /> : <MoonStarIcon className="size-4" />}
+              {theme === 'dark' ? (
+                <SunMediumIcon className="size-4" />
+              ) : (
+                <MoonStarIcon className="size-4" />
+              )}
             </Button>
 
             {isAuthenticated ? (
               <>
                 <Button asChild size="sm" variant="ghost">
-                  <Link to="/listas">{currentUser?.displayName ?? 'Minha conta'}</Link>
+                  <Link to="/listas">
+                    {currentUser?.displayName ?? 'Minha conta'}
+                  </Link>
                 </Button>
                 <Button onClick={signOut} size="sm" variant="outline">
                   Sair
@@ -215,22 +298,32 @@ export function PublicLayout() {
           </div>
         </div>
 
-        <div className="grid gap-3 rounded-lg border border-border/70 bg-background/85 px-4 py-3 text-sm shadow-sm lg:grid-cols-[1.2fr_1fr_auto] lg:items-center">
+        <div className="grid gap-3 rounded-lg border border-border/70 bg-background/85 px-4 py-3 text-sm shadow-sm lg:grid-cols-[1.1fr_1fr_auto] lg:items-center">
           <div className="min-w-0">
             <div className="flex items-center gap-2 font-medium">
               <LocateFixedIcon className="size-4 text-primary" />
               Localizacao para otimizacao local
             </div>
             <div className="mt-1 text-muted-foreground">
-              {locationRadiusSummary}. Modos locais usam essa localizacao salva; modo cidade ignora distancia.
+              {locationRadiusDisplay}. Modos locais so calculam distancia com
+              coordenadas salvas; CEP e modo cidade nao prometem proximidade.
             </div>
+            {locationFeedback ? (
+              <div className="mt-2 rounded-md border border-border/70 bg-card px-2.5 py-1 text-xs text-muted-foreground">
+                {locationFeedback}
+              </div>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2 text-muted-foreground">
             <span className="rounded-md border border-border/70 bg-card px-2.5 py-1">
-              Cidade: {activeCity ? `${activeCity.name} · ${activeCity.stateCode}` : 'manual pendente'}
+              Cidade:{' '}
+              {activeCity
+                ? `${activeCity.name} · ${activeCity.stateCode}`
+                : 'manual pendente'}
             </span>
             <span className="rounded-md border border-border/70 bg-card px-2.5 py-1">
-              Permissão: {locationPermissionState === 'allowed'
+              Permissão:{' '}
+              {locationPermissionState === 'allowed'
                 ? 'capturada para preview'
                 : locationPermissionState === 'denied'
                   ? 'negada'
@@ -238,19 +331,37 @@ export function PublicLayout() {
                     ? 'indisponível'
                     : locationPermissionState === 'requesting'
                       ? 'solicitando'
-                      : 'manual'}
+                      : locationPermissionState === 'postal_fallback'
+                        ? 'CEP fallback'
+                        : 'manual'}
             </span>
           </div>
-          <Button
-            disabled={locationPermissionState === 'requesting'}
-            onClick={requestBrowserLocation}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <LocateFixedIcon data-icon="inline-start" />
-            Usar localizacao
-          </Button>
+          <div className="grid gap-2">
+            <Button
+              disabled={locationPermissionState === 'requesting'}
+              onClick={requestBrowserLocation}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <LocateFixedIcon data-icon="inline-start" />
+              Usar localizacao
+            </Button>
+            <form className="flex gap-2" onSubmit={savePostalFallback}>
+              <Input
+                aria-label="CEP para fallback manual"
+                className="h-9 min-w-0"
+                inputMode="numeric"
+                maxLength={9}
+                onChange={(event) => setPostalCode(event.target.value)}
+                placeholder="CEP"
+                value={postalCode}
+              />
+              <Button size="sm" type="submit" variant="secondary">
+                Salvar CEP
+              </Button>
+            </form>
+          </div>
         </div>
 
         <Outlet />
@@ -261,10 +372,14 @@ export function PublicLayout() {
           <DialogHeader>
             <DialogTitle>Escolha sua cidade para continuar</DialogTitle>
             <DialogDescription>
-              A sua cidade fica salva na conta e pode ser trocada depois a qualquer momento.
+              A sua cidade fica salva na conta e pode ser trocada depois a
+              qualquer momento.
             </DialogDescription>
           </DialogHeader>
-          <Select onValueChange={(value) => void setCityId(value)} value={cityId ?? ''}>
+          <Select
+            onValueChange={(value) => void setCityId(value)}
+            value={cityId ?? ''}
+          >
             <SelectTrigger>
               <MapPinIcon />
               <SelectValue placeholder="Selecione uma cidade disponível" />
@@ -273,7 +388,8 @@ export function PublicLayout() {
               <SelectGroup>
                 {cities.map((city) => (
                   <SelectItem key={city.id} value={city.id}>
-                    {city.name} - {city.activeStoreCount} estabelecimentos ativos
+                    {city.name} - {city.activeStoreCount} estabelecimentos
+                    ativos
                   </SelectItem>
                 ))}
               </SelectGroup>

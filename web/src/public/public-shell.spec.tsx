@@ -1,7 +1,18 @@
 // @vitest-environment jsdom
 
-import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  Children,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,6 +20,7 @@ import { PublicLayout } from './public-shell';
 
 const setCityId = vi.fn();
 const saveBrowserLocation = vi.fn();
+const savePostalCodeLocation = vi.fn();
 
 vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
@@ -19,6 +31,7 @@ vi.mock('@/app/pricely-context', () => ({
     signOut: vi.fn(),
     locationPreferences: [],
     saveBrowserLocation,
+    savePostalCodeLocation,
     cities: [
       {
         id: 'campinas-sp',
@@ -54,7 +67,9 @@ vi.mock('@/app/theme-context', () => ({
 }));
 
 vi.mock('@/components/ui/select', () => {
-  const collectItems = (children: unknown): Array<{ value: string; label: string }> => {
+  const collectItems = (
+    children: unknown,
+  ): Array<{ value: string; label: string }> => {
     const items: Array<{ value: string; label: string }> = [];
 
     const visit = (node: unknown) => {
@@ -110,16 +125,21 @@ vi.mock('@/components/ui/select', () => {
     );
   };
 
-  const SelectTrigger = ({ children }: { children: ReactNode }) => <>{children}</>;
-  const SelectValue = ({ children }: { children?: ReactNode }) => <>{children}</>;
-  const SelectContent = ({ children }: { children: ReactNode }) => <>{children}</>;
-  const SelectGroup = ({ children }: { children: ReactNode }) => <>{children}</>;
-  const SelectItem = ({
-    children,
-  }: {
-    children: ReactNode;
-    value: string;
-  }) => <>{children}</>;
+  const SelectTrigger = ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  );
+  const SelectValue = ({ children }: { children?: ReactNode }) => (
+    <>{children}</>
+  );
+  const SelectContent = ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  );
+  const SelectGroup = ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  );
+  const SelectItem = ({ children }: { children: ReactNode; value: string }) => (
+    <>{children}</>
+  );
 
   return {
     Select,
@@ -135,6 +155,7 @@ describe('PublicLayout', () => {
   beforeEach(() => {
     setCityId.mockReset();
     saveBrowserLocation.mockReset();
+    savePostalCodeLocation.mockReset();
   });
 
   afterEach(() => {
@@ -153,13 +174,22 @@ describe('PublicLayout', () => {
     expect(screen.getByText('Contexto da compra')).toBeTruthy();
     expect(screen.getByText('Localizacao para otimizacao local')).toBeTruthy();
     expect(screen.getByText(/raio local padrao 5 km/i)).toBeTruthy();
-    expect(screen.getByText(/modos locais usam essa localizacao salva/i)).toBeTruthy();
-    expect(screen.queryByText('Sua compra continua de onde voce parou')).toBeNull();
-    expect(screen.getAllByText(/0 estabelecimentos ativos/).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/modos locais so calculam distancia com/i),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText('Sua compra continua de onde voce parou'),
+    ).toBeNull();
+    expect(
+      screen.getAllByText(/0 estabelecimentos ativos/).length,
+    ).toBeGreaterThan(0);
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Escolha sua cidade' }), {
-      target: { value: 'sao-paulo-sp' },
-    });
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Escolha sua cidade' }),
+      {
+        target: { value: 'sao-paulo-sp' },
+      },
+    );
 
     await waitFor(() => expect(setCityId).toHaveBeenCalledWith('sao-paulo-sp'));
   });
@@ -230,6 +260,46 @@ describe('PublicLayout', () => {
     );
     await waitFor(() =>
       expect(document.body.textContent).toMatch(/capturada para preview/),
+    );
+  });
+
+  it('saves a postal code fallback without claiming distance', async () => {
+    savePostalCodeLocation.mockResolvedValueOnce({
+      id: 'location-cep',
+      regionId: 'region-1',
+      regionSlug: 'campinas-sp',
+      label: 'CEP 13010000',
+      latitude: null,
+      longitude: null,
+      postalCode: '13010000',
+      coverageRadiusKm: 5,
+      activeEstablishmentCount: 0,
+      isDefault: true,
+      locationSource: 'postal_code_fallback',
+      createdAt: '2026-05-13T12:00:00.000Z',
+      updatedAt: '2026-05-13T12:00:00.000Z',
+    });
+
+    render(
+      <MemoryRouter>
+        <PublicLayout />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('CEP para fallback manual'), {
+      target: { value: '13010-000' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /salvar cep/i }));
+
+    await waitFor(() =>
+      expect(savePostalCodeLocation).toHaveBeenCalledWith({
+        postalCode: '13010000',
+        coverageRadiusKm: 5,
+      }),
+    );
+    expect(document.body.textContent).toMatch(/nao prometem proximidade/i);
+    await waitFor(() =>
+      expect(document.body.textContent).toMatch(/CEP salvo como fallback/i),
     );
   });
 });
