@@ -474,7 +474,7 @@ radius while keeping global optimization limited to the user's selected city/reg
 - [X] T174 Refactor optimization candidate generation to support `local_unique`, `local_multi`, and `global_multi` semantics with distance-aware explanations in `backend/src/optimization/`
 - [X] T175 Update web location widgets to support explicit browser geolocation permission, manual city/location selection, radius preview, active-establishment count, and selected-offer distance display in `web/src/public/` and `web/src/app/`
 - [X] T176 Update mobile location widgets to support platform location permission, denied/restricted/unavailable states, manual city/location selection, radius preview, and optimization-result distance copy in `mobile/lib/features/profile/`, `mobile/lib/features/shopping_lists/`, and `mobile/lib/features/optimization/`
-- [~] T177 Add integration/E2E coverage for browser/mobile location permission, manual-location fallback, local single-store, local multi-store, global city-only, zero-establishment radius, and location-denied flows in `backend/test/integration/optimization/`, `web/e2e/`, and `mobile/test/`
+- [X] T177 Add integration/E2E coverage for browser/mobile location permission, manual-location fallback, local single-store, local multi-store, global city-only, zero-establishment radius, and location-denied flows in `backend/test/integration/optimization/`, `web/e2e/`, and `mobile/test/`
 
 ---
 
