@@ -9,7 +9,9 @@ import {
 
 import {
   completeShoppingListCheckout,
+  createLocationPreference,
   createShoppingList,
+  fetchLocationPreferences,
   fetchPublicRegions,
   fetchMe,
   fetchLatestOptimization,
@@ -24,6 +26,7 @@ import {
   updatePreferredRegion as updatePreferredRegionRequest,
   updateShoppingListItemPurchaseStatus,
   type OptimizationResultApiResponse,
+  type UserLocationPreferenceResponse,
 } from './api';
 import { profileSnapshot, supportedCities } from './mock-data';
 import type { OptimizationModeId, ShoppingList } from './types';
@@ -46,6 +49,7 @@ interface PricelyContextValue {
   profile: typeof profileSnapshot;
   preferredMode: OptimizationModeId;
   setPreferredMode: (mode: OptimizationModeId) => void;
+  locationPreferences: UserLocationPreferenceResponse[];
   currentUser: SessionUser | null;
   isAuthenticated: boolean;
   isBootstrapping: boolean;
@@ -91,7 +95,17 @@ interface PricelyContextValue {
   runOptimization: (
     listId: string,
     mode: OptimizationModeId,
+    input?: {
+      userLocationPreferenceId?: string;
+      coverageRadiusKm?: number;
+    },
   ) => Promise<OptimizationResultApiResponse>;
+  saveBrowserLocation: (input: {
+    label?: string;
+    latitude: number;
+    longitude: number;
+    coverageRadiusKm?: number;
+  }) => Promise<UserLocationPreferenceResponse>;
   loadLatestOptimization: (
     listId: string,
   ) => Promise<OptimizationResultApiResponse | null>;
@@ -122,7 +136,8 @@ export function PricelyProvider({ children }: PropsWithChildren) {
   const [cities, setCities] = useState(supportedCities);
   const [lists, setLists] = useState<ShoppingList[]>([]);
   const [selectedListId, setSelectedListId] = useState('');
-  const [preferredMode, setPreferredMode] = useState<OptimizationModeId>('global_full');
+  const [preferredMode, setPreferredMode] =
+    useState<OptimizationModeId>('global_multi');
   const [profile, setProfile] = useState(profileSnapshot);
   const [token, setToken] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
@@ -130,6 +145,9 @@ export function PricelyProvider({ children }: PropsWithChildren) {
   const [optimizationResults, setOptimizationResults] = useState<
     Record<string, OptimizationResultApiResponse | undefined>
   >({});
+  const [locationPreferences, setLocationPreferences] = useState<
+    UserLocationPreferenceResponse[]
+  >([]);
 
   useEffect(() => {
     let disposed = false;
@@ -145,6 +163,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         setCities(
           regions.map((region) => ({
             id: region.slug,
+            regionId: region.id,
             name: region.name,
             stateCode: region.stateCode,
             activeStoreCount: region.activeEstablishmentCount,
@@ -218,6 +237,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!token) {
       setLists([]);
+      setLocationPreferences([]);
       setProfile(emptyProfile());
       setCurrentUser(null);
       setIsBootstrapping(false);
@@ -230,9 +250,10 @@ export function PricelyProvider({ children }: PropsWithChildren) {
       setIsBootstrapping(true);
 
       try {
-        const [user, shoppingLists] = await Promise.all([
+        const [user, shoppingLists, locations] = await Promise.all([
           fetchMe(token),
           fetchShoppingLists(token),
+          fetchLocationPreferences(token).catch(() => []),
         ]);
 
         if (disposed) {
@@ -241,6 +262,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
 
         const mappedLists = shoppingLists.map(mapShoppingList);
         setProfile(mapProfile(user));
+        setLocationPreferences(locations);
         setCurrentUser({
           id: user.id,
           email: user.email,
@@ -255,6 +277,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
           window.localStorage.removeItem(TOKEN_KEY);
           setToken(null);
           setLists([]);
+          setLocationPreferences([]);
           setProfile(emptyProfile());
           setCurrentUser(null);
           setCityIdState(null);
@@ -302,6 +325,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
       profile,
       preferredMode,
       setPreferredMode,
+      locationPreferences,
       currentUser,
       isAuthenticated: Boolean(token),
       isBootstrapping,
@@ -338,6 +362,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         setLists([]);
         setSelectedListId('');
         setOptimizationResults({});
+        setLocationPreferences([]);
         setProfile(emptyProfile());
         setCityIdState(null);
       },
@@ -427,12 +452,23 @@ export function PricelyProvider({ children }: PropsWithChildren) {
 
         await reportShoppingListItemPriceMismatch(token, listId, itemId, input);
       },
-      runOptimization: async (listId, mode) => {
+      runOptimization: async (listId, mode, input) => {
         if (!token) {
           throw new Error('Você precisa entrar para otimizar uma lista.');
         }
 
-        const result = await runOptimizationRequest(token, listId, mode);
+        const list = lists.find((entry) => entry.id === listId);
+        const userLocationPreferenceId =
+          input?.userLocationPreferenceId ??
+          locationPreferences.find(
+            (preference) =>
+              preference.isDefault &&
+              (!list?.cityId || preference.regionSlug === list.cityId),
+          )?.id;
+        const result = await runOptimizationRequest(token, listId, mode, {
+          ...input,
+          userLocationPreferenceId,
+        });
         setOptimizationResults((current) => ({
           ...current,
           [listId]: result,
@@ -451,6 +487,37 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         );
         setPreferredMode(mode);
         return result;
+      },
+      saveBrowserLocation: async (input) => {
+        if (!token) {
+          throw new Error('Voce precisa entrar para salvar a localizacao.');
+        }
+
+        const activeCity = cities.find((city) => city.id === cityId);
+        if (!activeCity) {
+          throw new Error('Escolha uma cidade antes de salvar a localizacao.');
+        }
+
+        const saved = await createLocationPreference(token, {
+          regionId: activeCity.regionId ?? activeCity.id,
+          label: input.label ?? 'Local atual',
+          latitude: input.latitude,
+          longitude: input.longitude,
+          coverageRadiusKm: input.coverageRadiusKm ?? 5,
+          isDefault: true,
+          locationSource: 'browser_geolocation',
+        });
+        setLocationPreferences((current) => [
+          saved,
+          ...current
+            .filter((entry) => entry.id !== saved.id)
+            .map((entry) =>
+              entry.regionId === saved.regionId
+                ? { ...entry, isDefault: false }
+                : entry,
+            ),
+        ]);
+        return saved;
       },
       loadLatestOptimization: async (listId) => {
         if (!token) {
@@ -487,6 +554,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
       currentUser,
       isBootstrapping,
       lists,
+      locationPreferences,
       optimizationResults,
       preferredMode,
       profile,

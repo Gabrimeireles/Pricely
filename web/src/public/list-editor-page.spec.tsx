@@ -24,7 +24,7 @@ const mockPricelyState = {
     },
   ],
   lists: [] as Array<Record<string, unknown>>,
-  preferredMode: 'global_full',
+  preferredMode: 'global_multi',
   saveList,
   isAuthenticated: true,
   isBootstrapping: false,
@@ -173,7 +173,7 @@ describe('ListEditorPage', () => {
         id: 'list-1',
         name: 'Compra mensal',
         cityId: 'sao-paulo-sp',
-        lastMode: 'global_full',
+        lastMode: 'global_multi',
         items: [
           {
             id: 'item-1',

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PublicLayout } from './public-shell';
 
 const setCityId = vi.fn();
+const saveBrowserLocation = vi.fn();
 
 vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
@@ -16,6 +17,8 @@ vi.mock('@/app/pricely-context', () => ({
     currentUser: null,
     isAuthenticated: false,
     signOut: vi.fn(),
+    locationPreferences: [],
+    saveBrowserLocation,
     cities: [
       {
         id: 'campinas-sp',
@@ -131,9 +134,11 @@ vi.mock('@/components/ui/select', () => {
 describe('PublicLayout', () => {
   beforeEach(() => {
     setCityId.mockReset();
+    saveBrowserLocation.mockReset();
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
     cleanup();
   });
@@ -146,12 +151,10 @@ describe('PublicLayout', () => {
     );
 
     expect(screen.getByText('Contexto da compra')).toBeTruthy();
-    expect(screen.getByText('Localização para otimização local')).toBeTruthy();
-    expect(screen.getByText(/raio local padrão 5 km/i)).toBeTruthy();
-    expect(screen.getByText(/distância ainda não altera a otimização/i)).toBeTruthy();
-    expect(
-      screen.queryByText('Sua compra continua de onde você parou'),
-    ).toBeNull();
+    expect(screen.getByText('Localizacao para otimizacao local')).toBeTruthy();
+    expect(screen.getByText(/raio local padrao 5 km/i)).toBeTruthy();
+    expect(screen.getByText(/modos locais usam essa localizacao salva/i)).toBeTruthy();
+    expect(screen.queryByText('Sua compra continua de onde voce parou')).toBeNull();
     expect(screen.getAllByText(/0 estabelecimentos ativos/).length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Escolha sua cidade' }), {
@@ -168,9 +171,65 @@ describe('PublicLayout', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /usar localização/i }));
+    fireEvent.click(screen.getByRole('button', { name: /usar localizacao/i }));
 
-    expect(screen.getByText(/Permissão:/)).toBeTruthy();
-    expect(screen.getByText(/indisponível|manual|negada/)).toBeTruthy();
+    expect(document.body.textContent).toMatch(/Permiss[aã]o:/);
+    expect(document.body.textContent).toMatch(/indispon[ií]vel|manual|negada/);
+  });
+
+  it('saves explicit browser coordinates with the default local radius', async () => {
+    saveBrowserLocation.mockResolvedValueOnce({
+      id: 'location-1',
+      regionId: 'region-1',
+      regionSlug: 'campinas-sp',
+      label: 'Local atual',
+      latitude: -22.9,
+      longitude: -47.06,
+      coverageRadiusKm: 5,
+      activeEstablishmentCount: 2,
+      isDefault: true,
+      locationSource: 'browser_geolocation',
+      createdAt: '2026-05-13T12:00:00.000Z',
+      updatedAt: '2026-05-13T12:00:00.000Z',
+    });
+    vi.stubGlobal('navigator', {
+      geolocation: {
+        getCurrentPosition: (
+          success: (position: GeolocationPosition) => void,
+        ) => {
+          success({
+            coords: {
+              latitude: -22.9,
+              longitude: -47.06,
+              accuracy: 50,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              speed: null,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition);
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <PublicLayout />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /usar localizacao/i }));
+
+    await waitFor(() =>
+      expect(saveBrowserLocation).toHaveBeenCalledWith({
+        latitude: -22.9,
+        longitude: -47.06,
+        coverageRadiusKm: 5,
+      }),
+    );
+    await waitFor(() =>
+      expect(document.body.textContent).toMatch(/capturada para preview/),
+    );
   });
 });

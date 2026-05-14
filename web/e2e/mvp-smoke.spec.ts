@@ -52,7 +52,7 @@ const savedList = {
   name: 'Compra mensal',
   preferredRegionId: 'sao-paulo-sp',
   status: 'ready',
-  lastMode: 'global_full',
+  lastMode: 'global_multi',
   latestEstimatedSavings: 18.5,
   latestOptimizationStatus: 'completed',
   latestOptimizedAt: '2026-05-05T10:00:00.000Z',
@@ -77,7 +77,7 @@ const savedList = {
 const optimizationResult = {
   id: 'run-1',
   shoppingListId: 'list-1',
-  mode: 'global_full',
+  mode: 'global_multi',
   status: 'completed',
   totalEstimatedCost: 15.8,
   estimatedSavings: 4.2,
@@ -198,7 +198,7 @@ async function mockApi(page: Page) {
         id: 'run-1',
         jobId: 'job-1',
         shoppingListId: 'list-1',
-        mode: 'global_full',
+        mode: 'global_multi',
         status: 'queued',
         queuedAt: '2026-05-05T10:00:00.000Z',
       }, 202);

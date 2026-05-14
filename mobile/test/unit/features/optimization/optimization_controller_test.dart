@@ -80,7 +80,7 @@ void main() {
                   'id': 'list-1',
                   'name': 'Compra mensal',
                   'preferredRegionId': 'sao-paulo-sp',
-                  'lastMode': 'global_full',
+                  'lastMode': 'global_multi',
                   'items': <dynamic>[
                     <String, dynamic>{
                       'id': 'item-1',

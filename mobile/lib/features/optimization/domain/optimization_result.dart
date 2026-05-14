@@ -94,6 +94,7 @@ class OptimizationSelection {
     required this.unit,
     required this.unitPrice,
     required this.subtotal,
+    this.distanceKm,
     required this.confidenceLabel,
     required this.decisionReason,
     required this.rejectedReason,
@@ -105,6 +106,7 @@ class OptimizationSelection {
   final String unit;
   final double unitPrice;
   final double subtotal;
+  final double? distanceKm;
   final String confidenceLabel;
   final String? decisionReason;
   final String? rejectedReason;
@@ -117,6 +119,7 @@ class OptimizationSelection {
       unit: json['unit'] as String? ?? 'un',
       unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? 0,
       subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0,
+      distanceKm: (json['distanceKm'] as num?)?.toDouble(),
       confidenceLabel: json['confidenceLabel'] as String? ?? 'medium',
       decisionReason: json['decisionReason'] as String?,
       rejectedReason: json['rejectedReason'] as String?,
@@ -131,6 +134,7 @@ class OptimizationSelection {
       'unit': unit,
       'unitPrice': unitPrice,
       'subtotal': subtotal,
+      'distanceKm': distanceKm,
       'confidenceLabel': confidenceLabel,
       'decisionReason': decisionReason,
       'rejectedReason': rejectedReason,

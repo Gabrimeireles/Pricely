@@ -20,7 +20,7 @@ vi.mock('@/app/pricely-context', () => ({
         id: 'list-1',
         name: 'Compra do mes',
         cityId: 'sao-paulo-sp',
-        lastMode: 'global_full',
+        lastMode: 'global_multi',
         updatedAt: '2026-04-28T12:00:00.000Z',
         expectedSavings: 0,
         items: [

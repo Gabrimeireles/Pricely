@@ -52,13 +52,28 @@ const linkClassName = ({ isActive }: { isActive: boolean }) =>
   isActive ? 'text-foreground' : 'text-muted-foreground transition-colors hover:text-foreground';
 
 export function PublicLayout() {
-  const { cityId, cities, currentUser, isAuthenticated, isBootstrapping, setCityId, signOut } =
-    usePricely();
+  const {
+    cityId,
+    cities,
+    currentUser,
+    isAuthenticated,
+    isBootstrapping,
+    locationPreferences,
+    saveBrowserLocation,
+    setCityId,
+    signOut,
+  } = usePricely();
   const { theme, toggleTheme } = useTheme();
   const [locationPermissionState, setLocationPermissionState] = useState<
     'manual' | 'requesting' | 'allowed' | 'denied' | 'unsupported'
   >('manual');
   const activeCity = cityId ? cities.find((city) => city.id === cityId) ?? null : null;
+  const activeLocation = activeCity
+    ? (locationPreferences ?? []).find(
+        (preference) =>
+          preference.isDefault && preference.regionSlug === activeCity.id,
+      )
+    : undefined;
   const shouldRequireCitySelection =
     isAuthenticated && !isBootstrapping && !cityId && cities.length > 0;
   const citySummary = activeCity
@@ -67,6 +82,12 @@ export function PublicLayout() {
   const radiusSummary = activeCity
     ? `${activeCity.activeStoreCount} lojas candidatas na cidade · raio local padrão 5 km`
     : 'Raio local padrão 5 km disponível após escolher a cidade';
+  const locationRadiusSummary = activeCity
+    ? activeLocation
+      ? `${activeLocation.activeEstablishmentCount} lojas dentro de ${activeLocation.coverageRadiusKm} km`
+      : `${activeCity.activeStoreCount} lojas na cidade - raio local padrao 5 km aguardando localizacao`
+    : radiusSummary;
+
   const requestBrowserLocation = () => {
     if (!navigator.geolocation) {
       setLocationPermissionState('unsupported');
@@ -75,7 +96,15 @@ export function PublicLayout() {
 
     setLocationPermissionState('requesting');
     navigator.geolocation.getCurrentPosition(
-      () => setLocationPermissionState('allowed'),
+      (position) => {
+        void saveBrowserLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          coverageRadiusKm: 5,
+        })
+          .then(() => setLocationPermissionState('allowed'))
+          .catch(() => setLocationPermissionState('denied'));
+      },
       () => setLocationPermissionState('denied'),
       { enableHighAccuracy: false, maximumAge: 300000, timeout: 8000 },
     );
@@ -190,10 +219,10 @@ export function PublicLayout() {
           <div className="min-w-0">
             <div className="flex items-center gap-2 font-medium">
               <LocateFixedIcon className="size-4 text-primary" />
-              Localização para otimização local
+              Localizacao para otimizacao local
             </div>
             <div className="mt-1 text-muted-foreground">
-              {radiusSummary}. A distância ainda não altera a otimização; usamos a cidade selecionada até a regra geográfica ficar ativa.
+              {locationRadiusSummary}. Modos locais usam essa localizacao salva; modo cidade ignora distancia.
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-muted-foreground">
@@ -220,7 +249,7 @@ export function PublicLayout() {
             variant="outline"
           >
             <LocateFixedIcon data-icon="inline-start" />
-            Usar localização
+            Usar localizacao
           </Button>
         </div>
 

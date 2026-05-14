@@ -15,7 +15,7 @@ vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
     isAuthenticated: true,
     isBootstrapping: false,
-    preferredMode: 'global_full',
+    preferredMode: 'global_multi',
     runOptimization,
     setPreferredMode,
     loadLatestOptimization,
@@ -25,7 +25,7 @@ vi.mock('@/app/pricely-context', () => ({
         id: 'list-1',
         name: 'Compra mensal',
         cityId: 'sao-paulo-sp',
-        lastMode: 'global_full',
+        lastMode: 'global_multi',
         items: [],
       },
     ],
@@ -55,19 +55,17 @@ describe('OptimizationPage', () => {
 
     expect(screen.getByText('Escolha o modo')).toBeTruthy();
     expect(screen.getByText('Uma loja perto de mim')).toBeTruthy();
-    expect(screen.getByText('Uma loja na cidade')).toBeTruthy();
+    expect(screen.getByText('Menor preco perto de mim')).toBeTruthy();
     expect(screen.getByText('Menor total na cidade')).toBeTruthy();
+    expect(document.body.textContent).toMatch(
+      /Compra mensal\s+-\s+S[aã]o Paulo\. Compare o melhor total/,
+    );
     expect(
-      screen.getByText('Compra mensal - São Paulo. Compare o melhor total, a cobertura e a economia estimada da sua compra.'),
+      screen.getByText('Prepara a compra em uma unica loja dentro do raio local configurado.'),
     ).toBeTruthy();
+    expect(screen.getByText(/exige localizacao salva/i)).toBeTruthy();
     expect(
-      screen.getByText(
-        'Prepara a compra em uma loja da cidade com raio local padrão de 5 km.',
-      ),
-    ).toBeTruthy();
-    expect(screen.getByText(/distância ainda aparece como preview/i)).toBeTruthy();
-    expect(
-      screen.getByText('Procura a melhor loja unica para equilibrar cobertura e preco.'),
+      screen.getByText('Escolhe item a item entre lojas dentro do raio local configurado.'),
     ).toBeTruthy();
     expect(
       screen.getByText('Busca o menor custo total item a item na cidade selecionada.'),
@@ -81,7 +79,7 @@ describe('OptimizationPage', () => {
       'list-1': {
         id: 'run-1',
         shoppingListId: 'list-1',
-        mode: 'global_full',
+        mode: 'global_multi',
         status: 'completed',
         totalEstimatedCost: 21.9,
         estimatedSavings: 1,
@@ -111,6 +109,7 @@ describe('OptimizationPage', () => {
               '3 notas fiscais aceitas apoiam este preco; ultima validacao ha 1 dias; confianca da oferta 78/100.',
             selectionStatus: 'selected',
             decisionReason: 'selected_confirmed_offer',
+            distanceKm: 1.4,
           },
         ],
       },
@@ -128,8 +127,9 @@ describe('OptimizationPage', () => {
     expect(screen.getByText('Oferta selecionada')).toBeTruthy();
     expect(screen.getByText('Oferta confirmada selecionada')).toBeTruthy();
     expect(screen.getByText('Selecionado: Cafe Pilao 500g · 500 g')).toBeTruthy();
-    expect(screen.getByText('Confiança alta')).toBeTruthy();
+    expect(document.body.textContent).toMatch(/Confian[cç]a alta/);
     expect(screen.getByText('78/100')).toBeTruthy();
+    expect(screen.getByText('1.4 km do local salvo')).toBeTruthy();
     expect(screen.getByText(/segundo menor elegivel/)).toBeTruthy();
     expect(screen.queryByText(/selected_confirmed_offer/i)).toBeNull();
     expect(screen.queryByText(/selected/i)).toBeNull();

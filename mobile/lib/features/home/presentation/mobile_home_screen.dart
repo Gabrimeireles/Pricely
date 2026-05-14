@@ -853,22 +853,23 @@ class _OptimizationTab extends StatelessWidget {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text('Local: menos deslocamento.'),
+                    Text('Uma loja local: menos deslocamento.'),
                     SizedBox(height: 6),
-                    Text('Global unico: melhor loja unica.'),
+                    Text('Menor preco local: divide entre lojas no raio.'),
                     SizedBox(height: 6),
-                    Text('Global completo: menor total, mesmo dividindo a compra.'),
+                    Text('Menor total cidade: compara toda a cidade.'),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
               SegmentedButton<String>(
                 segments: const <ButtonSegment<String>>[
-                  ButtonSegment<String>(value: 'local', label: Text('Local')),
                   ButtonSegment<String>(
-                      value: 'global_unique', label: Text('Global único')),
+                      value: 'local_unique', label: Text('Uma loja local')),
                   ButtonSegment<String>(
-                      value: 'global_full', label: Text('Global completo')),
+                      value: 'local_multi', label: Text('Preco local')),
+                  ButtonSegment<String>(
+                      value: 'global_multi', label: Text('Cidade')),
                 ],
                 selected: <String>{listController.draft.lastMode},
                 onSelectionChanged: (selection) {
@@ -1472,10 +1473,10 @@ class _LocationPreviewCard extends StatelessWidget {
                 : '${region!.name} · ${region!.stateCode} · ${region!.activeEstablishmentCount} lojas candidatas na cidade.',
           ),
           const SizedBox(height: 8),
-          const Text('Raio local padrão: 5 km.'),
+          const Text('Raio local padrao: 5 km.'),
           const SizedBox(height: 8),
           Text(
-            'No MVP atual, a permissão de localização fica manual e a distância não altera a otimização. A busca continua baseada na cidade selecionada.',
+            'Quando houver localizacao salva, modos locais usam lojas dentro do raio. O modo cidade ignora distancia e compara a regiao selecionada.',
             style: theme.textTheme.bodySmall,
           ),
         ],

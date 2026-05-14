@@ -472,9 +472,9 @@ radius while keeping global optimization limited to the user's selected city/reg
 - [X] T172 [P] Add backend unit tests for distance calculation, radius filtering, city-bound global filtering, and no-location/no-coverage edge cases in `backend/test/unit/optimization/` and `backend/test/unit/locations/`
 - [X] T173 Implement location preference services and coverage preview endpoints with explicit user-provided coordinates only in `backend/src/locations/`, `backend/src/users/`, and `backend/src/common/contracts/`
 - [X] T174 Refactor optimization candidate generation to support `local_unique`, `local_multi`, and `global_multi` semantics with distance-aware explanations in `backend/src/optimization/`
-- [ ] T175 Update web location widgets to support explicit browser geolocation permission, manual city/location selection, radius preview, active-establishment count, and selected-offer distance display in `web/src/public/` and `web/src/app/`
-- [ ] T176 Update mobile location widgets to support platform location permission, denied/restricted/unavailable states, manual city/location selection, radius preview, and optimization-result distance copy in `mobile/lib/features/profile/`, `mobile/lib/features/shopping_lists/`, and `mobile/lib/features/optimization/`
-- [ ] T177 Add integration/E2E coverage for browser/mobile location permission, manual-location fallback, local single-store, local multi-store, global city-only, zero-establishment radius, and location-denied flows in `backend/test/integration/optimization/`, `web/e2e/`, and `mobile/test/`
+- [X] T175 Update web location widgets to support explicit browser geolocation permission, manual city/location selection, radius preview, active-establishment count, and selected-offer distance display in `web/src/public/` and `web/src/app/`
+- [~] T176 Update mobile location widgets to support platform location permission, denied/restricted/unavailable states, manual city/location selection, radius preview, and optimization-result distance copy in `mobile/lib/features/profile/`, `mobile/lib/features/shopping_lists/`, and `mobile/lib/features/optimization/`
+- [~] T177 Add integration/E2E coverage for browser/mobile location permission, manual-location fallback, local single-store, local multi-store, global city-only, zero-establishment radius, and location-denied flows in `backend/test/integration/optimization/`, `web/e2e/`, and `mobile/test/`
 
 ---
 

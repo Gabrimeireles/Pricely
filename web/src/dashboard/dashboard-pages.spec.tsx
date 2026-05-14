@@ -200,7 +200,7 @@ describe('Admin dashboard pages', () => {
         },
         optimizationRun: {
           id: 'run-1',
-          mode: 'global_full',
+          mode: 'global_multi',
           status: 'completed',
           createdAt: '2026-05-10T04:00:00.000Z',
           completedAt: '2026-05-10T04:03:00.000Z',
@@ -214,7 +214,7 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('Jobs recentes')).toBeTruthy();
     expect(screen.getByText('Lista: Compra da semana')).toBeTruthy();
     expect(screen.getByText(/Cliente Teste/)).toBeTruthy();
-    expect(screen.getByText(/Modo global full/)).toBeTruthy();
+    expect(screen.getByText(/Modo global multi/)).toBeTruthy();
     expect(screen.getByLabelText('Abrir detalhe do job job-1')).toBeTruthy();
     expect(screen.queryByText('Go to link')).toBeNull();
   });

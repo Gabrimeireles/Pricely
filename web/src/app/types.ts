@@ -1,10 +1,17 @@
-export type OptimizationModeId = 'local' | 'global_unique' | 'global_full';
+export type OptimizationModeId =
+  | 'local'
+  | 'global_unique'
+  | 'global_full'
+  | 'local_unique'
+  | 'local_multi'
+  | 'global_multi';
 
 export type FreshnessLevel = 'fresh' | 'aging' | 'stale';
 export type ConfidenceLevel = 'alta' | 'media' | 'baixa';
 
 export interface SupportedCity {
   id: string;
+  regionId?: string;
   name: string;
   stateCode: string;
   activeStoreCount: number;
