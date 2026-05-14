@@ -282,6 +282,54 @@ async function main() {
         imageUrl:
           'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=900&q=80',
       },
+      {
+        slug: 'macarrao-espaguete-500g',
+        name: 'Macarrao espaguete 500g',
+        category: 'mercearia',
+        defaultUnit: '500 g',
+        imageUrl:
+          'https://images.unsplash.com/photo-1551462147-37885acc36f1?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        slug: 'molho-tomate-340g',
+        name: 'Molho de tomate 340g',
+        category: 'mercearia',
+        defaultUnit: '340 g',
+        imageUrl:
+          'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        slug: 'banana-nanica-1kg',
+        name: 'Banana nanica 1kg',
+        category: 'hortifruti',
+        defaultUnit: '1 kg',
+        imageUrl:
+          'https://images.unsplash.com/photo-1528825871115-3581a5387919?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        slug: 'ovos-brancos-12un',
+        name: 'Ovos brancos 12 unidades',
+        category: 'proteinas',
+        defaultUnit: '12 un',
+        imageUrl:
+          'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        slug: 'detergente-neutro-500ml',
+        name: 'Detergente neutro 500ml',
+        category: 'limpeza',
+        defaultUnit: '500 ml',
+        imageUrl:
+          'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        slug: 'papel-higienico-12-rolos',
+        name: 'Papel higienico 12 rolos',
+        category: 'higiene',
+        defaultUnit: '12 rolos',
+        imageUrl:
+          'https://images.unsplash.com/photo-1583947581924-860bda6a26df?auto=format&fit=crop&w=900&q=80',
+      },
     ].map((entry) =>
       prisma.catalogProduct.upsert({
         where: { slug: entry.slug },
@@ -304,7 +352,8 @@ async function main() {
     where: { slug: 'arroz-tipo-1-5kg-seed-5kg' },
     update: {
       brandName: 'Camil',
-      imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=900&q=80',
+      imageUrl:
+        'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=900&q=80',
     },
     create: {
       catalogProductId: catalogProduct.id,
@@ -312,7 +361,8 @@ async function main() {
       displayName: 'Arroz Camil tipo 1 5kg',
       brandName: 'Camil',
       packageLabel: '5 kg',
-      imageUrl: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=900&q=80',
+      imageUrl:
+        'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=900&q=80',
       isActive: true,
     },
   });
@@ -377,6 +427,96 @@ async function main() {
         imageUrl:
           'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=900&q=80',
       },
+      {
+        product: catalogProduct,
+        slug: 'arroz-prato-fino-tipo-1-5kg',
+        displayName: 'Arroz Prato Fino tipo 1 5kg',
+        brandName: 'Prato Fino',
+        packageLabel: '5 kg',
+        imageUrl:
+          'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        product: coffeeCatalogProduct,
+        slug: 'cafe-melitta-tradicional-500g',
+        displayName: 'Cafe Melitta Tradicional 500g',
+        brandName: 'Melitta',
+        packageLabel: '500 g',
+        imageUrl:
+          'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        product: seededProducts[4],
+        slug: 'macarrao-renata-espaguete-500g',
+        displayName: 'Macarrao Renata Espaguete 500g',
+        brandName: 'Renata',
+        packageLabel: '500 g',
+        imageUrl:
+          'https://images.unsplash.com/photo-1551462147-37885acc36f1?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        product: seededProducts[4],
+        slug: 'macarrao-barilla-spaghetti-500g',
+        displayName: 'Macarrao Barilla Spaghetti 500g',
+        brandName: 'Barilla',
+        packageLabel: '500 g',
+        imageUrl:
+          'https://images.unsplash.com/photo-1551462147-37885acc36f1?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        product: seededProducts[5],
+        slug: 'molho-tomate-quero-340g',
+        displayName: 'Molho de Tomate Quero 340g',
+        brandName: 'Quero',
+        packageLabel: '340 g',
+        imageUrl:
+          'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        product: seededProducts[6],
+        slug: 'banana-nanica-granel-1kg',
+        displayName: 'Banana Nanica a granel 1kg',
+        brandName: 'Hortifruti',
+        packageLabel: '1 kg',
+        imageUrl:
+          'https://images.unsplash.com/photo-1528825871115-3581a5387919?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        product: seededProducts[7],
+        slug: 'ovos-brancos-granja-12un',
+        displayName: 'Ovos Brancos Granja 12 unidades',
+        brandName: 'Granja',
+        packageLabel: '12 un',
+        imageUrl:
+          'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        product: seededProducts[8],
+        slug: 'detergente-ype-neutro-500ml',
+        displayName: 'Detergente Ype Neutro 500ml',
+        brandName: 'Ype',
+        packageLabel: '500 ml',
+        imageUrl:
+          'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        product: seededProducts[9],
+        slug: 'papel-higienico-neve-12-rolos',
+        displayName: 'Papel Higienico Neve 12 rolos',
+        brandName: 'Neve',
+        packageLabel: '12 rolos',
+        imageUrl:
+          'https://images.unsplash.com/photo-1583947581924-860bda6a26df?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        product: seededProducts[9],
+        slug: 'papel-higienico-mimmo-12-rolos',
+        displayName: 'Papel Higienico Mimmo 12 rolos',
+        brandName: 'Mimmo',
+        packageLabel: '12 rolos',
+        imageUrl:
+          'https://images.unsplash.com/photo-1583947581924-860bda6a26df?auto=format&fit=crop&w=900&q=80',
+      },
     ].map((entry) =>
       prisma.productVariant.upsert({
         where: { slug: entry.slug },
@@ -397,6 +537,82 @@ async function main() {
           isActive: true,
         },
       }),
+    ),
+  );
+
+  const aliasSeeds = [
+    {
+      product: catalogProduct,
+      aliases: ['arroz 5kg', 'arroz tipo um 5kg', 'arroz branco 5 kg'],
+    },
+    {
+      product: coffeeCatalogProduct,
+      aliases: ['cafe 500g', 'cafe torrado moido', 'cafe tradicional'],
+    },
+    {
+      product: seededProducts[0],
+      aliases: ['feijao 1kg', 'feijao carioca', 'feijao carioquinha'],
+    },
+    {
+      product: seededProducts[1],
+      aliases: ['leite 1l', 'leite integral', 'leite caixa 1 litro'],
+    },
+    {
+      product: seededProducts[2],
+      aliases: ['acucar 1kg', 'acucar refinado', 'açucar uniao'],
+    },
+    {
+      product: seededProducts[3],
+      aliases: ['oleo 900ml', 'oleo soja', 'oleo de cozinha'],
+    },
+    {
+      product: seededProducts[4],
+      aliases: ['macarrao 500g', 'espaguete 500g', 'massa espaguete'],
+    },
+    {
+      product: seededProducts[5],
+      aliases: ['molho tomate', 'molho 340g', 'extrato tomate sache'],
+    },
+    {
+      product: seededProducts[6],
+      aliases: ['banana 1kg', 'banana nanica', 'banana kg'],
+    },
+    {
+      product: seededProducts[7],
+      aliases: ['ovos 12un', 'duzia ovos', 'ovos brancos'],
+    },
+    {
+      product: seededProducts[8],
+      aliases: ['detergente 500ml', 'detergente neutro', 'lava loucas'],
+    },
+    {
+      product: seededProducts[9],
+      aliases: ['papel higienico', 'papel 12 rolos', 'papel banheiro'],
+    },
+  ];
+
+  await Promise.all(
+    aliasSeeds.flatMap((entry) =>
+      entry.aliases.map((alias) =>
+        prisma.catalogProductAlias.upsert({
+          where: {
+            catalogProductId_alias: {
+              catalogProductId: entry.product.id,
+              alias,
+            },
+          },
+          update: {
+            sourceType: 'admin',
+            confidenceScore: '0.95',
+          },
+          create: {
+            catalogProductId: entry.product.id,
+            alias,
+            sourceType: 'admin',
+            confidenceScore: '0.95',
+          },
+        }),
+      ),
     ),
   );
 
@@ -596,6 +812,234 @@ async function main() {
       sourceReference: 'Seed Rio comparativo',
       observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6),
     },
+    {
+      id: 'f1111111-1111-4111-8111-111111111111',
+      product: catalogProduct,
+      variant: seededVariants[5],
+      establishment,
+      priceAmount: '23.49',
+      basePriceAmount: '23.49',
+      promotionalPriceAmount: null,
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed variante arroz',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+    },
+    {
+      id: 'f2222222-2222-4222-8222-222222222222',
+      product: catalogProduct,
+      variant: seededVariants[5],
+      establishment: comparisonEstablishment,
+      priceAmount: '22.79',
+      basePriceAmount: '24.29',
+      promotionalPriceAmount: '22.79',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed variante arroz comparativo',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 14),
+    },
+    {
+      id: 'f3333333-3333-4333-8333-333333333333',
+      product: coffeeCatalogProduct,
+      variant: seededVariants[6],
+      establishment: extraEstablishments[0],
+      priceAmount: '14.99',
+      basePriceAmount: '17.49',
+      promotionalPriceAmount: '14.99',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed cafe atacado',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 10),
+    },
+    {
+      id: 'f4444444-4444-4444-8444-444444444444',
+      product: coffeeCatalogProduct,
+      variant: seededVariants[6],
+      establishment,
+      priceAmount: '16.19',
+      basePriceAmount: '16.19',
+      promotionalPriceAmount: null,
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed cafe comparativo',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
+    },
+    {
+      id: 'f5555555-5555-4555-8555-555555555555',
+      product: seededProducts[4],
+      variant: seededVariants[7],
+      establishment,
+      priceAmount: '4.79',
+      basePriceAmount: '5.29',
+      promotionalPriceAmount: '4.79',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed massa local',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 8),
+    },
+    {
+      id: 'f6666666-6666-4666-8666-666666666666',
+      product: seededProducts[4],
+      variant: seededVariants[7],
+      establishment: comparisonEstablishment,
+      priceAmount: '5.19',
+      basePriceAmount: '5.19',
+      promotionalPriceAmount: null,
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed massa comparativo',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5),
+    },
+    {
+      id: 'f7777777-7777-4777-8777-777777777777',
+      product: seededProducts[4],
+      variant: seededVariants[8],
+      establishment: extraEstablishments[0],
+      priceAmount: '7.49',
+      basePriceAmount: '8.49',
+      promotionalPriceAmount: '7.49',
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed massa premium',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4),
+    },
+    {
+      id: 'f8888888-8888-4888-8888-888888888888',
+      product: seededProducts[5],
+      variant: seededVariants[9],
+      establishment,
+      priceAmount: '2.99',
+      basePriceAmount: '3.49',
+      promotionalPriceAmount: '2.99',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed molho local',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 9),
+    },
+    {
+      id: 'f9999999-9999-4999-8999-999999999999',
+      product: seededProducts[5],
+      variant: seededVariants[9],
+      establishment: comparisonEstablishment,
+      priceAmount: '3.19',
+      basePriceAmount: '3.19',
+      promotionalPriceAmount: null,
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed molho comparativo',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
+    },
+    {
+      id: 'fa111111-1111-4111-8111-111111111111',
+      product: seededProducts[6],
+      variant: seededVariants[10],
+      establishment,
+      priceAmount: '4.99',
+      basePriceAmount: '5.99',
+      promotionalPriceAmount: '4.99',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed hortifruti local',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 4),
+    },
+    {
+      id: 'fa222222-2222-4222-8222-222222222222',
+      product: seededProducts[6],
+      variant: seededVariants[10],
+      establishment: comparisonEstablishment,
+      priceAmount: '5.39',
+      basePriceAmount: '5.39',
+      promotionalPriceAmount: null,
+      confidenceLevel: 'high',
+      sourceReference: 'Seed hortifruti comparativo',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 6),
+    },
+    {
+      id: 'fa333333-3333-4333-8333-333333333333',
+      product: seededProducts[6],
+      variant: seededVariants[10],
+      establishment: extraEstablishments[0],
+      priceAmount: '4.59',
+      basePriceAmount: '5.29',
+      promotionalPriceAmount: '4.59',
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed hortifruti atacado',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+    },
+    {
+      id: 'fa444444-4444-4444-8444-444444444444',
+      product: seededProducts[7],
+      variant: seededVariants[11],
+      establishment,
+      priceAmount: '10.99',
+      basePriceAmount: '12.49',
+      promotionalPriceAmount: '10.99',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed ovos local',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 11),
+    },
+    {
+      id: 'fa555555-5555-4555-8555-555555555555',
+      product: seededProducts[7],
+      variant: seededVariants[11],
+      establishment: comparisonEstablishment,
+      priceAmount: '11.89',
+      basePriceAmount: '11.89',
+      promotionalPriceAmount: null,
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed ovos comparativo',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+    },
+    {
+      id: 'fa666666-6666-4666-8666-666666666666',
+      product: seededProducts[8],
+      variant: seededVariants[12],
+      establishment,
+      priceAmount: '2.39',
+      basePriceAmount: '2.79',
+      promotionalPriceAmount: '2.39',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed limpeza local',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 12),
+    },
+    {
+      id: 'fa777777-7777-4777-8777-777777777777',
+      product: seededProducts[8],
+      variant: seededVariants[12],
+      establishment: comparisonEstablishment,
+      priceAmount: '2.59',
+      basePriceAmount: '2.59',
+      promotionalPriceAmount: null,
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed limpeza comparativo',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
+    },
+    {
+      id: 'fa888888-8888-4888-8888-888888888888',
+      product: seededProducts[9],
+      variant: seededVariants[13],
+      establishment,
+      priceAmount: '18.90',
+      basePriceAmount: '21.90',
+      promotionalPriceAmount: '18.90',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed higiene local',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 16),
+    },
+    {
+      id: 'fa999999-9999-4999-8999-999999999999',
+      product: seededProducts[9],
+      variant: seededVariants[13],
+      establishment: comparisonEstablishment,
+      priceAmount: '19.90',
+      basePriceAmount: '19.90',
+      promotionalPriceAmount: null,
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed higiene comparativo',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4),
+    },
+    {
+      id: 'fb111111-1111-4111-8111-111111111111',
+      product: seededProducts[9],
+      variant: seededVariants[14],
+      establishment: extraEstablishments[0],
+      priceAmount: '16.90',
+      basePriceAmount: '18.90',
+      promotionalPriceAmount: '16.90',
+      confidenceLevel: 'low',
+      sourceReference: 'Seed higiene baixa confianca',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 21),
+    },
   ];
 
   await Promise.all(
@@ -607,7 +1051,8 @@ async function main() {
           productVariantId: offer.variant.id,
           establishmentId: offer.establishment.id,
           displayName: offer.variant.displayName,
-          packageLabel: offer.variant.packageLabel ?? offer.product.defaultUnit ?? 'un',
+          packageLabel:
+            offer.variant.packageLabel ?? offer.product.defaultUnit ?? 'un',
           priceAmount: offer.priceAmount,
           basePriceAmount: offer.basePriceAmount,
           promotionalPriceAmount: offer.promotionalPriceAmount,
@@ -624,7 +1069,8 @@ async function main() {
           productVariantId: offer.variant.id,
           establishmentId: offer.establishment.id,
           displayName: offer.variant.displayName,
-          packageLabel: offer.variant.packageLabel ?? offer.product.defaultUnit ?? 'un',
+          packageLabel:
+            offer.variant.packageLabel ?? offer.product.defaultUnit ?? 'un',
           priceAmount: offer.priceAmount,
           basePriceAmount: offer.basePriceAmount,
           promotionalPriceAmount: offer.promotionalPriceAmount,

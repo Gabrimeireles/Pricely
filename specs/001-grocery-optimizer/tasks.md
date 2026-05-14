@@ -522,7 +522,7 @@ be tested deeply.
 - [X] T195 Add mobile responsiveness QA for landing, city chooser, offers, offer comparison, list editor, optimization result, checklist, profile/entitlement, admin tables, and auth screens in `web/e2e/` and `web/src/`
 - [X] T196 Expand seed data with additional cities across active, activating, and collecting-data states in `backend/prisma/seed.js`
 - [X] T197 Expand seed data with more establishments per active city, including CNPJ, neighborhood, address/CEP, and future-ready latitude/longitude placeholders in `backend/prisma/seed.js`
-- [~] T198 Expand seed data with broader catalog products, variants, package sizes, images, aliases, categories, and enough repeated comparable products to stress product/variant management in `backend/prisma/seed.js`
+- [X] T198 Expand seed data with broader catalog products, variants, package sizes, images, aliases, categories, and enough repeated comparable products to stress product/variant management in `backend/prisma/seed.js`
 - [X] T199 Expand seed data with duplicate comparable offers across establishments, promotional/base price cases, stale offers, low-confidence offers, unavailable offers, seeded/admin-derived offers, and receipt-derived trust evidence in `backend/prisma/seed.js`
 - [X] T200 Expand seed data with receipt records and processing jobs covering accepted, pending-review, duplicate, quarantined, rejected, low-confidence, and reward-disabled states in `backend/prisma/seed.js`
 - [X] T201 Add backend/web tests that verify seed coverage for city activation placeholders, grouped offer comparisons, trust evidence, stale/low-confidence data, and admin queue/readability scenarios in `backend/test/` and `web/e2e/`
