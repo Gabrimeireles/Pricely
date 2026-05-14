@@ -8,6 +8,7 @@ import {
   AdminEstablishmentsPage,
   AdminOverviewPage,
   AdminPricesPage,
+  AdminQueueDetailPage,
   AdminQueuePage,
   AdminReceiptsPage,
   AdminRegionsPage,
@@ -17,6 +18,7 @@ import {
 const fetchAdminMetrics = vi.fn();
 const fetchAdminQueueHealth = vi.fn();
 const fetchAdminProcessingJobs = vi.fn();
+const fetchAdminProcessingJobDetail = vi.fn();
 const fetchAdminReceiptProcessing = vi.fn();
 const releaseAdminReceiptProcessing = vi.fn();
 const fetchAdminRegions = vi.fn();
@@ -46,7 +48,8 @@ vi.mock('@/app/api', () => ({
   fetchAdminQueueHealth: (...args: unknown[]) => fetchAdminQueueHealth(...args),
   fetchAdminProcessingJobs: (...args: unknown[]) =>
     fetchAdminProcessingJobs(...args),
-  fetchAdminProcessingJobDetail: vi.fn(),
+  fetchAdminProcessingJobDetail: (...args: unknown[]) =>
+    fetchAdminProcessingJobDetail(...args),
   fetchAdminReceiptProcessing: (...args: unknown[]) =>
     fetchAdminReceiptProcessing(...args),
   releaseAdminReceiptProcessing: (...args: unknown[]) =>
@@ -79,6 +82,7 @@ describe('Admin dashboard pages', () => {
     fetchAdminMetrics.mockReset();
     fetchAdminQueueHealth.mockReset();
     fetchAdminProcessingJobs.mockReset();
+    fetchAdminProcessingJobDetail.mockReset();
     fetchAdminReceiptProcessing.mockReset();
     releaseAdminReceiptProcessing.mockReset();
     fetchAdminRegions.mockReset();
@@ -217,6 +221,82 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText(/Modo global multi/)).toBeTruthy();
     expect(screen.getByLabelText('Abrir detalhe do job job-1')).toBeTruthy();
     expect(screen.queryByText('Go to link')).toBeNull();
+  });
+
+  it('renders queue detail with readable operations before technical IDs', async () => {
+    fetchAdminProcessingJobDetail.mockResolvedValue({
+      id: 'job-1',
+      queueName: 'optimization',
+      jobType: 'optimization',
+      resourceType: 'shopping_list',
+      resourceId: 'list-1',
+      status: 'completed',
+      attemptCount: 1,
+      failureReason: null,
+      createdAt: '2026-05-10T04:00:00.000Z',
+      updatedAt: '2026-05-10T04:03:00.000Z',
+      finishedAt: '2026-05-10T04:03:00.000Z',
+      owner: {
+        id: 'user-1',
+        displayName: 'Cliente Teste',
+        email: 'cliente@pricely.local',
+      },
+      shoppingList: {
+        id: 'list-1',
+        name: 'Compra da semana',
+      },
+      optimizationRun: {
+        id: 'run-1',
+        mode: 'global_multi',
+        status: 'completed',
+        createdAt: '2026-05-10T04:00:00.000Z',
+        completedAt: '2026-05-10T04:03:00.000Z',
+        totalEstimatedCost: 42.5,
+        estimatedSavings: 6.4,
+        coverageStatus: 'complete',
+        summary: 'Selecionou menor total elegível na cidade.',
+        selections: [
+          {
+            id: 'selection-1',
+            shoppingListItemId: 'item-1',
+            shoppingListItemName: 'Arroz tipo 1 5kg',
+            status: 'selected',
+            estimatedCost: 21.9,
+            offer: {
+              id: 'offer-1',
+              displayName: 'Arroz Camil 5kg',
+              variantName: 'Arroz Camil 5kg',
+              establishmentName: 'Mercado Centro',
+              neighborhood: 'Centro',
+              priceAmount: 21.9,
+              confidenceLevel: 'high',
+              sourceType: 'receipt',
+              sourceLabel: 'Nota fiscal',
+              observedAt: '2026-05-10T03:00:00.000Z',
+              receiptEvidence: {
+                id: 'receipt-1',
+                moderationStatus: 'accepted',
+                trustLevel: 'trusted',
+                reviewReason: null,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    render(<AdminQueueDetailPage />);
+
+    expect(await screen.findByText('Lista: Compra da semana')).toBeTruthy();
+    expect(
+      screen.getAllByText(/Cliente Teste · optimization/).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText('Concluido').length).toBeGreaterThan(0);
+    expect(screen.getByText('Dados técnicos')).toBeTruthy();
+    expect(screen.getByText('Resumo da decisão')).toBeTruthy();
+    expect(screen.getByText('Selecionada')).toBeTruthy();
+    expect(screen.getByText(/Nota Aceita · Confiável/)).toBeTruthy();
+    expect(screen.queryByText('Resumo do thinking')).toBeNull();
   });
 
   it('renders catalog search, collapsed variants, and offer variant images', async () => {
@@ -438,7 +518,9 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('100 pontos + 1 credito pendente')).toBeTruthy();
     expect(screen.getByText('eligible_pending')).toBeTruthy();
     expect(screen.getByText('Ver leitura')).toBeTruthy();
-    expect(screen.getByText('1 itens extraídos · 1 com oferta gerada')).toBeTruthy();
+    expect(
+      screen.getByText('1 itens extraídos · 1 com oferta gerada'),
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByText('Ver leitura e matcher'));
     expect(await screen.findByText('CAFE PILAO 500G')).toBeTruthy();
@@ -500,9 +582,12 @@ describe('Admin dashboard pages', () => {
       expect(setAdminUserPremium).toHaveBeenCalledWith('token', 'user-1', true),
     );
 
-    fireEvent.change(screen.getByLabelText('Creditos extras para Cliente Teste'), {
-      target: { value: '3' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Creditos extras para Cliente Teste'),
+      {
+        target: { value: '3' },
+      },
+    );
     fireEvent.click(screen.getByText('Adicionar'));
     await waitFor(() =>
       expect(grantAdminUserTokens).toHaveBeenCalledWith('token', 'user-1', {

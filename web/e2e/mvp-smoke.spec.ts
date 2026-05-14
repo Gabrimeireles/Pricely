@@ -477,7 +477,9 @@ test('MVP admin flow covers route protection and queue detail', async ({
   ).toBeVisible();
   await page.goto('/dashboard/fila/job-1');
 
-  await expect(page.getByText('Mercado Centro')).toBeVisible();
+  await expect(
+    page.getByText('Nota fiscal: Mercado Centro').first(),
+  ).toBeVisible();
   await expect(page.getByText('Recibo contribuído')).toBeVisible();
   await expect(page.getByText('suspicious_price_detected')).toBeVisible();
   await expect(
