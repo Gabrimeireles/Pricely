@@ -10,6 +10,9 @@ const updateListItemPurchaseStatus = vi.fn();
 const completeListCheckout = vi.fn();
 const loadLatestOptimization = vi.fn();
 const reportListItemPriceMismatch = vi.fn();
+const checklistMockState = vi.hoisted(() => ({
+  listOverride: null as Record<string, unknown> | null,
+}));
 
 vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
@@ -36,6 +39,7 @@ vi.mock('@/app/pricely-context', () => ({
             preferredBrandNames: [],
           },
         ],
+        ...checklistMockState.listOverride,
       },
     ],
     updateListItemPurchaseStatus,
@@ -59,6 +63,7 @@ vi.mock('@/app/pricely-context', () => ({
 
 describe('ChecklistPage', () => {
   beforeEach(() => {
+    checklistMockState.listOverride = null;
     updateListItemPurchaseStatus.mockReset();
     updateListItemPurchaseStatus.mockResolvedValue({});
     completeListCheckout.mockReset();
@@ -130,5 +135,43 @@ describe('ChecklistPage', () => {
         },
       ),
     );
+  });
+
+  it('shows receipt handoff states after the list is completed', () => {
+    checklistMockState.listOverride = {
+      completedAt: '2026-05-14T12:00:00.000Z',
+      paidTotal: 98.7,
+      items: [
+        {
+          id: 'item-1',
+          name: 'Arroz tipo 1 1kg',
+          quantity: 1,
+          unitLabel: 'un',
+          purchaseStatus: 'purchased',
+          status: 'resolved',
+          imageUrl: 'https://example.com/arroz.png',
+          brandPreferenceMode: 'exact',
+          preferredBrandNames: [],
+        },
+      ],
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/listas/list-1/checklist']}>
+        <Routes>
+          <Route path="/listas/:listId/checklist" element={<ChecklistPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText('Compra fechada, valide com a nota fiscal'),
+    ).toBeTruthy();
+    expect(screen.getByText('Envio recebido')).toBeTruthy();
+    expect(screen.getByText('Reward em processamento')).toBeTruthy();
+    expect(
+      screen.getByText('Reward validado após nota confiável'),
+    ).toBeTruthy();
+    expect(screen.getAllByText('Enviar nota fiscal').length).toBeGreaterThan(0);
   });
 });
