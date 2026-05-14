@@ -2493,7 +2493,15 @@ export function ChecklistPage() {
           <div className="grid gap-4">
             {list.items.map((item) => {
               const checked = item.purchaseStatus === 'purchased';
-              const expectedPrice = expectedPriceForItem(item.id);
+              const optimizationSelection = optimizationResult?.selections.find(
+                (selection) => selection.shoppingListItemId === item.id,
+              );
+              const expectedPrice = optimizationSelection?.priceAmount;
+              const optimizedVariantLabel =
+                optimizationSelection?.selectedVariantName ??
+                (item.optimizedProductVariantId
+                  ? 'variante definida pela otimizacao'
+                  : undefined);
 
               return (
                 <Card
@@ -2534,6 +2542,11 @@ export function ChecklistPage() {
                       {item.note ? (
                         <div className="text-sm text-muted-foreground">
                           {item.note}
+                        </div>
+                      ) : null}
+                      {optimizedVariantLabel ? (
+                        <div className="mt-2 inline-flex rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary">
+                          Variante otimizada: {optimizedVariantLabel}
                         </div>
                       ) : null}
                       {expectedPrice !== undefined ? (

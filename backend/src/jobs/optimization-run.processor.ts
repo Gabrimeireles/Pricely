@@ -21,12 +21,13 @@ export class OptimizationRunProcessor {
   ) {}
 
   async process(optimizationRunId: string): Promise<void> {
-    const optimizationRun = await this.optimizationRunRepository.findById(
-      optimizationRunId,
-    );
+    const optimizationRun =
+      await this.optimizationRunRepository.findById(optimizationRunId);
 
     if (!optimizationRun) {
-      this.logger.warn(`Optimization run ${optimizationRunId} was queued but could not be found`);
+      this.logger.warn(
+        `Optimization run ${optimizationRunId} was queued but could not be found`,
+      );
       return;
     }
 
@@ -43,16 +44,21 @@ export class OptimizationRunProcessor {
         establishmentIds: locationContext?.establishmentIds,
       },
     );
-    const offersWithDistance = this.applyOfferDistances(offers, locationContext);
+    const offersWithDistance = this.applyOfferDistances(
+      offers,
+      locationContext,
+    );
     const computed = this.multiMarketOptimizerService.optimize(
       shoppingList,
       offersWithDistance,
       optimizationRun.mode,
       locationContext
         ? {
-            userLocationPreferenceId: optimizationRun.userLocationPreferenceId ?? undefined,
+            userLocationPreferenceId:
+              optimizationRun.userLocationPreferenceId ?? undefined,
             coverageRadiusKm: locationContext.coverageRadiusKm,
-            candidateEstablishmentCount: locationContext.establishmentIds.length,
+            candidateEstablishmentCount:
+              locationContext.establishmentIds.length,
           }
         : {
             candidateEstablishmentCount: new Set(
@@ -61,15 +67,18 @@ export class OptimizationRunProcessor {
           },
     );
     const completedAt = new Date();
-    const offersById = new Map(offersWithDistance.map((offer) => [offer.id, offer]));
-    const itemsById = new Map(shoppingList.items.map((item) => [item.id, item]));
+    const offersById = new Map(
+      offersWithDistance.map((offer) => [offer.id, offer]),
+    );
+    const itemsById = new Map(
+      shoppingList.items.map((item) => [item.id, item]),
+    );
     const shoppingListItemDelegate = (
       this.prisma as unknown as {
         shoppingListItem?: {
           update: (input: {
             where: { id: string };
             data: {
-              lockedProductVariantId: string;
               optimizedProductVariantId: string;
               optimizedFromBrandPreferenceMode: 'any' | 'preferred' | 'exact';
               optimizedAt: Date;
@@ -79,29 +88,29 @@ export class OptimizationRunProcessor {
       }
     ).shoppingListItem;
     const optimizedVariantUpdates = shoppingListItemDelegate
-      ? computed.selections.map((selection) => {
-        const offer = selection.productOfferId
-          ? offersById.get(selection.productOfferId)
-          : undefined;
-        const item = itemsById.get(selection.shoppingListItemId);
+      ? computed.selections
+          .map((selection) => {
+            const offer = selection.productOfferId
+              ? offersById.get(selection.productOfferId)
+              : undefined;
+            const item = itemsById.get(selection.shoppingListItemId);
 
-        return selection.selectionStatus === 'selected' &&
-          offer?.productVariantId &&
-          item?.brandPreferenceMode === 'any'
-          ? shoppingListItemDelegate.update({
-              where: {
-                id: selection.shoppingListItemId,
-              },
-              data: {
-                lockedProductVariantId: offer.productVariantId,
-                optimizedProductVariantId: offer.productVariantId,
-                optimizedFromBrandPreferenceMode: item.brandPreferenceMode,
-                optimizedAt: completedAt,
-              },
-            })
-          : null;
-      })
-      .filter((query) => query !== null)
+            return selection.selectionStatus === 'selected' &&
+              offer?.productVariantId &&
+              item?.brandPreferenceMode === 'any'
+              ? shoppingListItemDelegate.update({
+                  where: {
+                    id: selection.shoppingListItemId,
+                  },
+                  data: {
+                    optimizedProductVariantId: offer.productVariantId,
+                    optimizedFromBrandPreferenceMode: item.brandPreferenceMode,
+                    optimizedAt: completedAt,
+                  },
+                })
+              : null;
+          })
+          .filter((query) => query !== null)
       : [];
 
     await this.prisma.$transaction([
@@ -160,8 +169,8 @@ export class OptimizationRunProcessor {
           explanationPayload:
             computed.explanationPayload as unknown as Prisma.InputJsonValue,
           candidateEstablishmentCount:
-            computed.explanationPayload?.constraints.candidateEstablishmentCount ??
-            null,
+            computed.explanationPayload?.constraints
+              .candidateEstablishmentCount ?? null,
           completedAt,
         },
       }),
@@ -308,7 +317,9 @@ export class OptimizationRunProcessor {
         Math.sin(lonDelta / 2);
 
     return (
-      earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+      earthRadiusKm *
+      2 *
+      Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
     );
   }
 
