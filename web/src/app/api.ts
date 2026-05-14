@@ -446,6 +446,14 @@ type AdminReceiptProcessingResponse = {
     optimizationTokens: number;
     label: string;
   };
+  extractedPayload: {
+    accessKey?: string | null;
+    sefazUrl?: string | null;
+    rawReference?: string | null;
+    purchaseDate?: string | null;
+    lineItemCount: number;
+    totalLineAmount: number;
+  };
   lineItems: Array<{
     id: string;
     rawProductName: string;
@@ -453,6 +461,7 @@ type AdminReceiptProcessingResponse = {
     ean?: string | null;
     quantity: number;
     unitPrice: number;
+    lineTotal: number;
     originalUnitPrice?: number | null;
     promotionalUnitPrice?: number | null;
     matchConfidence: number;

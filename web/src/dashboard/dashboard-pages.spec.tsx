@@ -481,6 +481,14 @@ describe('Admin dashboard pages', () => {
           optimizationTokens: 1,
           label: '100 pontos + 1 credito pendente',
         },
+        extractedPayload: {
+          accessKey: '35260500000000000100550010000000011000000011',
+          sefazUrl: 'https://sefaz.example/accepted',
+          rawReference: null,
+          purchaseDate: '2026-05-09T10:00:00.000Z',
+          lineItemCount: 1,
+          totalLineAmount: 15.9,
+        },
         lineItems: [
           {
             id: 'line-1',
@@ -489,6 +497,7 @@ describe('Admin dashboard pages', () => {
             ean: '7891000000000',
             quantity: 1,
             unitPrice: 15.9,
+            lineTotal: 15.9,
             originalUnitPrice: 18.9,
             promotionalUnitPrice: 15.9,
             matchConfidence: 0.91,
@@ -534,7 +543,14 @@ describe('Admin dashboard pages', () => {
 
     fireEvent.click(screen.getByText('Ver leitura e matcher'));
     expect(await screen.findByText('CAFE PILAO 500G')).toBeTruthy();
+    expect(screen.getByText('Payload extraído')).toBeTruthy();
+    expect(screen.getByText('1 itens · R$ 15,90')).toBeTruthy();
+    expect(
+      screen.getByText(/35260500000000000100550010000000011000000011/),
+    ).toBeTruthy();
+    expect(screen.getByText('1 ofertas · 0 para revisar')).toBeTruthy();
     expect(screen.getByText('Oferta criada')).toBeTruthy();
+    expect(screen.getByText('Ver oferta criada')).toBeTruthy();
     expect(screen.getByText('Preço caiu')).toBeTruthy();
     expect(screen.getByText(/R\$ 16,90 anterior/)).toBeTruthy();
   });
