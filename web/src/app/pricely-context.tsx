@@ -54,7 +54,11 @@ interface PricelyContextValue {
   isAuthenticated: boolean;
   isBootstrapping: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    displayName: string,
+  ) => Promise<void>;
   signOut: () => void;
   saveList: (input: {
     id?: string;
@@ -73,7 +77,10 @@ interface PricelyContextValue {
       note?: string;
     }>;
   }) => Promise<ShoppingList>;
-  optimizationResults: Record<string, OptimizationResultApiResponse | undefined>;
+  optimizationResults: Record<
+    string,
+    OptimizationResultApiResponse | undefined
+  >;
   updateListItemPurchaseStatus: (
     listId: string,
     itemId: string,
@@ -104,6 +111,11 @@ interface PricelyContextValue {
     label?: string;
     latitude: number;
     longitude: number;
+    coverageRadiusKm?: number;
+  }) => Promise<UserLocationPreferenceResponse>;
+  savePostalCodeLocation: (input: {
+    label?: string;
+    postalCode: string;
     coverageRadiusKm?: number;
   }) => Promise<UserLocationPreferenceResponse>;
   loadLatestOptimization: (
@@ -417,7 +429,9 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         setLists((current) => {
           const existing = current.find((entry) => entry.id === mapped.id);
           if (existing) {
-            return current.map((entry) => (entry.id === mapped.id ? mapped : entry));
+            return current.map((entry) =>
+              entry.id === mapped.id ? mapped : entry,
+            );
           }
           return [mapped, ...current];
         });
@@ -532,6 +546,36 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         ]);
         return saved;
       },
+      savePostalCodeLocation: async (input) => {
+        if (!token) {
+          throw new Error('Voce precisa entrar para salvar o CEP.');
+        }
+
+        const activeCity = cities.find((city) => city.id === cityId);
+        if (!activeCity) {
+          throw new Error('Escolha uma cidade antes de salvar o CEP.');
+        }
+
+        const saved = await createLocationPreference(token, {
+          regionId: activeCity.regionId ?? activeCity.id,
+          label: input.label ?? `CEP ${input.postalCode}`,
+          postalCode: input.postalCode,
+          coverageRadiusKm: input.coverageRadiusKm ?? 5,
+          isDefault: true,
+          locationSource: 'postal_code_fallback',
+        });
+        setLocationPreferences((current) => [
+          saved,
+          ...current
+            .filter((entry) => entry.id !== saved.id)
+            .map((entry) =>
+              entry.regionId === saved.regionId
+                ? { ...entry, isDefault: false }
+                : entry,
+            ),
+        ]);
+        return saved;
+      },
       loadLatestOptimization: async (listId) => {
         if (!token) {
           return null;
@@ -576,7 +620,9 @@ export function PricelyProvider({ children }: PropsWithChildren) {
     ],
   );
 
-  return <PricelyContext.Provider value={value}>{children}</PricelyContext.Provider>;
+  return (
+    <PricelyContext.Provider value={value}>{children}</PricelyContext.Provider>
+  );
 }
 
 export function usePricely() {
