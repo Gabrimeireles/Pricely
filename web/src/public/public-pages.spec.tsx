@@ -89,7 +89,20 @@ vi.mock('@/app/pricely-context', () => ({
         coverageStatus: 'live',
         regionLabel: '2 estabelecimentos ativos',
         status: 'supported',
-        stores: [],
+        stores: [
+          {
+            id: 'store-1',
+            name: 'Unidade Vila Mariana',
+            neighborhood: 'Vila Mariana',
+            offerCount: 10,
+          },
+          {
+            id: 'store-2',
+            name: 'Unidade Pinheiros',
+            neighborhood: 'Pinheiros',
+            offerCount: 8,
+          },
+        ],
         neighborhoods: [],
       },
     ],
@@ -140,9 +153,8 @@ describe('public pages', () => {
     expect(screen.getByText(/0 estabelecimentos ativos/)).toBeTruthy();
     expect(screen.getByText('Piloto')).toBeTruthy();
     expect(screen.getByText(/Cidade em ativação/)).toBeTruthy();
-    expect(
-      screen.getByText(/2 estabelecimentos ativos com ofertas na cidade/),
-    ).toBeTruthy();
+    expect(screen.getByText('Unidade Vila Mariana')).toBeTruthy();
+    expect(screen.getByText('Unidade Pinheiros')).toBeTruthy();
   });
 
   it('submits a public city inclusion request', async () => {
@@ -332,6 +344,8 @@ describe('public pages', () => {
           offers: [],
           establishmentCount: 2,
           cheapestPriceAmount: 21.9,
+          secondCheapestPriceAmount: 22.9,
+          savingsVsSecondCheapest: 1,
           averagePriceAmount: 22.4,
           highestPriceAmount: 22.9,
         },
@@ -349,7 +363,12 @@ describe('public pages', () => {
     expect(
       screen.getByText(/Menor preço em Unidade Vila Mariana/),
     ).toBeTruthy();
-    expect(screen.getByText(/R\$ 0,50 abaixo da média/)).toBeTruthy();
+    expect(
+      screen.getByText(/R\$ 1,00 abaixo do próximo menor preço/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/Média da variante na cidade: R\$ 22,40/),
+    ).toBeTruthy();
     expect(screen.getByText('Ver outros estabelecimentos')).toBeTruthy();
   });
 

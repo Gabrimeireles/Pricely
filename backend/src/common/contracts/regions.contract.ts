@@ -6,6 +6,14 @@ export interface PublicRegionContract {
   implantationStatus: 'active' | 'activating' | 'inactive';
   activeEstablishmentCount: number;
   offerCoverageStatus: 'live' | 'collecting_data';
+  establishments: Array<{
+    id: string;
+    brandName: string;
+    unitName: string;
+    neighborhood: string;
+    cityName: string;
+    offerCount: number;
+  }>;
 }
 
 export interface CityInclusionRequestContract {
@@ -51,10 +59,31 @@ export interface RegionalOffersContract {
     basePriceAmount?: number;
     promotionalPriceAmount?: number;
     savingsVsRegionalAverage?: number;
+    regionalAveragePriceAmount?: number;
+    comparisonPriceAmount?: number;
+    savingsVsComparison?: number;
     observedAt: string;
     sourceLabel: string;
     storeName: string;
     neighborhood: string;
     confidenceLevel: 'high' | 'medium' | 'low';
+  }>;
+  groupedOffers?: Array<{
+    id: string;
+    catalogProductId: string;
+    productVariantId: string;
+    productName: string;
+    variantName?: string;
+    imageUrl?: string | null;
+    packageLabel: string;
+    bestOffer: RegionalOffersContract['offers'][number];
+    alternativeOffers: RegionalOffersContract['offers'];
+    offers: RegionalOffersContract['offers'];
+    establishmentCount: number;
+    cheapestPriceAmount: number;
+    secondCheapestPriceAmount?: number;
+    savingsVsSecondCheapest: number;
+    averagePriceAmount: number;
+    highestPriceAmount: number;
   }>;
 }

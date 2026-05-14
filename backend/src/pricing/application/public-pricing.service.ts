@@ -68,7 +68,10 @@ export class PublicPricingService {
       `Public offers requested for ${regionSlug}: ${response.offers.length} offers, ${response.activeEstablishmentCount} active establishments`,
     );
 
-    if (response.activeEstablishmentCount === 0 || response.offers.length === 0) {
+    if (
+      response.activeEstablishmentCount === 0 ||
+      response.offers.length === 0
+    ) {
       this.logger.warn(
         `Public offers for ${regionSlug} returned sparse coverage: stores=${response.activeEstablishmentCount}, offers=${response.offers.length}`,
       );
@@ -126,7 +129,8 @@ export class PublicPricingService {
         id: offer.catalogProduct.id,
         name: offer.catalogProduct.name,
         category: offer.catalogProduct.category,
-        imageUrl: offer.productVariant.imageUrl ?? offer.catalogProduct.imageUrl,
+        imageUrl:
+          offer.productVariant.imageUrl ?? offer.catalogProduct.imageUrl,
       },
       variant: {
         id: offer.productVariant.id,
@@ -144,13 +148,17 @@ export class PublicPricingService {
             ? Number(offer.basePriceAmount)
             : Number(offer.priceAmount),
         promotionalPriceAmount:
-          offer.promotionalPriceAmount !== null && offer.promotionalPriceAmount !== undefined
+          offer.promotionalPriceAmount !== null &&
+          offer.promotionalPriceAmount !== undefined
             ? Number(offer.promotionalPriceAmount)
             : undefined,
         regionalAveragePriceAmount: comparison.averagePriceAmount,
-        comparisonPriceAmount: comparison.highestPriceAmount,
+        comparisonPriceAmount: comparison.secondCheapestPriceAmount,
         savingsVsComparison: Number(
-          Math.max(0, comparison.highestPriceAmount - Number(offer.priceAmount)).toFixed(2),
+          Math.max(
+            0,
+            comparison.secondCheapestPriceAmount - Number(offer.priceAmount),
+          ).toFixed(2),
         ),
         observedAt: offer.observedAt.toISOString(),
         sourceLabel: offer.sourceReference ?? offer.sourceType,
@@ -169,7 +177,8 @@ export class PublicPricingService {
             ? Number(entry.basePriceAmount)
             : Number(entry.priceAmount),
         promotionalPriceAmount:
-          entry.promotionalPriceAmount !== null && entry.promotionalPriceAmount !== undefined
+          entry.promotionalPriceAmount !== null &&
+          entry.promotionalPriceAmount !== undefined
             ? Number(entry.promotionalPriceAmount)
             : undefined,
         observedAt: entry.observedAt.toISOString(),
@@ -191,7 +200,10 @@ export class PublicPricingService {
       priceAmount: { toString(): string } | number;
     }>,
   ) {
-    const grouped = new Map<string, Array<{ priceAmount: { toString(): string } | number }>>();
+    const grouped = new Map<
+      string,
+      Array<{ priceAmount: { toString(): string } | number }>
+    >();
 
     for (const offer of offers) {
       const existing = grouped.get(offer.productVariantId) ?? [];
@@ -211,14 +223,21 @@ export class PublicPricingService {
     offers: Array<{ priceAmount: { toString(): string } | number }>,
   ) {
     const prices = offers.map((offer) => Number(offer.priceAmount));
+    const sortedPrices = [...prices].sort((left, right) => left - right);
     const highestPriceAmount = prices.length > 0 ? Math.max(...prices) : 0;
+    const secondCheapestPriceAmount = sortedPrices[1] ?? sortedPrices[0] ?? 0;
     const averagePriceAmount =
       prices.length > 0
-        ? Number((prices.reduce((sum, price) => sum + price, 0) / prices.length).toFixed(2))
+        ? Number(
+            (
+              prices.reduce((sum, price) => sum + price, 0) / prices.length
+            ).toFixed(2),
+          )
         : 0;
 
     return {
       highestPriceAmount,
+      secondCheapestPriceAmount,
       averagePriceAmount,
     };
   }
@@ -250,10 +269,16 @@ export class PublicPricingService {
         neighborhood: string;
       };
     },
-    comparison?: { averagePriceAmount: number; highestPriceAmount: number },
+    comparison?: {
+      averagePriceAmount: number;
+      highestPriceAmount: number;
+      secondCheapestPriceAmount: number;
+    },
   ) {
     const priceAmount = Number(offer.priceAmount);
     const average = comparison?.averagePriceAmount ?? priceAmount;
+    const comparisonPriceAmount =
+      comparison?.secondCheapestPriceAmount ?? priceAmount;
 
     return {
       id: offer.id,
@@ -270,10 +295,18 @@ export class PublicPricingService {
           ? Number(offer.basePriceAmount)
           : priceAmount,
       promotionalPriceAmount:
-        offer.promotionalPriceAmount !== null && offer.promotionalPriceAmount !== undefined
+        offer.promotionalPriceAmount !== null &&
+        offer.promotionalPriceAmount !== undefined
           ? Number(offer.promotionalPriceAmount)
           : undefined,
-      savingsVsRegionalAverage: Number(Math.max(0, average - priceAmount).toFixed(2)),
+      savingsVsRegionalAverage: Number(
+        Math.max(0, average - priceAmount).toFixed(2),
+      ),
+      regionalAveragePriceAmount: average,
+      comparisonPriceAmount,
+      savingsVsComparison: Number(
+        Math.max(0, comparisonPriceAmount - priceAmount).toFixed(2),
+      ),
       observedAt: offer.observedAt.toISOString(),
       sourceLabel: offer.sourceReference ?? offer.sourceType,
       storeName: offer.establishment.unitName,
@@ -309,6 +342,7 @@ export class PublicPricingService {
         });
         const bestOffer = sorted[0];
         const prices = sorted.map((entry) => entry.priceAmount);
+        const secondCheapestPriceAmount = sorted[1]?.priceAmount;
         const averagePriceAmount = Number(
           (
             prices.reduce((sum, price) => sum + price, 0) / prices.length
@@ -328,6 +362,14 @@ export class PublicPricingService {
           offers: sorted,
           establishmentCount: sorted.length,
           cheapestPriceAmount: bestOffer.priceAmount,
+          secondCheapestPriceAmount,
+          savingsVsSecondCheapest: Number(
+            Math.max(
+              0,
+              (secondCheapestPriceAmount ?? bestOffer.priceAmount) -
+                bestOffer.priceAmount,
+            ).toFixed(2),
+          ),
           averagePriceAmount,
           highestPriceAmount: Math.max(...prices),
         };
