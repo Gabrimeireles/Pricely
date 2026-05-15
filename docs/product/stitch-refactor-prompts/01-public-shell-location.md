@@ -1,17 +1,23 @@
-# Stitch Prompt: Public App Shell and Location Context
+# Stitch Prompt: Web Public Shell and Location Context
 
-Create a responsive web app shell for Pricely public/logged-in shopper flows.
+Create only this web shell composition for Pricely public/logged-in shopper flows.
 
-Use `00-system-summary.md` and `00-design-system.md`.
+Use `00-system-summary.md`, `00-design-system.md`, `WEB-CONTEXT-PROMPT.md` and the approved components from `WEB-COMPONENT-PROMPTS.md`.
+
+Important:
+- Do not redesign the global components.
+- Reuse `C01 Web Public Header`.
+- Reuse `C02 Web City Location Radius Strip`.
+- This prompt is for validating how the shell components work together, not for creating a full page.
+- Include light and dark mode behavior through tokens.
 
 Screen purpose:
 This shell appears around all public shopper screens. It must make city, location precision and radius visible without dominating the app.
 
 Required content:
-- Header with Pricely icon, primary nav: Ofertas, Cidades, Minhas listas, Notas fiscais.
-- Auth/profile area with account action.
-- Compact city selector.
-- Persistent location/radius context strip.
+- Header component.
+- Location/radius strip component.
+- Empty main content slot with neutral placeholder label: "Conteudo da tela".
 - The strip must support five visible states:
   - city-only: "Sao Paulo - cobertura por cidade"
   - precise coordinates: "Distancia ativa - raio 5 km"
@@ -25,9 +31,9 @@ Required content:
 Layout:
 - Desktop: header top, context strip directly below, main content area below.
 - Mobile: compact header, nav collapsed or horizontal scroll, context strip as condensed stacked rows.
+- No horizontal overflow at mobile sizes.
 
 Visual constraints:
 - Operational, compact, no marketing hero.
 - Use semantic status badges and icons.
 - Avoid nested cards.
-

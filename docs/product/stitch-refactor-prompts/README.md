@@ -13,14 +13,17 @@ Projeto misto descartado para uso final:
 - Project ID: `6992023142009606802`
 - Motivo: o Stitch trabalha melhor quando web/admin desktop e mobile ficam em projetos separados.
 
-Use estes arquivos como prompts independentes no Stitch. O fluxo recomendado agora e manual:
+Use estes arquivos como prompts independentes no Stitch. O fluxo recomendado agora e manual, com componentes primeiro:
 
 1. Criar/aplicar o design system com `DESIGN.md` ou `00-design-system.md`.
 2. No projeto web/admin desktop `8872616086150863294`, use `WEB-CONTEXT-PROMPT.md` como contexto base.
-3. No projeto mobile `1457528815500978003`, use `MOBILE-CONTEXT-PROMPT.md` como contexto base.
-4. Crie cada tela manualmente no Stitch, enviando o contexto base + o pedido especifico da tela.
-5. Componentes compartilhados como header, menu, sidebar, bottom nav, modal e scanner devem ser pedidos separadamente quando voce quiser criar esses componentes.
-6. Depois de revisar o visual, selecionar as telas aprovadas e so entao implementar no repositorio.
+3. Crie os componentes web/admin com `WEB-COMPONENT-PROMPTS.md`.
+4. No projeto mobile `1457528815500978003`, use `MOBILE-CONTEXT-PROMPT.md` como contexto base.
+5. Crie os componentes mobile com `MOBILE-COMPONENT-PROMPTS.md`.
+6. Depois de aprovar os componentes, crie cada tela manualmente no Stitch, enviando o contexto base + o pedido especifico da tela + a lista de componentes ja aprovados que aquela tela deve usar.
+7. Depois de revisar o visual, selecionar as telas aprovadas e so entao implementar no repositorio.
+
+O que estava errado antes: os prompts de tela estavam pedindo header, shell, contexto de localizacao, CTA fixo e outros blocos compartilhados dentro da propria tela. Isso faz o Stitch reinventar componentes em cada tela e gera inconsistencia. A partir de agora, telas devem montar componentes ja criados, nao redesenhar componentes globais.
 
 Regra de escopo: o protótipo novo substitui as telas antigas como direção visual. Não tentar preservar layout antigo se ele conflitar com o fluxo atual do MVP.
 
@@ -46,9 +49,11 @@ Opção recomendada:
 2. Cole o conteúdo no Stitch como base para criar o design system do projeto.
 3. Depois, para cada tela web/admin desktop, cole no projeto `8872616086150863294`:
    - `WEB-CONTEXT-PROMPT.md`
+   - nomes dos componentes ja criados em `WEB-COMPONENT-PROMPTS.md`
    - o pedido especifico da tela que voce quer criar
 4. Para cada tela mobile, cole no projeto `1457528815500978003`:
    - `MOBILE-CONTEXT-PROMPT.md`
+   - nomes dos componentes ja criados em `MOBILE-COMPONENT-PROMPTS.md`
    - o pedido especifico da tela que voce quer criar
 
 Se o Stitch pedir apenas um prompt curto, use `WEB-CONTEXT-PROMPT.md` ou `MOBILE-CONTEXT-PROMPT.md` e remova detalhes que nao importam para aquela tela.
@@ -57,6 +62,7 @@ Se o Stitch pedir apenas um prompt curto, use `WEB-CONTEXT-PROMPT.md` ou `MOBILE
 
 Use estes arquivos no projeto web/admin desktop:
 
+- `WEB-COMPONENT-PROMPTS.md`
 - `01-public-shell-location.md`
 - `02-public-home-workspace.md`
 - `03-lists-workspace.md`
@@ -74,6 +80,7 @@ Use estes arquivos no projeto web/admin desktop:
 
 Use estes arquivos no projeto mobile:
 
+- `MOBILE-COMPONENT-PROMPTS.md`
 - `15-mobile-home-location.md`
 - `16-mobile-list-checklist.md`
 - `17-mobile-optimization-result.md`

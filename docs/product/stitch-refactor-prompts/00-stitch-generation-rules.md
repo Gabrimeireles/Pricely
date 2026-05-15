@@ -8,6 +8,8 @@ Crie somente a tela citada neste prompt.
 Nao crie telas extras.
 Nao crie o fluxo inteiro automaticamente.
 Nao misture web/admin desktop com mobile.
+Se componentes aprovados forem informados, reutilize esses componentes pelo nome e nao redesenhe versoes novas.
+Se o pedido for de componente, crie somente o componente citado e nao crie tela completa.
 
 Se esta tela for web/admin desktop:
 - use canvas desktop;
@@ -31,4 +33,3 @@ Para todas as telas:
 - nenhuma acao principal deve depender de hover;
 - mantenha WCAG AA.
 ```
-

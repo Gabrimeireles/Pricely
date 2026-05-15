@@ -15,6 +15,7 @@ Visual direction:
 - Warning/pending: amber.
 - Critical/error: coral/red.
 - Neutral base: off-white, pale green-gray, white surfaces, dark readable text.
+- Light and dark modes are required. Define color tokens for both modes before creating screens.
 - Radius: 8px for most UI; pills only for status badges.
 - Typography: clear sans-serif, strong tabular numeric treatment for prices, compact labels.
 - Shadows: subtle and functional only.
@@ -43,4 +44,3 @@ Accessibility:
 - Status cannot rely on color alone.
 - Form labels must be visible.
 - Error messages must be near the relevant field.
-

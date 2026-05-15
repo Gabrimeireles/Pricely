@@ -8,6 +8,7 @@ Voce esta criando UMA tela mobile para o Pricely.
 Crie somente a tela citada no prompt especifico.
 Nao crie componentes globais extras.
 Nao crie bottom navigation, header, scanner, modal, drawer ou componentes compartilhados se eu nao pedir explicitamente.
+Quando eu informar nomes de componentes ja aprovados, reutilize esses componentes e nao redesenhe variacoes novas.
 Nao crie fluxo inteiro automaticamente.
 Nao misture web/admin neste projeto.
 
@@ -75,4 +76,3 @@ Use estes nomes no Stitch, um por tela:
 10. `Mobile Receipt Submission Status`
 11. `Mobile Rewards`
 12. `Mobile Profile and Premium State`
-

@@ -8,6 +8,7 @@ Voce esta criando UMA tela web/admin desktop para o Pricely.
 Crie somente a tela citada no prompt especifico.
 Nao crie componentes globais extras.
 Nao crie header, menu, sidebar, modal, drawer ou componentes compartilhados se eu nao pedir explicitamente.
+Quando eu informar nomes de componentes ja aprovados, reutilize esses componentes e nao redesenhe variacoes novas.
 Nao crie fluxo inteiro automaticamente.
 Nao misture mobile neste projeto.
 
@@ -83,4 +84,3 @@ Use estes nomes no Stitch, um por tela:
 17. `Admin Offers`
 18. `Admin Establishments and Regions`
 19. `Admin Lists and Optimization Evidence`
-
