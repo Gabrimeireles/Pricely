@@ -185,6 +185,7 @@ describe('Admin dashboard pages', () => {
       {
         id: 'job-1',
         queueName: 'optimization',
+        jobType: 'optimization',
         resourceType: 'shopping_list',
         resourceId: 'list-1',
         status: 'completed',
@@ -216,9 +217,11 @@ describe('Admin dashboard pages', () => {
 
     expect(await screen.findByText('Saude da fila')).toBeTruthy();
     expect(screen.getByText('Jobs recentes')).toBeTruthy();
-    expect(screen.getByText('Lista: Compra da semana')).toBeTruthy();
+    expect(screen.getByText('optimization · optimization')).toBeTruthy();
     expect(screen.getByText(/Cliente Teste/)).toBeTruthy();
-    expect(screen.getByText(/Modo Menor total na cidade/)).toBeTruthy();
+    expect(screen.getByText(/recurso shopping list/)).toBeTruthy();
+    expect(screen.queryByText('Lista: Compra da semana')).toBeNull();
+    expect(screen.queryByText(/Modo Menor total na cidade/)).toBeNull();
     expect(screen.getByLabelText('Abrir detalhe do job job-1')).toBeTruthy();
     expect(screen.queryByText('Go to link')).toBeNull();
   });
@@ -287,7 +290,9 @@ describe('Admin dashboard pages', () => {
 
     render(<AdminQueueDetailPage />);
 
-    expect(await screen.findByText('Lista: Compra da semana')).toBeTruthy();
+    expect(
+      (await screen.findAllByText('Lista: Compra da semana')).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.getAllByText(/Cliente Teste · optimization/).length,
     ).toBeGreaterThan(0);
@@ -536,12 +541,12 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('3/4 itens fortes')).toBeTruthy();
     expect(screen.getByText('100 pontos + 1 credito pendente')).toBeTruthy();
     expect(screen.getByText('eligible_pending')).toBeTruthy();
-    expect(screen.getByText('Ver leitura')).toBeTruthy();
+    expect(screen.getByText('Auditar processamento')).toBeTruthy();
     expect(
       screen.getByText('1 itens extraídos · 1 com oferta gerada'),
     ).toBeTruthy();
 
-    fireEvent.click(screen.getByText('Ver leitura e matcher'));
+    fireEvent.click(screen.getByText('Ver conteúdo e matcher'));
     expect(await screen.findByText('CAFE PILAO 500G')).toBeTruthy();
     expect(screen.getByText('Payload extraído')).toBeTruthy();
     expect(screen.getByText('1 itens · R$ 15,90')).toBeTruthy();

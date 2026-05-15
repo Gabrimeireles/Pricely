@@ -574,6 +574,7 @@ type AdminShoppingListAuditResponse = {
   city?: string;
   latestOptimization?: {
     id: string;
+    jobId?: string | null;
     mode: OptimizationModeId;
     status: string;
     estimatedSavings: number;

@@ -719,6 +719,7 @@ export class AdminDashboardService {
         latestOptimization: latest
           ? {
               id: latest.id,
+              jobId: latest.jobId,
               mode: latest.mode,
               status: latest.status,
               estimatedSavings: Number(latest.estimatedSavings ?? 0),

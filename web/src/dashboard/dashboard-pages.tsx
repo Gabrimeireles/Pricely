@@ -2603,13 +2603,22 @@ export function AdminListsPage() {
                       itens
                     </div>
                   </div>
-                  <Button
-                    onClick={() => setSelectedAudit(list)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Auditar lista
-                  </Button>
+                  {list.latestOptimization?.jobId ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a href={`/dashboard/fila/${list.latestOptimization.jobId}`}>
+                        Auditar processamento
+                        <ExternalLinkIcon className="size-4" />
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => setSelectedAudit(list)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Ver lista
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -2822,7 +2831,7 @@ export function AdminReceiptsPage() {
                     <>
                       <Button asChild size="sm" variant="outline">
                         <a href={`/dashboard/fila/${receipt.processingJob.id}`}>
-                          Ver leitura
+                          Auditar processamento
                           <ExternalLinkIcon className="size-4" />
                         </a>
                       </Button>
@@ -2920,8 +2929,8 @@ export function AdminReceiptsPage() {
                     <ChevronDownIcon className="size-4" />
                   )}
                   {expandedReceiptId === receipt.id
-                    ? 'Ocultar leitura'
-                    : 'Ver leitura e matcher'}
+                    ? 'Ocultar conteúdo'
+                    : 'Ver conteúdo e matcher'}
                 </Button>
               </div>
 
@@ -3218,7 +3227,8 @@ export function AdminQueuePage() {
         <CardHeader>
           <CardTitle>Jobs recentes</CardTitle>
           <CardDescription>
-            Lista, usuario, modo e tempo antes dos identificadores tecnicos.
+            Diagnóstico da fila: status, tentativa, tempo e falhas. A auditoria
+            de lista ou nota fica nas telas respectivas.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -3239,11 +3249,11 @@ export function AdminQueuePage() {
                   </div>
                   <div className="min-w-0">
                     <div className="truncate font-medium">
-                      {jobResourceTitle(job)}
+                      {job.queueName} · {job.jobType}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {jobOwnerLabel(job)} · {job.queueName} · tentativa{' '}
-                      {job.attemptCount}
+                      tentativa {job.attemptCount} · recurso{' '}
+                      {job.resourceType.replace(/_/g, ' ')}
                     </div>
                   </div>
                 </div>
@@ -3257,26 +3267,18 @@ export function AdminQueuePage() {
                 </div>
               ) : null}
               <div className="mt-3 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                {job.optimizationRun ? (
-                  <span>
-                    Modo {optimizationModeLabel(job.optimizationRun.mode)} ·{' '}
-                    {job.optimizationRun.status}
-                  </span>
-                ) : null}
-                {job.receiptRecord ? (
-                  <span>
-                    Nota {job.receiptRecord.moderationStatus} ·{' '}
-                    {job.receiptRecord.reviewReason ?? 'sem revisão pendente'}
-                  </span>
-                ) : null}
                 <span>Solicitado {formatFreshnessLabel(job.createdAt)}</span>
                 {job.finishedAt ? (
                   <span>Concluido {formatFreshnessLabel(job.finishedAt)}</span>
-                ) : null}
+                ) : (
+                  <span>Aguardando conclusão</span>
+                )}
+                <span>Status operacional: {jobStatusLabel(job.status)}</span>
+                <span>Dono: {jobOwnerLabel(job)}</span>
               </div>
               <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
                 <div className="truncate text-xs text-muted-foreground">
-                  ID tecnico: {job.resourceType} · {job.resourceId} · job{' '}
+                  ID técnico: {job.resourceType} · {job.resourceId} · job{' '}
                   {job.id}
                 </div>
                 <Button asChild size="icon" variant="outline">
