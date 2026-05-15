@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -84,8 +85,9 @@ class CreateEstablishmentDto {
   @IsString()
   cnpj!: string;
 
+  @IsOptional()
   @IsString()
-  cityName!: string;
+  cityName?: string;
 
   @IsString()
   neighborhood!: string;
@@ -343,6 +345,12 @@ class GrantUserTokensDto {
   reason?: string;
 }
 
+class RejectReceiptDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -372,6 +380,16 @@ export class AdminDashboardController {
   @Post('receipt-processing/:id/release')
   async releaseReceiptForProcessing(@Param('id') id: string) {
     return this.adminDashboardService.releaseReceiptForProcessing(id);
+  }
+
+  @Post('receipt-processing/:id/reprocess')
+  async reprocessReceipt(@Param('id') id: string) {
+    return this.adminDashboardService.reprocessReceipt(id);
+  }
+
+  @Post('receipt-processing/:id/reject')
+  async rejectReceipt(@Param('id') id: string, @Body() body: RejectReceiptDto) {
+    return this.adminDashboardService.rejectReceipt(id, body.reason);
   }
 
   @Get('queue-health')
@@ -463,6 +481,11 @@ export class AdminDashboardController {
     return this.adminDashboardService.updateProduct(id, body);
   }
 
+  @Delete('catalog-products/:id')
+  async deleteProduct(@Param('id') id: string) {
+    return this.adminDashboardService.deleteProduct(id);
+  }
+
   @Post('catalog-products/:id/image')
   @UseInterceptors(FileInterceptor('file'))
   async uploadCatalogProductImage(
@@ -488,6 +511,11 @@ export class AdminDashboardController {
     @Body() body: UpdateProductVariantDto,
   ) {
     return this.adminDashboardService.updateProductVariant(id, body);
+  }
+
+  @Delete('product-variants/:id')
+  async deleteProductVariant(@Param('id') id: string) {
+    return this.adminDashboardService.deleteProductVariant(id);
   }
 
   @Post('product-variants/:id/image')

@@ -1146,6 +1146,35 @@ export async function releaseAdminReceiptProcessing(token: string, id: string) {
   );
 }
 
+export async function reprocessAdminReceiptProcessing(
+  token: string,
+  id: string,
+) {
+  return apiFetch<ReceiptSubmissionResponse>(
+    `/admin/receipt-processing/${id}/reprocess`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
+    token,
+  );
+}
+
+export async function rejectAdminReceiptProcessing(
+  token: string,
+  id: string,
+  reason = 'manual_admin_rejection',
+) {
+  return apiFetch<ReceiptSubmissionResponse>(
+    `/admin/receipt-processing/${id}/reject`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    },
+    token,
+  );
+}
+
 export async function fetchAdminQueueHealth(token: string) {
   return apiFetch<AdminQueueHealthResponse>('/admin/queue-health', {}, token);
 }
@@ -1295,6 +1324,16 @@ export async function updateAdminProduct(
   );
 }
 
+export async function deleteAdminProduct(token: string, id: string) {
+  return apiFetch<AdminProductResponse>(
+    `/admin/catalog-products/${id}`,
+    {
+      method: 'DELETE',
+    },
+    token,
+  );
+}
+
 export async function uploadAdminProductImage(
   token: string,
   id: string,
@@ -1344,6 +1383,16 @@ export async function updateAdminProductVariant(
     {
       method: 'PATCH',
       body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function deleteAdminProductVariant(token: string, id: string) {
+  return apiFetch<AdminProductVariantResponse>(
+    `/admin/product-variants/${id}`,
+    {
+      method: 'DELETE',
     },
     token,
   );

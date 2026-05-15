@@ -33,6 +33,8 @@ import {
   createAdminProduct,
   createAdminProductVariant,
   createAdminRegion,
+  deleteAdminProduct,
+  deleteAdminProductVariant,
   fetchAdminEstablishments,
   fetchAdminMetrics,
   fetchAdminOffers,
@@ -47,6 +49,8 @@ import {
   fetchAdminUsers,
   grantAdminUserTokens,
   releaseAdminReceiptProcessing,
+  rejectAdminReceiptProcessing,
+  reprocessAdminReceiptProcessing,
   setAdminUserPremium,
   updateAdminOffer,
   updateAdminEstablishment,
@@ -124,6 +128,33 @@ function optimizationModeLabel(mode?: string | null) {
   return mode
     ? (labels[mode] ?? mode.replace(/_/g, ' '))
     : 'Modo nao informado';
+}
+
+function parseAdminMoneyInput(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const normalized = trimmed.includes(',')
+    ? trimmed.replace(/\./g, '').replace(',', '.')
+    : trimmed;
+  const parsed = Number(normalized);
+
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function optimizationSummaryLabel(summary?: string | null) {
+  if (!summary) {
+    return 'Resultado sem resumo operacional registrado.';
+  }
+
+  if (summary.includes('Pricely selected the cheapest confirmed city offers')) {
+    return 'O Pricely selecionou as menores ofertas confirmadas na cidade e marcou itens sem cobertura para revisão.';
+  }
+
+  return summary;
 }
 
 function jobResourceTitle(job: AdminProcessingJobResponse) {
@@ -775,6 +806,7 @@ export function AdminPricesPage() {
   const [expandedProductId, setExpandedProductId] = useState<string | null>(
     null,
   );
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const [form, setForm] = useState({
     catalogProductId: '',
     productVariantId: '',
@@ -805,27 +837,49 @@ export function AdminPricesPage() {
       return;
     }
 
+    const effectivePrice = parseAdminMoneyInput(form.priceAmount);
+    const basePrice = parseAdminMoneyInput(form.basePriceAmount);
+    const promotionalPrice = parseAdminMoneyInput(form.promotionalPriceAmount);
+
+    if (
+      effectivePrice === undefined ||
+      effectivePrice === null ||
+      basePrice === null ||
+      promotionalPrice === null
+    ) {
+      setMutationError(
+        'Informe valores válidos. Use 14,99 ou 14.99 para preço.',
+      );
+      return;
+    }
+
     const payload = {
       catalogProductId: form.catalogProductId,
       productVariantId: form.productVariantId,
       establishmentId: form.establishmentId,
       displayName: form.displayName,
       packageLabel: form.packageLabel,
-      priceAmount: Number(form.priceAmount),
-      basePriceAmount: form.basePriceAmount
-        ? Number(form.basePriceAmount)
-        : Number(form.priceAmount),
-      promotionalPriceAmount: form.promotionalPriceAmount
-        ? Number(form.promotionalPriceAmount)
-        : null,
+      priceAmount: effectivePrice,
+      basePriceAmount: basePrice ?? effectivePrice,
+      promotionalPriceAmount: promotionalPrice ?? null,
       availabilityStatus: 'available',
       confidenceLevel: 'high',
     };
 
-    if (editingOfferId) {
-      await updateAdminOffer(accessToken, editingOfferId, payload);
-    } else {
-      await createAdminOffer(accessToken, payload);
+    try {
+      setMutationError(null);
+      if (editingOfferId) {
+        await updateAdminOffer(accessToken, editingOfferId, payload);
+      } else {
+        await createAdminOffer(accessToken, payload);
+      }
+    } catch (saveError) {
+      setMutationError(
+        saveError instanceof Error
+          ? saveError.message
+          : 'Não foi possível salvar a oferta.',
+      );
+      return;
     }
     setForm({
       catalogProductId: '',
@@ -850,6 +904,12 @@ export function AdminPricesPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {mutationError ? (
+            <Alert className="mb-4" variant="destructive">
+              <AlertTitle>Falha ao salvar oferta</AlertTitle>
+              <AlertDescription>{mutationError}</AlertDescription>
+            </Alert>
+          ) : null}
           <form className="grid gap-3 md:grid-cols-6" onSubmit={handleCreate}>
             <select
               className="h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -912,6 +972,7 @@ export function AdminPricesPage() {
               }
             />
             <Input
+              inputMode="decimal"
               placeholder="Preço base"
               value={form.basePriceAmount}
               onChange={(event) =>
@@ -922,6 +983,7 @@ export function AdminPricesPage() {
               }
             />
             <Input
+              inputMode="decimal"
               placeholder="Preço promocional"
               value={form.promotionalPriceAmount}
               onChange={(event) =>
@@ -937,6 +999,7 @@ export function AdminPricesPage() {
             />
             <div className="flex gap-2">
               <Input
+                inputMode="decimal"
                 placeholder="Preço efetivo"
                 value={form.priceAmount}
                 onChange={(event) =>
@@ -1156,7 +1219,6 @@ export function AdminCatalogPage() {
     name: '',
     category: '',
     defaultUnit: '',
-    alias: '',
   });
   const [variantForm, setVariantForm] = useState({
     catalogProductId: '',
@@ -1219,7 +1281,7 @@ export function AdminCatalogPage() {
       await createAdminProduct(accessToken, form);
     }
 
-    setForm({ slug: '', name: '', category: '', defaultUnit: '', alias: '' });
+    setForm({ slug: '', name: '', category: '', defaultUnit: '' });
     setEditingProductId(null);
     await reload();
   };
@@ -1268,8 +1330,9 @@ export function AdminCatalogPage() {
               {editingProductId ? 'Editar produto' : 'Novo produto'}
             </CardTitle>
             <CardDescription>
-              O produto original é o item comparável. A imagem fica nas
-              variantes e a vitrine usa a primeira variante com imagem.
+              O produto base é o item comparável, sem marca obrigatória. Ex.:
+              Refrigerante cola 2 L. A variante é o item real exibido, como
+              Coca-Cola PET 2 L.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1315,16 +1378,6 @@ export function AdminCatalogPage() {
                   setForm((current) => ({
                     ...current,
                     defaultUnit: event.target.value,
-                  }))
-                }
-              />
-              <Input
-                placeholder="Alias inicial"
-                value={form.alias}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    alias: event.target.value,
                   }))
                 }
               />
@@ -1507,6 +1560,23 @@ export function AdminCatalogPage() {
                     >
                       Ver no produto
                     </Button>
+                    <Button
+                      className="text-destructive hover:text-destructive"
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                      onClick={async () => {
+                        if (!accessToken) {
+                          return;
+                        }
+
+                        await deleteAdminProductVariant(accessToken, variant.id);
+                        await reloadVariants();
+                        await reload();
+                      }}
+                    >
+                      Excluir variante
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -1519,7 +1589,8 @@ export function AdminCatalogPage() {
         <CardHeader>
           <CardTitle>Catálogo</CardTitle>
           <CardDescription>
-            Produtos, imagens, aliases e variantes saem do banco real.
+            Produtos base e variantes saem do banco real. Aliases existentes
+            aparecem como leitura para apoiar o matcher.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -1593,7 +1664,6 @@ export function AdminCatalogPage() {
                           name: product.name,
                           category: product.category,
                           defaultUnit: product.defaultUnit ?? '',
-                          alias: '',
                         });
                       }}
                     >
@@ -1613,6 +1683,22 @@ export function AdminCatalogPage() {
                       }}
                     >
                       {product.isActive ? 'Desativar' : 'Ativar'}
+                    </Button>
+                    <Button
+                      className="text-destructive hover:text-destructive"
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                      onClick={async () => {
+                        if (!accessToken) {
+                          return;
+                        }
+                        await deleteAdminProduct(accessToken, product.id);
+                        await reload();
+                        await reloadVariants();
+                      }}
+                    >
+                      Excluir produto
                     </Button>
                     <Button
                       size="sm"
@@ -1687,6 +1773,25 @@ export function AdminCatalogPage() {
                             >
                               Editar
                             </Button>
+                            <Button
+                              className="text-destructive hover:text-destructive"
+                              size="sm"
+                              type="button"
+                              variant="ghost"
+                              onClick={async () => {
+                                if (!accessToken) {
+                                  return;
+                                }
+                                await deleteAdminProductVariant(
+                                  accessToken,
+                                  variant.id,
+                                );
+                                await reloadVariants();
+                                await reload();
+                              }}
+                            >
+                              Excluir
+                            </Button>
                           </div>
                           <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2">
                             <span className="text-sm font-medium">Ativo</span>
@@ -1732,7 +1837,6 @@ export function AdminRegionsPage() {
     name: '',
     stateCode: '',
     implantationStatus: 'activating',
-    publicSortOrder: '0',
   });
 
   const handleCreate = async (event: FormEvent) => {
@@ -1743,16 +1847,12 @@ export function AdminRegionsPage() {
 
     try {
       setMutationError(null);
-      await createAdminRegion(accessToken, {
-        ...form,
-        publicSortOrder: Number(form.publicSortOrder),
-      });
+      await createAdminRegion(accessToken, form);
       setForm({
         slug: '',
         name: '',
         stateCode: '',
         implantationStatus: 'activating',
-        publicSortOrder: '0',
       });
       await reload();
     } catch (createError) {
@@ -1797,6 +1897,10 @@ export function AdminRegionsPage() {
                     A quantidade de estabelecimentos ativos é calculada
                     automaticamente pelo backend.
                   </span>
+                  <span>
+                    A lista pública prioriza cidades com mais estabelecimentos
+                    ativos; empates ficam em ordem alfabética.
+                  </span>
                 </div>
               </div>
             </div>
@@ -1838,16 +1942,6 @@ export function AdminRegionsPage() {
               <option value="activating">Em ativação</option>
               <option value="inactive">Inativa</option>
             </select>
-            <Input
-              placeholder="Ordem pública"
-              value={form.publicSortOrder}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  publicSortOrder: event.target.value,
-                }))
-              }
-            />
             <Button type="submit">Criar cidade</Button>
           </form>
         </CardContent>
@@ -2000,7 +2094,6 @@ export function AdminEstablishmentsPage() {
     brandName: '',
     unitName: '',
     cnpj: '',
-    cityName: '',
     neighborhood: '',
     regionId: '',
   });
@@ -2018,12 +2111,17 @@ export function AdminEstablishmentsPage() {
 
     try {
       setMutationError(null);
-      await createAdminEstablishment(accessToken, form);
+      const selectedRegion = regions.find(
+        (region) => region.id === form.regionId,
+      );
+      await createAdminEstablishment(accessToken, {
+        ...form,
+        cityName: selectedRegion?.name,
+      });
       setForm({
         brandName: '',
         unitName: '',
         cnpj: '',
-        cityName: '',
         neighborhood: '',
         regionId: '',
       });
@@ -2043,7 +2141,7 @@ export function AdminEstablishmentsPage() {
         <CardHeader>
           <CardTitle>Estabelecimentos</CardTitle>
           <CardDescription>
-            Cadastre unidade, CNPJ e cidade associada.
+            Cadastre unidade e CNPJ. A cidade vem da cidade vinculada.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -2079,16 +2177,6 @@ export function AdminEstablishmentsPage() {
               value={form.cnpj}
               onChange={(event) =>
                 setForm((current) => ({ ...current, cnpj: event.target.value }))
-              }
-            />
-            <Input
-              placeholder="Cidade"
-              value={form.cityName}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  cityName: event.target.value,
-                }))
               }
             />
             <Input
@@ -2158,7 +2246,8 @@ export function AdminEstablishmentsPage() {
                 <div>
                   <div className="font-medium">{entry.unitName}</div>
                   <div className="text-sm text-muted-foreground">
-                    {entry.brandName} · {entry.cityName} · {entry.neighborhood}
+                    {entry.brandName} · {entry.region.name} ·{' '}
+                    {entry.neighborhood}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2">
@@ -2604,6 +2693,34 @@ export function AdminReceiptsPage() {
     }
   };
 
+  const reprocessReceipt = async (receiptId: string) => {
+    if (!accessToken) {
+      return;
+    }
+
+    setReleasingId(receiptId);
+    try {
+      await reprocessAdminReceiptProcessing(accessToken, receiptId);
+      await reload();
+    } finally {
+      setReleasingId(null);
+    }
+  };
+
+  const rejectReceipt = async (receiptId: string) => {
+    if (!accessToken) {
+      return;
+    }
+
+    setReleasingId(receiptId);
+    try {
+      await rejectAdminReceiptProcessing(accessToken, receiptId);
+      await reload();
+    } finally {
+      setReleasingId(null);
+    }
+  };
+
   const pendingReviewCount = receipts.filter((receipt) =>
     ['pending', 'quarantined'].includes(receipt.moderationStatus),
   ).length;
@@ -2700,23 +2817,49 @@ export function AdminReceiptsPage() {
                     {formatFreshnessLabel(receipt.createdAt)}
                   </div>
                 </div>
-                {receipt.processingJob ? (
-                  <Button asChild size="sm" variant="outline">
-                    <a href={`/dashboard/fila/${receipt.processingJob.id}`}>
-                      Ver leitura
-                      <ExternalLinkIcon className="size-4" />
-                    </a>
-                  </Button>
-                ) : (
+                <div className="flex flex-wrap gap-2">
+                  {receipt.processingJob ? (
+                    <>
+                      <Button asChild size="sm" variant="outline">
+                        <a href={`/dashboard/fila/${receipt.processingJob.id}`}>
+                          Ver leitura
+                          <ExternalLinkIcon className="size-4" />
+                        </a>
+                      </Button>
+                      <Button
+                        disabled={releasingId === receipt.id}
+                        onClick={() => void reprocessReceipt(receipt.id)}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        Reprocessar
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      disabled={releasingId === receipt.id}
+                      onClick={() => void releaseReceipt(receipt.id)}
+                      size="sm"
+                      type="button"
+                    >
+                      Liberar processamento
+                    </Button>
+                  )}
                   <Button
-                    disabled={releasingId === receipt.id}
-                    onClick={() => void releaseReceipt(receipt.id)}
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                    disabled={
+                      releasingId === receipt.id ||
+                      receipt.moderationStatus === 'rejected'
+                    }
+                    onClick={() => void rejectReceipt(receipt.id)}
                     size="sm"
                     type="button"
+                    variant="outline"
                   >
-                    Liberar processamento
+                    Recusar
                   </Button>
-                )}
+                </div>
               </div>
 
               <div className="mt-4 grid gap-3 md:grid-cols-4">
@@ -3180,6 +3323,20 @@ export function AdminQueueDetailPage() {
     );
   }
 
+  const optimizationSelectionCounts = job.optimizationRun
+    ? {
+        selected: job.optimizationRun.selections.filter(
+          (selection) => selection.status === 'selected',
+        ).length,
+        review: job.optimizationRun.selections.filter(
+          (selection) => selection.status === 'review',
+        ).length,
+        missing: job.optimizationRun.selections.filter(
+          (selection) => selection.status === 'missing',
+        ).length,
+      }
+    : null;
+
   return (
     <div className="grid gap-4">
       <Card>
@@ -3240,42 +3397,48 @@ export function AdminQueueDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Contexto técnico</CardTitle>
+          <CardTitle>Operação</CardTitle>
           <CardDescription>
-            {job.queueName} · {job.jobType} · tentativa {job.attemptCount}
+            Leitura operacional do processamento, com dados técnicos apenas
+            quando ajudam no diagnóstico.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2">
           <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">job_id</div>
+            <div className="text-sm text-muted-foreground">
+              Identificador do job
+            </div>
             <div className="mt-1 font-medium">{job.id}</div>
           </div>
           <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">status</div>
-            <div className="mt-1 font-medium">{job.status}</div>
+            <div className="text-sm text-muted-foreground">Status atual</div>
+            <div className="mt-1 font-medium">{jobStatusLabel(job.status)}</div>
           </div>
           <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">resource</div>
+            <div className="text-sm text-muted-foreground">Objeto processado</div>
             <div className="mt-1 font-medium">
+              {jobResourceTitle(job)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
               {job.resourceType} · {job.resourceId}
             </div>
           </div>
           <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">owner</div>
+            <div className="text-sm text-muted-foreground">Responsável</div>
             <div className="mt-1 font-medium">
               {job.owner
-                ? `${job.owner.displayName} · ${job.owner.id}`
-                : 'Sem owner vinculado'}
+                ? `${job.owner.displayName || job.owner.email}`
+                : 'Sem usuário vinculado'}
             </div>
           </div>
           <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">solicitado</div>
+            <div className="text-sm text-muted-foreground">Entrada na fila</div>
             <div className="mt-1 font-medium">
               {formatFreshnessLabel(job.createdAt)}
             </div>
           </div>
           <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">completed</div>
+            <div className="text-sm text-muted-foreground">Conclusão</div>
             <div className="mt-1 font-medium">
               {job.finishedAt
                 ? formatFreshnessLabel(job.finishedAt)
@@ -3316,12 +3479,40 @@ export function AdminQueueDetailPage() {
                 </div>
               </div>
             </div>
+            {optimizationSelectionCounts ? (
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-border/70 bg-background/80 p-3">
+                  <div className="text-sm text-muted-foreground">
+                    Itens selecionados
+                  </div>
+                  <div className="mt-1 text-lg font-semibold">
+                    {optimizationSelectionCounts.selected}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border/70 bg-background/80 p-3">
+                  <div className="text-sm text-muted-foreground">
+                    Itens para revisar
+                  </div>
+                  <div className="mt-1 text-lg font-semibold">
+                    {optimizationSelectionCounts.review}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border/70 bg-background/80 p-3">
+                  <div className="text-sm text-muted-foreground">
+                    Sem oferta
+                  </div>
+                  <div className="mt-1 text-lg font-semibold">
+                    {optimizationSelectionCounts.missing}
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {job.optimizationRun.summary ? (
               <Alert>
                 <InfoIcon />
-                <AlertTitle>Resumo da decisão</AlertTitle>
+                <AlertTitle>Como o resultado foi montado</AlertTitle>
                 <AlertDescription>
-                  {job.optimizationRun.summary}
+                  {optimizationSummaryLabel(job.optimizationRun.summary)}
                 </AlertDescription>
               </Alert>
             ) : null}

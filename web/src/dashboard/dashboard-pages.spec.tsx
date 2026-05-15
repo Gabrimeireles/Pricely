@@ -293,7 +293,7 @@ describe('Admin dashboard pages', () => {
     ).toBeGreaterThan(0);
     expect(screen.getAllByText('Concluido').length).toBeGreaterThan(0);
     expect(screen.getByText('Dados técnicos')).toBeTruthy();
-    expect(screen.getByText('Resumo da decisão')).toBeTruthy();
+    expect(screen.getByText('Como o resultado foi montado')).toBeTruthy();
     expect(screen.getByText('Selecionada')).toBeTruthy();
     expect(screen.getByText(/Nota Aceita · Confiável/)).toBeTruthy();
     expect(screen.queryByText('Resumo do thinking')).toBeNull();
@@ -598,7 +598,7 @@ describe('Admin dashboard pages', () => {
     render(<AdminUsersPage />);
 
     expect((await screen.findAllByText('Usuarios')).length).toBeGreaterThan(0);
-    expect(screen.getByText('Cliente Teste')).toBeTruthy();
+    expect(screen.getAllByText('Cliente Teste').length).toBeGreaterThan(0);
     expect(screen.getByText('Sao Paulo - SP')).toBeTruthy();
     expect(screen.getByText('2 creditos disponiveis')).toBeTruthy();
     expect(screen.getByText('Billing desativado')).toBeTruthy();

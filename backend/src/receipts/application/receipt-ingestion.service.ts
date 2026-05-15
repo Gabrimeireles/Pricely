@@ -188,6 +188,60 @@ export class ReceiptIngestionService {
     };
   }
 
+  async reprocess(receiptRecordId: string): Promise<ReceiptRecord> {
+    const record = await this.receiptRecordRepository.findById(receiptRecordId);
+    if (!record) {
+      throw new NotFoundException(`Receipt ${receiptRecordId} was not found`);
+    }
+
+    if (record.processingJobId) {
+      await this.processingJobsService.markQueued(record.processingJobId);
+      await this.receiptProcessingQueue.add(
+        'receipt-processing',
+        {
+          receiptRecordId,
+          processingJobId: record.processingJobId,
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'fixed',
+            delay: 2000,
+          },
+          removeOnComplete: 100,
+          removeOnFail: 100,
+        },
+      );
+
+      const updatedRecord =
+        await this.receiptRecordRepository.findById(receiptRecordId);
+
+      return {
+        ...this.projectReceiptRecord(updatedRecord ?? record),
+        jobId: record.processingJobId,
+        processingStatus: 'queued',
+      };
+    }
+
+    return this.releaseForProcessing(receiptRecordId);
+  }
+
+  async rejectManually(
+    receiptRecordId: string,
+    reason = 'manual_admin_rejection',
+  ): Promise<ReceiptRecord> {
+    const record = await this.receiptRecordRepository.findById(receiptRecordId);
+    if (!record) {
+      throw new NotFoundException(`Receipt ${receiptRecordId} was not found`);
+    }
+
+    await this.receiptRecordRepository.markRejected(receiptRecordId, reason);
+    const rejectedRecord =
+      await this.receiptRecordRepository.findById(receiptRecordId);
+
+    return this.projectReceiptRecord(rejectedRecord ?? record);
+  }
+
   private async enqueueReceiptProcessing(receiptRecordId: string) {
     const processingJob = await this.processingJobsService.createQueuedJob({
       queueName: 'receipt-processing',

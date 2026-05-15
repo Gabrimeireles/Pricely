@@ -71,6 +71,29 @@ export class ReceiptRecordRepository {
     });
   }
 
+  async markRejected(receiptRecordId: string, reason: string): Promise<void> {
+    const existing = await this.findById(receiptRecordId);
+
+    await this.prisma.receiptRecord.update({
+      where: {
+        id: receiptRecordId,
+      },
+      data: {
+        trustLevel: 'rejected',
+        moderationStatus: 'rejected',
+        rewardEligibilityStatus: 'ineligible',
+        reviewReason: reason,
+        rawReference: JSON.stringify({
+          rawSourceReference: existing?.rawSourceReference,
+          processingLogs: [
+            ...(existing?.processingLogs ?? []),
+            `manual_rejection:${reason}`,
+          ],
+        }),
+      },
+    });
+  }
+
   async markRewardGranted(receiptRecordId: string): Promise<void> {
     const existing = await this.findById(receiptRecordId);
 

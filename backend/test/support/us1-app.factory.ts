@@ -252,6 +252,25 @@ class InMemoryReceiptRecordRepository {
     });
   }
 
+  async markRejected(receiptRecordId: string, reason: string) {
+    const existing = this.records.get(receiptRecordId);
+    if (!existing) {
+      return;
+    }
+
+    this.records.set(receiptRecordId, {
+      ...existing,
+      trustLevel: 'rejected',
+      moderationStatus: 'rejected',
+      rewardEligibilityStatus: 'ineligible',
+      reviewReason: reason,
+      processingLogs: [
+        ...(existing.processingLogs ?? []),
+        `manual_rejection:${reason}`,
+      ],
+    });
+  }
+
   async findById(id: string) {
     const value = this.records.get(id);
     return value ? structuredClone(value) : null;

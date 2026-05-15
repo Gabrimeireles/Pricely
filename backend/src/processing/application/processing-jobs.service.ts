@@ -36,6 +36,17 @@ export class ProcessingJobsService {
     });
   }
 
+  async markQueued(jobId: string) {
+    return this.prisma.processingJob.update({
+      where: { id: jobId },
+      data: {
+        status: 'queued',
+        failureReason: null,
+        finishedAt: null,
+      },
+    });
+  }
+
   async markRetrying(jobId: string, reason?: string) {
     return this.prisma.processingJob.update({
       where: { id: jobId },

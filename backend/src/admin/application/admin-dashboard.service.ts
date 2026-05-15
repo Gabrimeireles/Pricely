@@ -591,6 +591,25 @@ export class AdminDashboardService {
     return receipt;
   }
 
+  async reprocessReceipt(receiptRecordId: string) {
+    const receipt = await this.receiptIngestionService.reprocess(receiptRecordId);
+
+    this.logger.log(`Receipt ${receiptRecordId} requeued for processing`);
+
+    return receipt;
+  }
+
+  async rejectReceipt(receiptRecordId: string, reason?: string) {
+    const receipt = await this.receiptIngestionService.rejectManually(
+      receiptRecordId,
+      reason,
+    );
+
+    this.logger.log(`Receipt ${receiptRecordId} rejected manually`);
+
+    return receipt;
+  }
+
   private receiptRewardProjection(status: string) {
     if (status === 'granted') {
       return {
@@ -925,7 +944,7 @@ export class AdminDashboardService {
     brandName: string;
     unitName: string;
     cnpj: string;
-    cityName: string;
+    cityName?: string;
     neighborhood: string;
     regionId: string;
     isActive?: boolean;
@@ -997,6 +1016,16 @@ export class AdminDashboardService {
     return updated;
   }
 
+  async deleteProduct(id: string) {
+    const deleted = await this.catalogProductsService.updateProduct(id, {
+      isActive: false,
+    });
+
+    this.logger.log(`Admin deactivated catalog product ${id}`);
+
+    return deleted;
+  }
+
   async uploadCatalogProductImage(
     id: string,
     file: { buffer: Buffer; mimetype: string; originalname: string },
@@ -1055,6 +1084,16 @@ export class AdminDashboardService {
     this.logger.log(`Admin updated product variant ${id}`);
 
     return updated;
+  }
+
+  async deleteProductVariant(id: string) {
+    const deleted = await this.catalogProductsService.updateVariant(id, {
+      isActive: false,
+    });
+
+    this.logger.log(`Admin deactivated product variant ${id}`);
+
+    return deleted;
   }
 
   async uploadProductVariantImage(
