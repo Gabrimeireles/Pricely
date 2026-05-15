@@ -83,6 +83,7 @@ type OptimizationResultApiResponse = {
     selectedOfferName?: string;
     selectedVariantName?: string;
     selectedPackageLabel?: string;
+    selectedVariantImageUrl?: string;
     establishmentName?: string;
     establishmentNeighborhood?: string;
     distanceKm?: number;
@@ -768,7 +769,23 @@ async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    const message = await response.text();
+    const payload = await response.text();
+    let message = payload;
+
+    try {
+      const parsed = JSON.parse(payload) as {
+        message?: string | string[];
+        error?: { message?: string | string[] } | string;
+      };
+      const parsedMessage =
+        typeof parsed.error === 'object' ? parsed.error.message : parsed.message;
+      message = Array.isArray(parsedMessage)
+        ? parsedMessage.join('; ')
+        : parsedMessage || message;
+    } catch {
+      message = payload;
+    }
+
     throw new Error(message || `Request failed with status ${response.status}`);
   }
 

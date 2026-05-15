@@ -158,9 +158,9 @@ describe('public pages', () => {
           element?.textContent?.includes('SP') == true,
       ),
     ).toBeTruthy();
-    expect(screen.getByText(/0 estabelecimentos ativos/)).toBeTruthy();
+    expect(screen.getAllByText(/Em ativa/).length).toBeGreaterThan(0);
     expect(screen.getByText('Piloto')).toBeTruthy();
-    expect(screen.getByText(/Cidade em ativação/)).toBeTruthy();
+    expect(screen.getByText(/As ofertas aparecem/)).toBeTruthy();
     expect(screen.getByText('Unidade Vila Mariana')).toBeTruthy();
     expect(screen.getByText('Unidade Pinheiros')).toBeTruthy();
   });

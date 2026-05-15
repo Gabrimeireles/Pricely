@@ -118,6 +118,32 @@ function describeBrandRule(
   return 'Qualquer variante';
 }
 
+function formatVariantWithPackage(
+  variantName?: string | null,
+  packageLabel?: string | null,
+) {
+  if (!variantName) {
+    return packageLabel ?? '';
+  }
+
+  if (!packageLabel) {
+    return variantName;
+  }
+
+  const normalize = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/(\d)\s+(g|kg|ml|l|un|rolos?)\b/g, '$1$2')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  return normalize(variantName).includes(normalize(packageLabel))
+    ? variantName
+    : `${variantName} · ${packageLabel}`;
+}
+
 const optimizationModeCopy: Record<
   OptimizationModeId,
   { title: string; summary: string; tradeoff: string }
@@ -1126,7 +1152,10 @@ export function OffersPage() {
             <CardHeader>
               <CardTitle>{group.productName}</CardTitle>
               <CardDescription>
-                {group.variantName ?? group.packageLabel}
+                {formatVariantWithPackage(
+                  group.variantName,
+                  group.packageLabel,
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3">
@@ -1443,61 +1472,51 @@ export function CitiesPage() {
                     {city.name} · {city.stateCode}
                   </CardTitle>
                   <CardDescription>
-                    {city.activeStoreCount} estabelecimentos ativos ·{' '}
-                    {city.coverageStatus === 'live'
-                      ? 'cobertura ao vivo'
-                      : 'coletando dados'}
+                    {city.activeStoreCount > 0
+                      ? `${city.activeStoreCount} estabelecimentos ativos`
+                      : city.status === 'pilot'
+                        ? 'Em ativação'
+                        : 'Sem cobertura ativa'}
                   </CardDescription>
                 </div>
                 {cityStatusBadge(city)}
               </div>
             </CardHeader>
-            <CardContent className="grid gap-4 text-sm">
-              <div>
-                <div className="font-medium">Estabelecimentos suportados</div>
-                {city.stores.length > 0 ? (
-                  <div className="mt-2 grid gap-2">
-                    {city.stores.map((store) => (
-                      <div
-                        key={store.id ?? `${city.id}-${store.name}`}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-border/70 p-3"
-                      >
-                        <div>
-                          <div className="font-medium text-foreground">
-                            {store.name}
-                          </div>
-                          <div className="text-muted-foreground">
-                            {store.neighborhood ?? 'Bairro em validação'}
-                          </div>
+            <CardContent className="grid gap-3 text-sm">
+              {city.stores.length > 0 ? (
+                <div className="grid gap-2">
+                  {city.stores.map((store) => (
+                    <div
+                      key={store.id ?? `${city.id}-${store.name}`}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border/70 p-3"
+                    >
+                      <div>
+                        <div className="font-medium text-foreground">
+                          {store.name}
                         </div>
-                        <Badge
-                          variant={store.offerCount ? 'secondary' : 'outline'}
-                        >
-                          {store.offerCount
-                            ? `${store.offerCount} ofertas`
-                            : 'Em ativação'}
-                        </Badge>
+                        <div className="text-muted-foreground">
+                          {store.neighborhood ?? 'Bairro em validação'}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-border/80 bg-muted/30 p-3 text-muted-foreground">
-                    {city.activeStoreCount > 0
-                      ? `${city.activeStoreCount} estabelecimentos ativos com ofertas na cidade. A lista nominal aparece nas ofertas e será detalhada aqui conforme a cobertura pública for enriquecida.`
-                      : city.status === 'pilot'
-                        ? 'Cidade em ativação: estamos cadastrando estabelecimentos e validando as primeiras ofertas antes de liberar comparações.'
-                        : 'Cidade planejada: ainda sem estabelecimentos ativos para comparação.'}
-                  </div>
-                )}
-              </div>
-              <div>
-                <div className="font-medium">Status da cidade</div>
-                <div className="text-muted-foreground">
-                  {city.activeStoreCount === 0
-                    ? 'Nenhum estabelecimento ativo no momento. Troque de cidade ou ajude a popular a cobertura.'
-                    : 'Cidade pronta para comparação pública de ofertas e uso em listas.'}
+                      <Badge
+                        variant={store.offerCount ? 'secondary' : 'outline'}
+                      >
+                        {store.offerCount
+                          ? `${store.offerCount} ofertas`
+                          : 'Em ativação'}
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border/80 bg-muted/30 p-3 text-muted-foreground">
+                  {city.activeStoreCount > 0
+                    ? 'Estabelecimentos ativos com ofertas públicas. Veja os nomes no filtro de ofertas.'
+                    : city.status === 'pilot'
+                      ? 'Cidade em ativação. As ofertas aparecem quando houver estabelecimentos e preços validados.'
+                      : 'Ainda sem estabelecimentos ativos.'}
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -3631,15 +3650,17 @@ export function OptimizationPage() {
                         >
                           <TableCell>
                             <div className="flex items-start gap-3">
-                              {listItemsById.get(selection.shoppingListItemId)
+                              {selection.selectedVariantImageUrl ||
+                              listItemsById.get(selection.shoppingListItemId)
                                 ?.imageUrl ? (
                                 <img
                                   alt={selection.shoppingListItemName}
                                   className="h-14 w-14 rounded-lg border border-border/70 object-cover"
                                   src={resolveProductImage(
-                                    listItemsById.get(
-                                      selection.shoppingListItemId,
-                                    )?.imageUrl,
+                                    selection.selectedVariantImageUrl ??
+                                      listItemsById.get(
+                                        selection.shoppingListItemId,
+                                      )?.imageUrl,
                                   )}
                                 />
                               ) : null}
@@ -3649,10 +3670,11 @@ export function OptimizationPage() {
                                 </span>
                                 {selection.selectedVariantName ? (
                                   <span className="text-xs text-muted-foreground">
-                                    Selecionado: {selection.selectedVariantName}
-                                    {selection.selectedPackageLabel
-                                      ? ` · ${selection.selectedPackageLabel}`
-                                      : ''}
+                                    Selecionado:{' '}
+                                    {formatVariantWithPackage(
+                                      selection.selectedVariantName,
+                                      selection.selectedPackageLabel,
+                                    )}
                                   </span>
                                 ) : null}
                                 <span className="text-xs text-muted-foreground">

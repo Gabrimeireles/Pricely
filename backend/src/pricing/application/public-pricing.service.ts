@@ -129,8 +129,7 @@ export class PublicPricingService {
         id: offer.catalogProduct.id,
         name: offer.catalogProduct.name,
         category: offer.catalogProduct.category,
-        imageUrl:
-          offer.productVariant.imageUrl ?? offer.catalogProduct.imageUrl,
+        imageUrl: offer.productVariant.imageUrl ?? undefined,
       },
       variant: {
         id: offer.productVariant.id,
@@ -286,7 +285,7 @@ export class PublicPricingService {
       productVariantId: offer.productVariantId,
       productName: offer.catalogProduct.name,
       variantName: offer.productVariant.displayName,
-      imageUrl: offer.productVariant.imageUrl ?? offer.catalogProduct.imageUrl,
+      imageUrl: offer.productVariant.imageUrl ?? undefined,
       displayName: offer.displayName,
       packageLabel: offer.packageLabel,
       priceAmount,

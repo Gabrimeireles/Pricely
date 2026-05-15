@@ -31,7 +31,10 @@ export class ReceiptIngestionProcessor {
       throw new Error('Receipt extraction provider or OCR extractor is not configured');
     }
 
-    if (!record.storeId || !record.storeName) {
+    const resolvedStoreId =
+      record.storeId ?? record.storeCnpj ?? record.storeName;
+
+    if (!resolvedStoreId || !record.storeName) {
       await this.receiptRecordRepository.markExtractionFailed(
         receiptRecordId,
         'missing_store_identity',
@@ -41,7 +44,7 @@ export class ReceiptIngestionProcessor {
 
     await this.persistStoreOffers({
       ...record,
-      storeId: record.storeId,
+      storeId: resolvedStoreId,
       storeName: record.storeName,
     });
     await this.grantRewardIfEligible(record);
