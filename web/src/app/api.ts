@@ -1136,6 +1136,17 @@ export async function fetchAdminReceiptProcessing(token: string) {
   );
 }
 
+export async function fetchAdminReceiptProcessingDetail(
+  token: string,
+  id: string,
+) {
+  return apiFetch<AdminReceiptProcessingResponse>(
+    `/admin/receipt-processing/${id}`,
+    {},
+    token,
+  );
+}
+
 export async function releaseAdminReceiptProcessing(token: string, id: string) {
   return apiFetch<ReceiptSubmissionResponse>(
     `/admin/receipt-processing/${id}/release`,

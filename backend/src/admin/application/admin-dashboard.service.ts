@@ -580,6 +580,244 @@ export class AdminDashboardService {
     return projectedReceipts;
   }
 
+  async getReceiptProcessingReview(id: string) {
+    const receipts = await this.prisma.receiptRecord.findMany({
+      where: { id },
+      take: 1,
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+          },
+        },
+        processingJob: true,
+        lineItems: {
+          select: {
+            id: true,
+            rawProductName: true,
+            normalizedName: true,
+            ean: true,
+            quantity: true,
+            unitPrice: true,
+            lineTotal: true,
+            originalUnitPrice: true,
+            promotionalUnitPrice: true,
+            matchConfidence: true,
+            productOffers: {
+              select: {
+                id: true,
+                catalogProductId: true,
+                productVariantId: true,
+                establishmentId: true,
+                displayName: true,
+                packageLabel: true,
+                priceAmount: true,
+                observedAt: true,
+                catalogProduct: {
+                  select: {
+                    name: true,
+                  },
+                },
+                productVariant: {
+                  select: {
+                    displayName: true,
+                    brandName: true,
+                  },
+                },
+                establishment: {
+                  select: {
+                    unitName: true,
+                    neighborhood: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (receipts.length === 0) {
+      throw new NotFoundException(`Receipt ${id} was not found`);
+    }
+
+    const generatedOffers = receipts.flatMap((receipt) =>
+      receipt.lineItems.flatMap((item) => item.productOffers),
+    );
+    const comparisonCandidates =
+      generatedOffers.length > 0
+        ? await this.prisma.productOffer.findMany({
+            where: {
+              isActive: true,
+              availabilityStatus: 'available',
+              receiptRecordId: {
+                notIn: receipts.map((receipt) => receipt.id),
+              },
+              OR: generatedOffers.map((offer) => ({
+                productVariantId: offer.productVariantId,
+                establishmentId: offer.establishmentId,
+              })),
+            },
+            orderBy: [{ observedAt: 'desc' }],
+            select: {
+              productVariantId: true,
+              establishmentId: true,
+              priceAmount: true,
+              observedAt: true,
+            },
+          })
+        : [];
+    const latestComparisonByVariantAndStore = new Map<
+      string,
+      (typeof comparisonCandidates)[number]
+    >();
+
+    for (const offer of comparisonCandidates) {
+      const key = `${offer.productVariantId}:${offer.establishmentId}`;
+      if (!latestComparisonByVariantAndStore.has(key)) {
+        latestComparisonByVariantAndStore.set(key, offer);
+      }
+    }
+
+    const receipt = receipts[0];
+    const confidences = receipt.lineItems.map((item) =>
+      Number(item.matchConfidence),
+    );
+    const lineItemCount = confidences.length;
+    const highConfidenceLineItemCount = confidences.filter(
+      (confidence) => confidence >= 0.75,
+    ).length;
+    const averageMatchConfidence =
+      lineItemCount === 0
+        ? 0
+        : Number(
+            (
+              confidences.reduce((sum, confidence) => sum + confidence, 0) /
+              lineItemCount
+            ).toFixed(2),
+          );
+    const totalLineAmount = Number(
+      receipt.lineItems
+        .reduce((sum, item) => sum + Number(item.lineTotal), 0)
+        .toFixed(2),
+    );
+
+    return {
+      id: receipt.id,
+      storeName: receipt.storeName,
+      storeCnpj: receipt.storeCnpj,
+      parseStatus: receipt.parseStatus,
+      trustLevel: receipt.trustLevel,
+      moderationStatus: receipt.moderationStatus,
+      rewardEligibilityStatus: receipt.rewardEligibilityStatus,
+      reviewReason: receipt.reviewReason,
+      purchaseDate: receipt.purchaseDate?.toISOString(),
+      createdAt: receipt.createdAt.toISOString(),
+      updatedAt: receipt.updatedAt.toISOString(),
+      owner: receipt.user,
+      processingJob: receipt.processingJob
+        ? {
+            id: receipt.processingJob.id,
+            status: receipt.processingJob.status,
+            attemptCount: receipt.processingJob.attemptCount,
+            failureReason: receipt.processingJob.failureReason,
+            updatedAt: receipt.processingJob.updatedAt.toISOString(),
+          }
+        : null,
+      quality: {
+        lineItemCount,
+        highConfidenceLineItemCount,
+        averageMatchConfidence,
+        usefulDataRatio:
+          lineItemCount === 0
+            ? 0
+            : Number((highConfidenceLineItemCount / lineItemCount).toFixed(2)),
+      },
+      reward: this.receiptRewardProjection(receipt.rewardEligibilityStatus),
+      extractedPayload: {
+        accessKey: receipt.accessKey,
+        sefazUrl: receipt.sefazUrl,
+        rawReference: receipt.rawReference,
+        purchaseDate: receipt.purchaseDate?.toISOString() ?? null,
+        lineItemCount,
+        totalLineAmount,
+      },
+      lineItems: receipt.lineItems.map((item) => ({
+        id: item.id,
+        rawProductName: item.rawProductName,
+        normalizedName: item.normalizedName,
+        ean: item.ean,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        lineTotal: Number(item.lineTotal),
+        originalUnitPrice:
+          item.originalUnitPrice === null
+            ? null
+            : Number(item.originalUnitPrice),
+        promotionalUnitPrice:
+          item.promotionalUnitPrice === null
+            ? null
+            : Number(item.promotionalUnitPrice),
+        matchConfidence: Number(item.matchConfidence),
+        matcherStatus:
+          item.productOffers.length > 0
+            ? 'matched_offer'
+            : Number(item.matchConfidence) >= 0.75
+              ? 'matched_name_only'
+              : 'needs_product_review',
+        makerAction:
+          item.productOffers.length > 0
+            ? 'offer_created'
+            : Number(item.matchConfidence) >= 0.75
+              ? 'link_existing_product'
+              : 'create_or_match_product',
+        offers: item.productOffers.map((offer) => {
+          const comparison =
+            latestComparisonByVariantAndStore.get(
+              `${offer.productVariantId}:${offer.establishmentId}`,
+            ) ?? null;
+          const newPriceAmount = Number(offer.priceAmount);
+          const previousPriceAmount = comparison
+            ? Number(comparison.priceAmount)
+            : null;
+          const deltaAmount =
+            previousPriceAmount === null
+              ? null
+              : Number((newPriceAmount - previousPriceAmount).toFixed(2));
+
+          return {
+            id: offer.id,
+            catalogProductName: offer.catalogProduct.name,
+            variantName: offer.productVariant.displayName,
+            brandName: offer.productVariant.brandName,
+            establishmentName: offer.establishment.unitName,
+            neighborhood: offer.establishment.neighborhood,
+            displayName: offer.displayName,
+            packageLabel: offer.packageLabel,
+            priceAmount: newPriceAmount,
+            observedAt: offer.observedAt.toISOString(),
+            comparison: {
+              previousPriceAmount,
+              newPriceAmount,
+              deltaAmount,
+              direction:
+                deltaAmount === null
+                  ? 'new'
+                  : deltaAmount > 0
+                    ? 'up'
+                    : deltaAmount < 0
+                      ? 'down'
+                      : 'same',
+              previousObservedAt: comparison?.observedAt.toISOString() ?? null,
+            },
+          };
+        }),
+      })),
+    };
+  }
+
   async releaseReceiptForProcessing(receiptRecordId: string) {
     const receipt =
       await this.receiptIngestionService.releaseForProcessing(receiptRecordId);

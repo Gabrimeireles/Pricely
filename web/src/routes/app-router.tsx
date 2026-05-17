@@ -146,6 +146,15 @@ const dashboardChildren: RouteObject[] = [
     },
   },
   {
+    path: 'nota/:receiptId',
+    lazy: async () => {
+      const { AdminReceiptAuditPage } = await import(
+        '@/dashboard/dashboard-pages'
+      );
+      return { Component: AdminReceiptAuditPage };
+    },
+  },
+  {
     path: 'fila',
     lazy: async () => {
       const { AdminQueuePage } = await import('@/dashboard/dashboard-pages');

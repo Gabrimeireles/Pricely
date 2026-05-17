@@ -377,6 +377,11 @@ export class AdminDashboardController {
     return this.adminDashboardService.listReceiptProcessingReviews();
   }
 
+  @Get('receipt-processing/:id')
+  async getReceiptProcessingReview(@Param('id') id: string) {
+    return this.adminDashboardService.getReceiptProcessingReview(id);
+  }
+
   @Post('receipt-processing/:id/release')
   async releaseReceiptForProcessing(@Param('id') id: string) {
     return this.adminDashboardService.releaseReceiptForProcessing(id);

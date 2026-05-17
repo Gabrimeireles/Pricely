@@ -95,6 +95,20 @@ describe('Receipt ingestion integration', () => {
       expect(receipt.body.jobId).toBeUndefined();
       expect(queues.receiptQueue.add).not.toHaveBeenCalled();
 
+      const receiptAudit = await request(app.getHttpServer())
+        .get(`/admin/receipt-processing/${receipt.body.id}`)
+        .set('Authorization', `Bearer ${admin.accessToken}`)
+        .expect(200);
+
+      expect(receiptAudit.body).toMatchObject({
+        id: receipt.body.id,
+        storeName: 'Mercado Manual',
+        processingJob: null,
+        extractedPayload: expect.objectContaining({
+          lineItemCount: 1,
+        }),
+      });
+
       const released = await request(app.getHttpServer())
         .post(`/admin/receipt-processing/${receipt.body.id}/release`)
         .set('Authorization', `Bearer ${admin.accessToken}`)

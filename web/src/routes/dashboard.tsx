@@ -7,6 +7,7 @@ import {
   AdminOverviewPage,
   AdminQueueDetailPage,
   AdminQueuePage,
+  AdminReceiptAuditPage,
   AdminReceiptsPage,
   AdminRegionsPage,
   AdminUsersPage,
@@ -49,6 +50,10 @@ export const dashboardRoute = {
     {
       path: 'notas',
       element: <AdminReceiptsPage />,
+    },
+    {
+      path: 'nota/:receiptId',
+      element: <AdminReceiptAuditPage />,
     },
     {
       path: 'fila',

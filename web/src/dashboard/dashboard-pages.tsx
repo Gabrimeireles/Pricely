@@ -44,6 +44,7 @@ import {
   fetchAdminProductVariants,
   fetchAdminQueueHealth,
   fetchAdminReceiptProcessing,
+  fetchAdminReceiptProcessingDetail,
   fetchAdminRegions,
   fetchAdminShoppingLists,
   fetchAdminUsers,
@@ -2830,7 +2831,7 @@ export function AdminReceiptsPage() {
                   {receipt.processingJob ? (
                     <>
                       <Button asChild size="sm" variant="outline">
-                        <a href={`/dashboard/fila/${receipt.processingJob.id}`}>
+                        <a href={`/dashboard/nota/${receipt.id}`}>
                           Auditar processamento
                           <ExternalLinkIcon className="size-4" />
                         </a>
@@ -3148,6 +3149,267 @@ export function AdminReceiptsPage() {
               ) : null}
             </div>
           ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export function AdminReceiptAuditPage() {
+  const { receiptId = '' } = useParams();
+  const { accessToken } = usePricely();
+  const loader = (token: string) =>
+    fetchAdminReceiptProcessingDetail(token, receiptId);
+  const {
+    data: receipt,
+    error,
+    reload,
+  } = useAdminData<AdminReceiptProcessingResponse | null>(loader, null);
+  const [acting, setActing] = useState(false);
+
+  const runReceiptAction = async (
+    action: (token: string, id: string) => Promise<unknown>,
+  ) => {
+    if (!accessToken || !receipt) {
+      return;
+    }
+
+    setActing(true);
+    try {
+      await action(accessToken, receipt.id);
+      await reload();
+    } finally {
+      setActing(false);
+    }
+  };
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Falha ao carregar nota fiscal</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!receipt) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Carregando nota fiscal</CardTitle>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      <Card className="border-border/70 bg-card/90 shadow-sm">
+        <CardHeader>
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <CardTitle>Auditoria da nota fiscal</CardTitle>
+              <CardDescription>
+                {receipt.storeName ?? 'Loja não identificada'} ·{' '}
+                {receipt.storeCnpj ?? 'CNPJ não identificado'} · recebida{' '}
+                {formatFreshnessLabel(receipt.createdAt)}
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {receipt.processingJob ? (
+                <>
+                  <Button asChild size="sm" variant="outline">
+                    <a href={`/dashboard/fila/${receipt.processingJob.id}`}>
+                      Ver execução
+                      <ExternalLinkIcon className="size-4" />
+                    </a>
+                  </Button>
+                  <Button
+                    disabled={acting}
+                    onClick={() =>
+                      void runReceiptAction(reprocessAdminReceiptProcessing)
+                    }
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    Reprocessar
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  disabled={acting}
+                  onClick={() =>
+                    void runReceiptAction(releaseAdminReceiptProcessing)
+                  }
+                  size="sm"
+                  type="button"
+                >
+                  Liberar processamento
+                </Button>
+              )}
+              <Button
+                className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                disabled={acting || receipt.moderationStatus === 'rejected'}
+                onClick={() => void runReceiptAction(rejectAdminReceiptProcessing)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Recusar
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-md border border-border/70 p-3">
+              <div className="text-xs text-muted-foreground">Leitura</div>
+              <div className="mt-1 font-medium">{receipt.parseStatus}</div>
+            </div>
+            <div className="rounded-md border border-border/70 p-3">
+              <div className="text-xs text-muted-foreground">Qualidade</div>
+              <div className="mt-1 font-medium">
+                {receiptQualityLabel(receipt)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                média {Math.round(receipt.quality.averageMatchConfidence * 100)}
+                %
+              </div>
+            </div>
+            <div className="rounded-md border border-border/70 p-3">
+              <div className="text-xs text-muted-foreground">Confiança</div>
+              <div className="mt-1 font-medium">
+                {receiptTrustLabel(receipt.trustLevel)}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/70 p-3">
+              <div className="text-xs text-muted-foreground">Reward</div>
+              <div className="mt-1 font-medium">{receipt.reward.label}</div>
+              <div className="text-xs text-muted-foreground">
+                {rewardEligibilityLabel(receipt.rewardEligibilityStatus)}
+              </div>
+            </div>
+          </div>
+
+          {receipt.reviewReason ? (
+            <Alert>
+              <InfoIcon />
+              <AlertTitle>Motivo de revisão</AlertTitle>
+              <AlertDescription>{receipt.reviewReason}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="grid gap-3 rounded-md border border-border/70 bg-card/70 p-3 md:grid-cols-4">
+            <div>
+              <div className="text-xs text-muted-foreground">
+                Payload extraído
+              </div>
+              <div className="mt-1 font-medium">
+                {receipt.extractedPayload.lineItemCount} itens ·{' '}
+                {formatCurrency(receipt.extractedPayload.totalLineAmount)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Chave NFC-e</div>
+              <div className="mt-1 truncate font-medium">
+                {receipt.extractedPayload.accessKey ?? 'Não informada'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Origem</div>
+              <div className="mt-1 truncate font-medium">
+                {receipt.extractedPayload.sefazUrl
+                  ? 'QR/NFC-e'
+                  : (receipt.extractedPayload.rawReference ?? 'Entrada manual')}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Matcher</div>
+              <div className="mt-1 font-medium">
+                {
+                  receipt.lineItems.filter(
+                    (item) => item.matcherStatus === 'matched_offer',
+                  ).length
+                }{' '}
+                ofertas ·{' '}
+                {
+                  receipt.lineItems.filter(
+                    (item) => item.matcherStatus === 'needs_product_review',
+                  ).length
+                }{' '}
+                para revisar
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3">
+            {receipt.lineItems.length === 0 ? (
+              <div className="rounded-md border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">
+                Nenhum item extraído da nota fiscal ainda.
+              </div>
+            ) : null}
+            {receipt.lineItems.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-md border border-border/70 bg-card/70 p-3"
+              >
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="font-medium">{item.rawProductName}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      Normalizado: {item.normalizedName} · EAN{' '}
+                      {item.ean ?? 'não informado'} · qtd {item.quantity}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge
+                      variant={
+                        item.matcherStatus === 'matched_offer'
+                          ? 'secondary'
+                          : item.matcherStatus === 'needs_product_review'
+                            ? 'destructive'
+                            : 'outline'
+                      }
+                    >
+                      {receiptMatcherStatusLabel(item.matcherStatus)}
+                    </Badge>
+                    <Badge variant="outline">
+                      {Math.round(item.matchConfidence * 100)}%
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Preço lido
+                    </div>
+                    <div className="mt-1 font-medium">
+                      {formatCurrency(item.unitPrice)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      total {formatCurrency(item.lineTotal)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">Maker</div>
+                    <div className="mt-1 font-medium">
+                      {receiptMakerActionLabel(item.makerAction)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Ofertas geradas
+                    </div>
+                    <div className="mt-1 font-medium">
+                      {item.offers.length}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>

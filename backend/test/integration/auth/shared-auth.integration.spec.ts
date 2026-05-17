@@ -4,6 +4,10 @@ import request from 'supertest';
 
 import { AdminModule } from '../../../src/admin/admin.module';
 import { AuthModule } from '../../../src/auth/auth.module';
+import {
+  OPTIMIZATION_QUEUE,
+  RECEIPT_PROCESSING_QUEUE,
+} from '../../../src/common/queue/queue.tokens';
 import { HttpExceptionFilter } from '../../../src/common/errors/http-exception.filter';
 import { AppValidationPipe } from '../../../src/common/validation/validation.pipe';
 import { PrismaService } from '../../../src/persistence/prisma.service';
@@ -174,6 +178,10 @@ describe('Shared auth integration', () => {
           userAccountMock.optimizationTokenLedgerEntry,
         $queryRaw: userAccountMock.$queryRaw,
       })
+      .overrideProvider(RECEIPT_PROCESSING_QUEUE)
+      .useValue({ add: jest.fn(), close: jest.fn() })
+      .overrideProvider(OPTIMIZATION_QUEUE)
+      .useValue({ add: jest.fn(), close: jest.fn() })
       .compile();
 
     app = moduleRef.createNestApplication();

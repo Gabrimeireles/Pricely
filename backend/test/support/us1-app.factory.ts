@@ -480,6 +480,7 @@ class PrismaUserAccountMock {
   constructor(
     private readonly shoppingListRepository: InMemoryShoppingListRepository,
     private readonly storeOfferRepository: InMemoryStoreOfferRepository,
+    private readonly receiptRecordRepository?: InMemoryReceiptRecordRepository,
   ) {}
 
   readonly userAccount = {
@@ -1313,6 +1314,18 @@ class PrismaUserAccountMock {
 
   readonly receiptRecord = {
     count: async () => 0,
+    findMany: async ({ where }: { where?: { id?: string } } = {}) => {
+      if (!where?.id || !this.receiptRecordRepository) {
+        return [];
+      }
+
+      const record = await this.receiptRecordRepository.findById(where.id);
+      if (!record) {
+        return [];
+      }
+
+      return [this.toPrismaReceiptRecord(record)];
+    },
   };
 
   async $transaction<T>(operations: Promise<T>[] | ((tx: this) => Promise<T>)) {
@@ -1320,6 +1333,60 @@ class PrismaUserAccountMock {
       return operations(this);
     }
     return Promise.all(operations);
+  }
+
+  private toPrismaReceiptRecord(record: any) {
+    const user = this.users.get(record.userId);
+
+    return {
+      id: record.id,
+      storeName: record.storeName ?? null,
+      storeCnpj: record.storeCnpj ?? null,
+      accessKey: record.accessKey ?? null,
+      sefazUrl: record.sefazUrl ?? null,
+      rawReference: record.rawSourceReference ?? null,
+      parseStatus: record.parseStatus,
+      trustLevel: record.trustLevel,
+      moderationStatus: record.moderationStatus,
+      rewardEligibilityStatus: record.rewardEligibilityStatus,
+      reviewReason: record.reviewReason ?? null,
+      purchaseDate: record.purchaseDate ? new Date(record.purchaseDate) : null,
+      createdAt: new Date(record.createdAt),
+      updatedAt: new Date(record.updatedAt),
+      user: user
+        ? {
+            id: user.id,
+            displayName: user.displayName,
+            email: user.email,
+          }
+        : {
+            id: record.userId,
+            displayName: 'Usuario',
+            email: 'usuario@pricely.local',
+          },
+      processingJob: record.processingJobId
+        ? {
+            id: record.processingJobId,
+            status: record.processingStatus ?? 'queued',
+            attemptCount: 0,
+            failureReason: null,
+            updatedAt: new Date(record.updatedAt),
+          }
+        : null,
+      lineItems: record.lineItems.map((lineItem: any) => ({
+        id: lineItem.id,
+        rawProductName: lineItem.rawProductName,
+        normalizedName: lineItem.normalizedName,
+        ean: lineItem.ean ?? null,
+        quantity: lineItem.quantity,
+        unitPrice: lineItem.unitPrice,
+        lineTotal: Number((lineItem.quantity * lineItem.unitPrice).toFixed(2)),
+        originalUnitPrice: lineItem.originalUnitPrice ?? null,
+        promotionalUnitPrice: lineItem.promotionalUnitPrice ?? null,
+        matchConfidence: lineItem.matchConfidence,
+        productOffers: [],
+      })),
+    };
   }
 }
 
@@ -1387,9 +1454,11 @@ export async function createUs1TestApp(): Promise<{
       storeLongitude: -46.683677,
     },
   ]);
+  const receiptRecordRepository = new InMemoryReceiptRecordRepository();
   const userAccountMock = new PrismaUserAccountMock(
     shoppingListRepository,
     storeOfferRepository,
+    receiptRecordRepository,
   );
 
   const moduleRef = await Test.createTestingModule({
@@ -1415,7 +1484,7 @@ export async function createUs1TestApp(): Promise<{
     .overrideProvider(ShoppingListRepository)
     .useValue(shoppingListRepository)
     .overrideProvider(ReceiptRecordRepository)
-    .useValue(new InMemoryReceiptRecordRepository())
+    .useValue(receiptRecordRepository)
     .overrideProvider(ProductMatchRepository)
     .useValue(productMatchRepository)
     .overrideProvider(StoreOfferRepository)

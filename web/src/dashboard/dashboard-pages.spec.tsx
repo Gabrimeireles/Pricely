@@ -10,6 +10,7 @@ import {
   AdminPricesPage,
   AdminQueueDetailPage,
   AdminQueuePage,
+  AdminReceiptAuditPage,
   AdminReceiptsPage,
   AdminRegionsPage,
   AdminUsersPage,
@@ -20,7 +21,10 @@ const fetchAdminQueueHealth = vi.fn();
 const fetchAdminProcessingJobs = vi.fn();
 const fetchAdminProcessingJobDetail = vi.fn();
 const fetchAdminReceiptProcessing = vi.fn();
+const fetchAdminReceiptProcessingDetail = vi.fn();
 const releaseAdminReceiptProcessing = vi.fn();
+const reprocessAdminReceiptProcessing = vi.fn();
+const rejectAdminReceiptProcessing = vi.fn();
 const fetchAdminRegions = vi.fn();
 const fetchAdminEstablishments = vi.fn();
 const fetchAdminOffers = vi.fn();
@@ -52,8 +56,14 @@ vi.mock('@/app/api', () => ({
     fetchAdminProcessingJobDetail(...args),
   fetchAdminReceiptProcessing: (...args: unknown[]) =>
     fetchAdminReceiptProcessing(...args),
+  fetchAdminReceiptProcessingDetail: (...args: unknown[]) =>
+    fetchAdminReceiptProcessingDetail(...args),
   releaseAdminReceiptProcessing: (...args: unknown[]) =>
     releaseAdminReceiptProcessing(...args),
+  reprocessAdminReceiptProcessing: (...args: unknown[]) =>
+    reprocessAdminReceiptProcessing(...args),
+  rejectAdminReceiptProcessing: (...args: unknown[]) =>
+    rejectAdminReceiptProcessing(...args),
   fetchAdminRegions: (...args: unknown[]) => fetchAdminRegions(...args),
   fetchAdminEstablishments: (...args: unknown[]) =>
     fetchAdminEstablishments(...args),
@@ -77,6 +87,91 @@ vi.mock('@/app/api', () => ({
   updateAdminProductVariant: vi.fn(),
 }));
 
+function buildReceiptAudit(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'receipt-1',
+    storeName: 'Mercado Centro',
+    storeCnpj: '00.000.000/0001-00',
+    parseStatus: 'parsed',
+    trustLevel: 'trusted',
+    moderationStatus: 'accepted',
+    rewardEligibilityStatus: 'eligible_pending',
+    reviewReason: null,
+    purchaseDate: '2026-05-09T10:00:00.000Z',
+    createdAt: '2026-05-09T10:05:00.000Z',
+    updatedAt: '2026-05-09T10:06:00.000Z',
+    owner: {
+      id: 'user-1',
+      displayName: 'Cliente Teste',
+      email: 'cliente@pricely.local',
+    },
+    processingJob: {
+      id: 'job-1',
+      status: 'completed',
+      attemptCount: 1,
+      failureReason: null,
+      updatedAt: '2026-05-09T10:06:00.000Z',
+    },
+    quality: {
+      lineItemCount: 4,
+      highConfidenceLineItemCount: 3,
+      averageMatchConfidence: 0.83,
+      usefulDataRatio: 0.75,
+    },
+    reward: {
+      points: 100,
+      optimizationTokens: 1,
+      label: '100 pontos + 1 credito pendente',
+    },
+    extractedPayload: {
+      accessKey: '35260500000000000100550010000000011000000011',
+      sefazUrl: 'https://sefaz.example/accepted',
+      rawReference: null,
+      purchaseDate: '2026-05-09T10:00:00.000Z',
+      lineItemCount: 1,
+      totalLineAmount: 15.9,
+    },
+    lineItems: [
+      {
+        id: 'line-1',
+        rawProductName: 'CAFE PILAO 500G',
+        normalizedName: 'Cafe Pilao 500g',
+        ean: '7891000000000',
+        quantity: 1,
+        unitPrice: 15.9,
+        lineTotal: 15.9,
+        originalUnitPrice: 18.9,
+        promotionalUnitPrice: 15.9,
+        matchConfidence: 0.91,
+        matcherStatus: 'matched_offer',
+        makerAction: 'offer_created',
+        offers: [
+          {
+            id: 'offer-1',
+            catalogProductName: 'Cafe torrado',
+            variantName: 'Cafe Pilao 500g',
+            brandName: 'Pilao',
+            establishmentName: 'Mercado Centro',
+            neighborhood: 'Centro',
+            displayName: 'Cafe Pilao 500g',
+            packageLabel: '500 g',
+            priceAmount: 15.9,
+            observedAt: '2026-05-09T10:06:00.000Z',
+            comparison: {
+              previousPriceAmount: 16.9,
+              newPriceAmount: 15.9,
+              deltaAmount: -1,
+              direction: 'down',
+              previousObservedAt: '2026-05-01T10:06:00.000Z',
+            },
+          },
+        ],
+      },
+    ],
+    ...overrides,
+  };
+}
+
 describe('Admin dashboard pages', () => {
   beforeEach(() => {
     fetchAdminMetrics.mockReset();
@@ -84,7 +179,10 @@ describe('Admin dashboard pages', () => {
     fetchAdminProcessingJobs.mockReset();
     fetchAdminProcessingJobDetail.mockReset();
     fetchAdminReceiptProcessing.mockReset();
+    fetchAdminReceiptProcessingDetail.mockReset();
     releaseAdminReceiptProcessing.mockReset();
+    reprocessAdminReceiptProcessing.mockReset();
+    rejectAdminReceiptProcessing.mockReset();
     fetchAdminRegions.mockReset();
     fetchAdminEstablishments.mockReset();
     fetchAdminOffers.mockReset();
@@ -543,6 +641,9 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('eligible_pending')).toBeTruthy();
     expect(screen.getByText('Auditar processamento')).toBeTruthy();
     expect(
+      screen.getByText('Auditar processamento').closest('a')?.getAttribute('href'),
+    ).toBe('/dashboard/nota/receipt-1');
+    expect(
       screen.getByText('1 itens extraídos · 1 com oferta gerada'),
     ).toBeTruthy();
 
@@ -558,6 +659,52 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('Ver oferta criada')).toBeTruthy();
     expect(screen.getByText('Preço caiu')).toBeTruthy();
     expect(screen.getByText(/R\$ 16,90 anterior/)).toBeTruthy();
+  });
+
+  it('renders receipt audit by receipt id and can release or reprocess from that audit', async () => {
+    fetchAdminReceiptProcessingDetail.mockResolvedValue(
+      buildReceiptAudit({
+        processingJob: null,
+        moderationStatus: 'pending',
+        trustLevel: 'pending_review',
+        rewardEligibilityStatus: 'disabled',
+        reward: {
+          points: 0,
+          optimizationTokens: 0,
+          label: 'Sem reward',
+        },
+      }),
+    );
+    releaseAdminReceiptProcessing.mockResolvedValue(buildReceiptAudit());
+
+    render(<AdminReceiptAuditPage />);
+
+    expect(await screen.findByText('Auditoria da nota fiscal')).toBeTruthy();
+    expect(screen.getAllByText('Mercado Centro').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByText('Liberar processamento'));
+
+    await waitFor(() => {
+      expect(releaseAdminReceiptProcessing).toHaveBeenCalledWith(
+        'token',
+        'receipt-1',
+      );
+    });
+
+    fetchAdminReceiptProcessingDetail.mockResolvedValue(buildReceiptAudit());
+    reprocessAdminReceiptProcessing.mockResolvedValue(buildReceiptAudit());
+
+    render(<AdminReceiptAuditPage />);
+
+    expect(await screen.findByText('Reprocessar')).toBeTruthy();
+    const reprocessButtons = screen.getAllByText('Reprocessar');
+    fireEvent.click(reprocessButtons[reprocessButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(reprocessAdminReceiptProcessing).toHaveBeenCalledWith(
+        'token',
+        'receipt-1',
+      );
+    });
   });
 
   it('renders admin users and supports premium and token actions', async () => {
