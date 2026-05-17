@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -30,6 +36,7 @@ const fetchAdminEstablishments = vi.fn();
 const fetchAdminOffers = vi.fn();
 const fetchAdminProducts = vi.fn();
 const fetchAdminProductVariants = vi.fn();
+const createAdminOffer = vi.fn();
 const fetchAdminUsers = vi.fn();
 const setAdminUserPremium = vi.fn();
 const grantAdminUserTokens = vi.fn();
@@ -79,7 +86,7 @@ vi.mock('@/app/api', () => ({
   fetchAdminProducts: (...args: unknown[]) => fetchAdminProducts(...args),
   fetchAdminProductVariants: (...args: unknown[]) =>
     fetchAdminProductVariants(...args),
-  createAdminOffer: vi.fn(),
+  createAdminOffer: (...args: unknown[]) => createAdminOffer(...args),
   createAdminProduct: vi.fn(),
   createAdminProductVariant: vi.fn(),
   updateAdminOffer: vi.fn(),
@@ -195,6 +202,7 @@ describe('Admin dashboard pages', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    cleanup();
   });
 
   it('renders queue health when overview data loads successfully', async () => {
@@ -495,6 +503,64 @@ describe('Admin dashboard pages', () => {
     expect(screen.getAllByText(/Pilao/).length).toBeGreaterThan(0);
   });
 
+  it('accepts Brazilian currency values when creating admin offers', async () => {
+    fetchAdminProducts.mockResolvedValue([
+      {
+        id: 'product-1',
+        slug: 'refrigerante',
+        name: 'Refrigerante',
+        category: 'bebidas',
+        defaultUnit: 'un',
+        imageUrl: null,
+        isActive: true,
+        aliases: [],
+        productVariants: [
+          {
+            id: 'variant-1',
+            catalogProductId: 'product-1',
+            slug: 'coca-cola-pet-2l',
+            displayName: 'Coca Cola PET 2L',
+            brandName: 'Coca Cola',
+            variantLabel: null,
+            packageLabel: '2 L',
+            imageUrl: null,
+            isActive: true,
+          },
+        ],
+        _count: { productOffers: 0 },
+      },
+    ]);
+    fetchAdminOffers.mockResolvedValue([]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        unitName: 'Mercado Centro',
+      },
+    ]);
+    createAdminOffer.mockResolvedValue({ id: 'offer-1' });
+
+    render(<AdminPricesPage />);
+
+    const selects = await screen.findAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: 'variant-1' } });
+    fireEvent.change(selects[1], { target: { value: 'store-1' } });
+    fireEvent.change(screen.getByPlaceholderText('Preço efetivo'), {
+      target: { value: 'R$ 14,99' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+
+    await waitFor(() => {
+      expect(createAdminOffer).toHaveBeenCalledWith(
+        'token',
+        expect.objectContaining({
+          priceAmount: 14.99,
+          basePriceAmount: 14.99,
+          promotionalPriceAmount: null,
+        }),
+      );
+    });
+  });
+
   it('renders dedicated regions and establishments views', async () => {
     fetchAdminRegions.mockResolvedValue([
       {
@@ -635,7 +701,7 @@ describe('Admin dashboard pages', () => {
     render(<AdminReceiptsPage />);
 
     expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
-    expect(screen.getAllByText('Mercado Centro').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Mercado Centro/)).toBeTruthy();
     expect(screen.getByText('3/4 itens fortes')).toBeTruthy();
     expect(screen.getByText('100 pontos + 1 credito pendente')).toBeTruthy();
     expect(screen.getByText('eligible_pending')).toBeTruthy();
@@ -680,7 +746,7 @@ describe('Admin dashboard pages', () => {
     render(<AdminReceiptAuditPage />);
 
     expect(await screen.findByText('Auditoria da nota fiscal')).toBeTruthy();
-    expect(screen.getAllByText('Mercado Centro').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Mercado Centro/)).toBeTruthy();
     fireEvent.click(screen.getByText('Liberar processamento'));
 
     await waitFor(() => {

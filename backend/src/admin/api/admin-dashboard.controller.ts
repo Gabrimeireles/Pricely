@@ -12,6 +12,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Transform } from 'class-transformer';
 import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
@@ -24,6 +25,38 @@ type UploadedMediaFile = {
   mimetype: string;
   buffer: Buffer;
 };
+
+function transformBrazilianMoney({ value }: { value: unknown }) {
+  if (value === null || value === undefined || value === '') {
+    return value;
+  }
+
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const normalized = value
+    .trim()
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\s+/g, '');
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  const numericValue =
+    normalized.includes(',') &&
+    normalized.lastIndexOf(',') > normalized.lastIndexOf('.')
+      ? normalized.replace(/\./g, '').replace(',', '.')
+      : normalized.replace(/,/g, '');
+  const parsed = Number(numericValue);
+
+  return Number.isFinite(parsed) ? parsed : value;
+}
 
 type AuthenticatedAdminRequest = {
   user: {
@@ -232,16 +265,19 @@ class CreateOfferDto {
   @IsString()
   packageLabel!: string;
 
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   priceAmount!: number;
 
   @IsOptional()
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   basePriceAmount?: number;
 
   @IsOptional()
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   promotionalPriceAmount?: number;
@@ -291,16 +327,19 @@ class UpdateOfferDto {
   packageLabel?: string;
 
   @IsOptional()
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   priceAmount?: number;
 
   @IsOptional()
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   basePriceAmount?: number;
 
   @IsOptional()
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   promotionalPriceAmount?: number;

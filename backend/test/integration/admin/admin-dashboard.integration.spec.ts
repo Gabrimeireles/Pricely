@@ -450,7 +450,8 @@ describe('Admin dashboard integration', () => {
         establishmentId: createEstablishment.body.id,
         displayName: 'Cafe Pilao 500g',
         packageLabel: '500 g',
-        priceAmount: 15.9,
+        priceAmount: 'R$ 15,90',
+        basePriceAmount: '18,90',
         availabilityStatus: 'available',
         confidenceLevel: 'high',
       })
@@ -459,6 +460,8 @@ describe('Admin dashboard integration', () => {
     expect(createOffer.body).toEqual(
       expect.objectContaining({
         displayName: 'Cafe Pilao 500g',
+        priceAmount: 15.9,
+        basePriceAmount: 18.9,
       }),
     );
 

@@ -451,7 +451,7 @@ export class ReceiptIngestionService {
         const rawProductName = this.decodeHtml(
           match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
         );
-        const quantity = this.parseBrazilianNumber(match[3]);
+        const quantity = this.parseBrazilianQuantity(match[3]);
         const lineTotal = this.parseBrazilianNumber(match[5]);
         const unitPrice =
           quantity > 0 ? Number((lineTotal / quantity).toFixed(2)) : lineTotal;
@@ -499,6 +499,15 @@ export class ReceiptIngestionService {
 
   private parseBrazilianNumber(value: string): number {
     const normalized = value.trim().replace(/\./g, '').replace(',', '.');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private parseBrazilianQuantity(value: string): number {
+    const trimmed = value.trim();
+    const normalized = trimmed.includes(',')
+      ? trimmed.replace(/\./g, '').replace(',', '.')
+      : trimmed;
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : 0;
   }

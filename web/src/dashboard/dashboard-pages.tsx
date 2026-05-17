@@ -132,15 +132,19 @@ function optimizationModeLabel(mode?: string | null) {
 }
 
 function parseAdminMoneyInput(value: string) {
-  const trimmed = value.trim();
+  const trimmed = value
+    .trim()
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\s+/g, '');
 
   if (!trimmed) {
     return undefined;
   }
 
-  const normalized = trimmed.includes(',')
-    ? trimmed.replace(/\./g, '').replace(',', '.')
-    : trimmed;
+  const normalized =
+    trimmed.includes(',') && trimmed.lastIndexOf(',') > trimmed.lastIndexOf('.')
+      ? trimmed.replace(/\./g, '').replace(',', '.')
+      : trimmed.replace(/,/g, '');
   const parsed = Number(normalized);
 
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;

@@ -1144,18 +1144,15 @@ export function OffersPage() {
           <Card key={group.id} className="overflow-hidden">
             <div className="aspect-[16/9] overflow-hidden">
               <img
-                alt={group.productName}
+                alt={group.variantName}
                 className="h-full w-full object-cover"
                 src={resolveProductImage(group.imageUrl)}
               />
             </div>
             <CardHeader>
-              <CardTitle>{group.productName}</CardTitle>
+              <CardTitle>{group.variantName}</CardTitle>
               <CardDescription>
-                {formatVariantWithPackage(
-                  group.variantName,
-                  group.packageLabel,
-                )}
+                {formatVariantWithPackage(group.productName, group.packageLabel)}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3">

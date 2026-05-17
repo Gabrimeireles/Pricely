@@ -430,7 +430,8 @@ describe('public pages', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Arroz tipo 1 5kg')).toBeTruthy();
+    expect(await screen.findByText('Arroz Camil tipo 1 5kg')).toBeTruthy();
+    expect(screen.getByText('Arroz tipo 1 5kg')).toBeTruthy();
     expect(screen.getByText('2 estabelecimentos')).toBeTruthy();
     expect(
       screen.getByText(/Menor preço em Unidade Vila Mariana/),
