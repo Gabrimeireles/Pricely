@@ -431,8 +431,9 @@ export class ReceiptIngestionService {
   }
 
   private parseSefazHtml(html: string): Partial<ReceiptIngestionRequest> {
+    const decodedHtml = this.decodeHtml(html);
     const text = this.decodeHtml(
-      html
+      decodedHtml
         .replace(/<script[\s\S]*?<\/script>/gi, ' ')
         .replace(/<style[\s\S]*?<\/style>/gi, ' ')
         .replace(/<[^>]+>/g, ' ')
@@ -446,7 +447,7 @@ export class ReceiptIngestionService {
     const purchaseDate = this.parseBrazilianDate(
       this.matchText(text, /Data Emissão\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})/i),
     );
-    const items = [...html.matchAll(/<tr>\s*<td><h7>([\s\S]*?)<\/h7>\s*\(Código:\s*([^)]+)\)<\/td>\s*<td>Qtde total de ítens:\s*([\d.,]+)<\/td>\s*<td>UN:\s*([^<]+)<\/td>\s*<td>Valor total R\$:\s*R\$\s*([\d.,]+)<\/td>\s*<\/tr>/gi)]
+    const items = [...decodedHtml.matchAll(/<tr>\s*<td><h7>([\s\S]*?)<\/h7>\s*\(Código:\s*([^)]+)\)<\/td>\s*<td>Qtde total de ítens:\s*([\d.,]+)<\/td>\s*<td>UN:\s*([^<]+)<\/td>\s*<td>Valor total R\$:\s*R\$\s*([\d.,]+)<\/td>\s*<\/tr>/gi)]
       .map((match) => {
         const rawProductName = this.decodeHtml(
           match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
@@ -525,9 +526,39 @@ export class ReceiptIngestionService {
     return value
       .replace(/&nbsp;/g, ' ')
       .replace(/&amp;/g, '&')
+      .replace(/&aacute;/g, '\u00e1')
+      .replace(/&agrave;/g, '\u00e0')
+      .replace(/&acirc;/g, '\u00e2')
+      .replace(/&atilde;/g, '\u00e3')
+      .replace(/&eacute;/g, '\u00e9')
+      .replace(/&ecirc;/g, '\u00ea')
+      .replace(/&iacute;/g, '\u00ed')
+      .replace(/&oacute;/g, '\u00f3')
+      .replace(/&ocirc;/g, '\u00f4')
+      .replace(/&otilde;/g, '\u00f5')
+      .replace(/&uacute;/g, '\u00fa')
+      .replace(/&ccedil;/g, '\u00e7')
+      .replace(/&Aacute;/g, '\u00c1')
+      .replace(/&Agrave;/g, '\u00c0')
+      .replace(/&Acirc;/g, '\u00c2')
+      .replace(/&Atilde;/g, '\u00c3')
+      .replace(/&Eacute;/g, '\u00c9')
+      .replace(/&Ecirc;/g, '\u00ca')
+      .replace(/&Iacute;/g, '\u00cd')
+      .replace(/&Oacute;/g, '\u00d3')
+      .replace(/&Ocirc;/g, '\u00d4')
+      .replace(/&Otilde;/g, '\u00d5')
+      .replace(/&Uacute;/g, '\u00da')
+      .replace(/&Ccedil;/g, '\u00c7')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'");
+      .replace(/&#39;/g, "'")
+      .replace(/&#(\d+);/g, (_entity, codePoint: string) =>
+        String.fromCodePoint(Number(codePoint)),
+      )
+      .replace(/&#x([0-9a-f]+);/gi, (_entity, codePoint: string) =>
+        String.fromCodePoint(Number.parseInt(codePoint, 16)),
+      );
   }
 }
