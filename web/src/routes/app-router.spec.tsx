@@ -46,6 +46,49 @@ vi.mock('@/app/api', async () => {
   return {
     ...actual,
     fetchAdminReceiptProcessing: vi.fn().mockResolvedValue([]),
+    fetchAdminReceiptProcessingDetail: vi.fn().mockResolvedValue({
+      id: 'receipt-1',
+      storeName: 'Mercado Centro',
+      storeCnpj: '00.000.000/0001-00',
+      parseStatus: 'queued',
+      trustLevel: 'trusted',
+      moderationStatus: 'pending',
+      rewardEligibilityStatus: 'eligible_pending',
+      reviewReason: null,
+      purchaseDate: null,
+      createdAt: '2026-05-15T10:00:00Z',
+      updatedAt: '2026-05-15T10:00:00Z',
+      owner: {
+        id: 'admin-1',
+        displayName: 'Admin',
+        email: 'admin@pricely.local',
+      },
+      processingJob: null,
+      quality: {
+        score: 95,
+        label: 'Alta qualidade',
+        usefulLineItemsCount: 1,
+        matchedLineItemsCount: 1,
+        unmatchedLineItemsCount: 0,
+        generatedOffersCount: 1,
+        comparableOffersCount: 0,
+      },
+      reward: {
+        statusLabel: 'Reward pendente',
+        points: 100,
+        optimizationTokens: 1,
+      },
+      extractedPayload: {
+        accessKey: null,
+        sefazUrl: null,
+        rawReference: null,
+        purchaseDate: null,
+        lineItemCount: 1,
+        totalAmount: 10,
+      },
+      lineItems: [],
+      priceMovements: [],
+    }),
   };
 });
 
@@ -134,6 +177,24 @@ describe('application routes', () => {
     renderRoute('/dashboard/notas');
 
     expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
+  });
+
+  it('renders the receipt audit deep link by receipt id', async () => {
+    pricelyState = {
+      accessToken: 'token',
+      currentUser: {
+        id: 'admin-1',
+        email: 'admin@pricely.local',
+        displayName: 'Admin',
+        role: 'admin',
+      },
+      isAuthenticated: true,
+    };
+
+    renderRoute('/dashboard/nota/receipt-1');
+
+    expect(await screen.findByText('Auditoria da nota fiscal')).toBeTruthy();
+    expect(screen.getByText('Liberar processamento')).toBeTruthy();
   });
 
   it('renders a custom route error instead of the React Router default page', () => {

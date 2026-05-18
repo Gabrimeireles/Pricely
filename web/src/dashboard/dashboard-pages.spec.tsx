@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -10,6 +16,7 @@ import {
   AdminPricesPage,
   AdminQueueDetailPage,
   AdminQueuePage,
+  AdminReceiptAuditPage,
   AdminReceiptsPage,
   AdminRegionsPage,
   AdminUsersPage,
@@ -20,12 +27,16 @@ const fetchAdminQueueHealth = vi.fn();
 const fetchAdminProcessingJobs = vi.fn();
 const fetchAdminProcessingJobDetail = vi.fn();
 const fetchAdminReceiptProcessing = vi.fn();
+const fetchAdminReceiptProcessingDetail = vi.fn();
 const releaseAdminReceiptProcessing = vi.fn();
+const reprocessAdminReceiptProcessing = vi.fn();
+const rejectAdminReceiptProcessing = vi.fn();
 const fetchAdminRegions = vi.fn();
 const fetchAdminEstablishments = vi.fn();
 const fetchAdminOffers = vi.fn();
 const fetchAdminProducts = vi.fn();
 const fetchAdminProductVariants = vi.fn();
+const createAdminOffer = vi.fn();
 const fetchAdminUsers = vi.fn();
 const setAdminUserPremium = vi.fn();
 const grantAdminUserTokens = vi.fn();
@@ -52,8 +63,14 @@ vi.mock('@/app/api', () => ({
     fetchAdminProcessingJobDetail(...args),
   fetchAdminReceiptProcessing: (...args: unknown[]) =>
     fetchAdminReceiptProcessing(...args),
+  fetchAdminReceiptProcessingDetail: (...args: unknown[]) =>
+    fetchAdminReceiptProcessingDetail(...args),
   releaseAdminReceiptProcessing: (...args: unknown[]) =>
     releaseAdminReceiptProcessing(...args),
+  reprocessAdminReceiptProcessing: (...args: unknown[]) =>
+    reprocessAdminReceiptProcessing(...args),
+  rejectAdminReceiptProcessing: (...args: unknown[]) =>
+    rejectAdminReceiptProcessing(...args),
   fetchAdminRegions: (...args: unknown[]) => fetchAdminRegions(...args),
   fetchAdminEstablishments: (...args: unknown[]) =>
     fetchAdminEstablishments(...args),
@@ -69,13 +86,98 @@ vi.mock('@/app/api', () => ({
   fetchAdminProducts: (...args: unknown[]) => fetchAdminProducts(...args),
   fetchAdminProductVariants: (...args: unknown[]) =>
     fetchAdminProductVariants(...args),
-  createAdminOffer: vi.fn(),
+  createAdminOffer: (...args: unknown[]) => createAdminOffer(...args),
   createAdminProduct: vi.fn(),
   createAdminProductVariant: vi.fn(),
   updateAdminOffer: vi.fn(),
   updateAdminProduct: vi.fn(),
   updateAdminProductVariant: vi.fn(),
 }));
+
+function buildReceiptAudit(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'receipt-1',
+    storeName: 'Mercado Centro',
+    storeCnpj: '00.000.000/0001-00',
+    parseStatus: 'parsed',
+    trustLevel: 'trusted',
+    moderationStatus: 'accepted',
+    rewardEligibilityStatus: 'eligible_pending',
+    reviewReason: null,
+    purchaseDate: '2026-05-09T10:00:00.000Z',
+    createdAt: '2026-05-09T10:05:00.000Z',
+    updatedAt: '2026-05-09T10:06:00.000Z',
+    owner: {
+      id: 'user-1',
+      displayName: 'Cliente Teste',
+      email: 'cliente@pricely.local',
+    },
+    processingJob: {
+      id: 'job-1',
+      status: 'completed',
+      attemptCount: 1,
+      failureReason: null,
+      updatedAt: '2026-05-09T10:06:00.000Z',
+    },
+    quality: {
+      lineItemCount: 4,
+      highConfidenceLineItemCount: 3,
+      averageMatchConfidence: 0.83,
+      usefulDataRatio: 0.75,
+    },
+    reward: {
+      points: 100,
+      optimizationTokens: 1,
+      label: '100 pontos + 1 credito pendente',
+    },
+    extractedPayload: {
+      accessKey: '35260500000000000100550010000000011000000011',
+      sefazUrl: 'https://sefaz.example/accepted',
+      rawReference: null,
+      purchaseDate: '2026-05-09T10:00:00.000Z',
+      lineItemCount: 1,
+      totalLineAmount: 15.9,
+    },
+    lineItems: [
+      {
+        id: 'line-1',
+        rawProductName: 'CAFE PILAO 500G',
+        normalizedName: 'Cafe Pilao 500g',
+        ean: '7891000000000',
+        quantity: 1,
+        unitPrice: 15.9,
+        lineTotal: 15.9,
+        originalUnitPrice: 18.9,
+        promotionalUnitPrice: 15.9,
+        matchConfidence: 0.91,
+        matcherStatus: 'matched_offer',
+        makerAction: 'offer_created',
+        offers: [
+          {
+            id: 'offer-1',
+            catalogProductName: 'Cafe torrado',
+            variantName: 'Cafe Pilao 500g',
+            brandName: 'Pilao',
+            establishmentName: 'Mercado Centro',
+            neighborhood: 'Centro',
+            displayName: 'Cafe Pilao 500g',
+            packageLabel: '500 g',
+            priceAmount: 15.9,
+            observedAt: '2026-05-09T10:06:00.000Z',
+            comparison: {
+              previousPriceAmount: 16.9,
+              newPriceAmount: 15.9,
+              deltaAmount: -1,
+              direction: 'down',
+              previousObservedAt: '2026-05-01T10:06:00.000Z',
+            },
+          },
+        ],
+      },
+    ],
+    ...overrides,
+  };
+}
 
 describe('Admin dashboard pages', () => {
   beforeEach(() => {
@@ -84,7 +186,10 @@ describe('Admin dashboard pages', () => {
     fetchAdminProcessingJobs.mockReset();
     fetchAdminProcessingJobDetail.mockReset();
     fetchAdminReceiptProcessing.mockReset();
+    fetchAdminReceiptProcessingDetail.mockReset();
     releaseAdminReceiptProcessing.mockReset();
+    reprocessAdminReceiptProcessing.mockReset();
+    rejectAdminReceiptProcessing.mockReset();
     fetchAdminRegions.mockReset();
     fetchAdminEstablishments.mockReset();
     fetchAdminOffers.mockReset();
@@ -97,6 +202,7 @@ describe('Admin dashboard pages', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    cleanup();
   });
 
   it('renders queue health when overview data loads successfully', async () => {
@@ -185,6 +291,7 @@ describe('Admin dashboard pages', () => {
       {
         id: 'job-1',
         queueName: 'optimization',
+        jobType: 'optimization',
         resourceType: 'shopping_list',
         resourceId: 'list-1',
         status: 'completed',
@@ -216,9 +323,11 @@ describe('Admin dashboard pages', () => {
 
     expect(await screen.findByText('Saude da fila')).toBeTruthy();
     expect(screen.getByText('Jobs recentes')).toBeTruthy();
-    expect(screen.getByText('Lista: Compra da semana')).toBeTruthy();
+    expect(screen.getByText('optimization · optimization')).toBeTruthy();
     expect(screen.getByText(/Cliente Teste/)).toBeTruthy();
-    expect(screen.getByText(/Modo Menor total na cidade/)).toBeTruthy();
+    expect(screen.getByText(/recurso shopping list/)).toBeTruthy();
+    expect(screen.queryByText('Lista: Compra da semana')).toBeNull();
+    expect(screen.queryByText(/Modo Menor total na cidade/)).toBeNull();
     expect(screen.getByLabelText('Abrir detalhe do job job-1')).toBeTruthy();
     expect(screen.queryByText('Go to link')).toBeNull();
   });
@@ -287,13 +396,15 @@ describe('Admin dashboard pages', () => {
 
     render(<AdminQueueDetailPage />);
 
-    expect(await screen.findByText('Lista: Compra da semana')).toBeTruthy();
+    expect(
+      (await screen.findAllByText('Lista: Compra da semana')).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.getAllByText(/Cliente Teste · optimization/).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByText('Concluido').length).toBeGreaterThan(0);
     expect(screen.getByText('Dados técnicos')).toBeTruthy();
-    expect(screen.getByText('Resumo da decisão')).toBeTruthy();
+    expect(screen.getByText('Como o resultado foi montado')).toBeTruthy();
     expect(screen.getByText('Selecionada')).toBeTruthy();
     expect(screen.getByText(/Nota Aceita · Confiável/)).toBeTruthy();
     expect(screen.queryByText('Resumo do thinking')).toBeNull();
@@ -390,6 +501,64 @@ describe('Admin dashboard pages', () => {
       (await screen.findAllByAltText('Cafe Pilao 500g')).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByText(/Pilao/).length).toBeGreaterThan(0);
+  });
+
+  it('accepts Brazilian currency values when creating admin offers', async () => {
+    fetchAdminProducts.mockResolvedValue([
+      {
+        id: 'product-1',
+        slug: 'refrigerante',
+        name: 'Refrigerante',
+        category: 'bebidas',
+        defaultUnit: 'un',
+        imageUrl: null,
+        isActive: true,
+        aliases: [],
+        productVariants: [
+          {
+            id: 'variant-1',
+            catalogProductId: 'product-1',
+            slug: 'coca-cola-pet-2l',
+            displayName: 'Coca Cola PET 2L',
+            brandName: 'Coca Cola',
+            variantLabel: null,
+            packageLabel: '2 L',
+            imageUrl: null,
+            isActive: true,
+          },
+        ],
+        _count: { productOffers: 0 },
+      },
+    ]);
+    fetchAdminOffers.mockResolvedValue([]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        unitName: 'Mercado Centro',
+      },
+    ]);
+    createAdminOffer.mockResolvedValue({ id: 'offer-1' });
+
+    render(<AdminPricesPage />);
+
+    const selects = await screen.findAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: 'variant-1' } });
+    fireEvent.change(selects[1], { target: { value: 'store-1' } });
+    fireEvent.change(screen.getByPlaceholderText('Preço efetivo'), {
+      target: { value: 'R$ 14,99' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+
+    await waitFor(() => {
+      expect(createAdminOffer).toHaveBeenCalledWith(
+        'token',
+        expect.objectContaining({
+          priceAmount: 14.99,
+          basePriceAmount: 14.99,
+          promotionalPriceAmount: null,
+        }),
+      );
+    });
   });
 
   it('renders dedicated regions and establishments views', async () => {
@@ -532,16 +701,19 @@ describe('Admin dashboard pages', () => {
     render(<AdminReceiptsPage />);
 
     expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
-    expect(screen.getAllByText('Mercado Centro').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Mercado Centro/)).toBeTruthy();
     expect(screen.getByText('3/4 itens fortes')).toBeTruthy();
     expect(screen.getByText('100 pontos + 1 credito pendente')).toBeTruthy();
     expect(screen.getByText('eligible_pending')).toBeTruthy();
-    expect(screen.getByText('Ver leitura')).toBeTruthy();
+    expect(screen.getByText('Auditar processamento')).toBeTruthy();
+    expect(
+      screen.getByText('Auditar processamento').closest('a')?.getAttribute('href'),
+    ).toBe('/dashboard/nota/receipt-1');
     expect(
       screen.getByText('1 itens extraídos · 1 com oferta gerada'),
     ).toBeTruthy();
 
-    fireEvent.click(screen.getByText('Ver leitura e matcher'));
+    fireEvent.click(screen.getByText('Ver conteúdo e matcher'));
     expect(await screen.findByText('CAFE PILAO 500G')).toBeTruthy();
     expect(screen.getByText('Payload extraído')).toBeTruthy();
     expect(screen.getByText('1 itens · R$ 15,90')).toBeTruthy();
@@ -553,6 +725,52 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('Ver oferta criada')).toBeTruthy();
     expect(screen.getByText('Preço caiu')).toBeTruthy();
     expect(screen.getByText(/R\$ 16,90 anterior/)).toBeTruthy();
+  });
+
+  it('renders receipt audit by receipt id and can release or reprocess from that audit', async () => {
+    fetchAdminReceiptProcessingDetail.mockResolvedValue(
+      buildReceiptAudit({
+        processingJob: null,
+        moderationStatus: 'pending',
+        trustLevel: 'pending_review',
+        rewardEligibilityStatus: 'disabled',
+        reward: {
+          points: 0,
+          optimizationTokens: 0,
+          label: 'Sem reward',
+        },
+      }),
+    );
+    releaseAdminReceiptProcessing.mockResolvedValue(buildReceiptAudit());
+
+    render(<AdminReceiptAuditPage />);
+
+    expect(await screen.findByText('Auditoria da nota fiscal')).toBeTruthy();
+    expect(screen.getByText(/Mercado Centro/)).toBeTruthy();
+    fireEvent.click(screen.getByText('Liberar processamento'));
+
+    await waitFor(() => {
+      expect(releaseAdminReceiptProcessing).toHaveBeenCalledWith(
+        'token',
+        'receipt-1',
+      );
+    });
+
+    fetchAdminReceiptProcessingDetail.mockResolvedValue(buildReceiptAudit());
+    reprocessAdminReceiptProcessing.mockResolvedValue(buildReceiptAudit());
+
+    render(<AdminReceiptAuditPage />);
+
+    expect(await screen.findByText('Reprocessar')).toBeTruthy();
+    const reprocessButtons = screen.getAllByText('Reprocessar');
+    fireEvent.click(reprocessButtons[reprocessButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(reprocessAdminReceiptProcessing).toHaveBeenCalledWith(
+        'token',
+        'receipt-1',
+      );
+    });
   });
 
   it('renders admin users and supports premium and token actions', async () => {
@@ -598,7 +816,7 @@ describe('Admin dashboard pages', () => {
     render(<AdminUsersPage />);
 
     expect((await screen.findAllByText('Usuarios')).length).toBeGreaterThan(0);
-    expect(screen.getByText('Cliente Teste')).toBeTruthy();
+    expect(screen.getAllByText('Cliente Teste').length).toBeGreaterThan(0);
     expect(screen.getByText('Sao Paulo - SP')).toBeTruthy();
     expect(screen.getByText('2 creditos disponiveis')).toBeTruthy();
     expect(screen.getByText('Billing desativado')).toBeTruthy();

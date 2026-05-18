@@ -389,7 +389,7 @@ async function main() {
         brandName: 'Kicaldo',
         packageLabel: '1 kg',
         imageUrl:
-          'https://images.unsplash.com/photo-1604152135912-04a022e23696?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/e8f5e9/14532d?text=Feijao+Kicaldo+1kg',
       },
       {
         product: seededProducts[0],
@@ -398,7 +398,7 @@ async function main() {
         brandName: 'Camil',
         packageLabel: '1 kg',
         imageUrl:
-          'https://images.unsplash.com/photo-1604152135912-04a022e23696?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/ecfdf5/047857?text=Feijao+Camil+1kg',
       },
       {
         product: seededProducts[1],
@@ -452,7 +452,7 @@ async function main() {
         brandName: 'Renata',
         packageLabel: '500 g',
         imageUrl:
-          'https://images.unsplash.com/photo-1551462147-37885acc36f1?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/fff7ed/c2410c?text=Macarrao+Renata+500g',
       },
       {
         product: seededProducts[4],
@@ -461,7 +461,7 @@ async function main() {
         brandName: 'Barilla',
         packageLabel: '500 g',
         imageUrl:
-          'https://images.unsplash.com/photo-1551462147-37885acc36f1?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/eff6ff/1d4ed8?text=Macarrao+Barilla+500g',
       },
       {
         product: seededProducts[5],
@@ -506,7 +506,7 @@ async function main() {
         brandName: 'Neve',
         packageLabel: '12 rolos',
         imageUrl:
-          'https://images.unsplash.com/photo-1583947581924-860bda6a26df?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/f8fafc/334155?text=Papel+Neve+12+rolos',
       },
       {
         product: seededProducts[9],
@@ -515,7 +515,7 @@ async function main() {
         brandName: 'Mimmo',
         packageLabel: '12 rolos',
         imageUrl:
-          'https://images.unsplash.com/photo-1583947581924-860bda6a26df?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/f1f5f9/0f766e?text=Papel+Mimmo+12+rolos',
       },
     ].map((entry) =>
       prisma.productVariant.upsert({

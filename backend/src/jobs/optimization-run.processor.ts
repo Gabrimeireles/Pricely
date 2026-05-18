@@ -7,6 +7,7 @@ import { PrismaService } from '../persistence/prisma.service';
 import { StoreOfferRepository } from '../stores/infrastructure/store-offer.repository';
 import { type StoreOfferEntity } from '../stores/domain/store-offer.entity';
 import { OptimizationRunRepository } from '../optimization/infrastructure/optimization-run.repository';
+import { EntitlementsService } from '../users/entitlements.service';
 
 @Injectable()
 export class OptimizationRunProcessor {
@@ -18,6 +19,7 @@ export class OptimizationRunProcessor {
     private readonly storeOfferRepository: StoreOfferRepository,
     private readonly multiMarketOptimizerService: MultiMarketOptimizerService,
     private readonly optimizationRunRepository: OptimizationRunRepository,
+    private readonly entitlementsService: EntitlementsService,
   ) {}
 
   async process(optimizationRunId: string): Promise<void> {
@@ -184,6 +186,10 @@ export class OptimizationRunProcessor {
       }),
       ...optimizedVariantUpdates,
     ]);
+    await this.entitlementsService.consumeOptimizationToken({
+      userId: optimizationRun.userId,
+      optimizationRunId: optimizationRun.id,
+    });
 
     this.logger.log(
       `Optimization run ${optimizationRunId} completed for shopping list ${optimizationRun.shoppingListId} with coverage ${computed.coverageStatus}`,

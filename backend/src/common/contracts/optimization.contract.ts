@@ -20,6 +20,7 @@ export interface OptimizationSelection {
   selectedOfferName?: string;
   selectedVariantName?: string;
   selectedPackageLabel?: string;
+  selectedVariantImageUrl?: string;
   establishmentName?: string;
   establishmentNeighborhood?: string;
   distanceKm?: number;

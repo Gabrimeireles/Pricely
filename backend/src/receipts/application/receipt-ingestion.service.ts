@@ -44,10 +44,29 @@ export class ReceiptIngestionService {
     const qrCodeData = this.qrCodeParserService.parse(
       sanitizedRequest.qrCodeUrl ?? sanitizedRequest.accessKey,
     );
+    const shouldFetchSefaz =
+      !sanitizedRequest.storeName ||
+      !sanitizedRequest.storeCnpj ||
+      !sanitizedRequest.purchaseDate ||
+      !sanitizedRequest.items ||
+      sanitizedRequest.items.length === 0;
+    const sefazExtraction = shouldFetchSefaz
+      ? await this.extractSefazReceipt(
+          qrCodeData.sefazUrl ?? sanitizedRequest.qrCodeUrl,
+        )
+      : {};
     const extractionInput: ReceiptIngestionRequest = {
       ...sanitizedRequest,
+      storeName: sanitizedRequest.storeName ?? sefazExtraction.storeName,
+      storeCnpj: sanitizedRequest.storeCnpj ?? sefazExtraction.storeCnpj,
+      purchaseDate:
+        sanitizedRequest.purchaseDate ?? sefazExtraction.purchaseDate,
       accessKey: sanitizedRequest.accessKey ?? qrCodeData.accessKey,
       qrCodeUrl: qrCodeData.sefazUrl ?? sanitizedRequest.qrCodeUrl,
+      items:
+        sanitizedRequest.items && sanitizedRequest.items.length > 0
+          ? sanitizedRequest.items
+          : sefazExtraction.items,
     };
     const parsedReceipt = this.receiptParserService.parse(extractionInput);
     const storeId = parsedReceipt.storeName
@@ -61,7 +80,7 @@ export class ReceiptIngestionService {
         );
 
         return {
-          id: `rli_${crypto.randomUUID()}`,
+          id: crypto.randomUUID(),
           receiptRecordId: '',
           ean: item.ean,
           rawProductName: item.rawProductName,
@@ -77,7 +96,7 @@ export class ReceiptIngestionService {
       }),
     );
 
-    const receiptRecordId = `rr_${crypto.randomUUID()}`;
+    const receiptRecordId = crypto.randomUUID();
     const now = new Date().toISOString();
     const record: ReceiptRecordEntity = {
       id: receiptRecordId,
@@ -167,6 +186,60 @@ export class ReceiptIngestionService {
       jobId: processingJob.id,
       processingStatus: 'queued',
     };
+  }
+
+  async reprocess(receiptRecordId: string): Promise<ReceiptRecord> {
+    const record = await this.receiptRecordRepository.findById(receiptRecordId);
+    if (!record) {
+      throw new NotFoundException(`Receipt ${receiptRecordId} was not found`);
+    }
+
+    if (record.processingJobId) {
+      await this.processingJobsService.markQueued(record.processingJobId);
+      await this.receiptProcessingQueue.add(
+        'receipt-processing',
+        {
+          receiptRecordId,
+          processingJobId: record.processingJobId,
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'fixed',
+            delay: 2000,
+          },
+          removeOnComplete: 100,
+          removeOnFail: 100,
+        },
+      );
+
+      const updatedRecord =
+        await this.receiptRecordRepository.findById(receiptRecordId);
+
+      return {
+        ...this.projectReceiptRecord(updatedRecord ?? record),
+        jobId: record.processingJobId,
+        processingStatus: 'queued',
+      };
+    }
+
+    return this.releaseForProcessing(receiptRecordId);
+  }
+
+  async rejectManually(
+    receiptRecordId: string,
+    reason = 'manual_admin_rejection',
+  ): Promise<ReceiptRecord> {
+    const record = await this.receiptRecordRepository.findById(receiptRecordId);
+    if (!record) {
+      throw new NotFoundException(`Receipt ${receiptRecordId} was not found`);
+    }
+
+    await this.receiptRecordRepository.markRejected(receiptRecordId, reason);
+    const rejectedRecord =
+      await this.receiptRecordRepository.findById(receiptRecordId);
+
+    return this.projectReceiptRecord(rejectedRecord ?? record);
   }
 
   private async enqueueReceiptProcessing(receiptRecordId: string) {
@@ -306,5 +379,155 @@ export class ReceiptIngestionService {
     }
 
     return undefined;
+  }
+
+  private async extractSefazReceipt(
+    sefazUrl?: string,
+  ): Promise<Partial<ReceiptIngestionRequest>> {
+    if (!sefazUrl) {
+      return {};
+    }
+
+    let url: URL;
+    try {
+      url = new URL(sefazUrl);
+    } catch {
+      return {};
+    }
+
+    if (!url.hostname.includes('fazenda') && !url.hostname.includes('sefaz')) {
+      return {};
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 7000);
+      try {
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            accept: 'text/html,application/xhtml+xml',
+            'user-agent': 'PricelyReceiptParser/1.0',
+          },
+        });
+
+        if (!response.ok) {
+          this.logger.warn(
+            `SEFAZ receipt extraction skipped for ${url.hostname}: HTTP ${response.status}`,
+          );
+          return {};
+        }
+
+        return this.parseSefazHtml(await response.text());
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'unknown SEFAZ extraction error';
+      this.logger.warn(`SEFAZ receipt extraction failed: ${message}`);
+      return {};
+    }
+  }
+
+  private parseSefazHtml(html: string): Partial<ReceiptIngestionRequest> {
+    const text = this.decodeHtml(
+      html
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    );
+    const storeName =
+      this.matchText(text, /Nota Fiscal de Consumidor Eletrônica \(NFC-e\)\s+(.+?)\s+CNPJ:/i) ??
+      this.matchText(text, /Emitente\s+Nome \/ Razão Social\s+CNPJ\s+Inscrição Estadual\s+UF\s+(.+?)\s+\d{14}/i);
+    const storeCnpj = this.matchText(text, /CNPJ:\s*(\d{14})/i);
+    const purchaseDate = this.parseBrazilianDate(
+      this.matchText(text, /Data Emissão\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})/i),
+    );
+    const items = [...html.matchAll(/<tr>\s*<td><h7>([\s\S]*?)<\/h7>\s*\(Código:\s*([^)]+)\)<\/td>\s*<td>Qtde total de ítens:\s*([\d.,]+)<\/td>\s*<td>UN:\s*([^<]+)<\/td>\s*<td>Valor total R\$:\s*R\$\s*([\d.,]+)<\/td>\s*<\/tr>/gi)]
+      .map((match) => {
+        const rawProductName = this.decodeHtml(
+          match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+        );
+        const quantity = this.parseBrazilianQuantity(match[3]);
+        const lineTotal = this.parseBrazilianNumber(match[5]);
+        const unitPrice =
+          quantity > 0 ? Number((lineTotal / quantity).toFixed(2)) : lineTotal;
+
+        return {
+          rawProductName,
+          ean: match[2].trim(),
+          quantity,
+          unitPrice,
+          originalUnitPrice: unitPrice,
+          currency: 'BRL',
+          packageSize: this.inferPackageSize(rawProductName),
+        };
+      })
+      .filter((item) => item.rawProductName && item.unitPrice > 0);
+
+    return {
+      storeName,
+      storeCnpj,
+      purchaseDate,
+      items: items.length > 0 ? items : undefined,
+    };
+  }
+
+  private matchText(text: string, pattern: RegExp): string | undefined {
+    const match = text.match(pattern)?.[1]?.trim();
+    return match ? this.decodeHtml(match).replace(/\s+/g, ' ') : undefined;
+  }
+
+  private parseBrazilianDate(value?: string): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    const match = value.match(
+      /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/,
+    );
+    if (!match) {
+      return undefined;
+    }
+
+    const [, day, month, year, hour, minute, second] = match;
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}-03:00`;
+  }
+
+  private parseBrazilianNumber(value: string): number {
+    const normalized = value.trim().replace(/\./g, '').replace(',', '.');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private parseBrazilianQuantity(value: string): number {
+    const trimmed = value.trim();
+    const normalized = trimmed.includes(',')
+      ? trimmed.replace(/\./g, '').replace(',', '.')
+      : trimmed;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private inferPackageSize(rawProductName: string): string | undefined {
+    const match = rawProductName.match(/\b(\d+(?:[,.]\d+)?)\s*(kg|g|ml|l|un)\b/i);
+    if (!match) {
+      return undefined;
+    }
+
+    return `${match[1].replace(',', '.')} ${match[2].toLowerCase()}`;
+  }
+
+  private decodeHtml(value: string): string {
+    return value
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
   }
 }

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -11,6 +12,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Transform } from 'class-transformer';
 import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
@@ -23,6 +25,38 @@ type UploadedMediaFile = {
   mimetype: string;
   buffer: Buffer;
 };
+
+function transformBrazilianMoney({ value }: { value: unknown }) {
+  if (value === null || value === undefined || value === '') {
+    return value;
+  }
+
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const normalized = value
+    .trim()
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\s+/g, '');
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  const numericValue =
+    normalized.includes(',') &&
+    normalized.lastIndexOf(',') > normalized.lastIndexOf('.')
+      ? normalized.replace(/\./g, '').replace(',', '.')
+      : normalized.replace(/,/g, '');
+  const parsed = Number(numericValue);
+
+  return Number.isFinite(parsed) ? parsed : value;
+}
 
 type AuthenticatedAdminRequest = {
   user: {
@@ -84,8 +118,9 @@ class CreateEstablishmentDto {
   @IsString()
   cnpj!: string;
 
+  @IsOptional()
   @IsString()
-  cityName!: string;
+  cityName?: string;
 
   @IsString()
   neighborhood!: string;
@@ -230,16 +265,19 @@ class CreateOfferDto {
   @IsString()
   packageLabel!: string;
 
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   priceAmount!: number;
 
   @IsOptional()
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   basePriceAmount?: number;
 
   @IsOptional()
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   promotionalPriceAmount?: number;
@@ -289,16 +327,19 @@ class UpdateOfferDto {
   packageLabel?: string;
 
   @IsOptional()
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   priceAmount?: number;
 
   @IsOptional()
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   basePriceAmount?: number;
 
   @IsOptional()
+  @Transform(transformBrazilianMoney)
   @IsNumber()
   @Min(0)
   promotionalPriceAmount?: number;
@@ -343,6 +384,12 @@ class GrantUserTokensDto {
   reason?: string;
 }
 
+class RejectReceiptDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -369,9 +416,24 @@ export class AdminDashboardController {
     return this.adminDashboardService.listReceiptProcessingReviews();
   }
 
+  @Get('receipt-processing/:id')
+  async getReceiptProcessingReview(@Param('id') id: string) {
+    return this.adminDashboardService.getReceiptProcessingReview(id);
+  }
+
   @Post('receipt-processing/:id/release')
   async releaseReceiptForProcessing(@Param('id') id: string) {
     return this.adminDashboardService.releaseReceiptForProcessing(id);
+  }
+
+  @Post('receipt-processing/:id/reprocess')
+  async reprocessReceipt(@Param('id') id: string) {
+    return this.adminDashboardService.reprocessReceipt(id);
+  }
+
+  @Post('receipt-processing/:id/reject')
+  async rejectReceipt(@Param('id') id: string, @Body() body: RejectReceiptDto) {
+    return this.adminDashboardService.rejectReceipt(id, body.reason);
   }
 
   @Get('queue-health')
@@ -463,6 +525,11 @@ export class AdminDashboardController {
     return this.adminDashboardService.updateProduct(id, body);
   }
 
+  @Delete('catalog-products/:id')
+  async deleteProduct(@Param('id') id: string) {
+    return this.adminDashboardService.deleteProduct(id);
+  }
+
   @Post('catalog-products/:id/image')
   @UseInterceptors(FileInterceptor('file'))
   async uploadCatalogProductImage(
@@ -488,6 +555,11 @@ export class AdminDashboardController {
     @Body() body: UpdateProductVariantDto,
   ) {
     return this.adminDashboardService.updateProductVariant(id, body);
+  }
+
+  @Delete('product-variants/:id')
+  async deleteProductVariant(@Param('id') id: string) {
+    return this.adminDashboardService.deleteProductVariant(id);
   }
 
   @Post('product-variants/:id/image')

@@ -101,10 +101,6 @@ export class OptimizationResultService {
         preferredEstablishmentId: request.preferredEstablishmentId ?? null,
         jobId: processingJob.id,
       });
-    await this.entitlementsService.consumeOptimizationToken({
-      userId,
-      optimizationRunId: optimizationRun.id,
-    });
 
     await this.optimizationQueue.add(
       'optimization-generated',
@@ -186,13 +182,13 @@ export class OptimizationResultService {
 
     if (!preference) {
       throw new BadRequestException(
-        'Configure a location preference before using local optimization modes',
+        'Configure uma localizacao antes de usar modos de otimizacao local',
       );
     }
 
     if (preference.latitude === null || preference.longitude === null) {
       throw new BadRequestException(
-        'Local optimization requires a saved location with latitude and longitude',
+        'A otimizacao local exige uma localizacao salva com latitude e longitude',
       );
     }
 
@@ -205,7 +201,7 @@ export class OptimizationResultService {
       !Number.isFinite(Number(coverageRadiusKm))
     ) {
       throw new BadRequestException(
-        'Coverage radius must be between 1 and 25 km',
+        'O raio de cobertura precisa estar entre 1 e 25 km',
       );
     }
     const candidateEstablishmentCount =
@@ -218,7 +214,7 @@ export class OptimizationResultService {
 
     if (candidateEstablishmentCount === 0) {
       throw new BadRequestException(
-        'No active establishments with coordinates are available inside the selected coverage radius',
+        'Nenhum estabelecimento ativo com coordenadas foi encontrado dentro do raio selecionado',
       );
     }
 
@@ -353,6 +349,8 @@ export class OptimizationResultService {
           selectedPackageLabel:
             selection.productOffer?.productVariant?.packageLabel ??
             selection.productOffer?.packageLabel,
+          selectedVariantImageUrl:
+            selection.productOffer?.productVariant?.imageUrl ?? undefined,
           establishmentName: selection.productOffer?.establishment.unitName,
           establishmentNeighborhood:
             selection.productOffer?.establishment.neighborhood,

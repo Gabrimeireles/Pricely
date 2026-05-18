@@ -56,7 +56,7 @@ describe('Receipt ingestion integration', () => {
         dataNotice:
           'Prices and receipt data are based on receipts provided by users.',
       });
-      expect(response.body.id).toEqual(expect.stringContaining('rr_'));
+      expect(response.body.id).toEqual(expect.stringMatching(/^[0-9a-f-]{36}$/));
       expect(response.body.jobId).toBeUndefined();
       expect(response.body.confidenceScore).toBeGreaterThan(0.8);
       expect(queues.receiptQueue.add).not.toHaveBeenCalled();
@@ -95,6 +95,20 @@ describe('Receipt ingestion integration', () => {
       expect(receipt.body.jobId).toBeUndefined();
       expect(queues.receiptQueue.add).not.toHaveBeenCalled();
 
+      const receiptAudit = await request(app.getHttpServer())
+        .get(`/admin/receipt-processing/${receipt.body.id}`)
+        .set('Authorization', `Bearer ${admin.accessToken}`)
+        .expect(200);
+
+      expect(receiptAudit.body).toMatchObject({
+        id: receipt.body.id,
+        storeName: 'Mercado Manual',
+        processingJob: null,
+        extractedPayload: expect.objectContaining({
+          lineItemCount: 1,
+        }),
+      });
+
       const released = await request(app.getHttpServer())
         .post(`/admin/receipt-processing/${receipt.body.id}/release`)
         .set('Authorization', `Bearer ${admin.accessToken}`)
@@ -112,6 +126,32 @@ describe('Receipt ingestion integration', () => {
         reviewReason: 'receipt_reward_granted',
       });
       expect(queues.receiptQueue.add).toHaveBeenCalledTimes(1);
+
+      const reprocessed = await request(app.getHttpServer())
+        .post(`/admin/receipt-processing/${receipt.body.id}/reprocess`)
+        .set('Authorization', `Bearer ${admin.accessToken}`)
+        .expect(201);
+
+      expect(reprocessed.body).toMatchObject({
+        id: receipt.body.id,
+        processingStatus: 'queued',
+        jobId: released.body.jobId,
+      });
+      expect(queues.receiptQueue.add).toHaveBeenCalledTimes(2);
+
+      const rejected = await request(app.getHttpServer())
+        .post(`/admin/receipt-processing/${receipt.body.id}/reject`)
+        .set('Authorization', `Bearer ${admin.accessToken}`)
+        .send({ reason: 'manual_admin_rejection' })
+        .expect(201);
+
+      expect(rejected.body).toMatchObject({
+        id: receipt.body.id,
+        trustLevel: 'rejected',
+        moderationStatus: 'rejected',
+        rewardEligibilityStatus: 'ineligible',
+        reviewReason: 'manual_admin_rejection',
+      });
     } finally {
       await app.close();
     }

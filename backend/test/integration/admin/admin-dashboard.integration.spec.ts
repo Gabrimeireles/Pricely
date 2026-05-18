@@ -4,6 +4,10 @@ import request from 'supertest';
 
 import { AdminModule } from '../../../src/admin/admin.module';
 import { AuthModule } from '../../../src/auth/auth.module';
+import {
+  OPTIMIZATION_QUEUE,
+  RECEIPT_PROCESSING_QUEUE,
+} from '../../../src/common/queue/queue.tokens';
 import { HttpExceptionFilter } from '../../../src/common/errors/http-exception.filter';
 import { AppValidationPipe } from '../../../src/common/validation/validation.pipe';
 import { PrismaService } from '../../../src/persistence/prisma.service';
@@ -147,6 +151,24 @@ class AdminPrismaMock {
   readonly region = {
     count: async () => 1,
     findMany: async () => this.regions,
+    findUnique: async ({
+      where,
+      select,
+    }: {
+      where: { id: string };
+      select?: { name?: boolean };
+    }) => {
+      const region = this.regions.find((entry) => entry.id === where.id);
+      if (!region) {
+        return null;
+      }
+
+      if (select?.name) {
+        return { name: region.name };
+      }
+
+      return region;
+    },
     create: async ({ data }: { data: any }) => {
       const region = {
         id: crypto.randomUUID(),
@@ -235,6 +257,10 @@ describe('Admin dashboard integration', () => {
     })
       .overrideProvider(PrismaService)
       .useValue(prismaMock)
+      .overrideProvider(RECEIPT_PROCESSING_QUEUE)
+      .useValue({ add: jest.fn(), close: jest.fn() })
+      .overrideProvider(OPTIMIZATION_QUEUE)
+      .useValue({ add: jest.fn(), close: jest.fn() })
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -424,7 +450,8 @@ describe('Admin dashboard integration', () => {
         establishmentId: createEstablishment.body.id,
         displayName: 'Cafe Pilao 500g',
         packageLabel: '500 g',
-        priceAmount: 15.9,
+        priceAmount: 'R$ 15,90',
+        basePriceAmount: '18,90',
         availabilityStatus: 'available',
         confidenceLevel: 'high',
       })
@@ -433,6 +460,8 @@ describe('Admin dashboard integration', () => {
     expect(createOffer.body).toEqual(
       expect.objectContaining({
         displayName: 'Cafe Pilao 500g',
+        priceAmount: 15.9,
+        basePriceAmount: 18.9,
       }),
     );
 

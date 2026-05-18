@@ -83,6 +83,7 @@ type OptimizationResultApiResponse = {
     selectedOfferName?: string;
     selectedVariantName?: string;
     selectedPackageLabel?: string;
+    selectedVariantImageUrl?: string;
     establishmentName?: string;
     establishmentNeighborhood?: string;
     distanceKm?: number;
@@ -573,6 +574,7 @@ type AdminShoppingListAuditResponse = {
   city?: string;
   latestOptimization?: {
     id: string;
+    jobId?: string | null;
     mode: OptimizationModeId;
     status: string;
     estimatedSavings: number;
@@ -768,7 +770,23 @@ async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    const message = await response.text();
+    const payload = await response.text();
+    let message = payload;
+
+    try {
+      const parsed = JSON.parse(payload) as {
+        message?: string | string[];
+        error?: { message?: string | string[] } | string;
+      };
+      const parsedMessage =
+        typeof parsed.error === 'object' ? parsed.error.message : parsed.message;
+      message = Array.isArray(parsedMessage)
+        ? parsedMessage.join('; ')
+        : parsedMessage || message;
+    } catch {
+      message = payload;
+    }
+
     throw new Error(message || `Request failed with status ${response.status}`);
   }
 
@@ -1118,12 +1136,52 @@ export async function fetchAdminReceiptProcessing(token: string) {
   );
 }
 
+export async function fetchAdminReceiptProcessingDetail(
+  token: string,
+  id: string,
+) {
+  return apiFetch<AdminReceiptProcessingResponse>(
+    `/admin/receipt-processing/${id}`,
+    {},
+    token,
+  );
+}
+
 export async function releaseAdminReceiptProcessing(token: string, id: string) {
   return apiFetch<ReceiptSubmissionResponse>(
     `/admin/receipt-processing/${id}/release`,
     {
       method: 'POST',
       body: JSON.stringify({}),
+    },
+    token,
+  );
+}
+
+export async function reprocessAdminReceiptProcessing(
+  token: string,
+  id: string,
+) {
+  return apiFetch<ReceiptSubmissionResponse>(
+    `/admin/receipt-processing/${id}/reprocess`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
+    token,
+  );
+}
+
+export async function rejectAdminReceiptProcessing(
+  token: string,
+  id: string,
+  reason = 'manual_admin_rejection',
+) {
+  return apiFetch<ReceiptSubmissionResponse>(
+    `/admin/receipt-processing/${id}/reject`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
     },
     token,
   );
@@ -1278,6 +1336,16 @@ export async function updateAdminProduct(
   );
 }
 
+export async function deleteAdminProduct(token: string, id: string) {
+  return apiFetch<AdminProductResponse>(
+    `/admin/catalog-products/${id}`,
+    {
+      method: 'DELETE',
+    },
+    token,
+  );
+}
+
 export async function uploadAdminProductImage(
   token: string,
   id: string,
@@ -1327,6 +1395,16 @@ export async function updateAdminProductVariant(
     {
       method: 'PATCH',
       body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function deleteAdminProductVariant(token: string, id: string) {
+  return apiFetch<AdminProductVariantResponse>(
+    `/admin/product-variants/${id}`,
+    {
+      method: 'DELETE',
     },
     token,
   );

@@ -158,9 +158,9 @@ describe('public pages', () => {
           element?.textContent?.includes('SP') == true,
       ),
     ).toBeTruthy();
-    expect(screen.getByText(/0 estabelecimentos ativos/)).toBeTruthy();
+    expect(screen.getAllByText(/Em ativa/).length).toBeGreaterThan(0);
     expect(screen.getByText('Piloto')).toBeTruthy();
-    expect(screen.getByText(/Cidade em ativação/)).toBeTruthy();
+    expect(screen.getByText(/As ofertas aparecem/)).toBeTruthy();
     expect(screen.getByText('Unidade Vila Mariana')).toBeTruthy();
     expect(screen.getByText('Unidade Pinheiros')).toBeTruthy();
   });
@@ -430,7 +430,8 @@ describe('public pages', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Arroz tipo 1 5kg')).toBeTruthy();
+    expect(await screen.findByText('Arroz Camil tipo 1 5kg')).toBeTruthy();
+    expect(screen.getByText('Arroz tipo 1 5kg')).toBeTruthy();
     expect(screen.getByText('2 estabelecimentos')).toBeTruthy();
     expect(
       screen.getByText(/Menor preço em Unidade Vila Mariana/),

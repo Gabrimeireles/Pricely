@@ -6,6 +6,18 @@ describe('RegionsAdminService', () => {
       region: {
         findMany: jest.fn().mockResolvedValue([
           {
+            id: 'region-2',
+            slug: 'campinas-sp',
+            name: 'Campinas',
+            stateCode: 'SP',
+            implantationStatus: 'activating',
+            publicSortOrder: 0,
+            _count: {
+              establishments: 1,
+            },
+            establishments: [],
+          },
+          {
             id: 'region-1',
             slug: 'sao-paulo-sp',
             name: 'Sao Paulo',
@@ -56,10 +68,20 @@ describe('RegionsAdminService', () => {
           },
         ],
       },
+      {
+        id: 'region-2',
+        slug: 'campinas-sp',
+        name: 'Campinas',
+        stateCode: 'SP',
+        implantationStatus: 'activating',
+        publicSortOrder: 0,
+        activeEstablishmentsCount: 1,
+        establishments: [],
+      },
     ]);
 
     expect(prisma.region.findMany).toHaveBeenCalledWith({
-      orderBy: [{ publicSortOrder: 'asc' }, { name: 'asc' }],
+      orderBy: [{ name: 'asc' }],
       include: {
         _count: {
           select: {

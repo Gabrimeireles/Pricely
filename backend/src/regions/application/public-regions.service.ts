@@ -16,7 +16,7 @@ export class PublicRegionsService {
           not: 'inactive',
         },
       },
-      orderBy: [{ publicSortOrder: 'asc' }, { name: 'asc' }],
+      orderBy: [{ name: 'asc' }],
       include: {
         establishments: {
           where: {
@@ -58,6 +58,17 @@ export class PublicRegionsService {
           offerCount: establishment.productOffers.length,
         })),
       };
+    }).sort((first, second) => {
+      const activeStoreDiff =
+        second.activeEstablishmentCount - first.activeEstablishmentCount;
+
+      if (activeStoreDiff !== 0) {
+        return activeStoreDiff;
+      }
+
+      return `${first.name}-${first.stateCode}`.localeCompare(
+        `${second.name}-${second.stateCode}`,
+      );
     });
 
     this.logger.log(

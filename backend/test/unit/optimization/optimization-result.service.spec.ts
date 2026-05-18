@@ -53,12 +53,13 @@ function createService(prismaOverrides: Record<string, unknown> = {}) {
     processingJobsService,
     optimizationRunRepository,
     optimizationQueue,
+    entitlementsService,
   };
 }
 
 describe('OptimizationResultService location-aware validation', () => {
   it('rejects local optimization when the user has no saved location preference', async () => {
-    const { service, processingJobsService } = createService();
+    const { service, processingJobsService, entitlementsService } = createService();
 
     await expect(
       service.createOptimizationRun('user-1', 'list-1', {
@@ -67,10 +68,11 @@ describe('OptimizationResultService location-aware validation', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(processingJobsService.createQueuedJob).not.toHaveBeenCalled();
+    expect(entitlementsService.consumeOptimizationToken).not.toHaveBeenCalled();
   });
 
   it('rejects local optimization when the saved radius has no active geocoded stores', async () => {
-    const { service, prisma, optimizationQueue } = createService();
+    const { service, prisma, optimizationQueue, entitlementsService } = createService();
     prisma.userLocationPreference.findFirst.mockResolvedValue({
       id: 'location-1',
       latitude: { toString: () => '-23.566000' },
@@ -91,11 +93,17 @@ describe('OptimizationResultService location-aware validation', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(optimizationQueue.add).not.toHaveBeenCalled();
+    expect(entitlementsService.consumeOptimizationToken).not.toHaveBeenCalled();
   });
 
   it('queues local optimization with a location snapshot when coverage is available', async () => {
-    const { service, prisma, processingJobsService, optimizationRunRepository } =
-      createService();
+    const {
+      service,
+      prisma,
+      processingJobsService,
+      optimizationRunRepository,
+      entitlementsService,
+    } = createService();
     prisma.userLocationPreference.findFirst.mockResolvedValue({
       id: 'location-1',
       latitude: { toString: () => '-23.566000' },
@@ -135,5 +143,6 @@ describe('OptimizationResultService location-aware validation', () => {
         candidateEstablishmentCount: 1,
       }),
     );
+    expect(entitlementsService.consumeOptimizationToken).not.toHaveBeenCalled();
   });
 });

@@ -136,7 +136,7 @@ describe('OptimizationPage', () => {
       screen.getByText('Recomendação pronta para virar checklist'),
     ).toBeTruthy();
     expect(
-      screen.getByText('Selecionado: Cafe Pilao 500g · 500 g'),
+      screen.getByText('Selecionado: Cafe Pilao 500g'),
     ).toBeTruthy();
     expect(document.body.textContent).toMatch(/Confian[cç]a alta/);
     expect(screen.getByText('78/100')).toBeTruthy();

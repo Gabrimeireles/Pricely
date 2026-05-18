@@ -16,6 +16,7 @@ describe('OptimizationRunProcessor', () => {
       storeOfferRepository as never,
       multiMarketOptimizerService as never,
       optimizationRunRepository as never,
+      { consumeOptimizationToken: jest.fn() } as never,
     );
 
     await expect(processor.process('missing-run')).resolves.toBeUndefined();
@@ -103,6 +104,9 @@ describe('OptimizationRunProcessor', () => {
         regionId: 'region-1',
       }),
     };
+    const entitlementsService = {
+      consumeOptimizationToken: jest.fn().mockResolvedValue(undefined),
+    };
 
     const processor = new OptimizationRunProcessor(
       prisma as never,
@@ -110,6 +114,7 @@ describe('OptimizationRunProcessor', () => {
       storeOfferRepository as never,
       multiMarketOptimizerService as never,
       optimizationRunRepository as never,
+      entitlementsService as never,
     );
 
     await processor.process('run-1');
@@ -161,6 +166,10 @@ describe('OptimizationRunProcessor', () => {
       data: { status: 'ready' },
     });
     expect(transaction).toHaveBeenCalledTimes(1);
+    expect(entitlementsService.consumeOptimizationToken).toHaveBeenCalledWith({
+      userId: 'user-1',
+      optimizationRunId: 'run-1',
+    });
   });
 
   it('uses catalog-backed list items to load offers even when normalizedName is broader than the product canonical name', async () => {
@@ -229,6 +238,7 @@ describe('OptimizationRunProcessor', () => {
       storeOfferRepository as never,
       multiMarketOptimizerService as never,
       optimizationRunRepository as never,
+      { consumeOptimizationToken: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     await processor.process('run-1');
@@ -335,6 +345,7 @@ describe('OptimizationRunProcessor', () => {
       storeOfferRepository as never,
       multiMarketOptimizerService as never,
       optimizationRunRepository as never,
+      { consumeOptimizationToken: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     await processor.process('run-1');
@@ -448,6 +459,7 @@ describe('OptimizationRunProcessor', () => {
       storeOfferRepository as never,
       multiMarketOptimizerService as never,
       optimizationRunRepository as never,
+      { consumeOptimizationToken: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     await processor.process('run-1');
