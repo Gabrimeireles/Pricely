@@ -71,7 +71,7 @@ jobs:
       VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://apipricely.grmeireles.dev' }}
       VITE_ALLOWED_HOSTS: ${{ vars.VITE_ALLOWED_HOSTS || 'pricely.grmeireles.dev' }}
       VITE_ALLOW_ALL_HOSTS: ${{ vars.VITE_ALLOW_ALL_HOSTS || 'true' }}
-      NODE_ENV: ${{ vars.NODE_ENV || 'development' }}
+      NODE_ENV: ${{ vars.NODE_ENV || 'production' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -224,14 +224,14 @@ jobs:
           docker compose --env-file .env up -d --force-recreate backend web
           docker compose --env-file .env ps
 
-          echo "Waiting for web preview..."
+          echo "Waiting for web production server..."
           for attempt in $(seq 1 30); do
             if docker compose --env-file .env exec -T web sh -lc \
-              "test -f dist/index.html && node -e \"fetch('http://127.0.0.1:5173').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\"" </dev/null; then
+              "test -f /usr/share/nginx/html/index.html && wget -qO- http://127.0.0.1:5173 >/dev/null" </dev/null; then
               break
             fi
             if [ "$attempt" -eq 30 ]; then
-              echo "Web preview did not become ready"
+              echo "Web production server did not become ready"
               docker compose --env-file .env logs --tail=120 web
               exit 1
             fi
@@ -239,7 +239,7 @@ jobs:
           done
 
           docker compose --env-file .env exec -T web sh -lc \
-            "printenv | sort | grep -E '^(VITE_|NODE_ENV)'; sed -n '1,20p' dist/index.html" </dev/null
+            "printenv | sort | grep -E '^(VITE_|NODE_ENV)'; sed -n '1,20p' /usr/share/nginx/html/index.html" </dev/null
           docker image prune -f
           ENDSSH
 
