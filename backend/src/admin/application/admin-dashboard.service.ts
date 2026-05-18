@@ -1256,9 +1256,7 @@ export class AdminDashboardService {
   }
 
   async deleteProduct(id: string) {
-    const deleted = await this.catalogProductsService.updateProduct(id, {
-      isActive: false,
-    });
+    const deleted = await this.catalogProductsService.deleteProduct(id);
 
     this.logger.log(`Admin deactivated catalog product ${id}`);
 
@@ -1326,9 +1324,7 @@ export class AdminDashboardService {
   }
 
   async deleteProductVariant(id: string) {
-    const deleted = await this.catalogProductsService.updateVariant(id, {
-      isActive: false,
-    });
+    const deleted = await this.catalogProductsService.deleteVariant(id);
 
     this.logger.log(`Admin deactivated product variant ${id}`);
 

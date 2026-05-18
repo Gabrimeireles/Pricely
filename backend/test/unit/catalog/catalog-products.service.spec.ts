@@ -90,4 +90,101 @@ describe('CatalogProductsService', () => {
       orderBy: [{ brandName: 'asc' }, { displayName: 'asc' }],
     });
   });
+
+  it('soft deletes a catalog product with its active variants and offers', async () => {
+    const prisma = {
+      catalogProduct: {
+        update: jest.fn().mockResolvedValue({
+          id: 'product-1',
+          isActive: false,
+        }),
+      },
+      productVariant: {
+        updateMany: jest.fn().mockResolvedValue({ count: 2 }),
+      },
+      productOffer: {
+        updateMany: jest.fn().mockResolvedValue({ count: 3 }),
+      },
+      $transaction: jest.fn((operations: Array<Promise<unknown>>) =>
+        Promise.all(operations),
+      ),
+    };
+
+    const service = new CatalogProductsService(prisma as never);
+
+    await expect(service.deleteProduct('product-1')).resolves.toEqual(
+      expect.objectContaining({
+        id: 'product-1',
+        isActive: false,
+      }),
+    );
+
+    expect(prisma.catalogProduct.update).toHaveBeenCalledWith({
+      where: { id: 'product-1' },
+      data: { isActive: false },
+      include: {
+        aliases: true,
+      },
+    });
+    expect(prisma.productVariant.updateMany).toHaveBeenCalledWith({
+      where: {
+        catalogProductId: 'product-1',
+        isActive: true,
+      },
+      data: {
+        isActive: false,
+      },
+    });
+    expect(prisma.productOffer.updateMany).toHaveBeenCalledWith({
+      where: {
+        catalogProductId: 'product-1',
+        isActive: true,
+      },
+      data: {
+        availabilityStatus: 'unavailable',
+        isActive: false,
+      },
+    });
+  });
+
+  it('soft deletes a product variant and removes its active offers from circulation', async () => {
+    const prisma = {
+      productVariant: {
+        update: jest.fn().mockResolvedValue({
+          id: 'variant-1',
+          isActive: false,
+        }),
+      },
+      productOffer: {
+        updateMany: jest.fn().mockResolvedValue({ count: 2 }),
+      },
+      $transaction: jest.fn((operations: Array<Promise<unknown>>) =>
+        Promise.all(operations),
+      ),
+    };
+
+    const service = new CatalogProductsService(prisma as never);
+
+    await expect(service.deleteVariant('variant-1')).resolves.toEqual(
+      expect.objectContaining({
+        id: 'variant-1',
+        isActive: false,
+      }),
+    );
+
+    expect(prisma.productVariant.update).toHaveBeenCalledWith({
+      where: { id: 'variant-1' },
+      data: { isActive: false },
+    });
+    expect(prisma.productOffer.updateMany).toHaveBeenCalledWith({
+      where: {
+        productVariantId: 'variant-1',
+        isActive: true,
+      },
+      data: {
+        availabilityStatus: 'unavailable',
+        isActive: false,
+      },
+    });
+  });
 });

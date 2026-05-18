@@ -37,6 +37,8 @@ const fetchAdminOffers = vi.fn();
 const fetchAdminProducts = vi.fn();
 const fetchAdminProductVariants = vi.fn();
 const createAdminOffer = vi.fn();
+const deleteAdminProduct = vi.fn();
+const deleteAdminProductVariant = vi.fn();
 const fetchAdminUsers = vi.fn();
 const setAdminUserPremium = vi.fn();
 const grantAdminUserTokens = vi.fn();
@@ -89,6 +91,9 @@ vi.mock('@/app/api', () => ({
   createAdminOffer: (...args: unknown[]) => createAdminOffer(...args),
   createAdminProduct: vi.fn(),
   createAdminProductVariant: vi.fn(),
+  deleteAdminProduct: (...args: unknown[]) => deleteAdminProduct(...args),
+  deleteAdminProductVariant: (...args: unknown[]) =>
+    deleteAdminProductVariant(...args),
   updateAdminOffer: vi.fn(),
   updateAdminProduct: vi.fn(),
   updateAdminProductVariant: vi.fn(),
@@ -195,6 +200,8 @@ describe('Admin dashboard pages', () => {
     fetchAdminOffers.mockReset();
     fetchAdminProducts.mockReset();
     fetchAdminProductVariants.mockReset();
+    deleteAdminProduct.mockReset();
+    deleteAdminProductVariant.mockReset();
     fetchAdminUsers.mockReset();
     setAdminUserPremium.mockReset();
     grantAdminUserTokens.mockReset();
@@ -477,6 +484,11 @@ describe('Admin dashboard pages', () => {
         unitName: 'Mercado Centro',
       },
     ]);
+    deleteAdminProduct.mockResolvedValue({ id: 'product-1', isActive: false });
+    deleteAdminProductVariant.mockResolvedValue({
+      id: 'variant-1',
+      isActive: false,
+    });
 
     render(<AdminCatalogPage />);
 
@@ -494,6 +506,19 @@ describe('Admin dashboard pages', () => {
     });
     await waitFor(() => {
       expect(screen.getAllByText(/Cafe Pilao 500g/).length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByText('Excluir variante'));
+    await waitFor(() => {
+      expect(deleteAdminProductVariant).toHaveBeenCalledWith(
+        'token',
+        'variant-1',
+      );
+    });
+
+    fireEvent.click(screen.getByText('Excluir produto'));
+    await waitFor(() => {
+      expect(deleteAdminProduct).toHaveBeenCalledWith('token', 'product-1');
     });
 
     render(<AdminPricesPage />);
