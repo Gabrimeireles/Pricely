@@ -185,6 +185,63 @@ const optimizationModeCopy: Record<
   },
 };
 
+function parseErrorMessage(value: string) {
+  try {
+    const parsed = JSON.parse(value) as {
+      message?: string | string[];
+      error?: { message?: string | string[] } | string;
+    };
+    const message =
+      typeof parsed.error === 'object' ? parsed.error.message : parsed.message;
+
+    if (Array.isArray(message)) {
+      return message.join('; ');
+    }
+
+    return message ?? value;
+  } catch {
+    return value;
+  }
+}
+
+function toOptimizationError(error: unknown) {
+  const rawMessage =
+    error instanceof Error
+      ? parseErrorMessage(error.message)
+      : 'Não foi possível otimizar a lista.';
+  const normalized = rawMessage
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (
+    normalized.includes('no active establishments') ||
+    normalized.includes('nenhum estabelecimento ativo')
+  ) {
+    return {
+      title: 'Ajuste sua cobertura local',
+      description:
+        'Nao encontramos estabelecimentos ativos com localizacao dentro do raio escolhido. Aumente o raio, salve outro local ou use o modo de menor total na cidade.',
+    };
+  }
+
+  if (
+    normalized.includes('configure uma localizacao') ||
+    normalized.includes('location')
+  ) {
+    return {
+      title: 'Localizacao necessaria',
+      description:
+        'Salve uma localizacao ou CEP antes de usar os modos perto de mim.',
+    };
+  }
+
+  return {
+    title: 'Falha no processamento',
+    description: rawMessage,
+  };
+}
+
 function freshnessBadge(level: FreshnessLevel) {
   if (level === 'fresh') {
     return (
@@ -3387,7 +3444,10 @@ export function OptimizationPage() {
     runOptimization,
     setPreferredMode,
   } = usePricely();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [latestLoadAttemptedFor, setLatestLoadAttemptedFor] = useState<
     string | null
@@ -3421,11 +3481,7 @@ export function OptimizationPage() {
       setPreferredMode(mode);
       await runOptimization(listId, mode);
     } catch (runError) {
-      setError(
-        runError instanceof Error
-          ? runError.message
-          : 'Não foi possível otimizar a lista.',
-      );
+      setError(toOptimizationError(runError));
     } finally {
       setIsRunning(false);
     }
@@ -3550,8 +3606,8 @@ export function OptimizationPage() {
           {error ? (
             <Alert variant="destructive">
               <ShieldAlertIcon />
-              <AlertTitle>Falha no processamento</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
+              <AlertTitle>{error.title}</AlertTitle>
+              <AlertDescription>{error.description}</AlertDescription>
             </Alert>
           ) : null}
 
