@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -42,6 +42,7 @@ describe('OptimizationPage', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    cleanup();
   });
 
   it('renders explicit mode guidance without technical backend copy', () => {
@@ -78,6 +79,49 @@ describe('OptimizationPage', () => {
     ).toBeTruthy();
     expect(screen.queryByText(/backend/i)).toBeNull();
     expect(loadLatestOptimization).toHaveBeenCalledWith('list-1');
+  });
+
+  it('shows actionable local coverage errors instead of raw API JSON', async () => {
+    runOptimization.mockRejectedValue(
+      new Error(
+        JSON.stringify({
+          statusCode: 400,
+          error: {
+            message:
+              'No active establishments with coordinates are available inside the selected coverage radius',
+            error: 'Bad Request',
+            statusCode: 400,
+          },
+          path: '/shopping-lists/list-1/optimize',
+          requestId: 'request-1',
+        }),
+      ),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/otimizacao/list-1']}>
+        <Routes>
+          <Route path="/otimizacao/:listId" element={<OptimizationPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getAllByText('Uma loja perto de mim')[0]);
+
+    expect(
+      await screen.findByText('Ajuste sua cobertura local'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Nao encontramos estabelecimentos ativos com localizacao dentro do raio escolhido. Aumente o raio, salve outro local ou use o modo de menor total na cidade.',
+      ),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toContain('statusCode');
+    expect(document.body.textContent).not.toContain('requestId');
+
+    await waitFor(() => {
+      expect(runOptimization).toHaveBeenCalledWith('list-1', 'local_unique');
+    });
   });
 
   it('loads the latest persisted result and renders shopper-facing PT-BR evidence copy', async () => {
