@@ -76,6 +76,41 @@ export class CatalogProductsService {
     });
   }
 
+  async deleteProduct(id: string) {
+    const [deleted] = await this.prisma.$transaction([
+      this.prisma.catalogProduct.update({
+        where: { id },
+        data: {
+          isActive: false,
+        },
+        include: {
+          aliases: true,
+        },
+      }),
+      this.prisma.productVariant.updateMany({
+        where: {
+          catalogProductId: id,
+          isActive: true,
+        },
+        data: {
+          isActive: false,
+        },
+      }),
+      this.prisma.productOffer.updateMany({
+        where: {
+          catalogProductId: id,
+          isActive: true,
+        },
+        data: {
+          availabilityStatus: 'unavailable',
+          isActive: false,
+        },
+      }),
+    ]);
+
+    return deleted;
+  }
+
   async searchCatalogProducts(query: string) {
     const normalizedQuery = query.trim();
     const searchFilter = normalizedQuery
@@ -171,5 +206,28 @@ export class CatalogProductsService {
       where: { id },
       data: input,
     });
+  }
+
+  async deleteVariant(id: string) {
+    const [deleted] = await this.prisma.$transaction([
+      this.prisma.productVariant.update({
+        where: { id },
+        data: {
+          isActive: false,
+        },
+      }),
+      this.prisma.productOffer.updateMany({
+        where: {
+          productVariantId: id,
+          isActive: true,
+        },
+        data: {
+          availabilityStatus: 'unavailable',
+          isActive: false,
+        },
+      }),
+    ]);
+
+    return deleted;
   }
 }
