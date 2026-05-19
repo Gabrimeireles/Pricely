@@ -3214,18 +3214,22 @@ export function AdminReceiptAuditPage() {
     reload,
   } = useAdminData<AdminReceiptProcessingResponse | null>(loader, null);
   const [acting, setActing] = useState(false);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   const runReceiptAction = async (
     action: (token: string, id: string) => Promise<unknown>,
+    successMessage: string,
   ) => {
     if (!accessToken || !receipt) {
       return;
     }
 
     setActing(true);
+    setActionNotice(null);
     try {
       await action(accessToken, receipt.id);
       await reload();
+      setActionNotice(successMessage);
     } finally {
       setActing(false);
     }
@@ -3275,7 +3279,10 @@ export function AdminReceiptAuditPage() {
                   <Button
                     disabled={acting}
                     onClick={() =>
-                      void runReceiptAction(reprocessAdminReceiptProcessing)
+                      void runReceiptAction(
+                        reprocessAdminReceiptProcessing,
+                        'Nota fiscal reenfileirada para processamento.',
+                      )
                     }
                     size="sm"
                     type="button"
@@ -3288,7 +3295,10 @@ export function AdminReceiptAuditPage() {
                 <Button
                   disabled={acting}
                   onClick={() =>
-                    void runReceiptAction(releaseAdminReceiptProcessing)
+                    void runReceiptAction(
+                      releaseAdminReceiptProcessing,
+                      'Nota fiscal liberada para processamento.',
+                    )
                   }
                   size="sm"
                   type="button"
@@ -3299,7 +3309,12 @@ export function AdminReceiptAuditPage() {
               <Button
                 className="border-destructive/40 text-destructive hover:bg-destructive/10"
                 disabled={acting || receipt.moderationStatus === 'rejected'}
-                onClick={() => void runReceiptAction(rejectAdminReceiptProcessing)}
+                onClick={() =>
+                  void runReceiptAction(
+                    rejectAdminReceiptProcessing,
+                    'Nota fiscal recusada.',
+                  )
+                }
                 size="sm"
                 type="button"
                 variant="outline"
@@ -3310,6 +3325,12 @@ export function AdminReceiptAuditPage() {
           </div>
         </CardHeader>
         <CardContent className="grid gap-4">
+          {actionNotice ? (
+            <Alert>
+              <AlertTitle>Ação registrada</AlertTitle>
+              <AlertDescription>{actionNotice}</AlertDescription>
+            </Alert>
+          ) : null}
           <div className="grid gap-3 md:grid-cols-4">
             <div className="rounded-md border border-border/70 p-3">
               <div className="text-xs text-muted-foreground">Leitura</div>

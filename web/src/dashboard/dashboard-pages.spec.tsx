@@ -931,6 +931,9 @@ describe('Admin dashboard pages', () => {
         'receipt-1',
       );
     });
+    expect(
+      await screen.findByText('Nota fiscal liberada para processamento.'),
+    ).toBeTruthy();
 
     fetchAdminReceiptProcessingDetail.mockResolvedValue(buildReceiptAudit());
     reprocessAdminReceiptProcessing.mockResolvedValue(buildReceiptAudit());
@@ -947,6 +950,40 @@ describe('Admin dashboard pages', () => {
         'receipt-1',
       );
     });
+    expect(
+      await screen.findByText('Nota fiscal reenfileirada para processamento.'),
+    ).toBeTruthy();
+  });
+
+  it('can reject a receipt from the dedicated receipt audit page', async () => {
+    fetchAdminReceiptProcessingDetail.mockResolvedValue(
+      buildReceiptAudit({
+        processingJob: null,
+        moderationStatus: 'pending',
+        trustLevel: 'pending_review',
+        rewardEligibilityStatus: 'disabled',
+      }),
+    );
+    rejectAdminReceiptProcessing.mockResolvedValue(
+      buildReceiptAudit({
+        moderationStatus: 'rejected',
+        trustLevel: 'rejected',
+        reviewReason: 'manual_admin_rejection',
+      }),
+    );
+
+    render(<AdminReceiptAuditPage />);
+
+    expect(await screen.findByText('Auditoria da nota fiscal')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Recusar' }));
+
+    await waitFor(() => {
+      expect(rejectAdminReceiptProcessing).toHaveBeenCalledWith(
+        'token',
+        'receipt-1',
+      );
+    });
+    expect(await screen.findByText('Nota fiscal recusada.')).toBeTruthy();
   });
 
   it('renders admin users and supports premium and token actions', async () => {

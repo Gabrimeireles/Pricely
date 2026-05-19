@@ -172,6 +172,64 @@ describe('OptimizationRunProcessor', () => {
     });
   });
 
+  it('does not consume an optimization token when computation fails before completion', async () => {
+    const transaction = jest.fn().mockResolvedValue([]);
+    const prisma = {
+      optimizationRun: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      optimizationSelection: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        createMany: jest.fn().mockResolvedValue(undefined),
+      },
+      shoppingList: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      $transaction: transaction,
+    };
+    const shoppingListsService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'list-1',
+        items: [{ id: 'item-1', normalizedName: 'arroz' }],
+      }),
+    };
+    const storeOfferRepository = {
+      findByListItems: jest.fn().mockResolvedValue([]),
+    };
+    const multiMarketOptimizerService = {
+      optimize: jest.fn().mockImplementation(() => {
+        throw new Error('No active establishments with coordinates are available');
+      }),
+    };
+    const optimizationRunRepository = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'run-1',
+        userId: 'user-1',
+        shoppingListId: 'list-1',
+        mode: 'global_multi',
+        regionId: 'region-1',
+      }),
+    };
+    const entitlementsService = {
+      consumeOptimizationToken: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const processor = new OptimizationRunProcessor(
+      prisma as never,
+      shoppingListsService as never,
+      storeOfferRepository as never,
+      multiMarketOptimizerService as never,
+      optimizationRunRepository as never,
+      entitlementsService as never,
+    );
+
+    await expect(processor.process('run-1')).rejects.toThrow(
+      'No active establishments with coordinates are available',
+    );
+    expect(transaction).not.toHaveBeenCalled();
+    expect(entitlementsService.consumeOptimizationToken).not.toHaveBeenCalled();
+  });
+
   it('uses catalog-backed list items to load offers even when normalizedName is broader than the product canonical name', async () => {
     const transaction = jest.fn().mockResolvedValue([]);
     const prisma = {
