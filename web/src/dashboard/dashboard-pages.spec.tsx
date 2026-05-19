@@ -37,6 +37,7 @@ const fetchAdminOffers = vi.fn();
 const fetchAdminProducts = vi.fn();
 const fetchAdminProductVariants = vi.fn();
 const createAdminOffer = vi.fn();
+const updateAdminOffer = vi.fn();
 const deleteAdminProduct = vi.fn();
 const deleteAdminProductVariant = vi.fn();
 const fetchAdminUsers = vi.fn();
@@ -94,7 +95,7 @@ vi.mock('@/app/api', () => ({
   deleteAdminProduct: (...args: unknown[]) => deleteAdminProduct(...args),
   deleteAdminProductVariant: (...args: unknown[]) =>
     deleteAdminProductVariant(...args),
-  updateAdminOffer: vi.fn(),
+  updateAdminOffer: (...args: unknown[]) => updateAdminOffer(...args),
   updateAdminProduct: vi.fn(),
   updateAdminProductVariant: vi.fn(),
 }));
@@ -184,6 +185,69 @@ function buildReceiptAudit(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function buildAdminOfferProduct(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'product-1',
+    slug: 'refrigerante',
+    name: 'Refrigerante',
+    category: 'bebidas',
+    defaultUnit: 'un',
+    imageUrl: null,
+    isActive: true,
+    aliases: [],
+    productVariants: [
+      {
+        id: 'variant-1',
+        catalogProductId: 'product-1',
+        slug: 'coca-cola-pet-2l',
+        displayName: 'Coca Cola PET 2L',
+        brandName: 'Coca Cola',
+        variantLabel: null,
+        packageLabel: '2 L',
+        imageUrl: null,
+        isActive: true,
+      },
+    ],
+    _count: { productOffers: 0 },
+    ...overrides,
+  };
+}
+
+function buildAdminOffer(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'offer-1',
+    displayName: 'Coca Cola PET 2L',
+    packageLabel: '2 L',
+    priceAmount: 14.99,
+    basePriceAmount: 16.49,
+    promotionalPriceAmount: 14.99,
+    availabilityStatus: 'available',
+    confidenceLevel: 'high',
+    observedAt: '2026-05-10T04:00:00.000Z',
+    isActive: true,
+    catalogProduct: { id: 'product-1', name: 'Refrigerante' },
+    productVariant: {
+      id: 'variant-1',
+      displayName: 'Coca Cola PET 2L',
+      brandName: 'Coca Cola',
+      packageLabel: '2 L',
+      imageUrl: null,
+    },
+    establishment: {
+      id: 'store-1',
+      unitName: 'Mercado Centro',
+      neighborhood: 'Centro',
+      region: {
+        id: 'region-1',
+        slug: 'sao-paulo-sp',
+        name: 'Sao Paulo',
+        stateCode: 'SP',
+      },
+    },
+    ...overrides,
+  };
+}
+
 describe('Admin dashboard pages', () => {
   beforeEach(() => {
     fetchAdminMetrics.mockReset();
@@ -200,6 +264,8 @@ describe('Admin dashboard pages', () => {
     fetchAdminOffers.mockReset();
     fetchAdminProducts.mockReset();
     fetchAdminProductVariants.mockReset();
+    createAdminOffer.mockReset();
+    updateAdminOffer.mockReset();
     deleteAdminProduct.mockReset();
     deleteAdminProductVariant.mockReset();
     fetchAdminUsers.mockReset();
@@ -530,32 +596,7 @@ describe('Admin dashboard pages', () => {
   });
 
   it('accepts Brazilian currency values when creating admin offers', async () => {
-    fetchAdminProducts.mockResolvedValue([
-      {
-        id: 'product-1',
-        slug: 'refrigerante',
-        name: 'Refrigerante',
-        category: 'bebidas',
-        defaultUnit: 'un',
-        imageUrl: null,
-        isActive: true,
-        aliases: [],
-        productVariants: [
-          {
-            id: 'variant-1',
-            catalogProductId: 'product-1',
-            slug: 'coca-cola-pet-2l',
-            displayName: 'Coca Cola PET 2L',
-            brandName: 'Coca Cola',
-            variantLabel: null,
-            packageLabel: '2 L',
-            imageUrl: null,
-            isActive: true,
-          },
-        ],
-        _count: { productOffers: 0 },
-      },
-    ]);
+    fetchAdminProducts.mockResolvedValue([buildAdminOfferProduct()]);
     fetchAdminOffers.mockResolvedValue([]);
     fetchAdminEstablishments.mockResolvedValue([
       {
@@ -585,6 +626,96 @@ describe('Admin dashboard pages', () => {
         }),
       );
     });
+  });
+
+  it('edits admin offers with Brazilian currency values and confirms the save', async () => {
+    fetchAdminProducts.mockResolvedValue([buildAdminOfferProduct()]);
+    fetchAdminOffers.mockResolvedValue([buildAdminOffer()]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        unitName: 'Mercado Centro',
+      },
+    ]);
+    updateAdminOffer.mockResolvedValue({ id: 'offer-1' });
+
+    render(<AdminPricesPage />);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Ver variantes/ }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
+    fireEvent.change(screen.getByPlaceholderText('Preço efetivo'), {
+      target: { value: 'R$ 15,49' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => {
+      expect(updateAdminOffer).toHaveBeenCalledWith(
+        'token',
+        'offer-1',
+        expect.objectContaining({
+          priceAmount: 15.49,
+        }),
+      );
+    });
+    expect(
+      await screen.findByText('Oferta atualizada com sucesso.'),
+    ).toBeTruthy();
+  });
+
+  it('shows a friendly validation error and does not call the API for invalid admin offer prices', async () => {
+    fetchAdminProducts.mockResolvedValue([buildAdminOfferProduct()]);
+    fetchAdminOffers.mockResolvedValue([]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        unitName: 'Mercado Centro',
+      },
+    ]);
+
+    render(<AdminPricesPage />);
+
+    const selects = await screen.findAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: 'variant-1' } });
+    fireEvent.change(selects[1], { target: { value: 'store-1' } });
+    fireEvent.change(screen.getByPlaceholderText('Preço efetivo'), {
+      target: { value: 'abc' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+
+    expect(await screen.findByText(/Informe valores válidos/)).toBeTruthy();
+    expect(createAdminOffer).not.toHaveBeenCalled();
+    expect(updateAdminOffer).not.toHaveBeenCalled();
+  });
+
+  it('shows friendly backend validation errors without exposing raw JSON', async () => {
+    fetchAdminProducts.mockResolvedValue([buildAdminOfferProduct()]);
+    fetchAdminOffers.mockResolvedValue([]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        unitName: 'Mercado Centro',
+      },
+    ]);
+    createAdminOffer.mockRejectedValue(
+      new Error(
+        '{"statusCode":400,"error":{"message":["priceAmount must not be less than 0"]}}',
+      ),
+    );
+
+    render(<AdminPricesPage />);
+
+    const selects = await screen.findAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: 'variant-1' } });
+    fireEvent.change(selects[1], { target: { value: 'store-1' } });
+    fireEvent.change(screen.getByPlaceholderText('Preço efetivo'), {
+      target: { value: '14,99' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+
+    expect(await screen.findByText(/Preço inválido/)).toBeTruthy();
+    expect(screen.queryByText(/statusCode/)).toBeNull();
   });
 
   it('renders dedicated regions and establishments views', async () => {
