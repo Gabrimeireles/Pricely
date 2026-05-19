@@ -150,6 +150,46 @@ function parseAdminMoneyInput(value: string) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
+function formatAdminOfferSaveError(error: unknown) {
+  const fallback =
+    'Não foi possível salvar a oferta. Verifique os campos e tente novamente.';
+
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(error.message) as {
+      error?: { message?: string | string[] };
+      message?: string | string[];
+    };
+    const messages = parsed.error?.message ?? parsed.message;
+    const normalizedMessages = Array.isArray(messages)
+      ? messages
+      : messages
+        ? [messages]
+        : [];
+
+    if (
+      normalizedMessages.some((message) =>
+        message.toLowerCase().includes('priceamount'),
+      )
+    ) {
+      return 'Preço inválido. Use valores como 14,99 ou 14.99.';
+    }
+
+    if (normalizedMessages.length > 0) {
+      return 'Verifique os campos obrigatórios da oferta e tente novamente.';
+    }
+  } catch {
+    if (error.message.trim() && !error.message.trim().startsWith('{')) {
+      return error.message;
+    }
+  }
+
+  return fallback;
+}
+
 function jobResourceTitle(job: AdminProcessingJobResponse) {
   if (job.shoppingList) {
     return `Lista: ${job.shoppingList.name}`;
@@ -799,6 +839,7 @@ export function AdminPricesPage() {
     null,
   );
   const [mutationError, setMutationError] = useState<string | null>(null);
+  const [mutationSuccess, setMutationSuccess] = useState<string | null>(null);
   const [form, setForm] = useState({
     catalogProductId: '',
     productVariantId: '',
@@ -842,6 +883,7 @@ export function AdminPricesPage() {
       setMutationError(
         'Informe valores válidos. Use 14,99 ou 14.99 para preço.',
       );
+      setMutationSuccess(null);
       return;
     }
 
@@ -858,19 +900,19 @@ export function AdminPricesPage() {
       confidenceLevel: 'high',
     };
 
+    const wasEditing = Boolean(editingOfferId);
+
     try {
       setMutationError(null);
+      setMutationSuccess(null);
       if (editingOfferId) {
         await updateAdminOffer(accessToken, editingOfferId, payload);
       } else {
         await createAdminOffer(accessToken, payload);
       }
     } catch (saveError) {
-      setMutationError(
-        saveError instanceof Error
-          ? saveError.message
-          : 'Não foi possível salvar a oferta.',
-      );
+      setMutationError(formatAdminOfferSaveError(saveError));
+      setMutationSuccess(null);
       return;
     }
     setForm({
@@ -884,6 +926,11 @@ export function AdminPricesPage() {
       promotionalPriceAmount: '',
     });
     setEditingOfferId(null);
+    setMutationSuccess(
+      wasEditing
+        ? 'Oferta atualizada com sucesso.'
+        : 'Oferta criada com sucesso.',
+    );
     await reload();
   };
 
@@ -900,6 +947,12 @@ export function AdminPricesPage() {
             <Alert className="mb-4" variant="destructive">
               <AlertTitle>Falha ao salvar oferta</AlertTitle>
               <AlertDescription>{mutationError}</AlertDescription>
+            </Alert>
+          ) : null}
+          {mutationSuccess ? (
+            <Alert className="mb-4">
+              <AlertTitle>Oferta salva</AlertTitle>
+              <AlertDescription>{mutationSuccess}</AlertDescription>
             </Alert>
           ) : null}
           <form className="grid gap-3 md:grid-cols-6" onSubmit={handleCreate}>
@@ -1134,6 +1187,8 @@ export function AdminPricesPage() {
                                     variant="ghost"
                                     onClick={() => {
                                       setEditingOfferId(offer.id);
+                                      setMutationError(null);
+                                      setMutationSuccess(null);
                                       setForm({
                                         catalogProductId:
                                           offer.catalogProduct.id,
