@@ -350,6 +350,12 @@ describe('public pages', () => {
 
     expect(await screen.findByText('Ofertas por cidade')).toBeTruthy();
     expect(
+      screen.getByText('Nenhuma oferta agrupada disponível'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/Esta cidade está em ativação/),
+    ).toBeTruthy();
+    expect(
       screen.getByText(
         'Campinas. Ofertas públicas mostram loja, frescor, confiança e detalhe completo do item.',
       ),
@@ -443,6 +449,80 @@ describe('public pages', () => {
       screen.getByText(/Média da variante na cidade: R\$ 22,40/),
     ).toBeTruthy();
     expect(screen.getByText('Ver outros estabelecimentos')).toBeTruthy();
+  });
+
+  it('deduplicates regional offers by variant when the API only returns flat offers', async () => {
+    fetchRegionOffers.mockResolvedValue({
+      region: {
+        id: 'sao-paulo-sp',
+        slug: 'sao-paulo-sp',
+        name: 'Sao Paulo',
+        stateCode: 'SP',
+      },
+      activeEstablishmentCount: 2,
+      offerCoverageStatus: 'live',
+      offers: [
+        {
+          id: 'offer-1',
+          catalogProductId: 'product-1',
+          productVariantId: 'variant-1',
+          productName: 'Feijao carioca 1kg',
+          variantName: 'Feijao Carioca Camil 1kg',
+          imageUrl: 'https://example.com/feijao-camil.png',
+          displayName: 'Feijao Carioca Camil 1kg',
+          packageLabel: '1 kg',
+          priceAmount: 7.99,
+          basePriceAmount: 8.79,
+          promotionalPriceAmount: 7.99,
+          regionalAveragePriceAmount: 8.24,
+          comparisonPriceAmount: 8.49,
+          savingsVsComparison: 0.5,
+          observedAt: '2026-05-10T00:00:00.000Z',
+          sourceLabel: 'Nota fiscal',
+          storeName: 'Unidade Santo Amaro',
+          neighborhood: 'Santo Amaro',
+          confidenceLevel: 'high',
+        },
+        {
+          id: 'offer-2',
+          catalogProductId: 'product-1',
+          productVariantId: 'variant-1',
+          productName: 'Feijao carioca 1kg',
+          variantName: 'Feijao Carioca Camil 1kg',
+          imageUrl: 'https://example.com/feijao-camil.png',
+          displayName: 'Feijao Carioca Camil 1kg',
+          packageLabel: '1 kg',
+          priceAmount: 8.49,
+          basePriceAmount: 8.79,
+          promotionalPriceAmount: 8.49,
+          regionalAveragePriceAmount: 8.24,
+          comparisonPriceAmount: 7.99,
+          savingsVsComparison: 0,
+          observedAt: '2026-05-09T00:00:00.000Z',
+          sourceLabel: 'Nota fiscal',
+          storeName: 'Unidade Pinheiros',
+          neighborhood: 'Pinheiros',
+          confidenceLevel: 'medium',
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <OffersPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText('Feijao Carioca Camil 1kg'),
+    ).toBeTruthy();
+    expect(screen.getAllByText('Feijao Carioca Camil 1kg')).toHaveLength(1);
+    expect(screen.getByText('2 estabelecimentos')).toBeTruthy();
+    expect(
+      screen.getByText(/Menor preço em Unidade Santo Amaro/),
+    ).toBeTruthy();
+    expect(screen.getByText('Ver outros estabelecimentos')).toBeTruthy();
+    expect(screen.getAllByText(/Unidade Pinheiros/).length).toBeGreaterThan(0);
   });
 
   it('renders detailed public offer content', async () => {
