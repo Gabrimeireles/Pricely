@@ -19,7 +19,7 @@ function resolveJwtSecret(): string {
       useFactory: async () => ({
         secret: resolveJwtSecret(),
         signOptions: {
-          expiresIn: '7d',
+          expiresIn: Number(process.env.JWT_ACCESS_EXPIRES_IN_SECONDS ?? 900),
         },
       }),
     }),

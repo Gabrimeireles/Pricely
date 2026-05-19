@@ -373,6 +373,7 @@ class PrismaUserAccountMock {
   private readonly userLocationPreferences = new Map<string, any>();
   private readonly userEntitlements: any[] = [];
   private readonly optimizationTokenLedgerEntries = new Map<string, any>();
+  private readonly userSessions = new Map<string, any>();
   private readonly regions = [
     {
       id: 'region-test-1',
@@ -507,6 +508,63 @@ class PrismaUserAccountMock {
       [...this.users.values()]
         .filter((user) => !where?.status || user.status === where.status)
         .map((user) => (select?.id ? { id: user.id } : structuredClone(user))),
+  };
+
+  readonly userSession = {
+    create: async ({ data }: { data: any }) => {
+      const session = {
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        revokedAt: null,
+        ...data,
+      };
+      this.userSessions.set(session.id, session);
+      return structuredClone(session);
+    },
+    findUnique: async ({ where }: { where: any }) => {
+      const session =
+        [...this.userSessions.values()].find(
+          (entry) => entry.refreshTokenHash === where.refreshTokenHash,
+        ) ?? null;
+      if (!session) {
+        return null;
+      }
+      return {
+        ...structuredClone(session),
+        user: this.clone(this.users.get(session.userId) ?? null),
+      };
+    },
+    update: async ({ where, data }: { where: { id: string }; data: any }) => {
+      const existing = this.userSessions.get(where.id);
+      if (!existing) {
+        throw new Error(`Session ${where.id} not found`);
+      }
+      const updated = {
+        ...existing,
+        ...data,
+        updatedAt: new Date(),
+      };
+      this.userSessions.set(updated.id, updated);
+      return structuredClone(updated);
+    },
+    updateMany: async ({ where, data }: { where: any; data: any }) => {
+      let count = 0;
+      for (const [id, session] of this.userSessions.entries()) {
+        if (
+          session.refreshTokenHash === where.refreshTokenHash &&
+          (where.revokedAt === undefined || session.revokedAt === where.revokedAt)
+        ) {
+          this.userSessions.set(id, {
+            ...session,
+            ...data,
+            updatedAt: new Date(),
+          });
+          count += 1;
+        }
+      }
+      return { count };
+    },
   };
 
   private async findUnique(args: {

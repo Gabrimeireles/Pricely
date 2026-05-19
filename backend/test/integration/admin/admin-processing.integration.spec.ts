@@ -14,6 +14,7 @@ import { AppValidationPipe } from '../../../src/common/validation/validation.pip
 import { PrismaService } from '../../../src/persistence/prisma.service';
 
 class AdminProcessingPrismaMock {
+  private readonly sessions = new Map<string, any>();
   private readonly adminUser = {
     id: 'admin-1',
     email: 'admin@pricely.local',
@@ -80,6 +81,42 @@ class AdminProcessingPrismaMock {
         amount: 2,
       },
     }),
+  };
+
+  readonly userSession = {
+    create: async ({ data }: { data: any }) => {
+      const session = {
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        revokedAt: null,
+        ...data,
+      };
+      this.sessions.set(session.id, session);
+      return structuredClone(session);
+    },
+    findUnique: async ({ where }: { where: any }) => {
+      const session =
+        [...this.sessions.values()].find(
+          (entry) => entry.refreshTokenHash === where.refreshTokenHash,
+        ) ?? null;
+      return session
+        ? {
+            ...structuredClone(session),
+            user: this.adminUser,
+          }
+        : null;
+    },
+    update: async ({ where, data }: { where: any; data: any }) => {
+      const session = this.sessions.get(where.id);
+      if (!session) {
+        throw new Error(`Session ${where.id} not found`);
+      }
+      const updated = { ...session, ...data, updatedAt: new Date() };
+      this.sessions.set(updated.id, updated);
+      return structuredClone(updated);
+    },
+    updateMany: async () => ({ count: 0 }),
   };
 
   readonly shoppingList = { count: async () => 2 };

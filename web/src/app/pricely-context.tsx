@@ -21,7 +21,9 @@ import {
   replaceShoppingList,
   reportShoppingListItemPriceMismatch,
   runOptimization as runOptimizationRequest,
+  refreshSession,
   signIn as signInRequest,
+  signOutSession,
   signUp as signUpRequest,
   updatePreferredRegion as updatePreferredRegionRequest,
   updateShoppingListItemPurchaseStatus,
@@ -124,7 +126,6 @@ interface PricelyContextValue {
 }
 
 const STORAGE_KEY = 'pricely-web-state-v2';
-const TOKEN_KEY = 'pricely-auth-token';
 
 const PricelyContext = createContext<PricelyContextValue | null>(null);
 
@@ -222,12 +223,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    const storedToken = window.localStorage.getItem(TOKEN_KEY);
     const rawState = window.localStorage.getItem(STORAGE_KEY);
-
-    if (storedToken) {
-      setToken(storedToken);
-    }
 
     if (rawState) {
       try {
@@ -250,6 +246,37 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         window.localStorage.removeItem(STORAGE_KEY);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const restoreSession = async () => {
+      setIsBootstrapping(true);
+      try {
+        const session = await refreshSession();
+        if (disposed) {
+          return;
+        }
+        applySession(session);
+      } catch {
+        if (!disposed) {
+          setToken(null);
+          setCurrentUser(null);
+          setProfile(emptyProfile());
+        }
+      } finally {
+        if (!disposed) {
+          setIsBootstrapping(false);
+        }
+      }
+    };
+
+    void restoreSession();
+
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -299,7 +326,6 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         setCityIdState(user.preferredRegionSlug ?? null);
       } catch {
         if (!disposed) {
-          window.localStorage.removeItem(TOKEN_KEY);
           setToken(null);
           setLists([]);
           setLocationPreferences([]);
@@ -338,6 +364,18 @@ export function PricelyProvider({ children }: PropsWithChildren) {
     setProfile(mapProfile(updatedUser));
   };
 
+  const applySession = (session: Awaited<ReturnType<typeof signInRequest>>) => {
+    setCurrentUser({
+      id: session.user.id,
+      email: session.user.email,
+      displayName: session.user.displayName,
+      role: session.user.role,
+    });
+    setProfile(mapProfile(session.user));
+    setToken(session.accessToken);
+    setCityIdState(session.user.preferredRegionSlug ?? null);
+  };
+
   const value = useMemo<PricelyContextValue>(
     () => ({
       accessToken: token,
@@ -356,32 +394,14 @@ export function PricelyProvider({ children }: PropsWithChildren) {
       isBootstrapping,
       signIn: async (email, password) => {
         const session = await signInRequest(email, password);
-        window.localStorage.setItem(TOKEN_KEY, session.accessToken);
-        setCurrentUser({
-          id: session.user.id,
-          email: session.user.email,
-          displayName: session.user.displayName,
-          role: session.user.role,
-        });
-        setProfile(mapProfile(session.user));
-        setToken(session.accessToken);
-        setCityIdState(session.user.preferredRegionSlug ?? null);
+        applySession(session);
       },
       signUp: async (email, password, displayName) => {
         const session = await signUpRequest(email, password, displayName);
-        window.localStorage.setItem(TOKEN_KEY, session.accessToken);
-        setCurrentUser({
-          id: session.user.id,
-          email: session.user.email,
-          displayName: session.user.displayName,
-          role: session.user.role,
-        });
-        setProfile(mapProfile(session.user));
-        setToken(session.accessToken);
-        setCityIdState(session.user.preferredRegionSlug ?? null);
+        applySession(session);
       },
       signOut: () => {
-        window.localStorage.removeItem(TOKEN_KEY);
+        void signOutSession().catch(() => undefined);
         setToken(null);
         setCurrentUser(null);
         setLists([]);

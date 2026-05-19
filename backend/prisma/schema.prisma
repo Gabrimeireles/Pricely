@@ -191,7 +191,22 @@ model UserAccount {
   entitlements            UserEntitlement[]
   optimizationTokenLedger OptimizationTokenLedgerEntry[]
   locationPreferences     UserLocationPreference[]
+  sessions                UserSession[]
   preferredRegion         Region?                        @relation("UserPreferredRegion", fields: [preferredRegionId], references: [id], onDelete: SetNull)
+}
+
+model UserSession {
+  id               String      @id @default(uuid()) @db.Uuid
+  userId           String      @db.Uuid
+  refreshTokenHash String      @unique
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  user             UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
 }
 
 model Region {

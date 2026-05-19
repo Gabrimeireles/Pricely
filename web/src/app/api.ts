@@ -8,6 +8,7 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
 
 type AuthSessionResponse = {
   accessToken: string;
+  accessTokenExpiresInSeconds: number;
   user: {
     id: string;
     email: string;
@@ -767,6 +768,7 @@ async function apiFetch<T>(
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     headers,
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -808,6 +810,18 @@ export async function signUp(
   return apiFetch<AuthSessionResponse>('/auth/register', {
     method: 'POST',
     body: JSON.stringify({ email, password, displayName }),
+  });
+}
+
+export async function refreshSession() {
+  return apiFetch<AuthSessionResponse>('/auth/refresh', {
+    method: 'POST',
+  });
+}
+
+export async function signOutSession() {
+  return apiFetch<{ status: 'ok' }>('/auth/logout', {
+    method: 'POST',
   });
 }
 
