@@ -653,6 +653,71 @@ function buildOfferGroupFromOffers(
   };
 }
 
+function groupFlatRegionalOffers(
+  offers: RegionOffersApiResponse['offers'],
+): NonNullable<RegionOffersApiResponse['groupedOffers']> {
+  const grouped = new Map<string, RegionOffersApiResponse['offers']>();
+
+  for (const offer of offers) {
+    const key = offer.productVariantId;
+    grouped.set(key, [...(grouped.get(key) ?? []), offer]);
+  }
+
+  return [...grouped.entries()]
+    .map(([productVariantId, entries]) => {
+      const sorted = [...entries].sort((left, right) => {
+        if (left.priceAmount !== right.priceAmount) {
+          return left.priceAmount - right.priceAmount;
+        }
+
+        return (
+          new Date(right.observedAt).getTime() -
+          new Date(left.observedAt).getTime()
+        );
+      });
+      const bestOffer = sorted[0];
+      const prices = sorted.map((offer) => offer.priceAmount);
+      const secondCheapestPriceAmount = sorted[1]?.priceAmount;
+      const averagePriceAmount = Number(
+        (prices.reduce((sum, price) => sum + price, 0) / prices.length).toFixed(
+          2,
+        ),
+      );
+
+      return {
+        id: productVariantId,
+        catalogProductId: bestOffer.catalogProductId,
+        productVariantId,
+        productName: bestOffer.productName,
+        variantName: bestOffer.variantName,
+        imageUrl: bestOffer.imageUrl,
+        packageLabel: bestOffer.packageLabel,
+        bestOffer,
+        alternativeOffers: sorted.slice(1),
+        offers: sorted,
+        establishmentCount: sorted.length,
+        cheapestPriceAmount: bestOffer.priceAmount,
+        secondCheapestPriceAmount,
+        savingsVsSecondCheapest: Number(
+          Math.max(
+            0,
+            (secondCheapestPriceAmount ?? bestOffer.priceAmount) -
+              bestOffer.priceAmount,
+          ).toFixed(2),
+        ),
+        averagePriceAmount,
+        highestPriceAmount: Math.max(...prices),
+      };
+    })
+    .sort((left, right) => {
+      if (left.productName !== right.productName) {
+        return left.productName.localeCompare(right.productName);
+      }
+
+      return left.cheapestPriceAmount - right.cheapestPriceAmount;
+    });
+}
+
 function RequireAuthentication({
   children,
   title,
@@ -1089,25 +1154,7 @@ export function OffersPage() {
         const response = await fetchRegionOffers(cityId);
         if (!disposed) {
           setOfferGroups(
-            response.groupedOffers ??
-              response.offers.map((offer) => ({
-                id: offer.productVariantId,
-                catalogProductId: offer.catalogProductId,
-                productVariantId: offer.productVariantId,
-                productName: offer.productName,
-                variantName: offer.variantName,
-                imageUrl: offer.imageUrl,
-                packageLabel: offer.packageLabel,
-                bestOffer: offer,
-                alternativeOffers: [],
-                offers: [offer],
-                establishmentCount: 1,
-                cheapestPriceAmount: offer.priceAmount,
-                secondCheapestPriceAmount: undefined,
-                savingsVsSecondCheapest: 0,
-                averagePriceAmount: offer.priceAmount,
-                highestPriceAmount: offer.priceAmount,
-              })),
+            response.groupedOffers ?? groupFlatRegionalOffers(response.offers),
           );
         }
       } catch {
