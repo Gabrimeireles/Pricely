@@ -59,6 +59,16 @@ export class ReceiptIngestionService {
       ...sanitizedRequest,
       storeName: sanitizedRequest.storeName ?? sefazExtraction.storeName,
       storeCnpj: sanitizedRequest.storeCnpj ?? sefazExtraction.storeCnpj,
+      storeAddressLine:
+        sanitizedRequest.storeAddressLine ?? sefazExtraction.storeAddressLine,
+      storeNeighborhood:
+        sanitizedRequest.storeNeighborhood ?? sefazExtraction.storeNeighborhood,
+      storePostalCode:
+        sanitizedRequest.storePostalCode ?? sefazExtraction.storePostalCode,
+      storeCityName:
+        sanitizedRequest.storeCityName ?? sefazExtraction.storeCityName,
+      storeStateCode:
+        sanitizedRequest.storeStateCode ?? sefazExtraction.storeStateCode,
       purchaseDate:
         sanitizedRequest.purchaseDate ?? sefazExtraction.purchaseDate,
       accessKey: sanitizedRequest.accessKey ?? qrCodeData.accessKey,
@@ -104,6 +114,11 @@ export class ReceiptIngestionService {
       storeId,
       storeName: parsedReceipt.storeName,
       storeCnpj: parsedReceipt.storeCnpj,
+      storeAddressLine: parsedReceipt.storeAddressLine,
+      storeNeighborhood: parsedReceipt.storeNeighborhood,
+      storePostalCode: parsedReceipt.storePostalCode,
+      storeCityName: parsedReceipt.storeCityName,
+      storeStateCode: parsedReceipt.storeStateCode,
       accessKey: parsedReceipt.accessKey,
       sefazUrl: parsedReceipt.sefazUrl,
       purchaseDate: parsedReceipt.purchaseDate,
@@ -136,7 +151,8 @@ export class ReceiptIngestionService {
       processingLogs: [...record.processingLogs, ...assessment.logs],
     };
 
-    await this.receiptRecordRepository.create(assessedRecord);
+    const persistedRecord =
+      await this.receiptRecordRepository.create(assessedRecord);
     const processingJob = this.isAutomaticReceiptProcessingEnabled()
       ? await this.enqueueReceiptProcessing(receiptRecordId)
       : null;
@@ -146,20 +162,25 @@ export class ReceiptIngestionService {
     );
 
     return {
-      id: assessedRecord.id,
-      storeId: assessedRecord.storeId,
-      storeName: assessedRecord.storeName,
-      storeCnpj: assessedRecord.storeCnpj,
-      accessKey: assessedRecord.accessKey,
-      sefazUrl: assessedRecord.sefazUrl,
-      purchaseDate: assessedRecord.purchaseDate,
-      parseStatus: assessedRecord.parseStatus,
-      confidenceScore: assessedRecord.confidenceScore,
-      trustLevel: assessedRecord.trustLevel,
-      moderationStatus: assessedRecord.moderationStatus,
-      rewardEligibilityStatus: assessedRecord.rewardEligibilityStatus,
-      ...this.projectReward(assessedRecord.rewardEligibilityStatus),
-      reviewReason: assessedRecord.reviewReason,
+      id: persistedRecord.id,
+      storeId: persistedRecord.storeId,
+      storeName: persistedRecord.storeName,
+      storeCnpj: persistedRecord.storeCnpj,
+      storeAddressLine: persistedRecord.storeAddressLine,
+      storeNeighborhood: persistedRecord.storeNeighborhood,
+      storePostalCode: persistedRecord.storePostalCode,
+      storeCityName: persistedRecord.storeCityName,
+      storeStateCode: persistedRecord.storeStateCode,
+      accessKey: persistedRecord.accessKey,
+      sefazUrl: persistedRecord.sefazUrl,
+      purchaseDate: persistedRecord.purchaseDate,
+      parseStatus: persistedRecord.parseStatus,
+      confidenceScore: persistedRecord.confidenceScore,
+      trustLevel: persistedRecord.trustLevel,
+      moderationStatus: persistedRecord.moderationStatus,
+      rewardEligibilityStatus: persistedRecord.rewardEligibilityStatus,
+      ...this.projectReward(persistedRecord.rewardEligibilityStatus),
+      reviewReason: persistedRecord.reviewReason,
       jobId: processingJob?.id,
       processingStatus: processingJob ? 'queued' : 'waiting_manual_release',
       dataNotice:
@@ -279,6 +300,11 @@ export class ReceiptIngestionService {
       storeId: record.storeId,
       storeName: record.storeName,
       storeCnpj: record.storeCnpj,
+      storeAddressLine: record.storeAddressLine,
+      storeNeighborhood: record.storeNeighborhood,
+      storePostalCode: record.storePostalCode,
+      storeCityName: record.storeCityName,
+      storeStateCode: record.storeStateCode,
       accessKey: record.accessKey,
       sefazUrl: record.sefazUrl,
       purchaseDate: record.purchaseDate,
@@ -444,6 +470,7 @@ export class ReceiptIngestionService {
       this.matchText(text, /Nota Fiscal de Consumidor Eletrônica \(NFC-e\)\s+(.+?)\s+CNPJ:/i) ??
       this.matchText(text, /Emitente\s+Nome \/ Razão Social\s+CNPJ\s+Inscrição Estadual\s+UF\s+(.+?)\s+\d{14}/i);
     const storeCnpj = this.matchText(text, /CNPJ:\s*(\d{14})/i);
+    const storeAddress = this.parseStoreAddress(text);
     const purchaseDate = this.parseBrazilianDate(
       this.matchText(text, /Data Emissão\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})/i),
     );
@@ -472,8 +499,46 @@ export class ReceiptIngestionService {
     return {
       storeName,
       storeCnpj,
+      storeAddressLine: storeAddress?.addressLine,
+      storeNeighborhood: storeAddress?.neighborhood,
+      storePostalCode: storeAddress?.postalCode,
+      storeCityName: storeAddress?.cityName,
+      storeStateCode: storeAddress?.stateCode,
       purchaseDate,
       items: items.length > 0 ? items : undefined,
+    };
+  }
+
+  private parseStoreAddress(text: string):
+    | {
+        addressLine: string;
+        neighborhood: string;
+        postalCode: string;
+        cityName: string;
+        stateCode: string;
+      }
+    | undefined {
+    const match = text.match(
+      /\b([A-ZÀ-Ú0-9 .'/-]+,\s*\d+[A-ZÀ-Ú0-9 .'/-]*,\s*[^,]+,\s*\d{5,8}\s*-\s*[^,]+,\s*[A-Z]{2})\b/i,
+    );
+    const address = match?.[1]
+      ?.replace(/\s+/g, ' ')
+      .replace(/^\d{9,}\s+/, '')
+      .trim();
+    const addressMatch = address?.match(
+      /^(.+?),\s*([^,]+),\s*([^,]+),\s*(\d{5,8})\s*-\s*(.+?),\s*([A-Z]{2})$/i,
+    );
+
+    if (!addressMatch) {
+      return undefined;
+    }
+
+    return {
+      addressLine: `${addressMatch[1].trim()}, ${addressMatch[2].trim()}`,
+      neighborhood: addressMatch[3].trim(),
+      postalCode: addressMatch[4].replace(/\D/g, ''),
+      cityName: addressMatch[5].trim(),
+      stateCode: addressMatch[6].toUpperCase(),
     };
   }
 

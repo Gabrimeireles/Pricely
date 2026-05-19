@@ -24,6 +24,11 @@ describe('ReceiptIngestionService SEFAZ HTML extraction', () => {
       parseSefazHtml(html: string): {
         storeName?: string;
         storeCnpj?: string;
+        storeAddressLine?: string;
+        storeNeighborhood?: string;
+        storePostalCode?: string;
+        storeCityName?: string;
+        storeStateCode?: string;
         purchaseDate?: string;
         items?: Array<{
           rawProductName: string;
@@ -54,6 +59,11 @@ describe('ReceiptIngestionService SEFAZ HTML extraction', () => {
       expect.objectContaining({
         storeName: 'SUPERMERCADO TESTE LTDA',
         storeCnpj: '04641376024400',
+        storeAddressLine: 'AV. LEITE DE CASTRO, 261',
+        storeNeighborhood: 'FABRICAS',
+        storePostalCode: '3162500',
+        storeCityName: 'SAO JOAO DEL REI',
+        storeStateCode: 'MG',
         purchaseDate: '2026-05-15T20:36:48-03:00',
         items: [
           expect.objectContaining({
@@ -81,6 +91,11 @@ describe('ReceiptIngestionService SEFAZ HTML extraction', () => {
       parseSefazHtml(html: string): {
         storeName?: string;
         storeCnpj?: string;
+        storeAddressLine?: string;
+        storeNeighborhood?: string;
+        storePostalCode?: string;
+        storeCityName?: string;
+        storeStateCode?: string;
         purchaseDate?: string;
         items?: Array<{
           rawProductName: string;
@@ -111,6 +126,11 @@ describe('ReceiptIngestionService SEFAZ HTML extraction', () => {
       expect.objectContaining({
         storeName: 'SUPERMERCADO SALES LTDA',
         storeCnpj: '04641376024400',
+        storeAddressLine: 'AV. LEITE DE CASTRO, 261',
+        storeNeighborhood: 'FABRICAS',
+        storePostalCode: '3162500',
+        storeCityName: 'SAO JOAO DEL REI',
+        storeStateCode: 'MG',
         purchaseDate: '2026-05-15T20:36:48-03:00',
         items: [
           expect.objectContaining({

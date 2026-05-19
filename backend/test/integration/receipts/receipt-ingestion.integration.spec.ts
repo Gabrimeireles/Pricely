@@ -73,6 +73,7 @@ describe('Receipt ingestion integration', () => {
             <body>
               Nota Fiscal de Consumidor Eletr&ocirc;nica (NFC-e) SUPERMERCADO ENTITY LTDA
               CNPJ: 04641376024400 -, Inscri&ccedil;&atilde;o Estadual: 0032546124242
+              AV. LEITE DE CASTRO, 261, FABRICAS, 3162500 - SAO JOAO DEL REI, MG
               Data Emiss&#227;o 15/05/2026 20:36:48
               <table>
                 <tr><td><h7>REFR C COLA S/AC 200</h7> (C&oacute;digo: 1462210)</td><td>Qtde total de &iacute;tens: 3.000</td><td>UN: FR</td><td>Valor total R$: R$ 5,94</td></tr>
@@ -108,6 +109,11 @@ describe('Receipt ingestion integration', () => {
       expect(response.body).toMatchObject({
         storeName: 'SUPERMERCADO ENTITY LTDA',
         storeCnpj: '04641376024400',
+        storeAddressLine: 'AV. LEITE DE CASTRO, 261',
+        storeNeighborhood: 'FABRICAS',
+        storePostalCode: '3162500',
+        storeCityName: 'SAO JOAO DEL REI',
+        storeStateCode: 'MG',
         accessKey: '31260504641376024400650100002111701459668768',
         parseStatus: 'parsed',
         processingStatus: 'waiting_manual_release',
