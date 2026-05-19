@@ -32,5 +32,6 @@ export interface AuthenticatedUserProfile {
 
 export interface AuthSessionContract {
   accessToken: string;
+  accessTokenExpiresInSeconds: number;
   user: AuthenticatedUserProfile;
 }

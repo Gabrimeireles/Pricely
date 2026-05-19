@@ -57,8 +57,17 @@ describe('AuthService', () => {
     const jwtService = {
       signAsync: jest.fn().mockResolvedValue('signed-token'),
     } as unknown as JwtService;
+    const prisma = {
+      userSession: {
+        create: jest.fn().mockResolvedValue({}),
+      },
+    };
 
-    const service = new AuthService(usersService as never, jwtService);
+    const service = new AuthService(
+      usersService as never,
+      jwtService,
+      prisma as never,
+    );
 
     await expect(
       service.register({
@@ -69,6 +78,8 @@ describe('AuthService', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         accessToken: 'signed-token',
+        accessTokenExpiresInSeconds: 900,
+        refreshToken: expect.any(String),
         user: expect.objectContaining({
           email: 'cliente@pricely.local',
         }),
@@ -104,8 +115,17 @@ describe('AuthService', () => {
     const jwtService = {
       signAsync: jest.fn(),
     } as unknown as JwtService;
+    const prisma = {
+      userSession: {
+        create: jest.fn(),
+      },
+    };
 
-    const service = new AuthService(usersService as never, jwtService);
+    const service = new AuthService(
+      usersService as never,
+      jwtService,
+      prisma as never,
+    );
 
     await expect(
       service.login({
@@ -116,5 +136,78 @@ describe('AuthService', () => {
 
     expect(usersService.markSuccessfulLogin).not.toHaveBeenCalled();
     expect(jwtService.signAsync).not.toHaveBeenCalled();
+    expect(prisma.userSession.create).not.toHaveBeenCalled();
+  });
+
+  it('rotates refresh sessions and rejects reuse of revoked tokens', async () => {
+    const usersService = {
+      getProfileById: jest.fn().mockResolvedValue({
+        id: 'user-1',
+        email: 'cliente@pricely.local',
+        displayName: 'Cliente',
+        role: 'customer',
+        status: 'active',
+      }),
+    };
+    const jwtService = {
+      signAsync: jest.fn().mockResolvedValue('new-access-token'),
+    } as unknown as JwtService;
+    const session = {
+      id: 'session-1',
+      userId: 'user-1',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      user: {
+        id: 'user-1',
+        email: 'cliente@pricely.local',
+        displayName: 'Cliente',
+        role: 'customer',
+        status: 'active',
+        preferredRegionId: null,
+        lastLoginAt: null,
+        createdAt: new Date('2026-04-27T10:00:00Z'),
+        updatedAt: new Date('2026-04-27T10:00:00Z'),
+      },
+    };
+    const prisma = {
+      userSession: {
+        findUnique: jest.fn().mockResolvedValue(session),
+        update: jest.fn().mockResolvedValue({}),
+        create: jest.fn().mockResolvedValue({}),
+      },
+    };
+    const service = new AuthService(
+      usersService as never,
+      jwtService,
+      prisma as never,
+    );
+
+    await expect(service.refresh('refresh-token')).resolves.toEqual(
+      expect.objectContaining({
+        accessToken: 'new-access-token',
+        refreshToken: expect.any(String),
+      }),
+    );
+
+    expect(prisma.userSession.update).toHaveBeenCalledWith({
+      where: { id: 'session-1' },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(prisma.userSession.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'user-1',
+        refreshTokenHash: expect.any(String),
+        expiresAt: expect.any(Date),
+      }),
+    });
+
+    prisma.userSession.findUnique.mockResolvedValue({
+      ...session,
+      revokedAt: new Date(),
+    });
+
+    await expect(service.refresh('refresh-token')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 });

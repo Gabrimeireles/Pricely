@@ -55,7 +55,7 @@ async function bootstrap(): Promise<void> {
     origin: getCorsOrigins(),
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: false,
+    credentials: true,
   });
 
   app.useLogger(app.get(Logger));
