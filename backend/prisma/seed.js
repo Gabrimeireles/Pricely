@@ -176,6 +176,30 @@ async function main() {
         regionId: region.id,
       },
       {
+        cnpj: '44.444.444/0001-40',
+        brandName: 'Mercado Norte',
+        unitName: 'Unidade Santana',
+        cityName: 'Sao Paulo',
+        neighborhood: 'Santana',
+        addressLine: 'Rua Voluntarios da Patria, 2300',
+        postalCode: '02010-900',
+        latitude: '-23.499013',
+        longitude: '-46.625959',
+        regionId: region.id,
+      },
+      {
+        cnpj: '55.555.555/0001-50',
+        brandName: 'Hiper Leste',
+        unitName: 'Unidade Tatuape',
+        cityName: 'Sao Paulo',
+        neighborhood: 'Tatuape',
+        addressLine: 'Rua Tuiuti, 1800',
+        postalCode: '03307-005',
+        latitude: '-23.540184',
+        longitude: '-46.576863',
+        regionId: region.id,
+      },
+      {
         cnpj: '22.222.222/0001-20',
         brandName: 'Mercado Carioca',
         unitName: 'Unidade Botafogo',
@@ -226,10 +250,15 @@ async function main() {
 
   const catalogProduct = await prisma.catalogProduct.upsert({
     where: { slug: 'arroz-tipo-1-5kg' },
-    update: {},
+    update: {
+      name: 'Arroz tipo 1',
+      category: 'mercearia',
+      defaultUnit: '5 kg',
+      isActive: true,
+    },
     create: {
       slug: 'arroz-tipo-1-5kg',
-      name: 'Arroz tipo 1 5kg',
+      name: 'Arroz tipo 1',
       category: 'mercearia',
       defaultUnit: '5 kg',
       isActive: true,
@@ -238,12 +267,17 @@ async function main() {
 
   const coffeeCatalogProduct = await prisma.catalogProduct.upsert({
     where: { slug: 'cafe-torrado-500g' },
-    update: {},
+    update: {
+      name: 'Cafe torrado',
+      category: 'mercearia',
+      defaultUnit: '500 g',
+      isActive: true,
+    },
     create: {
       slug: 'cafe-torrado-500g',
       name: 'Cafe torrado',
       category: 'mercearia',
-      defaultUnit: 'un',
+      defaultUnit: '500 g',
       isActive: true,
     },
   });
@@ -252,7 +286,7 @@ async function main() {
     [
       {
         slug: 'feijao-carioca-1kg',
-        name: 'Feijao carioca 1kg',
+        name: 'Feijao carioca',
         category: 'mercearia',
         defaultUnit: '1 kg',
         imageUrl:
@@ -260,7 +294,7 @@ async function main() {
       },
       {
         slug: 'leite-integral-1l',
-        name: 'Leite integral 1L',
+        name: 'Leite integral',
         category: 'laticinios',
         defaultUnit: '1 L',
         imageUrl:
@@ -268,7 +302,7 @@ async function main() {
       },
       {
         slug: 'acucar-refinado-1kg',
-        name: 'Acucar refinado 1kg',
+        name: 'Acucar refinado',
         category: 'mercearia',
         defaultUnit: '1 kg',
         imageUrl:
@@ -276,7 +310,7 @@ async function main() {
       },
       {
         slug: 'oleo-soja-900ml',
-        name: 'Oleo de soja 900ml',
+        name: 'Oleo de soja',
         category: 'mercearia',
         defaultUnit: '900 ml',
         imageUrl:
@@ -284,7 +318,7 @@ async function main() {
       },
       {
         slug: 'macarrao-espaguete-500g',
-        name: 'Macarrao espaguete 500g',
+        name: 'Macarrao espaguete',
         category: 'mercearia',
         defaultUnit: '500 g',
         imageUrl:
@@ -292,7 +326,7 @@ async function main() {
       },
       {
         slug: 'molho-tomate-340g',
-        name: 'Molho de tomate 340g',
+        name: 'Molho de tomate',
         category: 'mercearia',
         defaultUnit: '340 g',
         imageUrl:
@@ -300,7 +334,7 @@ async function main() {
       },
       {
         slug: 'banana-nanica-1kg',
-        name: 'Banana nanica 1kg',
+        name: 'Banana nanica',
         category: 'hortifruti',
         defaultUnit: '1 kg',
         imageUrl:
@@ -308,7 +342,7 @@ async function main() {
       },
       {
         slug: 'ovos-brancos-12un',
-        name: 'Ovos brancos 12 unidades',
+        name: 'Ovos brancos',
         category: 'proteinas',
         defaultUnit: '12 un',
         imageUrl:
@@ -316,7 +350,7 @@ async function main() {
       },
       {
         slug: 'detergente-neutro-500ml',
-        name: 'Detergente neutro 500ml',
+        name: 'Detergente neutro',
         category: 'limpeza',
         defaultUnit: '500 ml',
         imageUrl:
@@ -324,11 +358,43 @@ async function main() {
       },
       {
         slug: 'papel-higienico-12-rolos',
-        name: 'Papel higienico 12 rolos',
+        name: 'Papel higienico',
         category: 'higiene',
         defaultUnit: '12 rolos',
         imageUrl:
           'https://images.unsplash.com/photo-1583947581924-860bda6a26df?auto=format&fit=crop&w=900&q=80',
+      },
+      {
+        slug: 'refrigerante-cola',
+        name: 'Refrigerante cola',
+        category: 'bebidas',
+        defaultUnit: '2 L',
+        imageUrl:
+          'https://placehold.co/900x600/fef2f2/991b1b?text=Refrigerante+cola',
+      },
+      {
+        slug: 'pao-forma',
+        name: 'Pao de forma',
+        category: 'padaria',
+        defaultUnit: '450 g',
+        imageUrl:
+          'https://placehold.co/900x600/fff7ed/9a3412?text=Pao+de+forma',
+      },
+      {
+        slug: 'queijo-mussarela',
+        name: 'Queijo mussarela',
+        category: 'laticinios',
+        defaultUnit: '150 g',
+        imageUrl:
+          'https://placehold.co/900x600/fffbeb/92400e?text=Queijo+mussarela',
+      },
+      {
+        slug: 'biscoito-recheado',
+        name: 'Biscoito recheado',
+        category: 'mercearia',
+        defaultUnit: '80 g',
+        imageUrl:
+          'https://placehold.co/900x600/fef3c7/854d0e?text=Biscoito+recheado',
       },
     ].map((entry) =>
       prisma.catalogProduct.upsert({
@@ -351,9 +417,12 @@ async function main() {
   const productVariant = await prisma.productVariant.upsert({
     where: { slug: 'arroz-tipo-1-5kg-seed-5kg' },
     update: {
+      displayName: 'Arroz Camil tipo 1 5kg',
       brandName: 'Camil',
+      packageLabel: '5 kg',
       imageUrl:
-        'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=900&q=80',
+        'https://placehold.co/900x600/fef3c7/92400e?text=Arroz+Camil+5kg',
+      isActive: true,
     },
     create: {
       catalogProductId: catalogProduct.id,
@@ -362,20 +431,29 @@ async function main() {
       brandName: 'Camil',
       packageLabel: '5 kg',
       imageUrl:
-        'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=900&q=80',
+        'https://placehold.co/900x600/fef3c7/92400e?text=Arroz+Camil+5kg',
       isActive: true,
     },
   });
 
   const coffeeVariant = await prisma.productVariant.upsert({
     where: { slug: 'cafe-pilao-500g' },
-    update: {},
+    update: {
+      displayName: 'Cafe Pilao 500g',
+      brandName: 'Pilao',
+      packageLabel: '500 g',
+      imageUrl:
+        'https://placehold.co/900x600/fef2f2/7f1d1d?text=Cafe+Pilao+500g',
+      isActive: true,
+    },
     create: {
       catalogProductId: coffeeCatalogProduct.id,
       slug: 'cafe-pilao-500g',
       displayName: 'Cafe Pilao 500g',
       brandName: 'Pilao',
       packageLabel: '500 g',
+      imageUrl:
+        'https://placehold.co/900x600/fef2f2/7f1d1d?text=Cafe+Pilao+500g',
       isActive: true,
     },
   });
@@ -407,7 +485,7 @@ async function main() {
         brandName: 'Italac',
         packageLabel: '1 L',
         imageUrl:
-          'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/eff6ff/1d4ed8?text=Leite+Italac+1L',
       },
       {
         product: seededProducts[2],
@@ -416,7 +494,7 @@ async function main() {
         brandName: 'Uniao',
         packageLabel: '1 kg',
         imageUrl:
-          'https://images.unsplash.com/photo-1581441363689-1f3c3c414635?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/f8fafc/475569?text=Acucar+Uniao+1kg',
       },
       {
         product: seededProducts[3],
@@ -425,7 +503,7 @@ async function main() {
         brandName: 'Soya',
         packageLabel: '900 ml',
         imageUrl:
-          'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/fefce8/854d0e?text=Oleo+Soya+900ml',
       },
       {
         product: catalogProduct,
@@ -434,7 +512,7 @@ async function main() {
         brandName: 'Prato Fino',
         packageLabel: '5 kg',
         imageUrl:
-          'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/ecfccb/365314?text=Arroz+Prato+Fino+5kg',
       },
       {
         product: coffeeCatalogProduct,
@@ -443,7 +521,7 @@ async function main() {
         brandName: 'Melitta',
         packageLabel: '500 g',
         imageUrl:
-          'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/faf5ff/6b21a8?text=Cafe+Melitta+500g',
       },
       {
         product: seededProducts[4],
@@ -470,7 +548,7 @@ async function main() {
         brandName: 'Quero',
         packageLabel: '340 g',
         imageUrl:
-          'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/fee2e2/b91c1c?text=Molho+Quero+340g',
       },
       {
         product: seededProducts[6],
@@ -479,7 +557,7 @@ async function main() {
         brandName: 'Hortifruti',
         packageLabel: '1 kg',
         imageUrl:
-          'https://images.unsplash.com/photo-1528825871115-3581a5387919?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/fef9c3/a16207?text=Banana+Nanica+1kg',
       },
       {
         product: seededProducts[7],
@@ -488,7 +566,7 @@ async function main() {
         brandName: 'Granja',
         packageLabel: '12 un',
         imageUrl:
-          'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/fff7ed/9a3412?text=Ovos+Granja+12un',
       },
       {
         product: seededProducts[8],
@@ -497,7 +575,7 @@ async function main() {
         brandName: 'Ype',
         packageLabel: '500 ml',
         imageUrl:
-          'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=900&q=80',
+          'https://placehold.co/900x600/ecfeff/155e75?text=Detergente+Ype+500ml',
       },
       {
         product: seededProducts[9],
@@ -516,6 +594,60 @@ async function main() {
         packageLabel: '12 rolos',
         imageUrl:
           'https://placehold.co/900x600/f1f5f9/0f766e?text=Papel+Mimmo+12+rolos',
+      },
+      {
+        product: seededProducts[10],
+        slug: 'coca-cola-sem-acucar-200ml',
+        displayName: 'Coca-Cola Sem Acucar 200ml',
+        brandName: 'Coca-Cola',
+        packageLabel: '200 ml',
+        imageUrl:
+          'https://placehold.co/900x600/fef2f2/991b1b?text=Coca-Cola+200ml',
+      },
+      {
+        product: seededProducts[10],
+        slug: 'coca-cola-original-2l',
+        displayName: 'Coca-Cola Original 2L',
+        brandName: 'Coca-Cola',
+        packageLabel: '2 L',
+        imageUrl:
+          'https://placehold.co/900x600/fee2e2/7f1d1d?text=Coca-Cola+2L',
+      },
+      {
+        product: seededProducts[11],
+        slug: 'pao-forma-pullman-450g',
+        displayName: 'Pao de Forma Pullman 450g',
+        brandName: 'Pullman',
+        packageLabel: '450 g',
+        imageUrl:
+          'https://placehold.co/900x600/fff7ed/9a3412?text=Pao+Pullman+450g',
+      },
+      {
+        product: seededProducts[11],
+        slug: 'pao-forma-wickbold-450g',
+        displayName: 'Pao de Forma Wickbold 450g',
+        brandName: 'Wickbold',
+        packageLabel: '450 g',
+        imageUrl:
+          'https://placehold.co/900x600/fef3c7/854d0e?text=Pao+Wickbold+450g',
+      },
+      {
+        product: seededProducts[12],
+        slug: 'queijo-mussarela-fatiado-150g',
+        displayName: 'Queijo Mussarela Fatiado 150g',
+        brandName: 'Vigor',
+        packageLabel: '150 g',
+        imageUrl:
+          'https://placehold.co/900x600/fefce8/854d0e?text=Queijo+Vigor+150g',
+      },
+      {
+        product: seededProducts[13],
+        slug: 'biscoito-piraque-80g',
+        displayName: 'Biscoito Piraque 80g',
+        brandName: 'Piraque',
+        packageLabel: '80 g',
+        imageUrl:
+          'https://placehold.co/900x600/fef3c7/92400e?text=Biscoito+Piraque+80g',
       },
     ].map((entry) =>
       prisma.productVariant.upsert({
@@ -589,6 +721,26 @@ async function main() {
       product: seededProducts[9],
       aliases: ['papel higienico', 'papel 12 rolos', 'papel banheiro'],
     },
+    {
+      product: seededProducts[10],
+      aliases: [
+        'refrigerante cola',
+        'coca cola',
+        'coca cola sem acucar 200ml',
+      ],
+    },
+    {
+      product: seededProducts[11],
+      aliases: ['pao de forma', 'pao forma 450g', 'pao pullman'],
+    },
+    {
+      product: seededProducts[12],
+      aliases: ['queijo mussarela', 'mussarela fatiada', 'queijo 150g'],
+    },
+    {
+      product: seededProducts[13],
+      aliases: ['biscoito piraque', 'biscoito 80g', 'biscoito recheado'],
+    },
   ];
 
   await Promise.all(
@@ -620,13 +772,28 @@ async function main() {
     where: {
       id: '11111111-1111-1111-1111-111111111111',
     },
-    update: {},
+    update: {
+      catalogProductId: catalogProduct.id,
+      productVariantId: productVariant.id,
+      establishmentId: establishment.id,
+      displayName: 'Arroz Camil tipo 1 5kg',
+      packageLabel: '5 kg',
+      priceAmount: '22.90',
+      basePriceAmount: '24.90',
+      promotionalPriceAmount: '22.90',
+      availabilityStatus: 'available',
+      confidenceLevel: 'high',
+      sourceType: 'admin',
+      sourceReference: 'Seed local',
+      observedAt: new Date(),
+      isActive: true,
+    },
     create: {
       id: '11111111-1111-1111-1111-111111111111',
       catalogProductId: catalogProduct.id,
       productVariantId: productVariant.id,
       establishmentId: establishment.id,
-      displayName: 'Arroz tipo 1 5kg',
+      displayName: 'Arroz Camil tipo 1 5kg',
       packageLabel: '5 kg',
       priceAmount: '22.90',
       basePriceAmount: '24.90',
@@ -645,7 +812,22 @@ async function main() {
     where: {
       id: '44444444-4444-4444-4444-444444444444',
     },
-    update: {},
+    update: {
+      catalogProductId: catalogProduct.id,
+      productVariantId: productVariant.id,
+      establishmentId: comparisonEstablishment.id,
+      displayName: 'Arroz Camil tipo 1 5kg',
+      packageLabel: '5 kg',
+      priceAmount: '21.90',
+      basePriceAmount: '21.90',
+      promotionalPriceAmount: null,
+      availabilityStatus: 'available',
+      confidenceLevel: 'high',
+      sourceType: 'admin',
+      sourceReference: 'Seed comparativo',
+      observedAt: new Date(),
+      isActive: true,
+    },
     create: {
       id: '44444444-4444-4444-4444-444444444444',
       catalogProductId: catalogProduct.id,
@@ -670,7 +852,22 @@ async function main() {
     where: {
       id: '33333333-3333-3333-3333-333333333333',
     },
-    update: {},
+    update: {
+      catalogProductId: coffeeCatalogProduct.id,
+      productVariantId: coffeeVariant.id,
+      establishmentId: establishment.id,
+      displayName: 'Cafe Pilao 500g',
+      packageLabel: '500 g',
+      priceAmount: '15.90',
+      basePriceAmount: '18.90',
+      promotionalPriceAmount: '15.90',
+      availabilityStatus: 'available',
+      confidenceLevel: 'high',
+      sourceType: 'admin',
+      sourceReference: 'Seed local',
+      observedAt: new Date(),
+      isActive: true,
+    },
     create: {
       id: '33333333-3333-3333-3333-333333333333',
       catalogProductId: coffeeCatalogProduct.id,
@@ -792,7 +989,7 @@ async function main() {
       id: 'dddddddd-4444-4444-8444-dddddddd4444',
       product: seededProducts[3],
       variant: seededVariants[4],
-      establishment: extraEstablishments[1],
+      establishment: extraEstablishments[3],
       priceAmount: '6.99',
       basePriceAmount: '7.99',
       promotionalPriceAmount: '6.99',
@@ -804,7 +1001,7 @@ async function main() {
       id: 'eeeeeeee-5555-4555-8555-eeeeeeee5555',
       product: seededProducts[3],
       variant: seededVariants[4],
-      establishment: extraEstablishments[2],
+      establishment: extraEstablishments[4],
       priceAmount: '7.39',
       basePriceAmount: '7.39',
       promotionalPriceAmount: null,
@@ -1040,6 +1237,102 @@ async function main() {
       sourceReference: 'Seed higiene baixa confianca',
       observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 21),
     },
+    {
+      id: 'fb222222-2222-4222-8222-222222222222',
+      product: seededProducts[10],
+      variant: seededVariants[15],
+      establishment,
+      priceAmount: '1.98',
+      basePriceAmount: '2.29',
+      promotionalPriceAmount: '1.98',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed bebida local',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 5),
+    },
+    {
+      id: 'fb333333-3333-4333-8333-333333333333',
+      product: seededProducts[10],
+      variant: seededVariants[15],
+      establishment: comparisonEstablishment,
+      priceAmount: '2.19',
+      basePriceAmount: '2.19',
+      promotionalPriceAmount: null,
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed bebida comparativo',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 14),
+    },
+    {
+      id: 'fb444444-4444-4444-8444-444444444444',
+      product: seededProducts[10],
+      variant: seededVariants[16],
+      establishment: extraEstablishments[1],
+      priceAmount: '8.99',
+      basePriceAmount: '9.99',
+      promotionalPriceAmount: '8.99',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed bebida norte',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 7),
+    },
+    {
+      id: 'fb555555-5555-4555-8555-555555555555',
+      product: seededProducts[11],
+      variant: seededVariants[17],
+      establishment,
+      priceAmount: '7.98',
+      basePriceAmount: '8.49',
+      promotionalPriceAmount: '7.98',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed padaria local',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 4),
+    },
+    {
+      id: 'fb666666-6666-4666-8666-666666666666',
+      product: seededProducts[11],
+      variant: seededVariants[18],
+      establishment: extraEstablishments[2],
+      priceAmount: '8.39',
+      basePriceAmount: '8.39',
+      promotionalPriceAmount: null,
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed padaria leste',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 20),
+    },
+    {
+      id: 'fb777777-7777-4777-8777-777777777777',
+      product: seededProducts[12],
+      variant: seededVariants[19],
+      establishment: comparisonEstablishment,
+      priceAmount: '9.98',
+      basePriceAmount: '11.49',
+      promotionalPriceAmount: '9.98',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed laticinio comparativo',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 8),
+    },
+    {
+      id: 'fb888888-8888-4888-8888-888888888888',
+      product: seededProducts[13],
+      variant: seededVariants[20],
+      establishment: extraEstablishments[1],
+      priceAmount: '3.48',
+      basePriceAmount: '3.98',
+      promotionalPriceAmount: '3.48',
+      confidenceLevel: 'high',
+      sourceReference: 'Seed mercearia norte',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 6),
+    },
+    {
+      id: 'fb999999-9999-4999-8999-999999999999',
+      product: seededProducts[13],
+      variant: seededVariants[20],
+      establishment: extraEstablishments[2],
+      priceAmount: '3.69',
+      basePriceAmount: '3.69',
+      promotionalPriceAmount: null,
+      confidenceLevel: 'medium',
+      sourceReference: 'Seed mercearia leste',
+      observedAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
+    },
   ];
 
   await Promise.all(
@@ -1268,8 +1561,8 @@ async function main() {
         id: '25252525-2525-4252-8252-252525252525',
         sourceType: 'manual_entry',
         parseStatus: 'queued',
-        storeName: extraEstablishments[1].unitName,
-        storeCnpj: extraEstablishments[1].cnpj,
+        storeName: extraEstablishments[3].unitName,
+        storeCnpj: extraEstablishments[3].cnpj,
         purchaseDate: new Date(Date.now() - 1000 * 60 * 20),
         rawReference: 'Entrada manual aguardando processamento',
         confidenceScore: '0.40',
@@ -1278,7 +1571,7 @@ async function main() {
         moderationStatus: 'pending',
         rewardEligibilityStatus: 'disabled',
         reviewReason: 'awaiting_processing',
-        establishmentId: extraEstablishments[1].id,
+        establishmentId: extraEstablishments[3].id,
       },
       lineItems: [],
     },

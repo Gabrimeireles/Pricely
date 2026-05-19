@@ -11,10 +11,26 @@ describe('Prisma demo seed coverage', () => {
     expect(seedSource).toContain('rio-de-janeiro-rj');
     expect(seedSource).toContain('curitiba-pr');
     expect(seedSource).toContain('Unidade Santo Amaro');
+    expect(seedSource).toContain('Unidade Santana');
+    expect(seedSource).toContain('Unidade Tatuape');
     expect(seedSource).toContain('Atacado Guanabara');
     expect(seedSource).toContain('feijao-carioca-camil-1kg');
+    expect(seedSource).toContain('coca-cola-sem-acucar-200ml');
+    expect(seedSource).toContain('biscoito-piraque-80g');
     expect(seedSource).toContain('Seed baixa confianca');
     expect(seedSource).toContain('Seed Rio comparativo');
+  });
+
+  it('keeps base catalog names separate from package labels used by variants', () => {
+    for (const duplicatedBaseName of [
+      "name: 'Arroz tipo 1 5kg'",
+      "name: 'Feijao carioca 1kg'",
+      "name: 'Acucar refinado 1kg'",
+      "name: 'Oleo de soja 900ml'",
+      "name: 'Papel higienico 12 rolos'",
+    ]) {
+      expect(seedSource).not.toContain(duplicatedBaseName);
+    }
   });
 
   it('keeps receipt and processing-job states for admin queue and trust-evidence QA', () => {
