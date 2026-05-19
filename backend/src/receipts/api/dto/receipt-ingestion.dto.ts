@@ -74,6 +74,26 @@ export class ReceiptIngestionDto implements ReceiptIngestionRequest {
 
   @IsOptional()
   @IsString()
+  storeAddressLine?: string;
+
+  @IsOptional()
+  @IsString()
+  storeNeighborhood?: string;
+
+  @IsOptional()
+  @IsString()
+  storePostalCode?: string;
+
+  @IsOptional()
+  @IsString()
+  storeCityName?: string;
+
+  @IsOptional()
+  @IsString()
+  storeStateCode?: string;
+
+  @IsOptional()
+  @IsString()
   purchaseDate?: string;
 
   @IsOptional()

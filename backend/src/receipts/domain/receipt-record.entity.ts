@@ -6,6 +6,11 @@ export interface ReceiptRecordEntity {
   storeId?: string;
   storeName?: string;
   storeCnpj?: string;
+  storeAddressLine?: string;
+  storeNeighborhood?: string;
+  storePostalCode?: string;
+  storeCityName?: string;
+  storeStateCode?: string;
   accessKey?: string;
   sefazUrl?: string;
   purchaseDate?: string;

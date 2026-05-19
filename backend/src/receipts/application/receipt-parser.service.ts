@@ -23,6 +23,11 @@ export interface ParsedReceiptLineItem {
 export interface ParsedReceipt {
   storeName?: string;
   storeCnpj?: string;
+  storeAddressLine?: string;
+  storeNeighborhood?: string;
+  storePostalCode?: string;
+  storeCityName?: string;
+  storeStateCode?: string;
   accessKey?: string;
   sefazUrl?: string;
   purchaseDate?: string;
@@ -56,6 +61,11 @@ export class ReceiptParserService {
     return {
       storeName,
       storeCnpj: request.storeCnpj,
+      storeAddressLine: request.storeAddressLine,
+      storeNeighborhood: request.storeNeighborhood,
+      storePostalCode: request.storePostalCode,
+      storeCityName: request.storeCityName,
+      storeStateCode: request.storeStateCode,
       accessKey: request.accessKey,
       sefazUrl: request.qrCodeUrl,
       purchaseDate: request.purchaseDate,

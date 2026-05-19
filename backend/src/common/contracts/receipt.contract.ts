@@ -12,6 +12,11 @@ export interface ReceiptLineItemInput {
 export interface ReceiptIngestionRequest {
   storeName?: string;
   storeCnpj?: string;
+  storeAddressLine?: string;
+  storeNeighborhood?: string;
+  storePostalCode?: string;
+  storeCityName?: string;
+  storeStateCode?: string;
   purchaseDate?: string;
   sourceType?:
     | 'manual_entry'
@@ -31,6 +36,11 @@ export interface ReceiptRecord {
   storeId?: string;
   storeName?: string;
   storeCnpj?: string;
+  storeAddressLine?: string;
+  storeNeighborhood?: string;
+  storePostalCode?: string;
+  storeCityName?: string;
+  storeStateCode?: string;
   accessKey?: string;
   sefazUrl?: string;
   purchaseDate?: string;

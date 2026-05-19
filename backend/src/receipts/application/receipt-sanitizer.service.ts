@@ -16,6 +16,11 @@ export class ReceiptSanitizerService {
       ...request,
       storeName: this.cleanText(request.storeName),
       storeCnpj: this.cleanCnpj(request.storeCnpj),
+      storeAddressLine: this.cleanText(request.storeAddressLine),
+      storeNeighborhood: this.cleanText(request.storeNeighborhood),
+      storePostalCode: this.cleanPostalCode(request.storePostalCode),
+      storeCityName: this.cleanText(request.storeCityName),
+      storeStateCode: this.cleanStateCode(request.storeStateCode),
       qrCodeUrl: this.cleanUrl(request.qrCodeUrl),
       accessKey: this.cleanAccessKey(request.accessKey),
       uploadedFile: request.uploadedFile
@@ -50,6 +55,20 @@ export class ReceiptSanitizerService {
     const digits = value?.replace(/\D/g, '');
 
     return digits?.length === 44 ? digits : undefined;
+  }
+
+  cleanPostalCode(value?: string): string | undefined {
+    const digits = value?.replace(/\D/g, '');
+
+    return digits && digits.length >= 5 && digits.length <= 8
+      ? digits
+      : undefined;
+  }
+
+  cleanStateCode(value?: string): string | undefined {
+    const stateCode = value?.replace(/[^a-z]/gi, '').toUpperCase();
+
+    return stateCode?.length === 2 ? stateCode : undefined;
   }
 
   cleanUrl(value?: string): string | undefined {
