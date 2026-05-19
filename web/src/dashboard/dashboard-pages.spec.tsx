@@ -339,7 +339,7 @@ describe('Admin dashboard pages', () => {
     expect(screen.queryByText('Go to link')).toBeNull();
   });
 
-  it('renders queue detail with readable operations before technical IDs', async () => {
+  it('renders queue detail as operational diagnostics without business audit payloads', async () => {
     fetchAdminProcessingJobDetail.mockResolvedValue({
       id: 'job-1',
       queueName: 'optimization',
@@ -411,9 +411,10 @@ describe('Admin dashboard pages', () => {
     ).toBeGreaterThan(0);
     expect(screen.getAllByText('Concluido').length).toBeGreaterThan(0);
     expect(screen.getByText('Dados técnicos')).toBeTruthy();
-    expect(screen.getByText('Como o resultado foi montado')).toBeTruthy();
-    expect(screen.getByText('Selecionada')).toBeTruthy();
-    expect(screen.getByText(/Nota Aceita · Confiável/)).toBeTruthy();
+    expect(screen.getByText('Abrir auditoria de listas')).toBeTruthy();
+    expect(screen.queryByText('Como o resultado foi montado')).toBeNull();
+    expect(screen.queryByText('Selecionada')).toBeNull();
+    expect(screen.queryByText(/Nota Aceita · Confiável/)).toBeNull();
     expect(screen.queryByText('Resumo do thinking')).toBeNull();
   });
 
@@ -750,6 +751,25 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('Ver oferta criada')).toBeTruthy();
     expect(screen.getByText('Preço caiu')).toBeTruthy();
     expect(screen.getByText(/R\$ 16,90 anterior/)).toBeTruthy();
+  });
+
+  it('links pending receipts to the dedicated receipt audit before processing exists', async () => {
+    fetchAdminReceiptProcessing.mockResolvedValue([
+      buildReceiptAudit({
+        processingJob: null,
+        moderationStatus: 'pending',
+        trustLevel: 'pending_review',
+        rewardEligibilityStatus: 'disabled',
+      }),
+    ]);
+
+    render(<AdminReceiptsPage />);
+
+    expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
+    expect(
+      screen.getByText('Auditar nota fiscal').closest('a')?.getAttribute('href'),
+    ).toBe('/dashboard/nota/receipt-1');
+    expect(screen.getByText('Liberar processamento')).toBeTruthy();
   });
 
   it('renders receipt audit by receipt id and can release or reprocess from that audit', async () => {

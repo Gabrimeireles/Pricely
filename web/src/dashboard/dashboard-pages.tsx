@@ -150,18 +150,6 @@ function parseAdminMoneyInput(value: string) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function optimizationSummaryLabel(summary?: string | null) {
-  if (!summary) {
-    return 'Resultado sem resumo operacional registrado.';
-  }
-
-  if (summary.includes('Pricely selected the cheapest confirmed city offers')) {
-    return 'O Pricely selecionou as menores ofertas confirmadas na cidade e marcou itens sem cobertura para revisão.';
-  }
-
-  return summary;
-}
-
 function jobResourceTitle(job: AdminProcessingJobResponse) {
   if (job.shoppingList) {
     return `Lista: ${job.shoppingList.name}`;
@@ -186,6 +174,24 @@ function jobOwnerLabel(job: AdminProcessingJobResponse) {
   return `${job.owner.displayName || job.owner.email}`;
 }
 
+function jobBusinessAuditTarget(job: AdminProcessingJobResponse) {
+  if (job.resourceType === 'receipt' || job.receiptRecord) {
+    return {
+      label: 'Abrir auditoria da nota',
+      href: `/dashboard/nota/${job.receiptRecord?.id ?? job.resourceId}`,
+    };
+  }
+
+  if (job.resourceType === 'shopping_list' || job.shoppingList) {
+    return {
+      label: 'Abrir auditoria de listas',
+      href: '/dashboard/listas',
+    };
+  }
+
+  return null;
+}
+
 function jobStatusLabel(status: AdminProcessingJobResponse['status']) {
   const labels: Record<AdminProcessingJobResponse['status'], string> = {
     completed: 'Concluido',
@@ -208,25 +214,6 @@ function jobStatusBadgeVariant(status: AdminProcessingJobResponse['status']) {
   }
 
   return 'secondary' as const;
-}
-
-function optimizationSelectionStatusLabel(
-  status: NonNullable<
-    AdminProcessingJobDetailResponse['optimizationRun']
-  >['selections'][number]['status'],
-) {
-  const labels: Record<
-    NonNullable<
-      AdminProcessingJobDetailResponse['optimizationRun']
-    >['selections'][number]['status'],
-    string
-  > = {
-    missing: 'Sem oferta',
-    review: 'Revisar',
-    selected: 'Selecionada',
-  };
-
-  return labels[status];
 }
 
 function receiptTrustLabel(
@@ -2832,14 +2819,16 @@ export function AdminReceiptsPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Button asChild size="sm" variant="outline">
+                    <a href={`/dashboard/nota/${receipt.id}`}>
+                      {receipt.processingJob
+                        ? 'Auditar processamento'
+                        : 'Auditar nota fiscal'}
+                      <ExternalLinkIcon className="size-4" />
+                    </a>
+                  </Button>
                   {receipt.processingJob ? (
                     <>
-                      <Button asChild size="sm" variant="outline">
-                        <a href={`/dashboard/nota/${receipt.id}`}>
-                          Auditar processamento
-                          <ExternalLinkIcon className="size-4" />
-                        </a>
-                      </Button>
                       <Button
                         disabled={releasingId === receipt.id}
                         onClick={() => void reprocessReceipt(receipt.id)}
@@ -3591,19 +3580,7 @@ export function AdminQueueDetailPage() {
     );
   }
 
-  const optimizationSelectionCounts = job.optimizationRun
-    ? {
-        selected: job.optimizationRun.selections.filter(
-          (selection) => selection.status === 'selected',
-        ).length,
-        review: job.optimizationRun.selections.filter(
-          (selection) => selection.status === 'review',
-        ).length,
-        missing: job.optimizationRun.selections.filter(
-          (selection) => selection.status === 'missing',
-        ).length,
-      }
-    : null;
+  const auditTarget = jobBusinessAuditTarget(job);
 
   return (
     <div className="grid gap-4">
@@ -3660,6 +3637,23 @@ export function AdminQueueDetailPage() {
               <span>job_type: {job.jobType}</span>
             </div>
           </div>
+          {auditTarget ? (
+            <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-background/80 p-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-sm font-medium">Auditoria de negócio</div>
+                <div className="text-sm text-muted-foreground">
+                  A fila mostra somente execução. Detalhes de lista e nota ficam
+                  nas telas de auditoria correspondentes.
+                </div>
+              </div>
+              <Button asChild size="sm" variant="outline">
+                <a href={auditTarget.href}>
+                  {auditTarget.label}
+                  <ExternalLinkIcon className="size-4" />
+                </a>
+              </Button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -3716,232 +3710,6 @@ export function AdminQueueDetailPage() {
         </CardContent>
       </Card>
 
-      {job.optimizationRun ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Otimização</CardTitle>
-            <CardDescription>
-              {job.shoppingList?.name ?? job.resourceId} · modo{' '}
-              {optimizationModeLabel(job.optimizationRun.mode)} · cobertura{' '}
-              {job.optimizationRun.coverageStatus}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-lg border border-border/70 p-4">
-                <div className="text-sm text-muted-foreground">Custo total</div>
-                <div className="mt-1 text-xl font-semibold">
-                  {formatCurrency(job.optimizationRun.totalEstimatedCost)}
-                </div>
-              </div>
-              <div className="rounded-lg border border-border/70 p-4">
-                <div className="text-sm text-muted-foreground">Economia</div>
-                <div className="mt-1 text-xl font-semibold">
-                  {formatCurrency(job.optimizationRun.estimatedSavings)}
-                </div>
-              </div>
-              <div className="rounded-lg border border-border/70 p-4">
-                <div className="text-sm text-muted-foreground">Lista</div>
-                <div className="mt-1 text-xl font-semibold">
-                  {job.shoppingList?.name ?? job.resourceId}
-                </div>
-              </div>
-            </div>
-            {optimizationSelectionCounts ? (
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-lg border border-border/70 bg-background/80 p-3">
-                  <div className="text-sm text-muted-foreground">
-                    Itens selecionados
-                  </div>
-                  <div className="mt-1 text-lg font-semibold">
-                    {optimizationSelectionCounts.selected}
-                  </div>
-                </div>
-                <div className="rounded-lg border border-border/70 bg-background/80 p-3">
-                  <div className="text-sm text-muted-foreground">
-                    Itens para revisar
-                  </div>
-                  <div className="mt-1 text-lg font-semibold">
-                    {optimizationSelectionCounts.review}
-                  </div>
-                </div>
-                <div className="rounded-lg border border-border/70 bg-background/80 p-3">
-                  <div className="text-sm text-muted-foreground">
-                    Sem oferta
-                  </div>
-                  <div className="mt-1 text-lg font-semibold">
-                    {optimizationSelectionCounts.missing}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-            {job.optimizationRun.summary ? (
-              <Alert>
-                <InfoIcon />
-                <AlertTitle>Como o resultado foi montado</AlertTitle>
-                <AlertDescription>
-                  {optimizationSummaryLabel(job.optimizationRun.summary)}
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Decisão</TableHead>
-                  <TableHead>Loja</TableHead>
-                  <TableHead>Preço</TableHead>
-                  <TableHead>Fonte</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {job.optimizationRun.selections.map((selection) => (
-                  <TableRow key={selection.id}>
-                    <TableCell>{selection.shoppingListItemName}</TableCell>
-                    <TableCell>
-                      <div className="grid gap-1">
-                        <Badge
-                          variant={
-                            selection.status === 'selected'
-                              ? 'secondary'
-                              : selection.status === 'review'
-                                ? 'outline'
-                                : 'destructive'
-                          }
-                        >
-                          {optimizationSelectionStatusLabel(selection.status)}
-                        </Badge>
-                        {selection.offer?.confidenceLevel ? (
-                          <span className="text-xs text-muted-foreground">
-                            Confiança da oferta{' '}
-                            {selection.offer.confidenceLevel}
-                          </span>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {selection.offer
-                        ? `${selection.offer.establishmentName} · ${selection.offer.neighborhood}`
-                        : 'Sem oferta selecionada'}
-                    </TableCell>
-                    <TableCell>
-                      {formatCurrency(
-                        selection.offer?.priceAmount ?? selection.estimatedCost,
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="grid gap-1">
-                        <span>
-                          {selection.offer?.sourceLabel ??
-                            selection.confidenceNotice ??
-                            'Sem fonte'}
-                        </span>
-                        {selection.offer ? (
-                          <span className="text-xs text-muted-foreground">
-                            {selection.offer.sourceType ?? 'fonte'} · atualizado{' '}
-                            {formatFreshnessLabel(selection.offer.observedAt)}
-                          </span>
-                        ) : null}
-                        {selection.offer?.receiptEvidence ? (
-                          <span className="text-xs text-muted-foreground">
-                            Nota{' '}
-                            {receiptModerationLabel(
-                              selection.offer.receiptEvidence.moderationStatus,
-                            )}{' '}
-                            ·{' '}
-                            {receiptTrustLabel(
-                              selection.offer.receiptEvidence.trustLevel,
-                            )}
-                          </span>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {job.receiptRecord ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recibo contribuído</CardTitle>
-            <CardDescription>
-              {job.receiptRecord.storeName ?? 'Loja não identificada'} ·{' '}
-              {job.receiptRecord.parseStatus} ·{' '}
-              {receiptTrustLabel(job.receiptRecord.trustLevel)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-lg border border-border/70 p-4">
-                <div className="text-sm text-muted-foreground">Moderacao</div>
-                <div className="mt-1 text-lg font-semibold">
-                  {receiptModerationLabel(job.receiptRecord.moderationStatus)}
-                </div>
-              </div>
-              <div className="rounded-lg border border-border/70 p-4">
-                <div className="text-sm text-muted-foreground">Confianca</div>
-                <div className="mt-1 text-lg font-semibold">
-                  {receiptTrustLabel(job.receiptRecord.trustLevel)}
-                </div>
-              </div>
-              <div className="rounded-lg border border-border/70 p-4">
-                <div className="text-sm text-muted-foreground">Reward</div>
-                <div className="mt-1 text-lg font-semibold">
-                  {rewardEligibilityLabel(
-                    job.receiptRecord.rewardEligibilityStatus,
-                  )}
-                </div>
-              </div>
-            </div>
-            <Alert>
-              <InfoIcon />
-              <AlertTitle>
-                {job.receiptRecord.moderationStatus === 'accepted'
-                  ? 'Contribuição aceita'
-                  : job.receiptRecord.moderationStatus === 'duplicate'
-                    ? 'Recibo duplicado'
-                    : job.receiptRecord.moderationStatus === 'quarantined'
-                      ? 'Pendente de revisão'
-                      : 'Contribuição registrada'}
-              </AlertTitle>
-              <AlertDescription>
-                Rewards por recibo seguem desativados no MVP. Motivo:{' '}
-                {job.receiptRecord.reviewReason ??
-                  'controle anti-abuso pendente'}
-                .
-              </AlertDescription>
-            </Alert>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Normalizado</TableHead>
-                  <TableHead>EAN</TableHead>
-                  <TableHead>Preço</TableHead>
-                  <TableHead>Confiança</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {job.receiptRecord.lineItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.rawProductName}</TableCell>
-                    <TableCell>{item.normalizedName}</TableCell>
-                    <TableCell>{item.ean ?? 'Sem EAN'}</TableCell>
-                    <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
-                    <TableCell>
-                      {Math.round(item.matchConfidence * 100)}%
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }
