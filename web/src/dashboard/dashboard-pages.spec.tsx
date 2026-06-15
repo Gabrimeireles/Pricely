@@ -397,10 +397,10 @@ describe('Admin dashboard pages', () => {
     expect(await screen.findByText('Saude da fila')).toBeTruthy();
     expect(screen.getByText('Jobs recentes')).toBeTruthy();
     expect(screen.getByText('optimization · optimization')).toBeTruthy();
-    expect(screen.getByText(/Cliente Teste/)).toBeTruthy();
-    expect(screen.getByText(/recurso shopping list/)).toBeTruthy();
-    expect(screen.queryByText('Lista: Compra da semana')).toBeNull();
-    expect(screen.queryByText(/Modo Menor total na cidade/)).toBeNull();
+    expect(screen.getAllByText(/Cliente Teste/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Lista: Compra da semana')).toBeTruthy();
+    expect(screen.getByText(/Menor total na cidade/)).toBeTruthy();
+    expect(screen.getByText(/Fila optimization/)).toBeTruthy();
     expect(screen.getByLabelText('Abrir detalhe do job job-1')).toBeTruthy();
     expect(screen.queryByText('Go to link')).toBeNull();
   });

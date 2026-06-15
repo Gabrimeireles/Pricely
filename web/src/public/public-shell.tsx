@@ -64,6 +64,7 @@ export function PublicLayout() {
     isAuthenticated,
     isBootstrapping,
     locationPreferences,
+    previewLocationCoverage,
     saveBrowserLocation,
     savePostalCodeLocation,
     setCityId,
@@ -80,6 +81,7 @@ export function PublicLayout() {
   >('manual');
   const [postalCode, setPostalCode] = useState('');
   const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
+  const [locationPreview, setLocationPreview] = useState<string | null>(null);
   const activeCity = cityId
     ? (cities.find((city) => city.id === cityId) ?? null)
     : null;
@@ -124,23 +126,32 @@ export function PublicLayout() {
     setLocationPermissionState('requesting');
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        void saveBrowserLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          coverageRadiusKm: 5,
-        })
-          .then(() => {
+        void (async () => {
+          try {
+            const preview = await previewLocationCoverage({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              coverageRadiusKm: 5,
+            });
+            setLocationPreview(
+              `Preview local: ${preview.activeEstablishmentCount} lojas dentro de ${preview.coverageRadiusKm} km.`,
+            );
+            await saveBrowserLocation({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              coverageRadiusKm: 5,
+            });
             setLocationPermissionState('allowed');
             setLocationFeedback(
               'Localizacao salva. Modos locais podem calcular distancia dentro do raio.',
             );
-          })
-          .catch(() => {
+          } catch {
             setLocationPermissionState('denied');
             setLocationFeedback(
               'Nao foi possivel salvar a localizacao. Use o CEP como fallback manual.',
             );
-          });
+          }
+        })();
       },
       () => {
         setLocationPermissionState('denied');
@@ -162,23 +173,31 @@ export function PublicLayout() {
       return;
     }
 
-    void savePostalCodeLocation({
-      postalCode: normalizedPostalCode,
-      coverageRadiusKm: 5,
-    })
-      .then(() => {
+    void (async () => {
+      try {
+        const preview = await previewLocationCoverage({
+          postalCode: normalizedPostalCode,
+          coverageRadiusKm: 5,
+        });
+        setLocationPreview(
+          `Preview por CEP: ${preview.activeEstablishmentCount} lojas ativas na cidade; sem calculo de distancia.`,
+        );
+        await savePostalCodeLocation({
+          postalCode: normalizedPostalCode,
+          coverageRadiusKm: 5,
+        });
         setLocationPermissionState('postal_fallback');
         setLocationFeedback(
           'CEP salvo como fallback. A cobertura fica por cidade ate uma localizacao precisa ser liberada.',
         );
-      })
-      .catch((error: unknown) => {
+      } catch (error: unknown) {
         setLocationFeedback(
           error instanceof Error
             ? error.message
             : 'Nao foi possivel salvar o CEP agora.',
         );
-      });
+      }
+    })();
   };
 
   return (
@@ -311,6 +330,11 @@ export function PublicLayout() {
             {locationFeedback ? (
               <div className="mt-2 rounded-md border border-border/70 bg-card px-2.5 py-1 text-xs text-muted-foreground">
                 {locationFeedback}
+              </div>
+            ) : null}
+            {locationPreview ? (
+              <div className="mt-2 rounded-md border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs text-teal-950">
+                {locationPreview}
               </div>
             ) : null}
           </div>

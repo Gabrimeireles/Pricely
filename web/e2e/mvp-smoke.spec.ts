@@ -115,7 +115,87 @@ const optimizationResult = {
   ],
 };
 
+const receiptAudit = {
+  id: 'receipt-1',
+  storeName: 'Mercado Centro',
+  storeCnpj: '00.000.000/0001-00',
+  parseStatus: 'queued',
+  trustLevel: 'pending_review',
+  moderationStatus: 'pending',
+  rewardEligibilityStatus: 'eligible_pending',
+  reviewReason: 'receipt_reward_ready',
+  purchaseDate: '2026-05-05T09:30:00.000Z',
+  createdAt: '2026-05-05T10:10:00.000Z',
+  updatedAt: '2026-05-05T10:10:00.000Z',
+  owner: {
+    id: 'user-1',
+    displayName: 'Cliente Pricely',
+    email: 'cliente@pricely.test',
+  },
+  processingJob: null,
+  quality: {
+    lineItemCount: 1,
+    highConfidenceLineItemCount: 1,
+    averageMatchConfidence: 0.91,
+    usefulDataRatio: 1,
+  },
+  reward: {
+    points: 100,
+    optimizationTokens: 1,
+    label: '100 pontos + 1 credito pendente',
+  },
+  extractedPayload: {
+    accessKey: null,
+    sefazUrl: null,
+    rawReference: 'Entrada manual',
+    purchaseDate: '2026-05-05T09:30:00.000Z',
+    lineItemCount: 1,
+    totalLineAmount: 15.8,
+  },
+  lineItems: [
+    {
+      id: 'line-1',
+      rawProductName: 'Arroz tipo 1 1kg',
+      normalizedName: 'Arroz tipo 1 1kg',
+      ean: null,
+      quantity: 2,
+      unitPrice: 7.9,
+      lineTotal: 15.8,
+      originalUnitPrice: null,
+      promotionalUnitPrice: null,
+      matchConfidence: 0.91,
+      matcherStatus: 'matched_offer',
+      makerAction: 'offer_created',
+      offers: [
+        {
+          id: 'offer-1',
+          catalogProductName: 'Arroz tipo 1',
+          variantName: 'Arroz tipo 1 1kg',
+          brandName: null,
+          establishmentName: 'Mercado Centro',
+          neighborhood: 'Centro',
+          displayName: 'Arroz tipo 1 1kg',
+          packageLabel: '1 kg',
+          priceAmount: 7.9,
+          observedAt: '2026-05-05T10:10:00.000Z',
+          comparison: {
+            previousPriceAmount: 9.4,
+            newPriceAmount: 7.9,
+            deltaAmount: -1.5,
+            direction: 'down',
+            previousObservedAt: '2026-05-01T10:10:00.000Z',
+          },
+        },
+      ],
+    },
+  ],
+};
+
 async function mockApi(page: Page) {
+  let sessionToken: 'customer-token' | 'admin-token' | null = null;
+  let receiptReleased = false;
+  let receiptRejected = false;
+
   await page.route('http://localhost:3000/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -131,13 +211,75 @@ async function mockApi(page: Page) {
         body: JSON.stringify(body),
       });
 
+    const receiptSubmissionResponse = (
+      processingStatus:
+        | 'waiting_manual_release'
+        | 'queued'
+        | 'running'
+        | 'completed'
+        | 'failed'
+        | 'retrying',
+    ) => ({
+      id: receiptAudit.id,
+      storeName: receiptAudit.storeName,
+      storeCnpj: receiptAudit.storeCnpj,
+      parseStatus: receiptAudit.parseStatus,
+      trustLevel: receiptRejected ? 'rejected' : receiptAudit.trustLevel,
+      moderationStatus: receiptRejected ? 'rejected' : receiptAudit.moderationStatus,
+      rewardEligibilityStatus: receiptRejected
+        ? 'disabled'
+        : receiptAudit.rewardEligibilityStatus,
+      rewardPoints: receiptAudit.reward.points,
+      rewardOptimizationTokens: receiptAudit.reward.optimizationTokens,
+      rewardMessage:
+        'Nota recebida: reward em processamento ate a liberacao e validacao.',
+      processingStatus,
+    });
+
+    const receiptProcessingRecord = () => ({
+      ...receiptAudit,
+      trustLevel: receiptRejected ? 'rejected' : receiptAudit.trustLevel,
+      moderationStatus: receiptRejected ? 'rejected' : receiptAudit.moderationStatus,
+      rewardEligibilityStatus: receiptRejected
+        ? 'disabled'
+        : receiptAudit.rewardEligibilityStatus,
+      processingJob: receiptReleased
+        ? {
+            id: 'job-1',
+            queueName: 'receipts',
+            jobType: 'receipt.extract',
+            status: 'queued',
+            attemptCount: 0,
+            createdAt: '2026-05-05T10:12:00.000Z',
+            updatedAt: '2026-05-05T10:12:00.000Z',
+          }
+        : null,
+    });
+
     if (method === 'POST' && path === '/auth/login') {
       const body = JSON.parse(request.postData() ?? '{}') as { email?: string };
+      sessionToken =
+        body.email === adminUser.email ? 'admin-token' : 'customer-token';
       return json({
-        accessToken:
-          body.email === adminUser.email ? 'admin-token' : 'customer-token',
+        accessToken: sessionToken,
         user: body.email === adminUser.email ? adminUser : customerUser,
       });
+    }
+
+    if (method === 'POST' && path === '/auth/refresh') {
+      if (!sessionToken) {
+        return json({ message: 'No refresh session' }, 401);
+      }
+
+      return json({
+        accessToken: sessionToken,
+        user: sessionToken === 'admin-token' ? adminUser : customerUser,
+      });
+    }
+
+    if (method === 'POST' && path === '/auth/logout') {
+      sessionToken = null;
+      return json({ status: 'ok' });
     }
 
     if (path === '/auth/me') {
@@ -279,6 +421,12 @@ async function mockApi(page: Page) {
       return json([]);
     }
 
+    if (path === '/receipts' && method === 'POST') {
+      receiptReleased = false;
+      receiptRejected = false;
+      return json(receiptSubmissionResponse('waiting_manual_release'), 201);
+    }
+
     if (path === '/admin/metrics') {
       return json({
         activeUsers: 12,
@@ -291,6 +439,38 @@ async function mockApi(page: Page) {
         queuedJobs: 1,
         globalEstimatedSavings: 450,
       });
+    }
+
+    if (path === '/admin/receipt-processing' && method === 'GET') {
+      return json([receiptProcessingRecord()]);
+    }
+
+    if (path === '/admin/receipt-processing/receipt-1' && method === 'GET') {
+      return json(receiptProcessingRecord());
+    }
+
+    if (
+      path === '/admin/receipt-processing/receipt-1/release' &&
+      method === 'POST'
+    ) {
+      receiptReleased = true;
+      return json(receiptSubmissionResponse('queued'));
+    }
+
+    if (
+      path === '/admin/receipt-processing/receipt-1/reprocess' &&
+      method === 'POST'
+    ) {
+      receiptReleased = true;
+      return json(receiptSubmissionResponse('queued'));
+    }
+
+    if (
+      path === '/admin/receipt-processing/receipt-1/reject' &&
+      method === 'POST'
+    ) {
+      receiptRejected = true;
+      return json(receiptSubmissionResponse('failed'));
     }
 
     if (path === '/admin/processing-jobs') {
@@ -400,7 +580,7 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   ).toBeVisible();
   await expect(page.getByText('2 de 2 listas no mês')).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Comprar Premium' }),
+    page.getByRole('button', { name: /Premium indispon/i }),
   ).toBeDisabled();
 
   await page.goto('/cidades');
@@ -445,18 +625,78 @@ test('location-aware web flow saves browser coordinates and shows local result d
     latitude: -23.566263,
     longitude: -46.683677,
   });
-  await page.addInitScript(() => {
-    window.localStorage.setItem('pricely-auth-token', 'customer-token');
-  });
+  await page.goto('/entrar');
+  await page.getByLabel('E-mail').fill(customerUser.email);
+  await page.getByLabel('Senha').fill('password');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
 
   await page.goto('/');
   await page.getByRole('button', { name: /Usar localizacao/i }).click();
-  await expect(page.getByText(/2 lojas dentro de 5 km/)).toBeVisible();
+  await expect(page.getByText(/Preview local: 2 lojas dentro de 5 km/)).toBeVisible();
 
   await page.goto('/otimizacao/list-1');
   await page.getByText('Menor preco perto de mim').click();
   await page.getByText('Usar este modo').nth(1).click();
   await expect(page.getByText('0.8 km do local salvo')).toBeVisible();
+});
+
+test('MVP receipt flow covers submission, admin audit release, and reward state', async ({
+  page,
+}) => {
+  await page.goto('/entrar');
+  await page.getByLabel('E-mail').fill(customerUser.email);
+  await page.getByLabel('Senha').fill('password');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
+
+  await page.goto('/notas');
+  await expect(page.getByText('Enviar nota fiscal').first()).toBeVisible();
+  await page.getByLabel('Estabelecimento').fill('Mercado Centro');
+  await page.getByLabel('Data da compra').fill('2026-05-05');
+  await page.getByLabel('CNPJ').fill('00.000.000/0001-00');
+  await page.getByLabel('Produto').fill('Arroz tipo 1 1kg');
+  await page.getByLabel('Qtd.').fill('2');
+  await page.getByLabel('Preço').fill('7.90');
+  await page.getByRole('button', { name: 'Enviar nota' }).click();
+
+  await expect(page.getByText('Nota recebida', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Aguardando liberação manual', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/Reward previsto/i)).toBeVisible();
+  await expect(page.getByText('Admin libera no dashboard')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Sair' }).click();
+  await page.goto('/entrar');
+  await page.getByLabel('E-mail').fill(adminUser.email);
+  await page.getByLabel('Senha').fill('password');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
+
+  await page.goto('/dashboard/notas');
+  await expect(page.getByText('Notas fiscais processadas')).toBeVisible();
+  await expect(page.getByText('Mercado Centro')).toBeVisible();
+  await expect(page.getByText('Rewards prontos')).toBeVisible();
+  await expect(page.getByText('100 pontos + 1 credito pendente')).toBeVisible();
+  await page.getByRole('link', { name: /Auditar nota fiscal/i }).click();
+
+  await expect(page.getByText('Auditoria da nota fiscal')).toBeVisible();
+  await expect(page.getByText('receipt_reward_ready')).toBeVisible();
+  await expect(
+    page.getByText('Arroz tipo 1 1kg', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Liberar processamento' }).click();
+  await expect(
+    page.getByText('Nota fiscal liberada para processamento.'),
+  ).toBeVisible();
+  await expect(page.getByRole('link', { name: /Ver execu/i })).toBeVisible();
 });
 
 test('MVP admin flow covers route protection and queue detail', async ({
@@ -465,15 +705,19 @@ test('MVP admin flow covers route protection and queue detail', async ({
   await page.goto('/dashboard');
   await expect(page.getByText('Acesso restrito')).toBeVisible();
 
-  await page.evaluate(() => {
-    window.localStorage.setItem('pricely-auth-token', 'admin-token');
-  });
+  await page.goto('/entrar');
+  await page.getByLabel('E-mail').fill(adminUser.email);
+  await page.getByLabel('Senha').fill('password');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
 
   await page.goto('/dashboard/fila');
   await expect(page.getByText('Saude da fila')).toBeVisible();
   await expect(page.getByText('Nota fiscal: Mercado Centro')).toBeVisible();
   await expect(
-    page.getByText('ID tecnico: receipt · receipt-1 · job job-1'),
+    page.getByText(/ID t.cnico: receipt .* receipt-1 .* job job-1/),
   ).toBeVisible();
   await page.goto('/dashboard/fila/job-1');
 
