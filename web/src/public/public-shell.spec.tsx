@@ -21,6 +21,7 @@ import { PublicLayout } from './public-shell';
 const setCityId = vi.fn();
 const saveBrowserLocation = vi.fn();
 const savePostalCodeLocation = vi.fn();
+const previewLocationCoverage = vi.fn();
 
 vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
@@ -30,6 +31,7 @@ vi.mock('@/app/pricely-context', () => ({
     isAuthenticated: false,
     signOut: vi.fn(),
     locationPreferences: [],
+    previewLocationCoverage,
     saveBrowserLocation,
     savePostalCodeLocation,
     cities: [
@@ -156,6 +158,14 @@ describe('PublicLayout', () => {
     setCityId.mockReset();
     saveBrowserLocation.mockReset();
     savePostalCodeLocation.mockReset();
+    previewLocationCoverage.mockReset();
+    previewLocationCoverage.mockResolvedValue({
+      regionId: 'campinas-sp',
+      coverageRadiusKm: 5,
+      activeEstablishmentCount: 2,
+      fallbackUsed: false,
+      establishments: [],
+    });
   });
 
   afterEach(() => {
@@ -252,12 +262,20 @@ describe('PublicLayout', () => {
     fireEvent.click(screen.getByRole('button', { name: /usar localizacao/i }));
 
     await waitFor(() =>
+      expect(previewLocationCoverage).toHaveBeenCalledWith({
+        latitude: -22.9,
+        longitude: -47.06,
+        coverageRadiusKm: 5,
+      }),
+    );
+    await waitFor(() =>
       expect(saveBrowserLocation).toHaveBeenCalledWith({
         latitude: -22.9,
         longitude: -47.06,
         coverageRadiusKm: 5,
       }),
     );
+    expect(document.body.textContent).toMatch(/Preview local: 2 lojas/i);
     await waitFor(() =>
       expect(document.body.textContent).toMatch(/capturada para preview/),
     );
@@ -292,12 +310,19 @@ describe('PublicLayout', () => {
     fireEvent.click(screen.getByRole('button', { name: /salvar cep/i }));
 
     await waitFor(() =>
+      expect(previewLocationCoverage).toHaveBeenCalledWith({
+        postalCode: '13010000',
+        coverageRadiusKm: 5,
+      }),
+    );
+    await waitFor(() =>
       expect(savePostalCodeLocation).toHaveBeenCalledWith({
         postalCode: '13010000',
         coverageRadiusKm: 5,
       }),
     );
     expect(document.body.textContent).toMatch(/nao prometem proximidade/i);
+    expect(document.body.textContent).toMatch(/Preview por CEP: 2 lojas/i);
     await waitFor(() =>
       expect(document.body.textContent).toMatch(/CEP salvo como fallback/i),
     );

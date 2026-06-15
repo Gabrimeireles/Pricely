@@ -3580,11 +3580,20 @@ export function AdminQueuePage() {
                   </div>
                   <div className="min-w-0">
                     <div className="truncate font-medium">
-                      {job.queueName} · {job.jobType}
+                      {jobResourceTitle(job)}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      tentativa {job.attemptCount} · recurso{' '}
-                      {job.resourceType.replace(/_/g, ' ')}
+                      {jobOwnerLabel(job)} · {jobStatusLabel(job.status)}
+                      {job.optimizationRun
+                        ? ` · ${optimizationModeLabel(job.optimizationRun.mode)}`
+                        : ''}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      <span className="sr-only">
+                        {job.queueName} · {job.jobType}
+                      </span>
+                      Fila {job.queueName} · {job.jobType} · tentativa{' '}
+                      {job.attemptCount}
                     </div>
                   </div>
                 </div>
@@ -3728,6 +3737,53 @@ export function AdminQueueDetailPage() {
                   <ExternalLinkIcon className="size-4" />
                 </a>
               </Button>
+            </div>
+          ) : null}
+          {job.receiptRecord?.lineItems?.length ? (
+            <div className="rounded-lg border border-border/70 bg-background/80 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium">Recibo contribuído</div>
+                  <div className="text-sm text-muted-foreground">
+                    {job.receiptRecord.storeName ?? 'Loja nao identificada'} ·{' '}
+                    {receiptTrustLabel(job.receiptRecord.trustLevel)}
+                  </div>
+                </div>
+                <Badge variant="outline">
+                  {receiptModerationLabel(job.receiptRecord.moderationStatus)}
+                </Badge>
+              </div>
+              {job.receiptRecord.reviewReason ? (
+                <div className="mt-3 rounded-md border border-amber-300/60 bg-amber-50/70 px-3 py-2 text-sm text-amber-900">
+                  {job.receiptRecord.reviewReason}
+                </div>
+              ) : null}
+              <div className="mt-3 overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item lido</TableHead>
+                      <TableHead>Normalizado</TableHead>
+                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Preço</TableHead>
+                      <TableHead>Confiança</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {job.receiptRecord.lineItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.rawProductName}</TableCell>
+                        <TableCell>{item.normalizedName}</TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                        <TableCell>
+                          {Math.round(item.matchConfidence * 100)}%
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           ) : null}
         </CardContent>

@@ -10,6 +10,7 @@ import {
 import {
   completeShoppingListCheckout,
   createLocationPreference,
+  previewLocationCoverage as previewLocationCoverageRequest,
   createShoppingList,
   fetchLocationPreferences,
   fetchPublicRegions,
@@ -28,6 +29,7 @@ import {
   updatePreferredRegion as updatePreferredRegionRequest,
   updateShoppingListItemPurchaseStatus,
   type OptimizationResultApiResponse,
+  type CoveragePreviewResponse,
   type UserLocationPreferenceResponse,
 } from './api';
 import { profileSnapshot, supportedCities } from './mock-data';
@@ -120,6 +122,12 @@ interface PricelyContextValue {
     postalCode: string;
     coverageRadiusKm?: number;
   }) => Promise<UserLocationPreferenceResponse>;
+  previewLocationCoverage: (input: {
+    latitude?: number;
+    longitude?: number;
+    postalCode?: string;
+    coverageRadiusKm?: number;
+  }) => Promise<CoveragePreviewResponse>;
   loadLatestOptimization: (
     listId: string,
   ) => Promise<OptimizationResultApiResponse | null>;
@@ -595,6 +603,24 @@ export function PricelyProvider({ children }: PropsWithChildren) {
             ),
         ]);
         return saved;
+      },
+      previewLocationCoverage: async (input) => {
+        if (!token) {
+          throw new Error('Voce precisa entrar para prever a cobertura local.');
+        }
+
+        const activeCity = cities.find((city) => city.id === cityId);
+        if (!activeCity) {
+          throw new Error('Escolha uma cidade antes de prever a cobertura.');
+        }
+
+        return previewLocationCoverageRequest(token, {
+          regionId: activeCity.regionId ?? activeCity.id,
+          coverageRadiusKm: input.coverageRadiusKm ?? 5,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          postalCode: input.postalCode,
+        });
       },
       loadLatestOptimization: async (listId) => {
         if (!token) {
