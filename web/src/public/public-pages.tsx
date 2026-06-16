@@ -249,31 +249,35 @@ function toOptimizationError(error: unknown) {
 function freshnessBadge(level: FreshnessLevel) {
   if (level === 'fresh') {
     return (
-      <Badge className="bg-lime-100 text-lime-900 hover:bg-lime-100">
+      <StatusBadge family="freshness" status="fresh">
         Atualizado hoje
-      </Badge>
+      </StatusBadge>
     );
   }
   if (level === 'aging') {
-    return <Badge variant="secondary">Cobertura parcial</Badge>;
+    return <StatusBadge family="freshness" status="aging" />;
   }
 
-  return <Badge variant="destructive">Dado antigo</Badge>;
+  return <StatusBadge family="freshness" status="stale" />;
 }
 
 function confidenceBadge(level: ConfidenceLevel) {
   if (level === 'alta') {
     return (
-      <Badge className="bg-sky-100 text-sky-900 hover:bg-sky-100">
+      <StatusBadge family="trust" status="high">
         Confiança alta
-      </Badge>
+      </StatusBadge>
     );
   }
   if (level === 'media') {
-    return <Badge variant="secondary">Confiança média</Badge>;
+    return <StatusBadge family="trust" status="medium" />;
   }
 
-  return <Badge variant="destructive">Revisar</Badge>;
+  return (
+    <StatusBadge family="trust" status="low">
+      Revisar
+    </StatusBadge>
+  );
 }
 
 function NextBestActionStrip({
@@ -444,16 +448,24 @@ function PriceDisplay({
 function cityStatusBadge(city: SupportedCity) {
   if (city.status === 'supported') {
     return (
-      <Badge className="bg-lime-100 text-lime-900 hover:bg-lime-100">
+      <StatusBadge family="city" status="active">
         Disponível
-      </Badge>
+      </StatusBadge>
     );
   }
   if (city.status === 'pilot') {
-    return <Badge variant="secondary">Piloto</Badge>;
+    return (
+      <StatusBadge family="city" status="activating">
+        Piloto
+      </StatusBadge>
+    );
   }
 
-  return <Badge variant="outline">Em breve</Badge>;
+  return (
+    <StatusBadge family="city" status="hidden">
+      Em breve
+    </StatusBadge>
+  );
 }
 
 function coverageStatusLabel(status: 'complete' | 'partial' | 'none') {
@@ -1230,12 +1242,12 @@ export function OffersPage() {
                       ? 'media'
                       : 'baixa',
                 )}
-                <Badge variant="secondary">
+                <StatusBadge tone="location">
                   {group.establishmentCount}{' '}
                   {group.establishmentCount === 1
                     ? 'estabelecimento'
                     : 'estabelecimentos'}
-                </Badge>
+                </StatusBadge>
               </div>
               <PriceDisplay
                 basePriceAmount={group.bestOffer.basePriceAmount}
@@ -1447,28 +1459,30 @@ export function OfferDetailPage() {
           </CardHeader>
           <CardContent className="grid gap-3">
             {offer.alternativeOffers.map((entry) => (
-              <div
+              <PriceRow
                 key={entry.id}
-                className="rounded-lg border border-border/70 p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="font-medium">{entry.storeName}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {entry.neighborhood}
-                    </div>
-                  </div>
-                  <PriceDisplay
-                    basePriceAmount={entry.basePriceAmount}
-                    priceAmount={entry.priceAmount}
-                    promotionalPriceAmount={entry.promotionalPriceAmount}
-                  />
-                </div>
-                <div className="mt-2 text-sm text-muted-foreground">
-                  {entry.packageLabel} · {entry.sourceLabel} ·{' '}
-                  {formatDateTime(entry.observedAt)}
-                </div>
-              </div>
+                title={entry.storeName}
+                subtitle={entry.neighborhood}
+                price={formatCurrency(
+                  entry.promotionalPriceAmount ?? entry.priceAmount,
+                )}
+                comparison={
+                  entry.basePriceAmount &&
+                  entry.basePriceAmount > entry.priceAmount
+                    ? `${formatCurrency(entry.basePriceAmount - entry.priceAmount)} abaixo do preco base`
+                    : undefined
+                }
+                meta={
+                  <>
+                    <StatusBadge family="freshness" status="fresh">
+                      {formatDateTime(entry.observedAt)}
+                    </StatusBadge>
+                    <StatusBadge tone="neutral">
+                      {entry.packageLabel} · {entry.sourceLabel}
+                    </StatusBadge>
+                  </>
+                }
+              />
             ))}
           </CardContent>
         </Card>
@@ -1560,13 +1574,14 @@ export function CitiesPage() {
                           {store.neighborhood ?? 'Bairro em validação'}
                         </div>
                       </div>
-                      <Badge
-                        variant={store.offerCount ? 'secondary' : 'outline'}
+                      <StatusBadge
+                        family="city"
+                        status={store.offerCount ? 'active' : 'activating'}
                       >
                         {store.offerCount
                           ? `${store.offerCount} ofertas`
                           : 'Em ativação'}
-                      </Badge>
+                      </StatusBadge>
                     </div>
                   ))}
                 </div>
@@ -1961,33 +1976,66 @@ export function ReceiptSubmissionPage() {
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
                     <div className="text-sm font-medium">Fila</div>
-                    <div className="mt-1 text-sm text-muted-foreground">
-                      {submission.processingStatus === 'waiting_manual_release'
-                        ? 'Aguardando liberação manual'
-                        : submission.processingStatus === 'queued'
-                          ? 'Liberada para processamento'
-                          : submission.processingStatus === 'running'
-                            ? 'Processando leitura'
-                            : submission.processingStatus === 'completed'
-                              ? 'Processada'
-                              : submission.processingStatus === 'failed'
-                                ? 'Falhou'
-                                : submission.processingStatus === 'retrying'
-                                  ? 'Tentando novamente'
-                                  : 'Recebida'}
+                    <div className="mt-1">
+                      <StatusBadge
+                        family={
+                          submission.processingStatus &&
+                          submission.processingStatus !==
+                            'waiting_manual_release'
+                            ? 'queue'
+                            : undefined
+                        }
+                        status={
+                          submission.processingStatus ===
+                          'waiting_manual_release'
+                            ? undefined
+                            : submission.processingStatus
+                        }
+                        tone={
+                          submission.processingStatus ===
+                          'waiting_manual_release'
+                            ? 'warning'
+                            : undefined
+                        }
+                      >
+                        {submission.processingStatus ===
+                        'waiting_manual_release'
+                          ? 'Aguardando liberação manual'
+                          : submission.processingStatus === 'queued'
+                            ? 'Liberada para processamento'
+                            : submission.processingStatus === 'running'
+                              ? 'Processando leitura'
+                              : submission.processingStatus === 'completed'
+                                ? 'Processada'
+                                : submission.processingStatus === 'failed'
+                                  ? 'Falhou'
+                                  : submission.processingStatus === 'retrying'
+                                    ? 'Tentando novamente'
+                                    : 'Recebida'}
+                      </StatusBadge>
                     </div>
                   </div>
                   <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
                     <div className="text-sm font-medium">Reward</div>
-                    <div className="mt-1 text-sm text-muted-foreground">
-                      {submission.rewardEligibilityStatus === 'granted'
-                        ? 'Validado e concedido'
-                        : submission.rewardEligibilityStatus ===
-                            'eligible_pending'
-                          ? 'Em processamento'
-                          : submission.rewardEligibilityStatus === 'ineligible'
-                            ? 'Sem elegibilidade'
-                            : 'Aguardando qualidade'}
+                    <div className="mt-1">
+                      <StatusBadge
+                        family="reward"
+                        status={
+                          submission.rewardEligibilityStatus === 'ineligible'
+                            ? 'rejected'
+                            : submission.rewardEligibilityStatus
+                        }
+                      >
+                        {submission.rewardEligibilityStatus === 'granted'
+                          ? 'Validado e concedido'
+                          : submission.rewardEligibilityStatus ===
+                              'eligible_pending'
+                            ? 'Em processamento'
+                            : submission.rewardEligibilityStatus ===
+                                'ineligible'
+                              ? 'Sem elegibilidade'
+                              : 'Aguardando qualidade'}
+                      </StatusBadge>
                     </div>
                   </div>
                   <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
@@ -2041,9 +2089,9 @@ export function ReceiptSubmissionPage() {
                 className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-white/70 p-3"
                 key={step}
               >
-                <Badge className="bg-emerald-100 text-emerald-950 hover:bg-emerald-100">
+                <StatusBadge icon={null} tone="savings">
                   {index + 1}
-                </Badge>
+                </StatusBadge>
                 <span>{step}</span>
               </div>
             ))}
