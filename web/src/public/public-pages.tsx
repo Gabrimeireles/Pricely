@@ -7,11 +7,9 @@ import {
   ChevronRightIcon,
   CheckCircle2Icon,
   FlagIcon,
-  GaugeIcon,
   LocateFixedIcon,
   LogInIcon,
   MapPinIcon,
-  ReceiptTextIcon,
   ShieldAlertIcon,
   UploadIcon,
 } from 'lucide-react';
@@ -50,6 +48,11 @@ import type {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  EvidenceModule,
+  PriceRow,
+  StatusBadge,
+} from '@/components/design-system';
 import {
   Card,
   CardContent,
@@ -272,45 +275,6 @@ function confidenceBadge(level: ConfidenceLevel) {
   return <Badge variant="destructive">Revisar</Badge>;
 }
 
-function trustFactorBadge(level?: 'high' | 'medium' | 'low') {
-  if (level === 'high') {
-    return (
-      <Badge className="bg-emerald-100 text-emerald-900 hover:bg-emerald-100">
-        Confiança alta
-      </Badge>
-    );
-  }
-  if (level === 'medium') {
-    return <Badge variant="secondary">Confiança média</Badge>;
-  }
-
-  return <Badge variant="destructive">Confiança baixa</Badge>;
-}
-
-function trustEvidenceLabel(selection: {
-  trustEvidenceCount?: number;
-  trustFreshnessDays?: number;
-}) {
-  const evidenceCount = selection.trustEvidenceCount ?? 0;
-  const receiptText =
-    evidenceCount === 0
-      ? 'Preço ainda sem nota fiscal aceita; origem operacional sustenta a oferta'
-      : evidenceCount === 1
-        ? '1 nota fiscal aceita apoia este preço'
-        : `${evidenceCount} notas fiscais aceitas apoiam este preço`;
-
-  if (selection.trustFreshnessDays === undefined) {
-    return receiptText;
-  }
-
-  const freshnessText =
-    selection.trustFreshnessDays === 0
-      ? 'validado hoje'
-      : `última validação há ${selection.trustFreshnessDays}d`;
-
-  return `${receiptText} · ${freshnessText}`;
-}
-
 function NextBestActionStrip({
   eyebrow = 'Próximo passo',
   title,
@@ -382,7 +346,6 @@ function ShopperEvidenceModule({
   listId: string;
   selection: OptimizationSelectionView;
 }) {
-  const hasReceiptEvidence = (selection.trustEvidenceCount ?? 0) > 0;
   const freshnessText =
     selection.trustFreshnessDays === undefined
       ? 'Sem data de validação'
@@ -391,48 +354,53 @@ function ShopperEvidenceModule({
         : `Validado há ${selection.trustFreshnessDays}d`;
 
   return (
-    <div className="grid gap-3 rounded-lg border border-border/70 bg-background/80 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {selection.trustFactor !== undefined
-          ? trustFactorBadge(selection.trustLevel)
-          : null}
-        {selection.trustFactor !== undefined ? (
-          <Badge variant="outline">
-            <GaugeIcon className="size-3.5" />
-            {selection.trustFactor}/100
-          </Badge>
-        ) : null}
-      </div>
-      <div className="grid gap-2 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1">
-          <ReceiptTextIcon className="size-3.5" />
-          {selection.sourceLabel ?? 'Origem ainda sem evidência suficiente'}
-        </span>
-        <span>
-          {hasReceiptEvidence
-            ? trustEvidenceLabel(selection)
-            : 'Sem validações por nota fiscal ainda; a oferta depende de seed, admin ou observação operacional.'}
-        </span>
-        <span>{freshnessText}</span>
-        {selection.confidenceNotice ? (
-          <span>{confidenceNoticeLabel(selection.confidenceNotice)}</span>
-        ) : null}
-      </div>
-      <div className="flex flex-wrap gap-2">
+    <EvidenceModule
+      selectedVariant={
+        selection.selectedVariantName
+          ? formatVariantWithPackage(
+              selection.selectedVariantName,
+              selection.selectedPackageLabel,
+            )
+          : selection.shoppingListItemName
+      }
+      requestedRule="Regra salva na lista"
+      store={
+        selection.establishmentName
+          ? `${selection.establishmentName}${
+              selection.establishmentNeighborhood
+                ? ` · ${selection.establishmentNeighborhood}`
+                : ''
+            }`
+          : 'Sem loja definida'
+      }
+      price={formatCurrency(selection.priceAmount ?? selection.estimatedCost ?? 0)}
+      sourceLabel={selection.sourceLabel ?? 'Origem operacional'}
+      trustScore={selection.trustFactor}
+      trustLevel={selection.trustLevel ?? 'unknown'}
+      evidenceCount={selection.trustEvidenceCount}
+      freshnessLabel={freshnessText}
+      confidenceNotice={
+        selection.confidenceNotice
+          ? confidenceNoticeLabel(selection.confidenceNotice)
+          : undefined
+      }
+      reportAction={
         <Button asChild size="sm" variant="outline">
           <Link to={`/listas/${listId}/checklist`}>
             <FlagIcon className="size-3.5" />
             Reportar preço
           </Link>
         </Button>
+      }
+      uploadAction={
         <Button asChild size="sm" variant="ghost">
           <Link to="/notas">
             <UploadIcon className="size-3.5" />
             Enviar nota
           </Link>
         </Button>
-      </div>
-    </div>
+      }
+    />
   );
 }
 
@@ -485,17 +453,6 @@ function cityStatusBadge(city: SupportedCity) {
   }
 
   return <Badge variant="outline">Em breve</Badge>;
-}
-
-function listStatusTone(status: ShoppingListItem['status']) {
-  if (status === 'resolved') {
-    return 'text-lime-700';
-  }
-  if (status === 'partial') {
-    return 'text-amber-700';
-  }
-
-  return 'text-rose-700';
 }
 
 function coverageStatusLabel(status: 'complete' | 'partial' | 'none') {
@@ -969,7 +926,10 @@ export function LandingPage() {
       <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card/85 p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-5">
-            <Badge variant="secondary" className="w-fit">
+            <Badge
+              variant="secondary"
+              className="max-w-full whitespace-normal text-left"
+            >
               lista salva, cidade persistida e compra pronta no mercado
             </Badge>
             <div className="flex flex-col gap-4">
@@ -3716,8 +3676,24 @@ export function OptimizationPage() {
                 <Card>
                   <CardHeader>
                     <CardDescription>Cobertura</CardDescription>
-                    <CardTitle>
+                    <CardTitle className="flex items-center gap-2">
                       {coverageStatusLabel(result.coverageStatus)}
+                      <StatusBadge
+                        icon={
+                          result.coverageStatus === 'complete'
+                            ? CheckCircle2Icon
+                            : AlertCircleIcon
+                        }
+                        tone={
+                          result.coverageStatus === 'complete'
+                            ? 'savings'
+                            : 'warning'
+                        }
+                      >
+                        {result.coverageStatus === 'complete'
+                          ? 'Cobertura total'
+                          : 'Cobertura parcial'}
+                      </StatusBadge>
                     </CardTitle>
                   </CardHeader>
                 </Card>
@@ -3731,157 +3707,125 @@ export function OptimizationPage() {
                     loja, comparação verdadeira e evidência da oferta.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Item</TableHead>
-                        <TableHead>Loja</TableHead>
-                        <TableHead>Preço</TableHead>
-                        <TableHead>Origem</TableHead>
-                        <TableHead>Atualização</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {result.selections.map((selection) => (
-                        <TableRow
-                          key={`${selection.shoppingListItemId}-${selection.id ?? selection.shoppingListItemName}`}
-                        >
-                          <TableCell>
-                            <div className="flex items-start gap-3">
-                              {selection.selectedVariantImageUrl ||
-                              listItemsById.get(selection.shoppingListItemId)
-                                ?.imageUrl ? (
-                                <img
-                                  alt={selection.shoppingListItemName}
-                                  className="h-14 w-14 rounded-lg border border-border/70 object-cover"
-                                  src={resolveProductImage(
-                                    selection.selectedVariantImageUrl ??
-                                      listItemsById.get(
-                                        selection.shoppingListItemId,
-                                      )?.imageUrl,
-                                  )}
-                                />
+                <CardContent className="grid gap-4">
+                  {result.selections.map((selection) => {
+                    const listItem = listItemsById.get(
+                      selection.shoppingListItemId,
+                    );
+                    const imageUrl =
+                      selection.selectedVariantImageUrl ?? listItem?.imageUrl;
+                    const selectedVariantLabel = selection.selectedVariantName
+                      ? formatVariantWithPackage(
+                          selection.selectedVariantName,
+                          selection.selectedPackageLabel,
+                        )
+                      : undefined;
+                    const status =
+                      selection.selectionStatus === 'selected'
+                        ? 'completed'
+                        : selection.selectionStatus === 'review'
+                          ? 'retrying'
+                          : 'failed';
+
+                    return (
+                      <div
+                        key={`${selection.shoppingListItemId}-${selection.id ?? selection.shoppingListItemName}`}
+                        className="grid gap-3 rounded-lg border border-border/70 bg-background/70 p-3"
+                      >
+                        <PriceRow
+                          image={
+                            imageUrl ? (
+                              <img
+                                alt={selection.shoppingListItemName}
+                                className="size-full object-cover"
+                                src={resolveProductImage(imageUrl)}
+                              />
+                            ) : null
+                          }
+                          title={selection.shoppingListItemName}
+                          subtitle={
+                            <span className="grid gap-0.5">
+                              {selectedVariantLabel ? (
+                                <span>Selecionado: {selectedVariantLabel}</span>
                               ) : null}
-                              <div className="flex flex-col gap-1">
-                                <span className="font-medium">
-                                  {selection.shoppingListItemName}
-                                </span>
-                                {selection.selectedVariantName ? (
-                                  <span className="text-xs text-muted-foreground">
-                                    Selecionado:{' '}
-                                    {formatVariantWithPackage(
-                                      selection.selectedVariantName,
-                                      selection.selectedPackageLabel,
-                                    )}
-                                  </span>
-                                ) : null}
-                                <span className="text-xs text-muted-foreground">
-                                  {describeBrandRule(
-                                    listItemsById.get(
-                                      selection.shoppingListItemId,
-                                    ) ?? {
-                                      brandPreferenceMode: 'any',
-                                      preferredBrandNames: [],
-                                    },
-                                    listItemsById.get(
-                                      selection.shoppingListItemId,
-                                    )?.brandPreferenceMode === 'exact'
-                                      ? listItemsById.get(
-                                          selection.shoppingListItemId,
-                                        )?.name
-                                      : undefined,
-                                  )}
-                                </span>
-                                {selection.confidenceNotice ? (
-                                  <span className="text-xs text-muted-foreground">
-                                    {confidenceNoticeLabel(
-                                      selection.confidenceNotice,
-                                    )}
-                                  </span>
-                                ) : null}
-                                {decisionReasonLabel(
-                                  selection.decisionReason,
-                                ) ? (
-                                  <span className="text-xs text-muted-foreground">
-                                    {decisionReasonLabel(
-                                      selection.decisionReason,
-                                    )}
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {selection.establishmentName ? (
-                              <div className="flex flex-col gap-1">
-                                <span>{selection.establishmentName}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {selection.establishmentNeighborhood ??
-                                    'bairro não informado'}
-                                </span>
-                                {selection.distanceKm !== undefined ? (
-                                  <span className="text-xs text-muted-foreground">
-                                    {selection.distanceKm.toFixed(1)} km do
-                                    local salvo
-                                  </span>
-                                ) : null}
-                              </div>
-                            ) : (
-                              'Sem loja definida'
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="grid gap-1">
                               <span>
-                                {formatCurrency(
-                                  selection.priceAmount ??
-                                    selection.estimatedCost ??
-                                    0,
+                                {describeBrandRule(
+                                  listItem ?? {
+                                    brandPreferenceMode: 'any',
+                                    preferredBrandNames: [],
+                                  },
+                                  listItem?.brandPreferenceMode === 'exact'
+                                    ? listItem.name
+                                    : undefined,
                                 )}
                               </span>
-                              {selection.savingsVsComparison &&
-                              selection.savingsVsComparison > 0 ? (
-                                <span className="text-xs text-emerald-700">
-                                  {savingsComparisonLabel(selection)}
+                              {selection.establishmentName ? (
+                                <span>
+                                  {selection.establishmentName}
+                                  {selection.establishmentNeighborhood
+                                    ? ` · ${selection.establishmentNeighborhood}`
+                                    : ''}
+                                </span>
+                              ) : (
+                                <span>Sem loja definida</span>
+                              )}
+                              {selection.distanceKm !== undefined ? (
+                                <span>
+                                  {selection.distanceKm.toFixed(1)} km do local
+                                  salvo
                                 </span>
                               ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <ShopperEvidenceModule
-                              listId={list.id}
-                              selection={selection}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {selection.observedAt
-                              ? formatFreshnessLabel(selection.observedAt)
-                              : 'Sem data'}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={listStatusTone(
-                                selection.selectionStatus === 'selected'
-                                  ? 'resolved'
-                                  : selection.selectionStatus === 'review'
-                                    ? 'partial'
-                                    : 'missing',
-                              )}
-                            >
-                              {selectionStatusLabel(selection.selectionStatus)}
-                              {selection.rejectedReason
-                                ? ` · ${rejectedReasonLabel(
-                                    selection.rejectedReason,
-                                  )}`
-                                : ''}
                             </span>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          }
+                          price={formatCurrency(
+                            selection.priceAmount ??
+                              selection.estimatedCost ??
+                              0,
+                          )}
+                          comparison={
+                            selection.savingsVsComparison &&
+                            selection.savingsVsComparison > 0
+                              ? savingsComparisonLabel(selection)
+                              : undefined
+                          }
+                          meta={
+                            <>
+                              <StatusBadge family="queue" status={status}>
+                                {selectionStatusLabel(
+                                  selection.selectionStatus,
+                                )}
+                              </StatusBadge>
+                              {decisionReasonLabel(
+                                selection.decisionReason,
+                              ) ? (
+                                <StatusBadge tone="neutral">
+                                  {decisionReasonLabel(
+                                    selection.decisionReason,
+                                  )}
+                                </StatusBadge>
+                              ) : null}
+                              {selection.observedAt ? (
+                                <StatusBadge family="freshness" status="fresh">
+                                  {formatFreshnessLabel(selection.observedAt)}
+                                </StatusBadge>
+                              ) : null}
+                              {selection.rejectedReason ? (
+                                <StatusBadge tone="critical">
+                                  {rejectedReasonLabel(
+                                    selection.rejectedReason,
+                                  )}
+                                </StatusBadge>
+                              ) : null}
+                            </>
+                          }
+                        />
+                        <ShopperEvidenceModule
+                          listId={list.id}
+                          selection={selection}
+                        />
+                      </div>
+                    );
+                  })}
                 </CardContent>
               </Card>
             </>

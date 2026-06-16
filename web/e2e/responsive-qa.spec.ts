@@ -57,7 +57,10 @@ const offer = {
   confidenceLevel: 'high',
 };
 
-async function mockResponsiveApi(page: Page) {
+async function mockResponsiveApi(
+  page: Page,
+  sessionToken: 'customer-token' | 'admin-token' | null,
+) {
   await page.route('http://localhost:3000/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -89,6 +92,40 @@ async function mockResponsiveApi(page: Page) {
 
     if (path === '/regions/impact') {
       return json({ totalEstimatedSavings: 450, optimizedListsCount: 32 });
+    }
+
+    if (method === 'POST' && path === '/auth/refresh') {
+      if (!sessionToken) {
+        return json({ message: 'No refresh session' }, 401);
+      }
+
+      const isAdmin = sessionToken === 'admin-token';
+      return json({
+        accessToken: sessionToken,
+        user: {
+          id: isAdmin ? 'admin-1' : 'user-1',
+          email: isAdmin ? 'admin@pricely.test' : 'cliente@pricely.test',
+          displayName: isAdmin ? 'Admin Pricely' : 'Cliente Pricely',
+          role: isAdmin ? 'admin' : 'customer',
+          preferredRegionSlug: 'sao-paulo-sp',
+          profileStats: {
+            totalEstimatedSavings: 12.4,
+            shoppingListsCount: 1,
+            completedOptimizationRuns: 1,
+            contributionsCount: 0,
+            receiptSubmissionsCount: 0,
+            offerReportsCount: 0,
+          },
+          entitlement: {
+            plan: isAdmin ? 'premium' : 'free',
+            status: 'active',
+            availableOptimizationTokens: isAdmin ? 99 : 2,
+            monthlyFreeOptimizationTokens: 2,
+            billingEnabled: false,
+            checkoutEnabled: false,
+          },
+        },
+      });
     }
 
     if (path === '/regions/sao-paulo-sp/offers') {
@@ -314,7 +351,6 @@ for (const viewport of [
   test.describe(`responsive QA ${viewport.name}`, () => {
     test.beforeEach(async ({ page }) => {
       await page.setViewportSize(viewport);
-      await mockResponsiveApi(page);
       await page.addInitScript(() => {
         window.localStorage.setItem(
           'pricely-web-state-v2',
@@ -326,9 +362,7 @@ for (const viewport of [
     test('keeps public shopper surfaces usable without horizontal overflow', async ({
       page,
     }) => {
-      await page.addInitScript(() => {
-        window.localStorage.setItem('pricely-auth-token', 'customer-token');
-      });
+      await mockResponsiveApi(page, 'customer-token');
 
       await page.goto('/');
       await expect(
@@ -375,9 +409,7 @@ for (const viewport of [
     test('keeps admin tables and operations readable without horizontal overflow', async ({
       page,
     }) => {
-      await page.addInitScript(() => {
-        window.localStorage.setItem('pricely-auth-token', 'admin-token');
-      });
+      await mockResponsiveApi(page, 'admin-token');
 
       await page.goto('/dashboard/fila');
       await expect(page.getByText('Lista: Compra responsiva')).toBeVisible();
@@ -386,7 +418,7 @@ for (const viewport of [
 
       await page.goto('/dashboard/catalogo');
       await expect(page.getByLabel('Buscar no catalogo')).toBeVisible();
-      await expect(page.getByText('1 variantes')).toBeVisible();
+      await expect(page.getByText('1 de 1 variantes')).toBeVisible();
       await expectNoHorizontalOverflow(page);
       await attachViewportScreenshot(page, `admin-catalog-${viewport.name}.png`);
     });

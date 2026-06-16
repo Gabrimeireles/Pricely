@@ -32,7 +32,7 @@ function EvidenceModule({
   selectedVariant,
   sourceLabel,
   store,
-  title = 'Confianca da oferta',
+  title = 'Confiança da oferta',
   trustLevel = 'unknown',
   trustScore,
   uploadAction,
@@ -40,7 +40,7 @@ function EvidenceModule({
 }: EvidenceModuleProps) {
   const evidenceLabel =
     evidenceCount === undefined
-      ? 'Sem contagem de evidencia'
+      ? 'Sem contagem de evidência'
       : evidenceCount === 0
         ? 'Origem operacional'
         : evidenceCount === 1
@@ -78,11 +78,14 @@ function EvidenceModule({
         {store ? (
           <EvidenceDetail icon={StoreIcon} label="Loja" value={store} />
         ) : null}
-        {price ? <EvidenceDetail label="Preco" value={price} tabular /> : null}
+        {price ? <EvidenceDetail label="Preço" value={price} tabular /> : null}
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <StatusBadge icon={ReceiptTextIcon} tone={evidenceCount ? 'savings' : 'neutral'}>
+        <StatusBadge
+          icon={ReceiptTextIcon}
+          tone={evidenceCount ? 'savings' : 'neutral'}
+        >
           {sourceLabel ?? 'Origem operacional'}
         </StatusBadge>
         <StatusBadge tone={evidenceCount ? 'savings' : 'neutral'}>
