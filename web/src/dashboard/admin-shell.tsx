@@ -18,8 +18,8 @@ import { usePricely } from '@/app/pricely-context';
 import { useTheme } from '@/app/theme-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/design-system';
 import {
   Sidebar,
   SidebarContent,
@@ -177,7 +177,9 @@ export function AdminLayout() {
             >
               {theme === 'dark' ? <SunMediumIcon className="size-4" /> : <MoonStarIcon className="size-4" />}
             </Button>
-            <Badge variant="secondary">Acesso admin</Badge>
+            <StatusBadge icon={ShieldCheckIcon} tone="primary">
+              Acesso admin
+            </StatusBadge>
             <Button asChild size="sm" variant="outline">
               <Link to="/">Voltar para o publico</Link>
             </Button>

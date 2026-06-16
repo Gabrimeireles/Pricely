@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/design-system/status-badge';
 import { cn } from '@/lib/utils';
 
-type AdminActionQueueItemProps = React.ComponentProps<'article'> & {
+type AdminActionQueueItemProps = Omit<React.ComponentProps<'article'>, 'title'> & {
   title: React.ReactNode;
   description?: React.ReactNode;
   severity?: 'critical' | 'warning' | 'info' | 'healthy';
