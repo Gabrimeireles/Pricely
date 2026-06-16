@@ -396,11 +396,10 @@ describe('Admin dashboard pages', () => {
 
     expect(await screen.findByText('Saude da fila')).toBeTruthy();
     expect(screen.getByText('Jobs recentes')).toBeTruthy();
-    expect(screen.getByText('optimization · optimization')).toBeTruthy();
+    expect(screen.getByText(/Fila optimization/)).toBeTruthy();
     expect(screen.getAllByText(/Cliente Teste/).length).toBeGreaterThan(0);
     expect(screen.getByText('Lista: Compra da semana')).toBeTruthy();
     expect(screen.getByText(/Menor total na cidade/)).toBeTruthy();
-    expect(screen.getByText(/Fila optimization/)).toBeTruthy();
     expect(screen.getByLabelText('Abrir detalhe do job job-1')).toBeTruthy();
     expect(screen.queryByText('Go to link')).toBeNull();
   });
@@ -861,7 +860,7 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText(/Mercado Centro/)).toBeTruthy();
     expect(screen.getByText('3/4 itens fortes')).toBeTruthy();
     expect(screen.getByText('100 pontos + 1 credito pendente')).toBeTruthy();
-    expect(screen.getByText('eligible_pending')).toBeTruthy();
+    expect(screen.getByText('Elegível pendente')).toBeTruthy();
     expect(screen.getByText('Auditar processamento')).toBeTruthy();
     expect(
       screen.getByText('Auditar processamento').closest('a')?.getAttribute('href'),

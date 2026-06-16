@@ -67,6 +67,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  AdminActionQueueItem,
+  StatusBadge,
+  TechnicalDisclosure,
+} from '@/components/design-system';
+import {
   Card,
   CardContent,
   CardDescription,
@@ -244,16 +249,18 @@ function jobStatusLabel(status: AdminProcessingJobResponse['status']) {
   return labels[status];
 }
 
-function jobStatusBadgeVariant(status: AdminProcessingJobResponse['status']) {
+function jobSeverity(status: AdminProcessingJobResponse['status']) {
   if (status === 'failed') {
-    return 'destructive' as const;
+    return 'critical' as const;
+  }
+  if (status === 'retrying' || status === 'queued') {
+    return 'warning' as const;
+  }
+  if (status === 'completed') {
+    return 'healthy' as const;
   }
 
-  if (status === 'retrying') {
-    return 'outline' as const;
-  }
-
-  return 'secondary' as const;
+  return 'info' as const;
 }
 
 function receiptTrustLabel(
@@ -267,6 +274,22 @@ function receiptTrustLabel(
   };
 
   return labels[trustLevel];
+}
+
+function receiptTrustStatus(
+  trustLevel: AdminReceiptProcessingResponse['trustLevel'],
+) {
+  const statuses: Record<
+    AdminReceiptProcessingResponse['trustLevel'],
+    'high' | 'low' | 'unknown'
+  > = {
+    pending_review: 'unknown',
+    rejected: 'low',
+    trusted: 'high',
+    untrusted: 'low',
+  };
+
+  return statuses[trustLevel];
 }
 
 function rewardEligibilityLabel(
@@ -283,6 +306,22 @@ function rewardEligibilityLabel(
   };
 
   return labels[status];
+}
+
+function rewardStatus(
+  status: AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+) {
+  const statuses: Record<
+    AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+    'disabled' | 'eligible_pending' | 'granted' | 'rejected'
+  > = {
+    disabled: 'disabled',
+    eligible_pending: 'eligible_pending',
+    granted: 'granted',
+    ineligible: 'rejected',
+  };
+
+  return statuses[status];
 }
 
 function JobResourceIcon({ job }: { job: AdminProcessingJobResponse }) {
@@ -312,6 +351,23 @@ function receiptModerationLabel(
   };
 
   return labels[status];
+}
+
+function receiptModerationStatus(
+  status: AdminReceiptProcessingResponse['moderationStatus'],
+) {
+  const statuses: Record<
+    AdminReceiptProcessingResponse['moderationStatus'],
+    'accepted' | 'duplicate' | 'pending_review' | 'quarantined' | 'rejected'
+  > = {
+    accepted: 'accepted',
+    duplicate: 'duplicate',
+    pending: 'pending_review',
+    quarantined: 'quarantined',
+    rejected: 'rejected',
+  };
+
+  return statuses[status];
 }
 
 function receiptQualityLabel(receipt: AdminReceiptProcessingResponse) {
@@ -505,7 +561,7 @@ export function AdminOverviewPage() {
             title: 'Falhas de fila',
             detail: `${queueHealth.recentFailures.length} falhas ou retries precisam de triagem`,
             href: '/dashboard/fila',
-            tone: 'danger' as const,
+            severity: 'critical' as const,
           },
         ]
       : []),
@@ -515,7 +571,7 @@ export function AdminOverviewPage() {
             title: 'Jobs aguardando',
             detail: `${data.queuedJobs} trabalhos ainda não concluídos`,
             href: '/dashboard/fila',
-            tone: 'warning' as const,
+            severity: 'warning' as const,
           },
         ]
       : []),
@@ -525,7 +581,7 @@ export function AdminOverviewPage() {
             title: 'Cobertura de catálogo baixa',
             detail: `${catalogRatio}% dos produtos têm oferta ativa`,
             href: '/dashboard/ofertas',
-            tone: 'warning' as const,
+            severity: 'warning' as const,
           },
         ]
       : []),
@@ -535,7 +591,7 @@ export function AdminOverviewPage() {
             title: 'Cobertura de cidade incompleta',
             detail: 'Revise cidades e estabelecimentos ativos',
             href: '/dashboard/regioes',
-            tone: 'warning' as const,
+            severity: 'warning' as const,
           },
         ]
       : []),
@@ -562,33 +618,27 @@ export function AdminOverviewPage() {
         </CardHeader>
         <CardContent className="grid gap-3 lg:grid-cols-3">
           {operationalActions.length === 0 ? (
-            <div className="rounded-lg border border-border/70 bg-[#ECFDF5] p-4">
-              <div className="text-sm font-medium text-[#166534]">
-                Nenhum bloqueio crítico
-              </div>
-              <div className="mt-1 text-sm text-[#166534]">
-                Filas, catálogo e cobertura não têm alertas prioritários agora.
-              </div>
-            </div>
+            <AdminActionQueueItem
+              severity="healthy"
+              title="Nenhum bloqueio crítico"
+              description="Filas, catálogo e cobertura não têm alertas prioritários agora."
+            />
           ) : null}
           {operationalActions.map((action) => (
-            <a
+            <AdminActionQueueItem
               key={action.title}
-              className={`rounded-lg border p-4 transition-colors hover:border-primary/60 ${
-                action.tone === 'danger'
-                  ? 'border-destructive/30 bg-destructive/5'
-                  : 'border-amber-300/60 bg-amber-50/70'
-              }`}
-              href={action.href}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="font-medium">{action.title}</div>
-                <ExternalLinkIcon className="size-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2 text-sm text-muted-foreground">
-                {action.detail}
-              </div>
-            </a>
+              severity={action.severity}
+              title={action.title}
+              description={action.detail}
+              action={
+                <Button asChild size="sm" variant="outline">
+                  <a href={action.href}>
+                    Abrir
+                    <ExternalLinkIcon className="size-4" />
+                  </a>
+                </Button>
+              }
+            />
           ))}
         </CardContent>
       </Card>
@@ -711,11 +761,12 @@ export function AdminOverviewPage() {
                           : 'Operacao estavel'}
                   </div>
                 </div>
-                <Badge
-                  variant={queuePressure >= 60 ? 'destructive' : 'secondary'}
+                <StatusBadge
+                  family="severity"
+                  status={queuePressure >= 60 ? 'warning' : 'healthy'}
                 >
                   {queuePressure >= 60 ? 'Atencao' : 'Ok'}
-                </Badge>
+                </StatusBadge>
               </div>
             </div>
           </CardContent>
@@ -2855,17 +2906,14 @@ export function AdminReceiptsPage() {
                     <span className="font-medium">
                       {receipt.storeName ?? 'Loja não identificada'}
                     </span>
-                    <Badge
-                      variant={
-                        receipt.moderationStatus === 'accepted'
-                          ? 'secondary'
-                          : receipt.moderationStatus === 'rejected'
-                            ? 'destructive'
-                            : 'outline'
-                      }
+                    <StatusBadge
+                      family="receipt"
+                      status={receiptModerationStatus(
+                        receipt.moderationStatus,
+                      )}
                     >
                       {receiptModerationLabel(receipt.moderationStatus)}
-                    </Badge>
+                    </StatusBadge>
                   </div>
                   <div className="mt-1 text-sm text-muted-foreground">
                     {receipt.owner.displayName || receipt.owner.email} ·{' '}
@@ -2937,13 +2985,29 @@ export function AdminReceiptsPage() {
                 </div>
                 <div className="rounded-md border border-border/70 p-3">
                   <div className="text-xs text-muted-foreground">Confiança</div>
-                  <div className="mt-1 font-medium">{receipt.trustLevel}</div>
+                  <div className="mt-1">
+                    <StatusBadge
+                      family="trust"
+                      status={receiptTrustStatus(receipt.trustLevel)}
+                    >
+                      {receiptTrustLabel(receipt.trustLevel)}
+                    </StatusBadge>
+                  </div>
                 </div>
                 <div className="rounded-md border border-border/70 p-3">
                   <div className="text-xs text-muted-foreground">Reward</div>
-                  <div className="mt-1 font-medium">{receipt.reward.label}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {receipt.rewardEligibilityStatus}
+                  <div className="mt-1 font-medium">
+                    {receipt.reward.label}
+                  </div>
+                  <div className="mt-1">
+                    <StatusBadge
+                      family="reward"
+                      status={rewardStatus(receipt.rewardEligibilityStatus)}
+                    >
+                      {rewardEligibilityLabel(
+                        receipt.rewardEligibilityStatus,
+                      )}
+                    </StatusBadge>
                   </div>
                 </div>
               </div>
@@ -3058,20 +3122,20 @@ export function AdminReceiptsPage() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Badge
-                            variant={
+                          <StatusBadge
+                            tone={
                               item.matcherStatus === 'matched_offer'
-                                ? 'secondary'
+                                ? 'savings'
                                 : item.matcherStatus === 'needs_product_review'
-                                  ? 'destructive'
-                                  : 'outline'
+                                  ? 'critical'
+                                  : 'warning'
                             }
                           >
                             {receiptMatcherStatusLabel(item.matcherStatus)}
-                          </Badge>
-                          <Badge variant="outline">
+                          </StatusBadge>
+                          <StatusBadge tone="neutral">
                             {Math.round(item.matchConfidence * 100)}%
-                          </Badge>
+                          </StatusBadge>
                         </div>
                       </div>
 
@@ -3348,15 +3412,25 @@ export function AdminReceiptAuditPage() {
             </div>
             <div className="rounded-md border border-border/70 p-3">
               <div className="text-xs text-muted-foreground">Confiança</div>
-              <div className="mt-1 font-medium">
-                {receiptTrustLabel(receipt.trustLevel)}
+              <div className="mt-1">
+                <StatusBadge
+                  family="trust"
+                  status={receiptTrustStatus(receipt.trustLevel)}
+                >
+                  {receiptTrustLabel(receipt.trustLevel)}
+                </StatusBadge>
               </div>
             </div>
             <div className="rounded-md border border-border/70 p-3">
               <div className="text-xs text-muted-foreground">Reward</div>
               <div className="mt-1 font-medium">{receipt.reward.label}</div>
-              <div className="text-xs text-muted-foreground">
-                {rewardEligibilityLabel(receipt.rewardEligibilityStatus)}
+              <div className="mt-1">
+                <StatusBadge
+                  family="reward"
+                  status={rewardStatus(receipt.rewardEligibilityStatus)}
+                >
+                  {rewardEligibilityLabel(receipt.rewardEligibilityStatus)}
+                </StatusBadge>
               </div>
             </div>
           </div>
@@ -3432,20 +3506,20 @@ export function AdminReceiptAuditPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge
-                      variant={
+                    <StatusBadge
+                      tone={
                         item.matcherStatus === 'matched_offer'
-                          ? 'secondary'
+                          ? 'savings'
                           : item.matcherStatus === 'needs_product_review'
-                            ? 'destructive'
-                            : 'outline'
+                            ? 'critical'
+                            : 'warning'
                       }
                     >
                       {receiptMatcherStatusLabel(item.matcherStatus)}
-                    </Badge>
-                    <Badge variant="outline">
+                    </StatusBadge>
+                    <StatusBadge tone="neutral">
                       {Math.round(item.matchConfidence * 100)}%
-                    </Badge>
+                    </StatusBadge>
                   </div>
                 </div>
 
@@ -3569,70 +3643,61 @@ export function AdminQueuePage() {
             </div>
           ) : null}
           {jobs.slice(0, 10).map((job) => (
-            <div
+            <AdminActionQueueItem
               key={job.id}
-              className="rounded-lg border border-border/70 bg-background/80 p-4"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground">
+              severity={jobSeverity(job.status)}
+              title={
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground">
                     <JobResourceIcon job={job} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="truncate font-medium">
-                      {jobResourceTitle(job)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {jobOwnerLabel(job)} · {jobStatusLabel(job.status)}
-                      {job.optimizationRun
-                        ? ` · ${optimizationModeLabel(job.optimizationRun.mode)}`
-                        : ''}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      <span className="sr-only">
-                        {job.queueName} · {job.jobType}
-                      </span>
-                      Fila {job.queueName} · {job.jobType} · tentativa{' '}
-                      {job.attemptCount}
-                    </div>
-                  </div>
-                </div>
-                <Badge variant={jobStatusBadgeVariant(job.status)}>
-                  {jobStatusLabel(job.status)}
-                </Badge>
-              </div>
-              {job.failureReason ? (
-                <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                  {job.failureReason}
-                </div>
-              ) : null}
-              <div className="mt-3 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                <span>Solicitado {formatFreshnessLabel(job.createdAt)}</span>
-                {job.finishedAt ? (
-                  <span>Concluido {formatFreshnessLabel(job.finishedAt)}</span>
-                ) : (
-                  <span>Aguardando conclusão</span>
-                )}
-                <span>Status operacional: {jobStatusLabel(job.status)}</span>
-                <span>Dono: {jobOwnerLabel(job)}</span>
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
-                <div className="truncate text-xs text-muted-foreground">
+                  </span>
+                  <span className="truncate">{jobResourceTitle(job)}</span>
+                </span>
+              }
+              description={
+                <>
+                  {jobOwnerLabel(job)} · {jobStatusLabel(job.status)}
+                  {job.optimizationRun
+                    ? ` · ${optimizationModeLabel(job.optimizationRun.mode)}`
+                    : ''}
+                  {job.failureReason ? (
+                    <span className="mt-2 block rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">
+                      {job.failureReason}
+                    </span>
+                  ) : null}
+                </>
+              }
+              age={`Solicitado ${formatFreshnessLabel(job.createdAt)}`}
+              context={
+                <>
+                  Fila {job.queueName} · {job.jobType} · tentativa{' '}
+                  {job.attemptCount}
+                </>
+              }
+              meta={
+                <>
                   ID técnico: {job.resourceType} · {job.resourceId} · job{' '}
                   {job.id}
+                </>
+              }
+              action={
+                <div className="flex items-center gap-2">
+                  <StatusBadge family="queue" status={job.status}>
+                    {jobStatusLabel(job.status)}
+                  </StatusBadge>
+                  <Button asChild size="icon" variant="outline">
+                    <a
+                      aria-label={`Abrir detalhe do job ${job.id}`}
+                      href={`/dashboard/fila/${job.id}`}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <ExternalLinkIcon className="size-4" />
+                    </a>
+                  </Button>
                 </div>
-                <Button asChild size="icon" variant="outline">
-                  <a
-                    aria-label={`Abrir detalhe do job ${job.id}`}
-                    href={`/dashboard/fila/${job.id}`}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    <ExternalLinkIcon className="size-4" />
-                  </a>
-                </Button>
-              </div>
-            </div>
+              }
+            />
           ))}
         </CardContent>
       </Card>
@@ -3679,9 +3744,9 @@ export function AdminQueueDetailPage() {
                 {job.attemptCount}
               </CardDescription>
             </div>
-            <Badge variant={jobStatusBadgeVariant(job.status)}>
+            <StatusBadge family="queue" status={job.status}>
               {jobStatusLabel(job.status)}
-            </Badge>
+            </StatusBadge>
           </div>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -3712,16 +3777,18 @@ export function AdminQueueDetailPage() {
               <AlertDescription>{job.failureReason}</AlertDescription>
             </Alert>
           ) : null}
-          <div className="rounded-lg border border-border/70 bg-muted/20 p-4">
-            <div className="text-sm font-medium">Dados técnicos</div>
-            <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
+          <TechnicalDisclosure
+            title="Dados técnicos"
+            description="IDs usados para rastrear o processamento"
+          >
+            <div className="grid gap-2 text-sm md:grid-cols-3">
               <span>job_id: {job.id}</span>
               <span>
                 resource: {job.resourceType} · {job.resourceId}
               </span>
               <span>job_type: {job.jobType}</span>
             </div>
-          </div>
+          </TechnicalDisclosure>
           {auditTarget ? (
             <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-background/80 p-4 md:flex-row md:items-center md:justify-between">
               <div>
@@ -3749,9 +3816,14 @@ export function AdminQueueDetailPage() {
                     {receiptTrustLabel(job.receiptRecord.trustLevel)}
                   </div>
                 </div>
-                <Badge variant="outline">
+                <StatusBadge
+                  family="receipt"
+                  status={receiptModerationStatus(
+                    job.receiptRecord.moderationStatus,
+                  )}
+                >
                   {receiptModerationLabel(job.receiptRecord.moderationStatus)}
-                </Badge>
+                </StatusBadge>
               </div>
               {job.receiptRecord.reviewReason ? (
                 <div className="mt-3 rounded-md border border-amber-300/60 bg-amber-50/70 px-3 py-2 text-sm text-amber-900">
