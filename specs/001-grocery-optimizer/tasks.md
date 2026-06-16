@@ -505,7 +505,7 @@ rules into implementation tasks against the real product.
 - [~] T187 Refactor public web surfaces toward the audited direction for landing, city selection, offers explorer, offer detail, lists, list editor, optimization result, receipt states, location widgets, premium/free entitlement copy, and disabled billing gate in `web/src/public/`
 - [~] T188 Refactor mobile surfaces toward the audited direction for onboarding/home, list, location widgets, optimization results by mode, receipt contribution, profile/value, error states, and dark-mode parity in `mobile/lib/features/`
 - [X] T189 Refactor admin catalog and offer operations so variants are managed through a dedicated detail route/tab, long variant lists are searchable/collapsible, variant images appear in price/offer rows, and raw IDs move behind detail affordances in `web/src/dashboard/`
-- [~] T190 Refactor admin list operations and queue health cards so they show human-readable owner, list, mode, elapsed time, status, and icon actions before technical job/resource IDs in `web/src/dashboard/`
+- [X] T190 Refactor admin list operations and queue health cards so they show human-readable owner, list, mode, elapsed time, status, and icon actions before technical job/resource IDs in `web/src/dashboard/`
 - [X] T191 Add visual regression/screenshot validation for key aligned web flows with Playwright and keep existing MVP E2E coverage green in `web/e2e/`
 - [X] T192 Add mobile widget/golden or screenshot-oriented validation notes for key aligned mobile flows in `mobile/test/` and `docs/product/stitch-ui-ux-alignment.md`
 
@@ -554,6 +554,13 @@ Premium access and extra optimization credits are support/admin operations for n
 - [~] T215 Add mobile QR-code receipt submission flow that posts the scanned NFC-e URL to backend and shows submitted -> waiting release -> processing -> reward validated states in `mobile/lib/features/receipts/`
 - [X] T216 Adopt `web/src/assets/pricely-icon.png` as the official brand icon in web shell/header and plan reuse for favicon/mobile app assets.
 - [~] T217 Continue location web/mobile UX refactors with explicit location/radius preview, manual fallback, denied-permission states, and no-proximity claims until distance-aware optimization is fully active.
+
+**Homolog validation note (2026-06-15)**: Web/admin/backend MVP smoke passed on
+`https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.
+Validated public bundle load, customer login, receipt submission with
+`waiting_manual_release`, admin dashboard, admin queue, receipt audit, manual
+processing release, and backend coverage-preview API. `T183`, `T187`, and
+`T217` remain partial because their mobile surfaces are still pending.
 
 ---
 
