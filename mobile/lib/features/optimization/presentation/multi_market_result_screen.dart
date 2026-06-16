@@ -182,8 +182,19 @@ class MultiMarketResultView extends StatelessWidget {
                                 )
                               : null,
                           title: Text(selection.itemName),
-                          subtitle: Text(
-                            '${selection.quantity} ${selection.unit} - ${_brandRuleLabel(draftItem)} - ${_distanceLabel(selection)} - confianca ${selection.confidenceLabel}',
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                '${selection.quantity} ${selection.unit} - ${_brandRuleLabel(draftItem)} - ${_distanceLabel(selection)}',
+                              ),
+                              if (_variantLabel(selection).isNotEmpty)
+                                Text(_variantLabel(selection)),
+                              Text(_trustEvidenceLabel(selection)),
+                              if (selection.confidenceNotice != null &&
+                                  selection.confidenceNotice!.isNotEmpty)
+                                Text(_confidenceNoticeLabel(selection)),
+                            ],
                           ),
                           trailing: Text(_formatCurrency(selection.subtotal)),
                         );
@@ -245,5 +256,45 @@ class MultiMarketResultView extends StatelessWidget {
       return 'modo cidade';
     }
     return '${distance.toStringAsFixed(1)} km';
+  }
+
+  String _variantLabel(OptimizationSelection selection) {
+    final variant = selection.selectedVariantName;
+    if (variant == null || variant.isEmpty) {
+      return '';
+    }
+    final package = selection.selectedPackageLabel;
+    if (package == null || package.isEmpty || variant.contains(package)) {
+      return 'Selecionado: $variant';
+    }
+    return 'Selecionado: $variant - $package';
+  }
+
+  String _trustEvidenceLabel(OptimizationSelection selection) {
+    final source = selection.sourceLabel ?? 'fonte operacional';
+    final trustFactor = selection.trustFactor;
+    final trustText = trustFactor == null ? '' : ' - trust $trustFactor/100';
+    final evidenceCount = selection.trustEvidenceCount ?? 0;
+    final evidenceText = evidenceCount == 0
+        ? 'sem nota fiscal aceita ainda'
+        : evidenceCount == 1
+            ? '1 nota fiscal aceita'
+            : '$evidenceCount notas fiscais aceitas';
+    final freshness = selection.trustFreshnessDays;
+    final freshnessText = freshness == null
+        ? ''
+        : freshness == 0
+            ? ' - validado hoje'
+            : ' - validado ha ${freshness}d';
+
+    return 'Confianca da oferta: $source$trustText - $evidenceText$freshnessText';
+  }
+
+  String _confidenceNoticeLabel(OptimizationSelection selection) {
+    final notice = selection.confidenceNotice ?? selection.confidenceLabel;
+    if (notice.toLowerCase().contains('low')) {
+      return 'Alerta: evidencia de preco com baixa confianca.';
+    }
+    return 'Alerta: $notice';
   }
 }

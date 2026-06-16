@@ -56,6 +56,14 @@ void main() {
               confidenceLabel: 'high',
               decisionReason: 'selected_confirmed_offer',
               rejectedReason: null,
+              sourceLabel: 'Recibo de usuario',
+              trustFactor: 82,
+              trustLevel: 'high',
+              trustEvidenceCount: 4,
+              trustFreshnessDays: 3,
+              selectedVariantName: 'Arroz tipo 1 1kg',
+              selectedPackageLabel: '1 kg',
+              confidenceNotice: 'Preco observado em recibo recente.',
             ),
           ],
         ),
@@ -99,6 +107,13 @@ void main() {
     expect(find.textContaining('Modos locais usam a localizacao salva'), findsOneWidget);
     expect(find.textContaining('1.2 km'), findsOneWidget);
     expect(find.textContaining('variante exata: Camil · Arroz'), findsOneWidget);
+    expect(find.textContaining('Selecionado: Arroz tipo 1 1kg'), findsOneWidget);
+    expect(
+      find.textContaining('Confianca da oferta: Recibo de usuario'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('trust 82/100'), findsOneWidget);
+    expect(find.textContaining('4 notas fiscais aceitas'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('- Leite vegetal'), 220);
     expect(find.text('- Leite vegetal'), findsOneWidget);
   });

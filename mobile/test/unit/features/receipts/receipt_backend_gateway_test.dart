@@ -7,6 +7,44 @@ import 'package:pricely_mobile/core/networking/http_api_client.dart';
 import 'package:pricely_mobile/features/shared/data/pricely_backend_gateway.dart';
 
 void main() {
+  test('requests location coverage preview before local optimization claims', () async {
+    Map<String, dynamic>? capturedBody;
+    String? authorizationHeader;
+    final gateway = PricelyBackendGateway(
+      HttpApiClient(
+        client: MockClient((request) async {
+          expect(request.url.path, '/locations/coverage-preview');
+          authorizationHeader = request.headers['authorization'];
+          capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
+
+          return http.Response(
+            jsonEncode(<String, dynamic>{
+              'regionId': 'region-1',
+              'coverageRadiusKm': 5,
+              'activeEstablishmentCount': 3,
+              'fallbackUsed': false,
+            }),
+            200,
+          );
+        }),
+      ),
+    );
+
+    final preview = await gateway.previewLocationCoverage(
+      accessToken: 'token-123',
+      regionId: 'region-1',
+      latitude: -23.56,
+      longitude: -46.65,
+      coverageRadiusKm: 5,
+    );
+
+    expect(authorizationHeader, 'Bearer token-123');
+    expect(capturedBody?['regionId'], 'region-1');
+    expect(capturedBody?['latitude'], -23.56);
+    expect(preview.activeEstablishmentCount, 3);
+    expect(preview.coverageRadiusKm, 5);
+  });
+
   test('submits qr code receipt to backend with manual-release feedback', () async {
     Map<String, dynamic>? capturedBody;
     String? authorizationHeader;

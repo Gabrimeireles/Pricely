@@ -58,7 +58,7 @@ void main() {
     );
     expect(find.text('Localização e raio'), findsOneWidget);
     expect(find.text('Raio local padrao: 5 km.'), findsOneWidget);
-    expect(find.textContaining('modos locais usam lojas dentro do raio'), findsOneWidget);
+    expect(find.textContaining('nao promete proximidade'), findsOneWidget);
   });
 
   testWidgets('renders active city offers and opens the offer detail sheet', (tester) async {
