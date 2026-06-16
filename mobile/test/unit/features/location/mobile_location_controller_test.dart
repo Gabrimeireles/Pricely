@@ -17,6 +17,7 @@ void main() {
     final cacheService = LocalCacheService(InMemoryKeyValueStore());
     await cacheService.saveAuthToken('token-123');
     Map<String, dynamic>? savedLocationPayload;
+    Map<String, dynamic>? previewPayload;
 
     final backendGateway = PricelyBackendGateway(
       HttpApiClient(
@@ -53,6 +54,20 @@ void main() {
             );
           }
 
+          if (request.url.path == '/locations/coverage-preview') {
+            previewPayload = jsonDecode(request.body) as Map<String, dynamic>;
+            return http.Response(
+              jsonEncode(<String, dynamic>{
+                'regionId': 'region-1',
+                'coverageRadiusKm': 5,
+                'activeEstablishmentCount': 2,
+                'fallbackUsed': false,
+                'establishments': <dynamic>[],
+              }),
+              200,
+            );
+          }
+
           return http.Response('{}', 404);
         }),
       ),
@@ -76,8 +91,12 @@ void main() {
     await controller.captureAndSave();
 
     expect(controller.status, MobileLocationStatus.allowed);
+    expect(controller.coveragePreview?.activeEstablishmentCount, 2);
+    expect(controller.message, contains('Preview local: 2 lojas'));
     expect(controller.activePreference?.id, 'location-1');
     expect(controller.preferenceIdForRegionSlug('sao-paulo-sp'), 'location-1');
+    expect(previewPayload?['regionId'], 'region-1');
+    expect(previewPayload?['latitude'], -23.56);
     expect(savedLocationPayload?['regionId'], 'region-1');
     expect(savedLocationPayload?['latitude'], -23.56);
     expect(savedLocationPayload?['longitude'], -46.65);

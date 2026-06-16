@@ -59,10 +59,12 @@ class MobileLocationController extends ChangeNotifier {
 
   MobileLocationStatus _status = MobileLocationStatus.manual;
   UserLocationPreferenceSummary? _activePreference;
+  LocationCoveragePreviewSummary? _coveragePreview;
   String? _message;
 
   MobileLocationStatus get status => _status;
   UserLocationPreferenceSummary? get activePreference => _activePreference;
+  LocationCoveragePreviewSummary? get coveragePreview => _coveragePreview;
   String? get message => _message;
 
   bool get isRequesting => _status == MobileLocationStatus.requesting;
@@ -99,6 +101,7 @@ class MobileLocationController extends ChangeNotifier {
     final capture = await _locationService.captureCurrentLocation();
     if (capture.reading == null || capture.status != MobileLocationStatus.allowed) {
       _activePreference = null;
+      _coveragePreview = null;
       _status = capture.status;
       _message = _messageForStatus(capture.status);
       notifyListeners();
@@ -107,6 +110,13 @@ class MobileLocationController extends ChangeNotifier {
 
     try {
       final reading = capture.reading!;
+      _coveragePreview = await _backendGateway.previewLocationCoverage(
+        accessToken: accessToken,
+        regionId: region.id,
+        latitude: reading.latitude,
+        longitude: reading.longitude,
+        coverageRadiusKm: coverageRadiusKm,
+      );
       final saved = await _backendGateway.upsertLocationPreference(
         accessToken: accessToken,
         regionId: region.id,
@@ -120,7 +130,7 @@ class MobileLocationController extends ChangeNotifier {
       _activePreference = saved;
       _status = MobileLocationStatus.allowed;
       _message =
-          '${saved.activeEstablishmentCount} lojas dentro de ${saved.coverageRadiusKm.toStringAsFixed(0)} km.';
+          'Preview local: ${_coveragePreview!.activeEstablishmentCount} lojas dentro de ${_coveragePreview!.coverageRadiusKm.toStringAsFixed(0)} km. Localizacao salva.';
     } catch (_) {
       _status = MobileLocationStatus.error;
       _message = 'Nao foi possivel salvar a localizacao agora.';

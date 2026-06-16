@@ -85,6 +85,30 @@ class PricelyBackendGateway {
     return UserLocationPreferenceSummary.fromJson(response);
   }
 
+  Future<LocationCoveragePreviewSummary> previewLocationCoverage({
+    required String accessToken,
+    required String regionId,
+    double? latitude,
+    double? longitude,
+    String? postalCode,
+    double coverageRadiusKm = 5,
+  }) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/locations/coverage-preview',
+      accessToken: accessToken,
+      body: <String, dynamic>{
+        'regionId': regionId,
+        'coverageRadiusKm': coverageRadiusKm,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (postalCode != null && postalCode.trim().isNotEmpty)
+          'postalCode': postalCode.trim(),
+      },
+    );
+    return LocationCoveragePreviewSummary.fromJson(response);
+  }
+
+
   List<Map<String, dynamic>> _parseManualReceiptItems(String? rawReceipt) {
     if (rawReceipt == null || rawReceipt.trim().isEmpty) {
       return <Map<String, dynamic>>[];
@@ -393,6 +417,16 @@ class PricelyBackendGateway {
               selection['confidenceNotice'] as String? ?? 'confirmado',
           decisionReason: selection['decisionReason'] as String?,
           rejectedReason: selection['rejectedReason'] as String?,
+          sourceLabel: selection['sourceLabel'] as String?,
+          trustFactor: (selection['trustFactor'] as num?)?.toInt(),
+          trustLevel: selection['trustLevel'] as String?,
+          trustEvidenceCount:
+              (selection['trustEvidenceCount'] as num?)?.toInt(),
+          trustFreshnessDays:
+              (selection['trustFreshnessDays'] as num?)?.toInt(),
+          selectedVariantName: selection['selectedVariantName'] as String?,
+          selectedPackageLabel: selection['selectedPackageLabel'] as String?,
+          confidenceNotice: selection['confidenceNotice'] as String?,
         ),
       );
     }
@@ -664,6 +698,30 @@ class UserLocationPreferenceSummary {
           (json['activeEstablishmentCount'] as num? ?? 0).toInt(),
       isDefault: json['isDefault'] as bool? ?? false,
       locationSource: json['locationSource'] as String? ?? 'manual',
+    );
+  }
+}
+
+class LocationCoveragePreviewSummary {
+  LocationCoveragePreviewSummary({
+    required this.regionId,
+    required this.coverageRadiusKm,
+    required this.activeEstablishmentCount,
+    required this.fallbackUsed,
+  });
+
+  final String regionId;
+  final double coverageRadiusKm;
+  final int activeEstablishmentCount;
+  final bool fallbackUsed;
+
+  factory LocationCoveragePreviewSummary.fromJson(Map<String, dynamic> json) {
+    return LocationCoveragePreviewSummary(
+      regionId: json['regionId'] as String? ?? '',
+      coverageRadiusKm: (json['coverageRadiusKm'] as num? ?? 5).toDouble(),
+      activeEstablishmentCount:
+          (json['activeEstablishmentCount'] as num? ?? 0).toInt(),
+      fallbackUsed: json['fallbackUsed'] as bool? ?? false,
     );
   }
 }

@@ -1511,8 +1511,12 @@ class _LocationPreviewCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             controller.message ??
-                'Quando houver localizacao salva, modos locais usam lojas dentro do raio. O modo cidade ignora distancia e compara a regiao selecionada.',
+                'Sem localizacao precisa, o app usa apenas a cidade e nao promete proximidade.',
             style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Modos locais exigem coordenadas salvas. O fallback manual por cidade compara ofertas da cidade inteira.',
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -1553,6 +1557,11 @@ class _LocationPreviewCard extends StatelessWidget {
 
   String get _coverageSummary {
     final activePreference = controller.activePreference;
+    final preview = controller.coveragePreview;
+    if (preview != null) {
+      return 'Preview local: ${preview.activeEstablishmentCount} lojas dentro de ${preview.coverageRadiusKm.toStringAsFixed(0)} km.';
+    }
+
     if (activePreference != null &&
         (region == null || activePreference.regionSlug == region!.slug)) {
       return '${activePreference.activeEstablishmentCount} lojas dentro de ${activePreference.coverageRadiusKm.toStringAsFixed(0)} km.';
@@ -1561,7 +1570,7 @@ class _LocationPreviewCard extends StatelessWidget {
     if (region == null) {
       return 'Escolha uma cidade para carregar o preview local.';
     }
-    return '${region!.name} · ${region!.stateCode} · ${region!.activeEstablishmentCount} lojas candidatas na cidade.';
+    return '${region!.name} - ${region!.stateCode} - ${region!.activeEstablishmentCount} lojas candidatas na cidade.';
   }
 
   String _statusLabel(MobileLocationStatus status) {
@@ -1723,7 +1732,11 @@ class _StorePlanCard extends StatelessWidget {
                               style: theme.textTheme.titleMedium),
                           const SizedBox(height: 4),
                           Text(
-                              '${selection.quantity} ${selection.unit} • ${selection.confidenceLabel}'),
+                            '${selection.quantity} ${selection.unit} - ${_distanceLabel(selection)}',
+                          ),
+                          Text(_trustEvidenceLabel(selection)),
+                          if (selection.selectedVariantName != null)
+                            Text('Selecionado: ${selection.selectedVariantName}'),
                         ],
                       ),
                     ),
@@ -1736,6 +1749,27 @@ class _StorePlanCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _distanceLabel(OptimizationSelection selection) {
+    final distance = selection.distanceKm;
+    if (distance == null) {
+      return 'modo cidade';
+    }
+    return '${distance.toStringAsFixed(1)} km';
+  }
+
+  String _trustEvidenceLabel(OptimizationSelection selection) {
+    final source = selection.sourceLabel ?? 'fonte operacional';
+    final trustFactor = selection.trustFactor;
+    final trustText = trustFactor == null ? '' : ' - trust $trustFactor/100';
+    final evidenceCount = selection.trustEvidenceCount ?? 0;
+    final evidenceText = evidenceCount == 0
+        ? 'sem nota fiscal aceita'
+        : evidenceCount == 1
+            ? '1 nota fiscal aceita'
+            : '$evidenceCount notas fiscais aceitas';
+    return 'Confianca da oferta: $source$trustText - $evidenceText';
   }
 }
 
@@ -1762,13 +1796,34 @@ class _ReceiptSummaryCard extends StatelessWidget {
           if (summary.qrCodeUrl != null && summary.qrCodeUrl!.isNotEmpty)
             const Text('Origem: QR Code NFC-e'),
           Text('${summary.ingestedItems} itens ingeridos'),
-          Text('Fila: ${_processingLabel(summary.processingStatus)}'),
-          Text('Moderação: ${summary.moderationStatus}'),
-          Text('Reward: ${_rewardLabel(summary.rewardEligibilityStatus)}'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              _SignalChip(
+                label: 'Fila: ${_processingLabel(summary.processingStatus)}',
+                foreground: const Color(0xFF003EA8),
+                background: const Color(0xFFDDE7FF),
+              ),
+              _SignalChip(
+                label: 'Moderacao: ${_moderationLabel(summary.moderationStatus)}',
+                foreground: const Color(0xFF5C3B00),
+                background: const Color(0xFFFFF4D6),
+              ),
+              _SignalChip(
+                label: 'Reward: ${_rewardLabel(summary.rewardEligibilityStatus)}',
+                foreground: const Color(0xFF005C55),
+                background: const Color(0xFFEAF5F1),
+              ),
+            ],
+          ),
           if (summary.rewardPoints > 0 ||
               summary.rewardOptimizationTokens > 0)
             Text(
-              '${summary.rewardPoints} pontos · ${summary.rewardOptimizationTokens} tokens',
+              summary.rewardEligibilityStatus == 'granted'
+                  ? '${summary.rewardPoints} pontos - ${summary.rewardOptimizationTokens} creditos concedidos'
+                  : 'Previsto apos validacao: ${summary.rewardPoints} pontos - ${summary.rewardOptimizationTokens} creditos',
             ),
           Text('Motivo: ${summary.reviewReason}'),
           Text(summary.rewardMessage),
@@ -1810,6 +1865,23 @@ class _ReceiptSummaryCard extends StatelessWidget {
         return 'não elegível';
       case 'disabled':
         return 'desativado';
+      default:
+        return status;
+    }
+  }
+
+  String _moderationLabel(String status) {
+    switch (status) {
+      case 'accepted':
+        return 'aceita';
+      case 'duplicate':
+        return 'duplicada';
+      case 'pending':
+        return 'pendente';
+      case 'quarantined':
+        return 'em revisao';
+      case 'rejected':
+        return 'rejeitada';
       default:
         return status;
     }

@@ -98,6 +98,14 @@ class OptimizationSelection {
     required this.confidenceLabel,
     required this.decisionReason,
     required this.rejectedReason,
+    this.sourceLabel,
+    this.trustFactor,
+    this.trustLevel,
+    this.trustEvidenceCount,
+    this.trustFreshnessDays,
+    this.selectedVariantName,
+    this.selectedPackageLabel,
+    this.confidenceNotice,
   });
 
   final String itemName;
@@ -110,6 +118,14 @@ class OptimizationSelection {
   final String confidenceLabel;
   final String? decisionReason;
   final String? rejectedReason;
+  final String? sourceLabel;
+  final int? trustFactor;
+  final String? trustLevel;
+  final int? trustEvidenceCount;
+  final int? trustFreshnessDays;
+  final String? selectedVariantName;
+  final String? selectedPackageLabel;
+  final String? confidenceNotice;
 
   factory OptimizationSelection.fromJson(Map<String, dynamic> json) {
     return OptimizationSelection(
@@ -123,6 +139,14 @@ class OptimizationSelection {
       confidenceLabel: json['confidenceLabel'] as String? ?? 'medium',
       decisionReason: json['decisionReason'] as String?,
       rejectedReason: json['rejectedReason'] as String?,
+      sourceLabel: json['sourceLabel'] as String?,
+      trustFactor: json['trustFactor'] as int?,
+      trustLevel: json['trustLevel'] as String?,
+      trustEvidenceCount: json['trustEvidenceCount'] as int?,
+      trustFreshnessDays: json['trustFreshnessDays'] as int?,
+      selectedVariantName: json['selectedVariantName'] as String?,
+      selectedPackageLabel: json['selectedPackageLabel'] as String?,
+      confidenceNotice: json['confidenceNotice'] as String?,
     );
   }
 
@@ -138,6 +162,14 @@ class OptimizationSelection {
       'confidenceLabel': confidenceLabel,
       'decisionReason': decisionReason,
       'rejectedReason': rejectedReason,
+      'sourceLabel': sourceLabel,
+      'trustFactor': trustFactor,
+      'trustLevel': trustLevel,
+      'trustEvidenceCount': trustEvidenceCount,
+      'trustFreshnessDays': trustFreshnessDays,
+      'selectedVariantName': selectedVariantName,
+      'selectedPackageLabel': selectedPackageLabel,
+      'confidenceNotice': confidenceNotice,
     };
   }
 }
