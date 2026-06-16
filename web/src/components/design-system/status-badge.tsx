@@ -88,16 +88,16 @@ const statusPresets = {
     rejected: { icon: XCircleIcon, label: 'Reward rejeitado', tone: 'critical' },
   },
   severity: {
-    critical: { icon: XCircleIcon, label: 'Critico', tone: 'critical' },
+    critical: { icon: XCircleIcon, label: 'Crítico', tone: 'critical' },
     warning: { icon: AlertTriangleIcon, label: 'Revisar', tone: 'warning' },
     info: { icon: InfoIcon, label: 'Informativo', tone: 'location' },
-    healthy: { icon: CheckCircle2Icon, label: 'Saudavel', tone: 'savings' },
+    healthy: { icon: CheckCircle2Icon, label: 'Saudável', tone: 'savings' },
   },
   trust: {
-    high: { icon: ShieldCheckIcon, label: 'Confianca alta', tone: 'savings' },
-    medium: { icon: ShieldCheckIcon, label: 'Confianca media', tone: 'warning' },
-    low: { icon: AlertTriangleIcon, label: 'Confianca baixa', tone: 'critical' },
-    unknown: { icon: InfoIcon, label: 'Confianca indefinida', tone: 'neutral' },
+    high: { icon: ShieldCheckIcon, label: 'Confiança alta', tone: 'savings' },
+    medium: { icon: ShieldCheckIcon, label: 'Confiança média', tone: 'warning' },
+    low: { icon: AlertTriangleIcon, label: 'Confiança baixa', tone: 'critical' },
+    unknown: { icon: InfoIcon, label: 'Confiança indefinida', tone: 'neutral' },
   },
 } satisfies Record<StatusFamily, Record<string, StatusBadgePreset>>;
 
