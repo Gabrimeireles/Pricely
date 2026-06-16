@@ -52,6 +52,7 @@ import {
   EvidenceModule,
   PriceRow,
   StatusBadge,
+  StickyActionBar,
 } from '@/components/design-system';
 import {
   Card,
@@ -2189,14 +2190,17 @@ export function ListsPage() {
         <Card className="border-border/70 bg-emerald-50/80 shadow-sm">
           <CardHeader className="gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="bg-emerald-100 text-emerald-950 hover:bg-emerald-100">
+              <StatusBadge
+                family="reward"
+                status={isPremium ? 'granted' : 'eligible_pending'}
+              >
                 {isPremium ? 'Premium ativo' : 'Plano gratuito'}
-              </Badge>
-              <Badge variant="secondary">
+              </StatusBadge>
+              <StatusBadge tone="neutral">
                 {isPremium
                   ? 'Otimizações ilimitadas'
                   : `${profile.availableOptimizationTokens} de ${profile.monthlyFreeOptimizationTokens} listas no mês`}
-              </Badge>
+              </StatusBadge>
             </div>
             <CardTitle>
               {isPremium ? 'Benefícios Premium' : 'Uso do plano gratuito'}
@@ -2243,14 +2247,50 @@ export function ListsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4">
-                  {list.items[0]?.imageUrl ? (
-                    <div className="overflow-hidden rounded-lg border border-border/70">
-                      <img
-                        alt={list.items[0].name}
-                        className="h-32 w-full object-cover"
-                        src={resolveProductImage(list.items[0].imageUrl)}
-                      />
-                    </div>
+                  {list.items[0] ? (
+                    <PriceRow
+                      image={
+                        list.items[0].imageUrl ? (
+                          <img
+                            alt={list.items[0].name}
+                            className="size-full object-cover"
+                            src={resolveProductImage(list.items[0].imageUrl)}
+                          />
+                        ) : null
+                      }
+                      title={list.items[0].name}
+                      subtitle={
+                        list.items.length > 1
+                          ? `Mais ${list.items.length - 1} itens nesta lista`
+                          : 'Item principal da lista'
+                      }
+                      price={formatCurrency(list.expectedSavings)}
+                      comparison="economia estimada"
+                      meta={
+                        <>
+                          <StatusBadge
+                            family="queue"
+                            status={
+                              list.latestOptimizationStatus === 'completed'
+                                ? 'completed'
+                                : list.latestOptimizationStatus === 'running'
+                                  ? 'running'
+                                  : list.latestOptimizationStatus === 'failed'
+                                    ? 'failed'
+                                    : 'queued'
+                            }
+                          >
+                            {list.latestOptimizationStatus === 'completed'
+                              ? 'Otimizada'
+                              : list.latestOptimizationStatus === 'running'
+                                ? 'Processando'
+                                : list.latestOptimizationStatus === 'failed'
+                                  ? 'Falhou'
+                                  : 'Pronta para otimizar'}
+                          </StatusBadge>
+                        </>
+                      }
+                    />
                   ) : null}
                   <div className="grid gap-2 text-sm text-muted-foreground">
                     <div>
@@ -2509,42 +2549,37 @@ export function ChecklistPage() {
             </Alert>
           ) : null}
 
-          <Card
-            id="checklist-actions"
-            className="sticky bottom-3 z-20 border-border/70 bg-card/95 shadow-sm"
-          >
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="font-medium">
-                  {purchasedCount} de {list.items.length} itens comprados
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {list.completedAt
-                    ? `Lista concluída em ${formatDateTime(list.completedAt)}${
-                        list.paidTotal !== undefined
-                          ? ` · total pago ${formatCurrency(list.paidTotal)}`
-                          : ''
-                      }`
-                    : allItemsPurchased
-                      ? 'Todos os itens foram marcados. Informe o total pago se quiser salvar essa conferência.'
-                      : 'Marque os itens conforme encontra os produtos no estabelecimento.'}
-                </div>
+          <StickyActionBar id="checklist-actions">
+            <div>
+              <div className="font-medium">
+                {purchasedCount} de {list.items.length} itens comprados
               </div>
-              {allItemsPurchased && !list.completedAt ? (
-                <div className="flex flex-col gap-2 sm:min-w-72 sm:flex-row">
-                  <Input
-                    inputMode="decimal"
-                    onChange={(event) => setPaidTotal(event.target.value)}
-                    placeholder="Total pago opcional"
-                    value={paidTotal}
-                  />
-                  <Button disabled={isCompleting} onClick={completeChecklist}>
-                    Concluir
-                  </Button>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+              <div className="text-sm text-muted-foreground">
+                {list.completedAt
+                  ? `Lista concluída em ${formatDateTime(list.completedAt)}${
+                      list.paidTotal !== undefined
+                        ? ` · total pago ${formatCurrency(list.paidTotal)}`
+                        : ''
+                    }`
+                  : allItemsPurchased
+                    ? 'Todos os itens foram marcados. Informe o total pago se quiser salvar essa conferência.'
+                    : 'Marque os itens conforme encontra os produtos no estabelecimento.'}
+              </div>
+            </div>
+            {allItemsPurchased && !list.completedAt ? (
+              <div className="flex flex-col gap-2 sm:min-w-72 sm:flex-row">
+                <Input
+                  inputMode="decimal"
+                  onChange={(event) => setPaidTotal(event.target.value)}
+                  placeholder="Total pago opcional"
+                  value={paidTotal}
+                />
+                <Button disabled={isCompleting} onClick={completeChecklist}>
+                  Concluir
+                </Button>
+              </div>
+            ) : null}
+          </StickyActionBar>
 
           {list.completedAt ? (
             <Alert>
@@ -2587,33 +2622,22 @@ export function ChecklistPage() {
                   : undefined);
 
               return (
-                <Card
+                <PriceRow
                   key={item.id}
-                  className={checked ? 'border-lime-300' : 'border-border/70'}
-                >
-                  <CardContent className="flex items-center gap-4 p-4">
-                    <input
-                      checked={checked}
-                      className="h-5 w-5"
-                      disabled={pendingItemId === item.id}
-                      onChange={() =>
-                        void toggleItem(
-                          item.id,
-                          item.purchaseStatus ?? 'pending',
-                        )
-                      }
-                      type="checkbox"
-                    />
-                    {item.imageUrl ? (
+                  className={checked ? 'border-lime-300' : undefined}
+                  image={
+                    item.imageUrl ? (
                       <img
                         alt={item.name}
-                        className="h-16 w-16 rounded-lg border border-border/70 object-cover"
+                        className="size-full object-cover"
                         src={resolveProductImage(item.imageUrl)}
                       />
-                    ) : null}
-                    <div className="flex-1">
-                      <div className="font-medium">{item.name}</div>
-                      <div className="text-sm text-muted-foreground">
+                    ) : null
+                  }
+                  title={item.name}
+                  subtitle={
+                    <span className="grid gap-1">
+                      <span>
                         {item.quantity} {item.unitLabel} -{' '}
                         {describeBrandRule(
                           item,
@@ -2621,27 +2645,48 @@ export function ChecklistPage() {
                             ? item.name
                             : undefined,
                         )}
-                      </div>
-                      {item.note ? (
-                        <div className="text-sm text-muted-foreground">
-                          {item.note}
-                        </div>
-                      ) : null}
+                      </span>
+                      {item.note ? <span>{item.note}</span> : null}
                       {optimizedVariantLabel ? (
-                        <div className="mt-2 inline-flex rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary">
-                          Variante otimizada: {optimizedVariantLabel}
-                        </div>
+                        <span>Variante otimizada: {optimizedVariantLabel}</span>
                       ) : null}
                       {expectedPrice !== undefined ? (
-                        <div className="text-sm text-muted-foreground">
+                        <span>
                           Preço previsto: {formatCurrency(expectedPrice)}
-                        </div>
+                        </span>
                       ) : null}
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <Badge variant={checked ? 'secondary' : 'outline'}>
-                        {checked ? 'Comprado' : 'Pendente'}
-                      </Badge>
+                    </span>
+                  }
+                  price={
+                    expectedPrice !== undefined
+                      ? formatCurrency(expectedPrice)
+                      : 'Sem preço'
+                  }
+                  comparison={
+                    expectedPrice !== undefined ? 'preço previsto' : undefined
+                  }
+                  meta={
+                    <StatusBadge
+                      family="queue"
+                      status={checked ? 'completed' : 'queued'}
+                    >
+                      {checked ? 'Comprado' : 'Pendente'}
+                    </StatusBadge>
+                  }
+                  actions={
+                    <div className="flex items-center gap-2">
+                      <input
+                        checked={checked}
+                        className="h-5 w-5"
+                        disabled={pendingItemId === item.id}
+                        onChange={() =>
+                          void toggleItem(
+                            item.id,
+                            item.purchaseStatus ?? 'pending',
+                          )
+                        }
+                        type="checkbox"
+                      />
                       <Button
                         onClick={() => {
                           setReportItem(item);
@@ -2657,8 +2702,8 @@ export function ChecklistPage() {
                         Reportar preço
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
+                  }
+                />
               );
             })}
           </div>
