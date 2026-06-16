@@ -100,7 +100,6 @@ void main() {
 
     expect(find.text('Lista da semana'), findsOneWidget);
     expect(find.text('Mercado Azul'), findsOneWidget);
-    expect(find.text('Super Verde'), findsOneWidget);
     expect(find.textContaining('Economia estimada'), findsOneWidget);
     expect(find.text('Localização e raio'), findsOneWidget);
     expect(find.text('Raio local padrao: 5 km.'), findsOneWidget);
@@ -114,6 +113,8 @@ void main() {
     );
     expect(find.textContaining('trust 82/100'), findsOneWidget);
     expect(find.textContaining('4 notas fiscais aceitas'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Super Verde'), 220);
+    expect(find.text('Super Verde'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('- Leite vegetal'), 220);
     expect(find.text('- Leite vegetal'), findsOneWidget);
   });
