@@ -12,9 +12,6 @@ import {
   Clock3Icon,
   ExternalLinkIcon,
   FlagIcon,
-  HelpCircleIcon,
-  HistoryIcon,
-  HomeIcon,
   InfoIcon,
   ListChecksIcon,
   ListIcon,
@@ -24,13 +21,11 @@ import {
   ReceiptTextIcon,
   RefreshCwIcon,
   RouteIcon,
-  SettingsIcon,
   ShieldAlertIcon,
   ShoppingCartIcon,
   Share2Icon,
   SlidersHorizontalIcon,
   StoreIcon,
-  TagIcon,
   UploadIcon,
 } from 'lucide-react';
 
@@ -391,7 +386,9 @@ function ShopperEvidenceModule({
             }`
           : 'Sem loja definida'
       }
-      price={formatCurrency(selection.priceAmount ?? selection.estimatedCost ?? 0)}
+      price={formatCurrency(
+        selection.priceAmount ?? selection.estimatedCost ?? 0,
+      )}
       sourceLabel={selection.sourceLabel ?? 'Origem operacional'}
       trustScore={selection.trustFactor}
       trustLevel={selection.trustLevel ?? 'unknown'}
@@ -969,417 +966,397 @@ export function LandingPage() {
     : 0;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[190px_minmax(0,1fr)]">
-      <aside className="hidden rounded-lg border border-border/70 bg-card/88 p-3 shadow-sm lg:block">
-        <nav className="grid gap-1 text-sm">
-          {[
-            { icon: HomeIcon, label: 'Início', to: '/' },
-            { icon: ClipboardListIcon, label: 'Minha lista', to: '/listas' },
-            { icon: TagIcon, label: 'Ofertas', to: '/ofertas' },
-            { icon: StoreIcon, label: 'Lojas', to: '/cidades' },
-            { icon: ReceiptTextIcon, label: 'Notas fiscais', to: '/notas' },
-            { icon: HistoryIcon, label: 'Histórico', to: '/listas' },
-            { icon: SettingsIcon, label: 'Configurações', to: '/listas' },
-          ].map((item, index) => (
-            <Link
-              className={`flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors ${
-                index === 0
-                  ? 'bg-[var(--ds-location-soft)] text-[var(--ds-location)]'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-              key={item.label}
-              to={item.to}
-            >
-              <item.icon className="size-4" />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="mt-20 rounded-lg bg-muted/60 p-3 text-xs">
-          <div className="flex items-center gap-2 font-medium">
-            <HelpCircleIcon className="size-4" />
-            Precisa de ajuda?
+    <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_350px]">
+      <section className="grid min-w-0 gap-5">
+        <div className="grid gap-3 rounded-lg border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)]/45 p-5 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center">
+          <div className="flex size-14 items-center justify-center rounded-full border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)] text-[var(--ds-location)]">
+            <ClipboardListIcon className="size-7" />
           </div>
-          <div className="mt-1 text-muted-foreground">Central de ajuda</div>
+          <div className="min-w-0">
+            <div className="text-sm text-muted-foreground">
+              Próximo melhor passo
+            </div>
+            <h1 className="mt-1 font-heading text-xl font-semibold sm:text-2xl">
+              {activeList
+                ? 'Continue sua lista e otimize preços'
+                : city
+                  ? 'Crie uma lista para comparar preços'
+                  : 'Escolha uma cidade para começar'}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {activeList
+                ? `Sua lista está pronta para otimização. Última economia estimada: ${formatCurrency(
+                    estimatedSavings,
+                  )}.`
+                : city
+                  ? 'Monte uma lista com produtos comparáveis antes de ir ao mercado.'
+                  : 'A cidade define ofertas, lojas e evidências usadas na comparação.'}
+            </p>
+          </div>
+          <div className="grid gap-2 sm:justify-items-end">
+            <Button asChild className="min-w-44">
+              <Link
+                to={
+                  activeList ? `/otimizacao/${activeList.id}` : '/listas/nova'
+                }
+              >
+                {activeList ? 'Otimizar agora' : 'Criar lista'}
+                <ArrowRightIcon data-icon="inline-end" />
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="ghost">
+              <Link to={activeList ? `/listas/${activeList.id}` : '/ofertas'}>
+                {activeList ? 'Ver minha lista' : 'Ver ofertas'}
+              </Link>
+            </Button>
+          </div>
         </div>
-      </aside>
 
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_350px]">
-        <section className="grid min-w-0 gap-5">
-          <div className="grid gap-3 rounded-lg border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)]/45 p-5 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center">
-            <div className="flex size-14 items-center justify-center rounded-full border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)] text-[var(--ds-location)]">
-              <ClipboardListIcon className="size-7" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm text-muted-foreground">
-                Próximo melhor passo
-              </div>
-              <h1 className="mt-1 font-heading text-xl font-semibold sm:text-2xl">
-                {activeList
-                  ? 'Continue sua lista e otimize preços'
-                  : city
-                    ? 'Crie uma lista para comparar preços'
-                    : 'Escolha uma cidade para começar'}
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {activeList
-                  ? `Sua lista está pronta para otimização. Última economia estimada: ${formatCurrency(
-                      estimatedSavings,
-                    )}.`
-                  : city
-                    ? 'Monte uma lista com produtos comparáveis antes de ir ao mercado.'
-                    : 'A cidade define ofertas, lojas e evidências usadas na comparação.'}
-              </p>
-            </div>
-            <div className="grid gap-2 sm:justify-items-end">
-              <Button asChild className="min-w-44">
-                <Link to={activeList ? `/otimizacao/${activeList.id}` : '/listas/nova'}>
-                  {activeList ? 'Otimizar agora' : 'Criar lista'}
-                  <ArrowRightIcon data-icon="inline-end" />
-                </Link>
-              </Button>
-              <Button asChild size="sm" variant="ghost">
-                <Link to={activeList ? `/listas/${activeList.id}` : '/ofertas'}>
-                  {activeList ? 'Ver minha lista' : 'Ver ofertas'}
-                </Link>
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="border-border/70 bg-card/92 shadow-sm">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-10 items-center justify-center rounded-full bg-[var(--ds-location-soft)] text-[var(--ds-location)]">
-                      <ListIcon className="size-5" />
-                    </span>
-                    <div>
-                      <CardTitle>Sua lista ativa</CardTitle>
-                      <CardDescription>
-                        {activeList
-                          ? `${activeList.items.length} itens`
-                          : 'Nenhuma lista criada ainda'}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <StatusBadge tone={activeList ? 'savings' : 'neutral'}>
-                    {activeList ? 'Em andamento' : 'Vazia'}
-                  </StatusBadge>
-                </div>
-              </CardHeader>
-              <CardContent className="grid gap-5">
-                <div>
-                  <div className="font-heading text-xl font-semibold">
-                    {activeList?.name ?? 'Comece uma lista'}
-                  </div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    {activeList
-                      ? `${completedItemCount}/${activeList.items.length} itens adicionados`
-                      : 'Adicione produtos para liberar a otimização.'}
-                  </div>
-                </div>
-                <div className="h-2 rounded-full bg-muted">
-                  <div
-                    className="h-2 rounded-full bg-[var(--ds-primary)]"
-                    style={{ width: `${Math.max(8, activeListCompletion)}%` }}
-                  />
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <Button asChild variant="secondary">
-                    <Link to={activeList ? `/listas/${activeList.id}` : '/listas/nova'}>
-                      Ver lista
-                    </Link>
-                  </Button>
-                  <Button asChild variant="ghost">
-                    <Link to={activeList ? `/listas/${activeList.id}` : '/listas/nova'}>
-                      Editar itens
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden border-border/70 bg-card/92 shadow-sm">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">
-                      <MapPinIcon className="size-5" />
-                    </span>
-                    <div>
-                      <CardTitle>Cobertura local</CardTitle>
-                      <CardDescription>
-                        {city ? `${city.name}, ${city.stateCode}` : 'Sem cidade'}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <StatusBadge tone="location">Raio: 5 km</StatusBadge>
-                </div>
-              </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-[1.1fr_0.8fr]">
-                <div className="relative min-h-40 overflow-hidden rounded-lg border border-border/70 bg-muted/50">
-                  <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.04)_1px,transparent_1px),linear-gradient(rgba(0,0,0,0.04)_1px,transparent_1px)] bg-[size:28px_28px]" />
-                  <div className="absolute left-1/2 top-1/2 size-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-blue-400/80" />
-                  <div className="absolute left-1/2 top-1/2 size-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[var(--ds-location)]/70" />
-                  <div className="absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600" />
-                  {[StoreIcon, ShoppingCartIcon, StoreIcon, ShoppingCartIcon].map(
-                    (Icon, index) => (
-                      <span
-                        className="absolute flex size-7 items-center justify-center rounded-full bg-[var(--ds-location)] text-primary-foreground shadow-sm"
-                        key={index}
-                        style={{
-                          left: `${30 + index * 14}%`,
-                          top: `${32 + (index % 2) * 26}%`,
-                        }}
-                      >
-                        <Icon className="size-3.5" />
-                      </span>
-                    ),
-                  )}
-                </div>
-                <div className="grid content-center gap-3">
-                  <div>
-                    <div className="font-heading text-2xl font-semibold">
-                      {activeStoreLabel}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      dentro do raio
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-heading text-2xl font-semibold text-[var(--ds-location)]">
-                      {coveragePercent}%
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Cobertura da área
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="size-2 rounded-full bg-blue-600" />
-                    Atualizado há 15 min
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="border-t border-border/70">
-                <Button asChild className="w-full" variant="ghost">
-                  <Link to="/cidades">Ver todas as lojas</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
-
-          <section className="grid gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-heading text-lg font-semibold">
-                Ofertas recomendadas para você
-              </h2>
-              <Button asChild size="sm" variant="ghost">
-                <Link to="/ofertas">Ver todas as ofertas</Link>
-              </Button>
-            </div>
-            {secondaryOffers.length > 0 ? (
-              <div className="grid gap-3 lg:grid-cols-3">
-                {secondaryOffers.map((offer) => (
-                  <Card
-                    className="overflow-hidden border-border/70 bg-card/92 shadow-sm"
-                    key={offer.id}
-                  >
-                    <CardContent className="grid gap-3 p-4">
-                      <div className="flex gap-3">
-                        <img
-                          alt={offer.productName}
-                          className="size-20 rounded-md border border-border/60 object-cover"
-                          src={offer.imageUrl}
-                        />
-                        <div className="min-w-0">
-                          <div className="truncate font-medium">
-                            {offer.productName}
-                          </div>
-                          <div className="mt-1 text-sm text-muted-foreground">
-                            {offer.storeName} · {offer.neighborhood}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-end justify-between gap-3">
-                        <div>
-                          <div className="font-heading text-2xl font-semibold text-[var(--ds-location)]">
-                            {formatCurrency(offer.price)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Preço otimizado
-                          </div>
-                        </div>
-                        <div className="rounded-md bg-[var(--ds-savings-soft)] px-3 py-2 text-right text-sm text-[var(--ds-savings)]">
-                          <div>Economize</div>
-                          <div className="font-semibold">
-                            {formatCurrency(offer.savingsVsRegionalAverage ?? 0)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {confidenceBadge(offer.confidence)}
-                        {freshnessBadge(offer.freshness)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Escolha uma cidade para ver ofertas reais</CardTitle>
-                  <CardDescription>
-                    A vitrine depende da cidade selecionada. Depois mostramos
-                    produto, loja, preço observado e confiança da informação.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            )}
-          </section>
-
-          <section className="grid gap-3">
-            <h2 className="font-heading text-lg font-semibold">
-              Outros estados importantes
-            </h2>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {[
-                {
-                  icon: MapPinIcon,
-                  title: 'Sem cidade selecionada',
-                  text: 'Escolha uma cidade para ver ofertas',
-                  action: 'Selecionar cidade',
-                },
-                {
-                  icon: LockIcon,
-                  title: 'Permissão de localização negada',
-                  text: 'Ative a permissão para ver lojas perto de você',
-                  action: 'Abrir configurações',
-                },
-                {
-                  icon: StoreIcon,
-                  title: 'Nenhuma loja no raio',
-                  text: 'Não encontramos lojas ativas a 5 km de você',
-                  action: 'Aumentar raio',
-                },
-                {
-                  icon: Clock3Icon,
-                  title: 'Carregando dados',
-                  text: 'Buscando as melhores ofertas',
-                  action: '',
-                },
-              ].map((state) => (
-                <div
-                  className="rounded-lg border border-dashed border-border/80 bg-card/70 p-4"
-                  key={state.title}
-                >
-                  <state.icon className="size-8 text-[var(--ds-location)]" />
-                  <div className="mt-3 font-medium">{state.title}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    {state.text}
-                  </div>
-                  {state.action ? (
-                    <Button className="mt-3" size="sm" variant="outline">
-                      {state.action}
-                    </Button>
-                  ) : (
-                    <div className="mt-4 grid gap-2">
-                      <div className="h-2 rounded-full bg-muted" />
-                      <div className="h-2 w-2/3 rounded-full bg-muted" />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        </section>
-
-        <aside className="grid content-start gap-4">
+        <div className="grid gap-4 lg:grid-cols-2">
           <Card className="border-border/70 bg-card/92 shadow-sm">
             <CardHeader>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-200">
-                    <ReceiptTextIcon className="size-5" />
+                  <span className="flex size-10 items-center justify-center rounded-full bg-[var(--ds-location-soft)] text-[var(--ds-location)]">
+                    <ListIcon className="size-5" />
                   </span>
                   <div>
-                    <CardTitle>Nota fiscal</CardTitle>
-                    <CardDescription>Aguardando liberação manual</CardDescription>
+                    <CardTitle>Sua lista ativa</CardTitle>
+                    <CardDescription>
+                      {activeList
+                        ? `${activeList.items.length} itens`
+                        : 'Nenhuma lista criada ainda'}
+                    </CardDescription>
                   </div>
                 </div>
-                <StatusBadge tone="warning">Aguardando</StatusBadge>
+                <StatusBadge tone={activeList ? 'savings' : 'neutral'}>
+                  {activeList ? 'Em andamento' : 'Vazia'}
+                </StatusBadge>
               </div>
             </CardHeader>
-            <CardContent className="grid gap-4">
+            <CardContent className="grid gap-5">
               <div>
-                <div className="font-medium">Enviada para validação</div>
+                <div className="font-heading text-xl font-semibold">
+                  {activeList?.name ?? 'Comece uma lista'}
+                </div>
                 <div className="mt-1 text-sm text-muted-foreground">
-                  Total: {formatCurrency(lastReceiptTotal)}
+                  {activeList
+                    ? `${completedItemCount}/${activeList.items.length} itens adicionados`
+                    : 'Adicione produtos para liberar a otimização.'}
                 </div>
               </div>
-              <div className="rounded-lg border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] p-3 text-sm">
-                Nossa equipe vai revisar sua nota fiscal. Você será avisado
-                quando for liberada.
+              <div className="h-2 rounded-full bg-muted">
+                <div
+                  className="h-2 rounded-full bg-[var(--ds-primary)]"
+                  style={{ width: `${Math.max(8, activeListCompletion)}%` }}
+                />
               </div>
-              <Button asChild variant="outline">
-                <Link to="/notas">Ver detalhes</Link>
-              </Button>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button asChild variant="secondary">
+                  <Link
+                    to={
+                      activeList ? `/listas/${activeList.id}` : '/listas/nova'
+                    }
+                  >
+                    Ver lista
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost">
+                  <Link
+                    to={
+                      activeList ? `/listas/${activeList.id}` : '/listas/nova'
+                    }
+                  >
+                    Editar itens
+                  </Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border/70 bg-card/92 shadow-sm">
+          <Card className="overflow-hidden border-border/70 bg-card/92 shadow-sm">
             <CardHeader>
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle>Resumo de economia</CardTitle>
-                <InfoIcon className="size-4 text-muted-foreground" />
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">
+                    <MapPinIcon className="size-5" />
+                  </span>
+                  <div>
+                    <CardTitle>Cobertura local</CardTitle>
+                    <CardDescription>
+                      {city ? `${city.name}, ${city.stateCode}` : 'Sem cidade'}
+                    </CardDescription>
+                  </div>
+                </div>
+                <StatusBadge tone="location">Raio: 5 km</StatusBadge>
               </div>
-              <CardDescription>Esta semana</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
-              <div>
-                <div className="font-heading text-4xl font-semibold text-[var(--ds-savings)]">
-                  {formatCurrency(estimatedSavings)}
+            <CardContent className="grid gap-4 md:grid-cols-[1.1fr_0.8fr]">
+              <div className="relative min-h-40 overflow-hidden rounded-lg border border-border/70 bg-muted/50">
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.04)_1px,transparent_1px),linear-gradient(rgba(0,0,0,0.04)_1px,transparent_1px)] bg-[size:28px_28px]" />
+                <div className="absolute left-1/2 top-1/2 size-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-blue-400/80" />
+                <div className="absolute left-1/2 top-1/2 size-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[var(--ds-location)]/70" />
+                <div className="absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600" />
+                {[StoreIcon, ShoppingCartIcon, StoreIcon, ShoppingCartIcon].map(
+                  (Icon, index) => (
+                    <span
+                      className="absolute flex size-7 items-center justify-center rounded-full bg-[var(--ds-location)] text-primary-foreground shadow-sm"
+                      key={index}
+                      style={{
+                        left: `${30 + index * 14}%`,
+                        top: `${32 + (index % 2) * 26}%`,
+                      }}
+                    >
+                      <Icon className="size-3.5" />
+                    </span>
+                  ),
+                )}
+              </div>
+              <div className="grid content-center gap-3">
+                <div>
+                  <div className="font-heading text-2xl font-semibold">
+                    {activeStoreLabel}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    dentro do raio
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  Economia estimada
+                <div>
+                  <div className="font-heading text-2xl font-semibold text-[var(--ds-location)]">
+                    {coveragePercent}%
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Cobertura da área
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="size-2 rounded-full bg-blue-600" />
+                  Atualizado há 15 min
                 </div>
               </div>
-              <div className="divide-y divide-border/70 text-sm">
-                <div className="flex justify-between py-2">
-                  <span className="text-muted-foreground">Itens otimizados</span>
-                  <span>{completedItemCount} de {activeList?.items.length ?? 0}</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-muted-foreground">Melhor loja</span>
-                  <span>{primaryOffer?.storeName ?? 'Aguardando lista'}</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-muted-foreground">Preços verificados</span>
-                  <span>{city ? '100%' : '0%'}</span>
-                </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-muted-foreground">Listas otimizadas</span>
-                  <span>{optimizedListsCount}</span>
-                </div>
-              </div>
-              <Button asChild variant="ghost">
-                <Link to={currentUser ? '/listas' : '/entrar'}>
-                  Ver detalhes da economia
-                  <ArrowRightIcon data-icon="inline-end" />
-                </Link>
-              </Button>
             </CardContent>
+            <CardFooter className="border-t border-border/70">
+              <Button asChild className="w-full" variant="ghost">
+                <Link to="/cidades">Ver todas as lojas</Link>
+              </Button>
+            </CardFooter>
           </Card>
+        </div>
 
-          <div className="hidden items-center justify-between rounded-lg border border-border/70 bg-card/80 px-4 py-3 text-sm xl:flex">
-            <div className="flex items-center gap-2">
-              <BellIcon className="size-4" />
-              <span>3 alertas de preço</span>
-            </div>
-            <StatusBadge tone="savings">Ativo</StatusBadge>
+        <section className="grid gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-heading text-lg font-semibold">
+              Ofertas recomendadas para você
+            </h2>
+            <Button asChild size="sm" variant="ghost">
+              <Link to="/ofertas">Ver todas as ofertas</Link>
+            </Button>
           </div>
-        </aside>
-      </div>
+          {secondaryOffers.length > 0 ? (
+            <div className="grid gap-3 lg:grid-cols-3">
+              {secondaryOffers.map((offer) => (
+                <Card
+                  className="overflow-hidden border-border/70 bg-card/92 shadow-sm"
+                  key={offer.id}
+                >
+                  <CardContent className="grid gap-3 p-4">
+                    <div className="flex gap-3">
+                      <img
+                        alt={offer.productName}
+                        className="size-20 rounded-md border border-border/60 object-cover"
+                        src={offer.imageUrl}
+                      />
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">
+                          {offer.productName}
+                        </div>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          {offer.storeName} · {offer.neighborhood}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <div className="font-heading text-2xl font-semibold text-[var(--ds-location)]">
+                          {formatCurrency(offer.price)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Preço otimizado
+                        </div>
+                      </div>
+                      <div className="rounded-md bg-[var(--ds-savings-soft)] px-3 py-2 text-right text-sm text-[var(--ds-savings)]">
+                        <div>Economize</div>
+                        <div className="font-semibold">
+                          {formatCurrency(offer.savingsVsRegionalAverage ?? 0)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {confidenceBadge(offer.confidence)}
+                      {freshnessBadge(offer.freshness)}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Escolha uma cidade para ver ofertas reais</CardTitle>
+                <CardDescription>
+                  A vitrine depende da cidade selecionada. Depois mostramos
+                  produto, loja, preço observado e confiança da informação.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+        </section>
+
+        <section className="grid gap-3">
+          <h2 className="font-heading text-lg font-semibold">
+            Outros estados importantes
+          </h2>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              {
+                icon: MapPinIcon,
+                title: 'Sem cidade selecionada',
+                text: 'Escolha uma cidade para ver ofertas',
+                action: 'Selecionar cidade',
+              },
+              {
+                icon: LockIcon,
+                title: 'Permissão de localização negada',
+                text: 'Ative a permissão para ver lojas perto de você',
+                action: 'Abrir configurações',
+              },
+              {
+                icon: StoreIcon,
+                title: 'Nenhuma loja no raio',
+                text: 'Não encontramos lojas ativas a 5 km de você',
+                action: 'Aumentar raio',
+              },
+              {
+                icon: Clock3Icon,
+                title: 'Carregando dados',
+                text: 'Buscando as melhores ofertas',
+                action: '',
+              },
+            ].map((state) => (
+              <div
+                className="rounded-lg border border-dashed border-border/80 bg-card/70 p-4"
+                key={state.title}
+              >
+                <state.icon className="size-8 text-[var(--ds-location)]" />
+                <div className="mt-3 font-medium">{state.title}</div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {state.text}
+                </div>
+                {state.action ? (
+                  <Button className="mt-3" size="sm" variant="outline">
+                    {state.action}
+                  </Button>
+                ) : (
+                  <div className="mt-4 grid gap-2">
+                    <div className="h-2 rounded-full bg-muted" />
+                    <div className="h-2 w-2/3 rounded-full bg-muted" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      </section>
+
+      <aside className="grid content-start gap-4">
+        <Card className="border-border/70 bg-card/92 shadow-sm">
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex size-10 items-center justify-center rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-200">
+                  <ReceiptTextIcon className="size-5" />
+                </span>
+                <div>
+                  <CardTitle>Nota fiscal</CardTitle>
+                  <CardDescription>Aguardando liberação manual</CardDescription>
+                </div>
+              </div>
+              <StatusBadge tone="warning">Aguardando</StatusBadge>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div>
+              <div className="font-medium">Enviada para validação</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                Total: {formatCurrency(lastReceiptTotal)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] p-3 text-sm">
+              Nossa equipe vai revisar sua nota fiscal. Você será avisado quando
+              for liberada.
+            </div>
+            <Button asChild variant="outline">
+              <Link to="/notas">Ver detalhes</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/92 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle>Resumo de economia</CardTitle>
+              <InfoIcon className="size-4 text-muted-foreground" />
+            </div>
+            <CardDescription>Esta semana</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div>
+              <div className="font-heading text-4xl font-semibold text-[var(--ds-savings)]">
+                {formatCurrency(estimatedSavings)}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Economia estimada
+              </div>
+            </div>
+            <div className="divide-y divide-border/70 text-sm">
+              <div className="flex justify-between py-2">
+                <span className="text-muted-foreground">Itens otimizados</span>
+                <span>
+                  {completedItemCount} de {activeList?.items.length ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-muted-foreground">Melhor loja</span>
+                <span>{primaryOffer?.storeName ?? 'Aguardando lista'}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-muted-foreground">
+                  Preços verificados
+                </span>
+                <span>{city ? '100%' : '0%'}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-muted-foreground">Listas otimizadas</span>
+                <span>{optimizedListsCount}</span>
+              </div>
+            </div>
+            <Button asChild variant="ghost">
+              <Link to={currentUser ? '/listas' : '/entrar'}>
+                Ver detalhes da economia
+                <ArrowRightIcon data-icon="inline-end" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <div className="hidden items-center justify-between rounded-lg border border-border/70 bg-card/80 px-4 py-3 text-sm xl:flex">
+          <div className="flex items-center gap-2">
+            <BellIcon className="size-4" />
+            <span>3 alertas de preço</span>
+          </div>
+          <StatusBadge tone="savings">Ativo</StatusBadge>
+        </div>
+      </aside>
     </div>
   );
 }
@@ -1509,7 +1486,10 @@ export function OffersPage() {
             <CardHeader>
               <CardTitle>{group.variantName}</CardTitle>
               <CardDescription>
-                {formatVariantWithPackage(group.productName, group.packageLabel)}
+                {formatVariantWithPackage(
+                  group.productName,
+                  group.packageLabel,
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3">
@@ -3032,7 +3012,8 @@ export function ChecklistPage() {
                             <div className="text-xs text-muted-foreground">
                               cada
                             </div>
-                            {optimizationSelection?.trustFactor !== undefined ? (
+                            {optimizationSelection?.trustFactor !==
+                            undefined ? (
                               <StatusBadge
                                 family="trust"
                                 status={
@@ -4009,30 +3990,33 @@ export function OptimizationPage() {
       (selection) => selection.selectionStatus !== 'selected',
     ) ?? [];
   const storePlan = Array.from(
-    selectedSelections.reduce(
-      (stores, selection) => {
-        const key = selection.establishmentName ?? 'Sem loja definida';
-        const current = stores.get(key) ?? {
-          name: key,
-          neighborhood: selection.establishmentNeighborhood,
-          items: 0,
-          total: 0,
-        };
-        current.items += 1;
-        current.total += selection.priceAmount ?? selection.estimatedCost ?? 0;
-        stores.set(key, current);
-        return stores;
-      },
-      new Map<
-        string,
-        {
-          name: string;
-          neighborhood?: string;
-          items: number;
-          total: number;
-        }
-      >(),
-    ).values(),
+    selectedSelections
+      .reduce(
+        (stores, selection) => {
+          const key = selection.establishmentName ?? 'Sem loja definida';
+          const current = stores.get(key) ?? {
+            name: key,
+            neighborhood: selection.establishmentNeighborhood,
+            items: 0,
+            total: 0,
+          };
+          current.items += 1;
+          current.total +=
+            selection.priceAmount ?? selection.estimatedCost ?? 0;
+          stores.set(key, current);
+          return stores;
+        },
+        new Map<
+          string,
+          {
+            name: string;
+            neighborhood?: string;
+            items: number;
+            total: number;
+          }
+        >(),
+      )
+      .values(),
   );
 
   useEffect(() => {
@@ -4084,51 +4068,10 @@ export function OptimizationPage() {
         <div
           className={
             result && !isProcessingResult
-              ? '-my-6 grid min-h-[calc(100vh-5rem)] gap-0 overflow-hidden rounded-none border-y border-border/70 bg-background lg:grid-cols-[180px_minmax(0,1fr)_300px]'
+              ? '-my-6 grid min-h-[calc(100vh-5rem)] gap-0 overflow-hidden rounded-none border-y border-border/70 bg-background lg:grid-cols-[minmax(0,1fr)_300px]'
               : 'flex flex-col gap-6'
           }
         >
-          {result && !isProcessingResult ? (
-            <aside className="hidden border-r border-border/70 bg-card/80 p-4 lg:flex lg:flex-col lg:justify-between">
-              <div className="grid gap-6">
-                <Link
-                  className="flex items-center gap-2 text-xl font-semibold text-primary"
-                  to="/"
-                >
-                  <span>pricely</span>
-                  <ShoppingCartIcon className="size-5" />
-                </Link>
-                <nav className="grid gap-1 text-sm">
-                  {[
-                    { icon: HomeIcon, label: 'Início', to: '/' },
-                    { icon: ListIcon, label: 'Minha lista', to: '/listas' },
-                    { icon: TagIcon, label: 'Ofertas', to: '/ofertas' },
-                    { icon: StoreIcon, label: 'Lojas', to: '/cidades' },
-                    { icon: ReceiptTextIcon, label: 'Notas fiscais', to: '/notas' },
-                    { icon: HistoryIcon, label: 'Histórico', to: '/listas' },
-                    { icon: SettingsIcon, label: 'Configurações', to: '/perfil' },
-                  ].map((item) => (
-                    <Link
-                      className="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      key={item.label}
-                      to={item.to}
-                    >
-                      <item.icon className="size-4" />
-                      {item.label}
-                    </Link>
-                  ))}
-                </nav>
-              </div>
-              <div className="rounded-lg bg-muted/70 p-3 text-xs text-muted-foreground">
-                <div className="mb-1 flex items-center gap-2 font-medium text-foreground">
-                  <HelpCircleIcon className="size-4" />
-                  Precisa de ajuda?
-                </div>
-                Central de ajuda
-              </div>
-            </aside>
-          ) : null}
-
           <main
             className={
               result && !isProcessingResult
@@ -4157,7 +4100,11 @@ export function OptimizationPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Button aria-label="Notificações" size="icon" variant="ghost">
+                    <Button
+                      aria-label="Notificações"
+                      size="icon"
+                      variant="ghost"
+                    >
                       <BellIcon className="size-4" />
                     </Button>
                     <div className="hidden items-center gap-3 sm:flex">
@@ -4166,7 +4113,9 @@ export function OptimizationPage() {
                       </div>
                       <div className="text-sm">
                         <div className="font-medium">Mariana Silva</div>
-                        <div className="text-xs text-muted-foreground">Cliente</div>
+                        <div className="text-xs text-muted-foreground">
+                          Cliente
+                        </div>
                       </div>
                       <ChevronDownIcon className="size-4 text-muted-foreground" />
                     </div>
@@ -4185,7 +4134,12 @@ export function OptimizationPage() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="grid gap-2">
                   {result && !isProcessingResult ? (
-                    <Button asChild className="w-fit px-0" size="sm" variant="link">
+                    <Button
+                      asChild
+                      className="w-fit px-0"
+                      size="sm"
+                      variant="link"
+                    >
                       <Link to={`/listas/${list.id}`}>
                         <ChevronRightIcon className="size-4 rotate-180" />
                         Voltar para a lista
@@ -4296,7 +4250,9 @@ export function OptimizationPage() {
                         <MapPinIcon className="size-5" />
                       </span>
                       <div className="grid gap-1 text-sm">
-                        <div className="text-xs text-primary">Modo selecionado</div>
+                        <div className="text-xs text-primary">
+                          Modo selecionado
+                        </div>
                         <div className="font-medium">
                           {optimizationModeCopy[activeMode].title}
                         </div>
@@ -4306,14 +4262,18 @@ export function OptimizationPage() {
                       </div>
                     </div>
                     <div className="grid gap-1 text-sm">
-                      <div className="text-xs text-primary">Cobertura local</div>
+                      <div className="text-xs text-primary">
+                        Cobertura local
+                      </div>
                       <div className="font-medium">
                         {storePlan.length + 6} lojas dentro de 5 km
                       </div>
                       <div className="h-16 rounded-md bg-[radial-gradient(circle_at_45%_45%,var(--ds-primary)_0_4px,transparent_5px),radial-gradient(circle_at_68%_35%,var(--ds-savings)_0_3px,transparent_4px),radial-gradient(circle_at_58%_70%,var(--ds-info)_0_3px,transparent_4px),linear-gradient(135deg,var(--ds-primary-soft),transparent)] opacity-80" />
                     </div>
                     <div className="grid gap-1 text-sm">
-                      <div className="text-xs text-primary">Precisão dos preços</div>
+                      <div className="text-xs text-primary">
+                        Precisão dos preços
+                      </div>
                       <div className="flex items-center gap-2 font-medium">
                         <ShieldAlertIcon className="size-4 text-[var(--ds-savings)]" />
                         Alta
@@ -4323,11 +4283,15 @@ export function OptimizationPage() {
                       </div>
                     </div>
                     <div className="grid gap-1 text-sm">
-                      <div className="text-xs text-[var(--ds-warning)]">Avisos</div>
+                      <div className="text-xs text-[var(--ds-warning)]">
+                        Avisos
+                      </div>
                       <div className="font-medium">
                         {reviewSelections.length} item indisponível
                       </div>
-                      <div className="text-muted-foreground">Ver detalhes abaixo</div>
+                      <div className="text-muted-foreground">
+                        Ver detalhes abaixo
+                      </div>
                     </div>
                   </div>
 
@@ -4359,10 +4323,26 @@ export function OptimizationPage() {
                   </div>
 
                   <div className="hidden grid-cols-[1.1fr_1fr_0.55fr_1fr] gap-4 px-4 text-xs text-muted-foreground md:grid">
-                    <span>Item solicitado<br />Regra de marca</span>
-                    <span>Selecionado<br />Loja</span>
-                    <span>Preço<br />Unitário</span>
-                    <span>Confiança da oferta<br />Fonte e validade</span>
+                    <span>
+                      Item solicitado
+                      <br />
+                      Regra de marca
+                    </span>
+                    <span>
+                      Selecionado
+                      <br />
+                      Loja
+                    </span>
+                    <span>
+                      Preço
+                      <br />
+                      Unitário
+                    </span>
+                    <span>
+                      Confiança da oferta
+                      <br />
+                      Fonte e validade
+                    </span>
                   </div>
 
                   <div className="grid gap-0 overflow-hidden rounded-lg border border-border/70 bg-card">
@@ -4452,7 +4432,10 @@ export function OptimizationPage() {
                                   </StatusBadge>
                                 ) : null}
                               </div>
-                              <div>{selection.establishmentName ?? 'Sem loja definida'}</div>
+                              <div>
+                                {selection.establishmentName ??
+                                  'Sem loja definida'}
+                              </div>
                               <div className="text-muted-foreground">
                                 {selection.establishmentNeighborhood ??
                                   'Bairro não informado'}
@@ -4491,10 +4474,12 @@ export function OptimizationPage() {
                                   </span>
                                 </div>
                                 <div className="text-muted-foreground">
-                                  {selection.sourceLabel ?? 'Origem operacional'}
+                                  {selection.sourceLabel ??
+                                    'Origem operacional'}
                                 </div>
                                 <div className="text-muted-foreground">
-                                  {selection.trustEvidenceCount ?? 0} notas fiscais aceitas
+                                  {selection.trustEvidenceCount ?? 0} notas
+                                  fiscais aceitas
                                 </div>
                                 {selection.observedAt ? (
                                   <div className="text-muted-foreground">
@@ -4525,8 +4510,8 @@ export function OptimizationPage() {
                       <CardHeader>
                         <CardTitle>Itens sem confirmação completa</CardTitle>
                         <CardDescription>
-                          Revise antes de comprar ou envie nota fiscal para melhorar
-                          a cobertura da cidade.
+                          Revise antes de comprar ou envie nota fiscal para
+                          melhorar a cobertura da cidade.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="grid gap-3">
@@ -4553,7 +4538,9 @@ export function OptimizationPage() {
                                     : 'failed'
                                 }
                               >
-                                {selectionStatusLabel(selection.selectionStatus)}
+                                {selectionStatusLabel(
+                                  selection.selectionStatus,
+                                )}
                               </StatusBadge>
                             }
                             actions={
@@ -4569,8 +4556,8 @@ export function OptimizationPage() {
 
                   <p className="flex items-center gap-2 text-xs text-muted-foreground">
                     <InfoIcon className="size-4 text-primary" />
-                    Preços e ofertas baseados em notas fiscais validadas e origem
-                    operacional. Mais dados = mais economia para você.
+                    Preços e ofertas baseados em notas fiscais validadas e
+                    origem operacional. Mais dados = mais economia para você.
                   </p>
                 </>
               ) : (
@@ -4617,363 +4604,388 @@ export function OptimizationPage() {
                     ]}
                   />
 
-          <Card id="optimization-modes">
-            <CardHeader>
-              <CardTitle>Escolha o modo</CardTitle>
-              <CardDescription>
-                Cada modo comunica um equilíbrio diferente entre deslocamento,
-                cobertura e menor total.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 lg:grid-cols-3">
-              {optimizationModes.map((mode) => (
-                <button
-                  key={mode.id}
-                  className={`grid gap-3 rounded-lg border p-4 text-left transition-colors ${
-                    activeMode === mode.id
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border/70 bg-card hover:border-primary/50'
-                  }`}
-                  disabled={isRunning}
-                  onClick={() => handleRun(mode.id)}
-                  type="button"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium">
-                      {optimizationModeCopy[mode.id].title}
-                    </span>
-                    {activeMode === mode.id ? (
-                      <BadgeCheckIcon className="text-primary" />
-                    ) : null}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {optimizationModeCopy[mode.id].summary}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {optimizationModeCopy[mode.id].tradeoff}
-                  </p>
-                  <span className="text-sm font-medium">
-                    {isRunning && activeMode === mode.id
-                      ? 'Processando...'
-                      : 'Usar este modo'}
-                  </span>
-                </button>
-              ))}
-            </CardContent>
-          </Card>
-
-          {error ? (
-            <Alert variant="destructive">
-              <ShieldAlertIcon />
-              <AlertTitle>{error.title}</AlertTitle>
-              <AlertDescription>{error.description}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          {isProcessingResult ? (
-            <Alert>
-              <AlertCircleIcon />
-              <AlertTitle>
-                {result?.status === 'running'
-                  ? 'Processamento em andamento'
-                  : 'Fila de processamento'}
-              </AlertTitle>
-              <AlertDescription className="space-y-3">
-                <p>
-                  {isStaleProcessing
-                    ? 'A lista ainda está sendo processada. Atualize novamente em instantes se o resultado não aparecer.'
-                    : 'Sua lista está sendo comparada com os preços disponíveis agora.'}
-                </p>
-                {isStaleProcessing ? (
-                  <Button
-                    onClick={() => handleRun(activeMode)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Tentar novamente
-                  </Button>
-                ) : null}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {!result ? (
-            <Alert>
-              <AlertCircleIcon />
-              <AlertTitle>Nenhum resultado ainda</AlertTitle>
-              <AlertDescription>
-                Rode um dos modos acima para gerar a comparação desta lista com
-                os preços disponíveis.
-              </AlertDescription>
-            </Alert>
-          ) : isProcessingResult ? null : (
-            <>
-              <div className="grid gap-4 md:grid-cols-4">
-                <Card>
-                  <CardHeader>
-                    <CardDescription>Custo estimado</CardDescription>
-                    <CardTitle className="tabular-nums">
-                      {formatCurrency(result.totalEstimatedCost ?? 0)}
-                    </CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardDescription>Economia estimada</CardDescription>
-                    <CardTitle className="tabular-nums text-[var(--ds-savings)]">
-                      {formatCurrency(result.estimatedSavings ?? 0)}
-                    </CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardDescription>Paradas</CardDescription>
-                    <CardTitle className="tabular-nums">
-                      {storePlan.length}
-                    </CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardDescription>Cobertura</CardDescription>
-                    <CardTitle className="flex items-center gap-2">
-                      {coverageStatusLabel(result.coverageStatus)}
-                      <StatusBadge
-                        icon={
-                          result.coverageStatus === 'complete'
-                            ? CheckCircle2Icon
-                            : AlertCircleIcon
-                        }
-                        tone={
-                          result.coverageStatus === 'complete'
-                            ? 'savings'
-                            : 'warning'
-                        }
-                      >
-                        {result.coverageStatus === 'complete'
-                          ? 'Cobertura total'
-                          : 'Cobertura parcial'}
-                      </StatusBadge>
-                    </CardTitle>
-                  </CardHeader>
-                </Card>
-              </div>
-
-              {storePlan.length > 0 ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Plano por loja</CardTitle>
-                    <CardDescription>
-                      Paradas sugeridas, quantidade de itens e subtotal previsto.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-3 md:grid-cols-2">
-                    {storePlan.map((store) => (
-                      <div
-                        key={store.name}
-                        className="grid gap-2 rounded-lg border border-border/70 bg-background/80 p-3"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="font-medium">{store.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {store.neighborhood ?? 'Bairro não informado'}
-                            </div>
-                          </div>
-                          <StatusBadge tone="location">
-                            {store.items} {store.items === 1 ? 'item' : 'itens'}
-                          </StatusBadge>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Subtotal previsto:{' '}
-                          <span className="font-medium tabular-nums text-foreground">
-                            {formatCurrency(store.total)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              ) : null}
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Decisões por item</CardTitle>
-                  <CardDescription>
-                    Cada item separa pedido original, variante selecionada,
-                    loja, comparação verdadeira e evidência da oferta.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  {result.selections.map((selection) => {
-                    const listItem = listItemsById.get(
-                      selection.shoppingListItemId,
-                    );
-                    const imageUrl =
-                      selection.selectedVariantImageUrl ?? listItem?.imageUrl;
-                    const selectedVariantLabel = selection.selectedVariantName
-                      ? formatVariantWithPackage(
-                          selection.selectedVariantName,
-                          selection.selectedPackageLabel,
-                        )
-                      : undefined;
-                    const status =
-                      selection.selectionStatus === 'selected'
-                        ? 'completed'
-                        : selection.selectionStatus === 'review'
-                          ? 'retrying'
-                          : 'failed';
-
-                    return (
-                      <div
-                        key={`${selection.shoppingListItemId}-${selection.id ?? selection.shoppingListItemName}`}
-                        className="grid gap-3 rounded-lg border border-border/70 bg-background/70 p-3"
-                      >
-                        <PriceRow
-                          image={
-                            imageUrl ? (
-                              <img
-                                alt={selection.shoppingListItemName}
-                                className="size-full object-cover"
-                                src={resolveProductImage(imageUrl)}
-                              />
-                            ) : null
-                          }
-                          title={selection.shoppingListItemName}
-                          subtitle={
-                            <span className="grid gap-0.5">
-                              {selectedVariantLabel ? (
-                                <span>Selecionado: {selectedVariantLabel}</span>
-                              ) : null}
-                              <span>
-                                {describeBrandRule(
-                                  listItem ?? {
-                                    brandPreferenceMode: 'any',
-                                    preferredBrandNames: [],
-                                  },
-                                  listItem?.brandPreferenceMode === 'exact'
-                                    ? listItem.name
-                                    : undefined,
-                                )}
-                              </span>
-                              {selection.establishmentName ? (
-                                <span>
-                                  {selection.establishmentName}
-                                  {selection.establishmentNeighborhood
-                                    ? ` · ${selection.establishmentNeighborhood}`
-                                    : ''}
-                                </span>
-                              ) : (
-                                <span>Sem loja definida</span>
-                              )}
-                              {selection.distanceKm !== undefined ? (
-                                <span>
-                                  {selection.distanceKm.toFixed(1)} km do local
-                                  salvo
-                                </span>
-                              ) : null}
+                  <Card id="optimization-modes">
+                    <CardHeader>
+                      <CardTitle>Escolha o modo</CardTitle>
+                      <CardDescription>
+                        Cada modo comunica um equilíbrio diferente entre
+                        deslocamento, cobertura e menor total.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-3 lg:grid-cols-3">
+                      {optimizationModes.map((mode) => (
+                        <button
+                          key={mode.id}
+                          className={`grid gap-3 rounded-lg border p-4 text-left transition-colors ${
+                            activeMode === mode.id
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border/70 bg-card hover:border-primary/50'
+                          }`}
+                          disabled={isRunning}
+                          onClick={() => handleRun(mode.id)}
+                          type="button"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="font-medium">
+                              {optimizationModeCopy[mode.id].title}
                             </span>
-                          }
-                          price={formatCurrency(
-                            selection.priceAmount ??
-                              selection.estimatedCost ??
-                              0,
-                          )}
-                          comparison={
-                            selection.savingsVsComparison &&
-                            selection.savingsVsComparison > 0
-                              ? savingsComparisonLabel(selection)
-                              : undefined
-                          }
-                          meta={
-                            <>
-                              <StatusBadge family="queue" status={status}>
-                                {selectionStatusLabel(
-                                  selection.selectionStatus,
-                                )}
-                              </StatusBadge>
-                              {decisionReasonLabel(
-                                selection.decisionReason,
-                              ) ? (
-                                <StatusBadge tone="neutral">
-                                  {decisionReasonLabel(
-                                    selection.decisionReason,
-                                  )}
-                                </StatusBadge>
-                              ) : null}
-                              {selection.observedAt ? (
-                                <StatusBadge family="freshness" status="fresh">
-                                  {formatFreshnessLabel(selection.observedAt)}
-                                </StatusBadge>
-                              ) : null}
-                              {selection.rejectedReason ? (
-                                <StatusBadge tone="critical">
-                                  {rejectedReasonLabel(
-                                    selection.rejectedReason,
-                                  )}
-                                </StatusBadge>
-                              ) : null}
-                            </>
-                          }
-                        />
-                        <ShopperEvidenceModule
-                          listId={list.id}
-                          selection={selection}
-                        />
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
+                            {activeMode === mode.id ? (
+                              <BadgeCheckIcon className="text-primary" />
+                            ) : null}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {optimizationModeCopy[mode.id].summary}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {optimizationModeCopy[mode.id].tradeoff}
+                          </p>
+                          <span className="text-sm font-medium">
+                            {isRunning && activeMode === mode.id
+                              ? 'Processando...'
+                              : 'Usar este modo'}
+                          </span>
+                        </button>
+                      ))}
+                    </CardContent>
+                  </Card>
 
-              {reviewSelections.length > 0 ? (
-                <Card className="border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)]/40">
-                  <CardHeader>
-                    <CardTitle>Itens sem confirmação completa</CardTitle>
-                    <CardDescription>
-                      Revise antes de comprar ou envie nota fiscal para melhorar
-                      a cobertura da cidade.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-3">
-                    {reviewSelections.map((selection) => (
-                      <PriceRow
-                        key={`${selection.shoppingListItemId}-review`}
-                        title={selection.shoppingListItemName}
-                        subtitle={
-                          selection.rejectedReason
-                            ? rejectedReasonLabel(selection.rejectedReason)
-                            : 'Sem oferta confirmada suficiente'
-                        }
-                        price={
-                          selection.priceAmount !== undefined
-                            ? formatCurrency(selection.priceAmount)
-                            : 'Sem preço'
-                        }
-                        meta={
-                          <StatusBadge
-                            family="queue"
-                            status={
-                              selection.selectionStatus === 'review'
-                                ? 'retrying'
-                                : 'failed'
-                            }
+                  {error ? (
+                    <Alert variant="destructive">
+                      <ShieldAlertIcon />
+                      <AlertTitle>{error.title}</AlertTitle>
+                      <AlertDescription>{error.description}</AlertDescription>
+                    </Alert>
+                  ) : null}
+
+                  {isProcessingResult ? (
+                    <Alert>
+                      <AlertCircleIcon />
+                      <AlertTitle>
+                        {result?.status === 'running'
+                          ? 'Processamento em andamento'
+                          : 'Fila de processamento'}
+                      </AlertTitle>
+                      <AlertDescription className="space-y-3">
+                        <p>
+                          {isStaleProcessing
+                            ? 'A lista ainda está sendo processada. Atualize novamente em instantes se o resultado não aparecer.'
+                            : 'Sua lista está sendo comparada com os preços disponíveis agora.'}
+                        </p>
+                        {isStaleProcessing ? (
+                          <Button
+                            onClick={() => handleRun(activeMode)}
+                            size="sm"
+                            variant="outline"
                           >
-                            {selectionStatusLabel(selection.selectionStatus)}
-                          </StatusBadge>
-                        }
-                        actions={
-                          <Button asChild size="sm" variant="outline">
-                            <Link to="/notas">Enviar nota</Link>
+                            Tentar novamente
                           </Button>
-                        }
-                      />
-                    ))}
-                  </CardContent>
-                </Card>
-              ) : null}
-            </>
-          )}
+                        ) : null}
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+
+                  {!result ? (
+                    <Alert>
+                      <AlertCircleIcon />
+                      <AlertTitle>Nenhum resultado ainda</AlertTitle>
+                      <AlertDescription>
+                        Rode um dos modos acima para gerar a comparação desta
+                        lista com os preços disponíveis.
+                      </AlertDescription>
+                    </Alert>
+                  ) : isProcessingResult ? null : (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-4">
+                        <Card>
+                          <CardHeader>
+                            <CardDescription>Custo estimado</CardDescription>
+                            <CardTitle className="tabular-nums">
+                              {formatCurrency(result.totalEstimatedCost ?? 0)}
+                            </CardTitle>
+                          </CardHeader>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardDescription>Economia estimada</CardDescription>
+                            <CardTitle className="tabular-nums text-[var(--ds-savings)]">
+                              {formatCurrency(result.estimatedSavings ?? 0)}
+                            </CardTitle>
+                          </CardHeader>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardDescription>Paradas</CardDescription>
+                            <CardTitle className="tabular-nums">
+                              {storePlan.length}
+                            </CardTitle>
+                          </CardHeader>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardDescription>Cobertura</CardDescription>
+                            <CardTitle className="flex items-center gap-2">
+                              {coverageStatusLabel(result.coverageStatus)}
+                              <StatusBadge
+                                icon={
+                                  result.coverageStatus === 'complete'
+                                    ? CheckCircle2Icon
+                                    : AlertCircleIcon
+                                }
+                                tone={
+                                  result.coverageStatus === 'complete'
+                                    ? 'savings'
+                                    : 'warning'
+                                }
+                              >
+                                {result.coverageStatus === 'complete'
+                                  ? 'Cobertura total'
+                                  : 'Cobertura parcial'}
+                              </StatusBadge>
+                            </CardTitle>
+                          </CardHeader>
+                        </Card>
+                      </div>
+
+                      {storePlan.length > 0 ? (
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Plano por loja</CardTitle>
+                            <CardDescription>
+                              Paradas sugeridas, quantidade de itens e subtotal
+                              previsto.
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="grid gap-3 md:grid-cols-2">
+                            {storePlan.map((store) => (
+                              <div
+                                key={store.name}
+                                className="grid gap-2 rounded-lg border border-border/70 bg-background/80 p-3"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <div className="font-medium">
+                                      {store.name}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {store.neighborhood ??
+                                        'Bairro não informado'}
+                                    </div>
+                                  </div>
+                                  <StatusBadge tone="location">
+                                    {store.items}{' '}
+                                    {store.items === 1 ? 'item' : 'itens'}
+                                  </StatusBadge>
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  Subtotal previsto:{' '}
+                                  <span className="font-medium tabular-nums text-foreground">
+                                    {formatCurrency(store.total)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+                      ) : null}
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Decisões por item</CardTitle>
+                          <CardDescription>
+                            Cada item separa pedido original, variante
+                            selecionada, loja, comparação verdadeira e evidência
+                            da oferta.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-4">
+                          {result.selections.map((selection) => {
+                            const listItem = listItemsById.get(
+                              selection.shoppingListItemId,
+                            );
+                            const imageUrl =
+                              selection.selectedVariantImageUrl ??
+                              listItem?.imageUrl;
+                            const selectedVariantLabel =
+                              selection.selectedVariantName
+                                ? formatVariantWithPackage(
+                                    selection.selectedVariantName,
+                                    selection.selectedPackageLabel,
+                                  )
+                                : undefined;
+                            const status =
+                              selection.selectionStatus === 'selected'
+                                ? 'completed'
+                                : selection.selectionStatus === 'review'
+                                  ? 'retrying'
+                                  : 'failed';
+
+                            return (
+                              <div
+                                key={`${selection.shoppingListItemId}-${selection.id ?? selection.shoppingListItemName}`}
+                                className="grid gap-3 rounded-lg border border-border/70 bg-background/70 p-3"
+                              >
+                                <PriceRow
+                                  image={
+                                    imageUrl ? (
+                                      <img
+                                        alt={selection.shoppingListItemName}
+                                        className="size-full object-cover"
+                                        src={resolveProductImage(imageUrl)}
+                                      />
+                                    ) : null
+                                  }
+                                  title={selection.shoppingListItemName}
+                                  subtitle={
+                                    <span className="grid gap-0.5">
+                                      {selectedVariantLabel ? (
+                                        <span>
+                                          Selecionado: {selectedVariantLabel}
+                                        </span>
+                                      ) : null}
+                                      <span>
+                                        {describeBrandRule(
+                                          listItem ?? {
+                                            brandPreferenceMode: 'any',
+                                            preferredBrandNames: [],
+                                          },
+                                          listItem?.brandPreferenceMode ===
+                                            'exact'
+                                            ? listItem.name
+                                            : undefined,
+                                        )}
+                                      </span>
+                                      {selection.establishmentName ? (
+                                        <span>
+                                          {selection.establishmentName}
+                                          {selection.establishmentNeighborhood
+                                            ? ` · ${selection.establishmentNeighborhood}`
+                                            : ''}
+                                        </span>
+                                      ) : (
+                                        <span>Sem loja definida</span>
+                                      )}
+                                      {selection.distanceKm !== undefined ? (
+                                        <span>
+                                          {selection.distanceKm.toFixed(1)} km
+                                          do local salvo
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  }
+                                  price={formatCurrency(
+                                    selection.priceAmount ??
+                                      selection.estimatedCost ??
+                                      0,
+                                  )}
+                                  comparison={
+                                    selection.savingsVsComparison &&
+                                    selection.savingsVsComparison > 0
+                                      ? savingsComparisonLabel(selection)
+                                      : undefined
+                                  }
+                                  meta={
+                                    <>
+                                      <StatusBadge
+                                        family="queue"
+                                        status={status}
+                                      >
+                                        {selectionStatusLabel(
+                                          selection.selectionStatus,
+                                        )}
+                                      </StatusBadge>
+                                      {decisionReasonLabel(
+                                        selection.decisionReason,
+                                      ) ? (
+                                        <StatusBadge tone="neutral">
+                                          {decisionReasonLabel(
+                                            selection.decisionReason,
+                                          )}
+                                        </StatusBadge>
+                                      ) : null}
+                                      {selection.observedAt ? (
+                                        <StatusBadge
+                                          family="freshness"
+                                          status="fresh"
+                                        >
+                                          {formatFreshnessLabel(
+                                            selection.observedAt,
+                                          )}
+                                        </StatusBadge>
+                                      ) : null}
+                                      {selection.rejectedReason ? (
+                                        <StatusBadge tone="critical">
+                                          {rejectedReasonLabel(
+                                            selection.rejectedReason,
+                                          )}
+                                        </StatusBadge>
+                                      ) : null}
+                                    </>
+                                  }
+                                />
+                                <ShopperEvidenceModule
+                                  listId={list.id}
+                                  selection={selection}
+                                />
+                              </div>
+                            );
+                          })}
+                        </CardContent>
+                      </Card>
+
+                      {reviewSelections.length > 0 ? (
+                        <Card className="border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)]/40">
+                          <CardHeader>
+                            <CardTitle>
+                              Itens sem confirmação completa
+                            </CardTitle>
+                            <CardDescription>
+                              Revise antes de comprar ou envie nota fiscal para
+                              melhorar a cobertura da cidade.
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="grid gap-3">
+                            {reviewSelections.map((selection) => (
+                              <PriceRow
+                                key={`${selection.shoppingListItemId}-review`}
+                                title={selection.shoppingListItemName}
+                                subtitle={
+                                  selection.rejectedReason
+                                    ? rejectedReasonLabel(
+                                        selection.rejectedReason,
+                                      )
+                                    : 'Sem oferta confirmada suficiente'
+                                }
+                                price={
+                                  selection.priceAmount !== undefined
+                                    ? formatCurrency(selection.priceAmount)
+                                    : 'Sem preço'
+                                }
+                                meta={
+                                  <StatusBadge
+                                    family="queue"
+                                    status={
+                                      selection.selectionStatus === 'review'
+                                        ? 'retrying'
+                                        : 'failed'
+                                    }
+                                  >
+                                    {selectionStatusLabel(
+                                      selection.selectionStatus,
+                                    )}
+                                  </StatusBadge>
+                                }
+                                actions={
+                                  <Button asChild size="sm" variant="outline">
+                                    <Link to="/notas">Enviar nota</Link>
+                                  </Button>
+                                }
+                              />
+                            ))}
+                          </CardContent>
+                        </Card>
+                      ) : null}
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -5011,8 +5023,9 @@ export function OptimizationPage() {
                               <div className="font-medium">{store.name}</div>
                               <div className="text-xs text-muted-foreground">
                                 {store.neighborhood ?? 'Bairro'} ·{' '}
-                                {firstSelectedSelection?.distanceKm?.toFixed(1) ??
-                                  '1.2'}{' '}
+                                {firstSelectedSelection?.distanceKm?.toFixed(
+                                  1,
+                                ) ?? '1.2'}{' '}
                                 km
                               </div>
                             </div>
@@ -5053,7 +5066,10 @@ export function OptimizationPage() {
                     <div className="font-medium">Trajeto otimizado</div>
                     <div>
                       {storePlan.length} paradas ·{' '}
-                      {Math.max(routeDistanceKm, storePlan.length * 1.2).toFixed(1)}{' '}
+                      {Math.max(
+                        routeDistanceKm,
+                        storePlan.length * 1.2,
+                      ).toFixed(1)}{' '}
                       km estimados
                     </div>
                     <Button className="mt-2 px-0" size="sm" variant="link">

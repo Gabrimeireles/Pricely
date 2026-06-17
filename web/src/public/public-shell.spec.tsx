@@ -16,6 +16,8 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
+
 import { PublicLayout } from './public-shell';
 
 const setCityId = vi.fn();
@@ -29,6 +31,7 @@ vi.mock('@/app/pricely-context', () => ({
     setCityId,
     currentUser: null,
     isAuthenticated: false,
+    isBootstrapping: false,
     signOut: vi.fn(),
     locationPreferences: [],
     previewLocationCoverage,
@@ -153,6 +156,30 @@ vi.mock('@/components/ui/select', () => {
   };
 });
 
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  }),
+});
+
+function renderPublicLayout() {
+  return render(
+    <MemoryRouter>
+      <TooltipProvider>
+        <PublicLayout />
+      </TooltipProvider>
+    </MemoryRouter>,
+  );
+}
+
 describe('PublicLayout', () => {
   beforeEach(() => {
     setCityId.mockReset();
@@ -174,23 +201,22 @@ describe('PublicLayout', () => {
     cleanup();
   });
 
-  it('shows active city coverage and allows changing the selected city', async () => {
-    render(
-      <MemoryRouter>
-        <PublicLayout />
-      </MemoryRouter>,
-    );
+  it('shows sidebar navigation, active city coverage, and allows changing the selected city', async () => {
+    renderPublicLayout();
 
-    expect(screen.getByText('Localização manual')).toBeTruthy();
+    expect(screen.getByText('Navegacao')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Minhas listas/i })).toBeTruthy();
+    expect(document.body.textContent).toMatch(/Localiza/);
     expect(screen.getByText(/raio de 5 km/i)).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: /configurar localização/i }),
+      screen.getByRole('button', { name: /configurar localiza/i }),
     ).toBeTruthy();
     expect(
       screen.queryByText('Sua compra continua de onde voce parou'),
     ).toBeNull();
-    expect(screen.getByRole('combobox', { name: 'Escolha sua cidade' }))
-      .toBeTruthy();
+    expect(
+      screen.getByRole('combobox', { name: 'Escolha sua cidade' }),
+    ).toBeTruthy();
 
     fireEvent.change(
       screen.getByRole('combobox', { name: 'Escolha sua cidade' }),
@@ -203,19 +229,15 @@ describe('PublicLayout', () => {
   });
 
   it('keeps browser location as an explicit preview state', () => {
-    render(
-      <MemoryRouter>
-        <PublicLayout />
-      </MemoryRouter>,
-    );
+    renderPublicLayout();
 
     fireEvent.click(
-      screen.getByRole('button', { name: /configurar localização/i }),
+      screen.getByRole('button', { name: /configurar localiza/i }),
     );
     fireEvent.click(screen.getByRole('button', { name: /usar localizacao/i }));
 
-    expect(document.body.textContent).toMatch(/Permiss[aã]o:/);
-    expect(document.body.textContent).toMatch(/indispon[ií]vel|manual|negada/);
+    expect(document.body.textContent).toMatch(/Permissao:/);
+    expect(document.body.textContent).toMatch(/indisponivel|manual|negada/);
   });
 
   it('saves explicit browser coordinates with the default local radius', async () => {
@@ -254,14 +276,10 @@ describe('PublicLayout', () => {
       },
     });
 
-    render(
-      <MemoryRouter>
-        <PublicLayout />
-      </MemoryRouter>,
-    );
+    renderPublicLayout();
 
     fireEvent.click(
-      screen.getByRole('button', { name: /configurar localização/i }),
+      screen.getByRole('button', { name: /configurar localiza/i }),
     );
     fireEvent.click(screen.getByRole('button', { name: /usar localizacao/i }));
 
@@ -302,14 +320,10 @@ describe('PublicLayout', () => {
       updatedAt: '2026-05-13T12:00:00.000Z',
     });
 
-    render(
-      <MemoryRouter>
-        <PublicLayout />
-      </MemoryRouter>,
-    );
+    renderPublicLayout();
 
     fireEvent.click(
-      screen.getByRole('button', { name: /configurar localização/i }),
+      screen.getByRole('button', { name: /configurar localiza/i }),
     );
     fireEvent.change(screen.getByLabelText('CEP para fallback manual'), {
       target: { value: '13010-000' },
@@ -328,7 +342,7 @@ describe('PublicLayout', () => {
         coverageRadiusKm: 5,
       }),
     );
-    expect(document.body.textContent).toMatch(/n[aã]o prometem proximidade/i);
+    expect(document.body.textContent).toMatch(/nao prometem proximidade/i);
     expect(document.body.textContent).toMatch(/Preview por CEP: 2 lojas/i);
     await waitFor(() =>
       expect(document.body.textContent).toMatch(/CEP salvo como fallback/i),

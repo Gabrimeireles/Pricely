@@ -1,10 +1,16 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type PropsWithChildren } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import {
+  HomeIcon,
+  LayoutDashboardIcon,
+  ListChecksIcon,
   LocateFixedIcon,
   MapPinIcon,
   MoonStarIcon,
+  ReceiptTextIcon,
+  SearchIcon,
   SunMediumIcon,
+  UserIcon,
 } from 'lucide-react';
 
 import { usePricely } from '@/app/pricely-context';
@@ -28,20 +34,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@/components/ui/sidebar';
 
-function AppLogo() {
+const publicNavItems = [
+  { label: 'Início', to: '/', icon: HomeIcon },
+  { label: 'Ofertas', to: '/ofertas', icon: SearchIcon },
+  { label: 'Cidades', to: '/cidades', icon: MapPinIcon },
+  { label: 'Minhas listas', to: '/listas', icon: ListChecksIcon },
+  { label: 'Notas fiscais', to: '/notas', icon: ReceiptTextIcon },
+];
+
+function SidebarLogo() {
   return (
-    <Link className="flex items-center gap-3" to="/">
-      <div className="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+    <Link className="flex items-center gap-3 rounded-lg px-2 py-2" to="/">
+      <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
         <img
           alt=""
-          className="size-8 rounded-md object-cover"
+          className="size-7 rounded-md object-cover"
           src={pricelyIcon}
         />
       </div>
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
         <span className="text-sm font-semibold tracking-tight">Pricely</span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-sidebar-foreground/70">
           economia com contexto real
         </span>
       </div>
@@ -49,14 +78,7 @@ function AppLogo() {
   );
 }
 
-const publicNavItems = [
-  { label: 'Ofertas', to: '/ofertas' },
-  { label: 'Cidades suportadas', to: '/cidades' },
-  { label: 'Minhas listas', to: '/listas' },
-  { label: 'Notas fiscais', to: '/notas' },
-];
-
-export function PublicNavbar() {
+export function PublicSidebarShell({ children }: PropsWithChildren) {
   const {
     cityId,
     cities,
@@ -95,23 +117,19 @@ export function PublicNavbar() {
     : undefined;
   const shouldRequireCitySelection =
     isAuthenticated && !isBootstrapping && !cityId && cities.length > 0;
-  const radiusSummary = activeCity
-    ? `${activeCity.activeStoreCount} lojas candidatas na cidade · raio local padrão 5 km`
-    : 'Raio local padrão 5 km disponível após escolher a cidade';
-  const locationRadiusSummary = activeCity
-    ? activeLocation
-      ? `${activeLocation.activeEstablishmentCount} lojas dentro de ${activeLocation.coverageRadiusKm} km`
-      : `${activeCity.activeStoreCount} lojas na cidade - raio local padrao 5 km aguardando localizacao`
-    : radiusSummary;
   const activeLocationHasCoordinates =
     activeLocation?.latitude !== null &&
     activeLocation?.latitude !== undefined &&
     activeLocation?.longitude !== null &&
     activeLocation?.longitude !== undefined;
   const locationRadiusDisplay =
-    activeLocation && !activeLocationHasCoordinates
-      ? `CEP ${activeLocation.postalCode ?? 'salvo'} como fallback: ${activeLocation.activeEstablishmentCount} lojas ativas na cidade, sem calculo de distancia`
-      : locationRadiusSummary;
+    activeCity && activeLocation
+      ? activeLocationHasCoordinates
+        ? `${activeLocation.activeEstablishmentCount} lojas dentro de ${activeLocation.coverageRadiusKm} km`
+        : `CEP ${activeLocation.postalCode ?? 'salvo'} como fallback: ${activeLocation.activeEstablishmentCount} lojas ativas na cidade, sem calculo de distancia`
+      : activeCity
+        ? `${activeCity.activeStoreCount} lojas na cidade - raio local padrao 5 km aguardando localizacao`
+        : 'Raio local padrao 5 km disponivel apos escolher a cidade';
 
   const requestBrowserLocation = () => {
     if (!navigator.geolocation) {
@@ -200,167 +218,194 @@ export function PublicNavbar() {
   };
 
   return (
-    <>
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/92 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-          <div className="flex flex-wrap items-center gap-5">
-            <AppLogo />
-            <nav
-              aria-label="Navegação principal"
-              className="hidden items-center gap-1 md:flex"
-            >
-              {publicNavItems.map((item) => (
-                <NavLink
-                  className={({ isActive }) =>
-                    `rounded-md px-3 py-2 text-sm transition-colors ${
-                      isActive
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`
-                  }
-                  key={item.to}
-                  to={item.to}
-                >
-                  {item.label}
-                </NavLink>
-              ))}
-              {currentUser?.role === 'admin' ? (
-                <NavLink
-                  className={({ isActive }) =>
-                    `rounded-md px-3 py-2 text-sm transition-colors ${
-                      isActive
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`
-                  }
-                  to="/dashboard"
-                >
-                  Dashboard
-                </NavLink>
-              ) : null}
-            </nav>
-            <div className="hidden items-center gap-3 text-sm text-muted-foreground xl:flex">
-              <span>
-                {activeLocation ? 'Localização salva' : 'Localização manual'}
-              </span>
-              <span>·</span>
-              <span>raio de 5 km</span>
-              {activeCity?.coverageStatus === 'live' ? (
-                <span className="rounded-md bg-[var(--ds-savings-soft)] px-2.5 py-1 text-[var(--ds-savings)]">
-                  Cobertura ativa
-                </span>
-              ) : null}
+    <SidebarProvider>
+      <Sidebar collapsible="icon" variant="inset">
+        <SidebarHeader className="shrink-0">
+          <SidebarLogo />
+        </SidebarHeader>
+
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Navegacao</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu aria-label="Navegacao principal">
+                {publicNavItems.map((item) => (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton asChild tooltip={item.label}>
+                      <NavLink
+                        className={({ isActive }) =>
+                          isActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                            : ''
+                        }
+                        end={item.to === '/'}
+                        to={item.to}
+                      >
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+                {currentUser?.role === 'admin' ? (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Dashboard">
+                      <NavLink
+                        className={({ isActive }) =>
+                          isActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                            : ''
+                        }
+                        to="/dashboard"
+                      >
+                        <LayoutDashboardIcon />
+                        <span>Dashboard</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ) : null}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+            <SidebarGroupLabel>Contexto</SidebarGroupLabel>
+            <SidebarGroupContent className="grid gap-2">
+              <Select
+                onValueChange={(value) => void setCityId(value)}
+                value={cityId ?? ''}
+              >
+                <SelectTrigger className="h-9 w-full bg-background">
+                  <MapPinIcon />
+                  <SelectValue placeholder="Escolha sua cidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {cities.map((city) => (
+                      <SelectItem key={city.id} value={city.id}>
+                        {city.name} - {city.activeStoreCount} estabelecimentos
+                        ativos
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+
+              <Button
+                className="justify-start"
+                onClick={() => setIsLocationDialogOpen(true)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <LocateFixedIcon data-icon="inline-start" />
+                Configurar localização
+              </Button>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        <SidebarFooter className="shrink-0">
+          <div className="grid gap-2 rounded-lg border border-sidebar-border p-2 group-data-[collapsible=icon]:hidden">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">
+                {isAuthenticated
+                  ? (currentUser?.displayName ?? 'Minha conta')
+                  : 'Visitante'}
+              </p>
+              <p className="truncate text-xs text-sidebar-foreground/70">
+                {activeCity
+                  ? `${activeCity.name} - ${activeCity.activeStoreCount} lojas`
+                  : 'Cidade pendente'}
+              </p>
             </div>
-          </div>
-
-          <nav
-            aria-label="Navegação principal mobile"
-            className="-mx-1 flex gap-1 overflow-x-auto pb-1 md:hidden"
-          >
-            {publicNavItems.map((item) => (
-              <NavLink
-                className={({ isActive }) =>
-                  `shrink-0 rounded-md px-3 py-2 text-sm transition-colors ${
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`
+            <div className="flex gap-2">
+              <Button
+                aria-label={
+                  theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
                 }
-                key={item.to}
-                to={item.to}
+                onClick={toggleTheme}
+                size="icon-sm"
+                type="button"
+                variant="outline"
               >
-                {item.label}
-              </NavLink>
-            ))}
-            {currentUser?.role === 'admin' ? (
-              <NavLink
-                className={({ isActive }) =>
-                  `shrink-0 rounded-md px-3 py-2 text-sm transition-colors ${
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`
-                }
-                to="/dashboard"
-              >
-                Dashboard
-              </NavLink>
-            ) : null}
-          </nav>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Select
-              onValueChange={(value) => void setCityId(value)}
-              value={cityId ?? ''}
-            >
-              <SelectTrigger className="w-full sm:w-[320px]">
-                <MapPinIcon />
-                <SelectValue placeholder="Escolha sua cidade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {cities.map((city) => (
-                    <SelectItem key={city.id} value={city.id}>
-                      {city.name} - {city.activeStoreCount} estabelecimentos
-                      ativos
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-
-            <Button
-              aria-label="Configurar localização"
-              className="border-border/80 bg-card/90"
-              onClick={() => setIsLocationDialogOpen(true)}
-              size="icon"
-              type="button"
-              variant="outline"
-            >
-              <LocateFixedIcon className="size-4" />
-            </Button>
-
-            <Button
-              aria-label={
-                theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
-              }
-              className="border-border/80 bg-card/90"
-              onClick={toggleTheme}
-              size="icon"
-              type="button"
-              variant="outline"
-            >
-              {theme === 'dark' ? (
-                <SunMediumIcon className="size-4" />
-              ) : (
-                <MoonStarIcon className="size-4" />
-              )}
-            </Button>
-
-            {isAuthenticated ? (
-              <>
-                <Button asChild size="sm" variant="ghost">
-                  <Link to="/listas">
-                    {currentUser?.displayName ?? 'Minha conta'}
-                  </Link>
-                </Button>
-                <Button onClick={signOut} size="sm" variant="outline">
+                {theme === 'dark' ? (
+                  <SunMediumIcon className="size-4" />
+                ) : (
+                  <MoonStarIcon className="size-4" />
+                )}
+              </Button>
+              {isAuthenticated ? (
+                <Button
+                  className="flex-1"
+                  onClick={signOut}
+                  size="sm"
+                  variant="outline"
+                >
                   Sair
                 </Button>
-              </>
-            ) : (
-              <>
-                <Button asChild size="sm" variant="ghost">
+              ) : (
+                <Button asChild className="flex-1" size="sm">
                   <Link to="/entrar">Entrar</Link>
                 </Button>
-                <Button asChild size="sm">
-                  <Link to="/criar-conta">Criar conta</Link>
-                </Button>
-              </>
+              )}
+            </div>
+          </div>
+          <Button
+            aria-label={
+              theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
+            }
+            className="hidden group-data-[collapsible=icon]:inline-flex"
+            onClick={toggleTheme}
+            size="icon-sm"
+            type="button"
+            variant="outline"
+          >
+            {theme === 'dark' ? (
+              <SunMediumIcon className="size-4" />
+            ) : (
+              <MoonStarIcon className="size-4" />
             )}
+          </Button>
+        </SidebarFooter>
+      </Sidebar>
+
+      <SidebarInset>
+        <header className="sticky top-0 z-30 flex min-h-14 shrink-0 items-center justify-between border-b border-border/70 bg-background/92 px-4 backdrop-blur lg:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <SidebarTrigger />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">
+                {activeCity
+                  ? `${activeCity.name} - ${activeCity.activeStoreCount} estabelecimentos ativos`
+                  : 'Escolha sua cidade'}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {activeLocation ? 'Localizacao salva' : 'Localizacao manual'} -
+                raio de 5 km
+              </p>
+            </div>
+          </div>
+          <Button asChild size="sm" variant="outline">
+            <Link to={isAuthenticated ? '/listas' : '/criar-conta'}>
+              {isAuthenticated ? (
+                <>
+                  <UserIcon data-icon="inline-start" />
+                  Minha conta
+                </>
+              ) : (
+                'Criar conta'
+              )}
+            </Link>
+          </Button>
+        </header>
+
+        <div className="flex flex-1 flex-col gap-8 bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.08),transparent_26%),radial-gradient(circle_at_85%_15%,rgba(37,99,235,0.06),transparent_22%)] px-4 py-6 lg:px-6">
+          <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-8">
+            {children}
           </div>
         </div>
-      </header>
+      </SidebarInset>
 
       <Dialog
         onOpenChange={setIsLocationDialogOpen}
@@ -368,10 +413,10 @@ export function PublicNavbar() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Localização para otimização local</DialogTitle>
+            <DialogTitle>Localizacao para otimizacao local</DialogTitle>
             <DialogDescription>
-              {locationRadiusDisplay}. Modos locais só calculam distância com
-              coordenadas salvas; CEP e modo cidade não prometem proximidade.
+              {locationRadiusDisplay}. Modos locais so calculam distancia com
+              coordenadas salvas; CEP e modo cidade nao prometem proximidade.
             </DialogDescription>
           </DialogHeader>
           <div className="min-w-0">
@@ -390,17 +435,17 @@ export function PublicNavbar() {
             <span className="rounded-md border border-border/70 bg-card px-2.5 py-1">
               Cidade:{' '}
               {activeCity
-                ? `${activeCity.name} · ${activeCity.stateCode}`
+                ? `${activeCity.name} - ${activeCity.stateCode}`
                 : 'manual pendente'}
             </span>
             <span className="rounded-md border border-border/70 bg-card px-2.5 py-1">
-              Permissão:{' '}
+              Permissao:{' '}
               {locationPermissionState === 'allowed'
                 ? 'capturada para preview'
                 : locationPermissionState === 'denied'
                   ? 'negada'
                   : locationPermissionState === 'unsupported'
-                    ? 'indisponível'
+                    ? 'indisponivel'
                     : locationPermissionState === 'requesting'
                       ? 'solicitando'
                       : locationPermissionState === 'postal_fallback'
@@ -452,7 +497,7 @@ export function PublicNavbar() {
           >
             <SelectTrigger>
               <MapPinIcon />
-              <SelectValue placeholder="Selecione uma cidade disponível" />
+              <SelectValue placeholder="Selecione uma cidade disponivel" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
@@ -472,6 +517,6 @@ export function PublicNavbar() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </SidebarProvider>
   );
 }
