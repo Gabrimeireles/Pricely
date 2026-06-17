@@ -1,10 +1,8 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import {
   LocateFixedIcon,
   MapPinIcon,
   MoonStarIcon,
-  ShieldCheckIcon,
-  SparklesIcon,
   SunMediumIcon,
 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
@@ -51,11 +49,6 @@ function AppLogo() {
   );
 }
 
-const linkClassName = ({ isActive }: { isActive: boolean }) =>
-  isActive
-    ? 'text-foreground'
-    : 'text-muted-foreground transition-colors hover:text-foreground';
-
 export function PublicLayout() {
   const {
     cityId,
@@ -82,6 +75,7 @@ export function PublicLayout() {
   const [postalCode, setPostalCode] = useState('');
   const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
   const [locationPreview, setLocationPreview] = useState<string | null>(null);
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const activeCity = cityId
     ? (cities.find((city) => city.id === cityId) ?? null)
     : null;
@@ -93,9 +87,6 @@ export function PublicLayout() {
     : undefined;
   const shouldRequireCitySelection =
     isAuthenticated && !isBootstrapping && !cityId && cities.length > 0;
-  const citySummary = activeCity
-    ? `${activeCity.name} - ${activeCity.activeStoreCount} estabelecimentos ativos`
-    : 'Escolha uma cidade para carregar ofertas e listas com contexto local';
   const radiusSummary = activeCity
     ? `${activeCity.activeStoreCount} lojas candidatas na cidade · raio local padrão 5 km`
     : 'Raio local padrão 5 km disponível após escolher a cidade';
@@ -203,28 +194,21 @@ export function PublicLayout() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/92 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-          <div className="flex items-center gap-6">
+        <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+          <div className="flex items-center gap-5">
             <AppLogo />
-            <nav className="hidden items-center gap-5 text-sm md:flex">
-              <NavLink className={linkClassName} to="/ofertas">
-                Ofertas
-              </NavLink>
-              <NavLink className={linkClassName} to="/cidades">
-                Cidades suportadas
-              </NavLink>
-              <NavLink className={linkClassName} to="/listas">
-                Minhas listas
-              </NavLink>
-              <NavLink className={linkClassName} to="/notas">
-                Notas fiscais
-              </NavLink>
-              {currentUser?.role === 'admin' ? (
-                <NavLink className={linkClassName} to="/dashboard">
-                  Dashboard
-                </NavLink>
+            <div className="hidden items-center gap-3 text-sm text-muted-foreground xl:flex">
+              <span>
+                {activeLocation ? 'Localização salva' : 'Localização manual'}
+              </span>
+              <span>•</span>
+              <span>raio de 5 km</span>
+              {activeCity?.coverageStatus === 'live' ? (
+                <span className="rounded-md bg-[var(--ds-savings-soft)] px-2.5 py-1 text-[var(--ds-savings)]">
+                  Cobertura ativa
+                </span>
               ) : null}
-            </nav>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -247,6 +231,17 @@ export function PublicLayout() {
                 </SelectGroup>
               </SelectContent>
             </Select>
+
+            <Button
+              aria-label="Configurar localização"
+              className="border-border/80 bg-card/90"
+              onClick={() => setIsLocationDialogOpen(true)}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              <LocateFixedIcon className="size-4" />
+            </Button>
 
             <Button
               aria-label={
@@ -290,43 +285,19 @@ export function PublicLayout() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 lg:px-6 lg:py-8">
-        <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card/90 px-4 py-3 text-sm shadow-sm sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <SparklesIcon className="size-4 shrink-0 text-primary" />
-            <div className="min-w-0">
-              <div className="truncate font-medium">Contexto da compra</div>
-              <div className="truncate text-muted-foreground">
-                Listas, checklist e cidade ficam sincronizados na sua conta.
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
-            <span className="inline-flex items-center gap-1 rounded-md border border-border/70 bg-background/80 px-2.5 py-1">
-              <MapPinIcon className="size-3.5" />
-              {citySummary}
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-md border border-border/70 bg-background/80 px-2.5 py-1">
-              <ShieldCheckIcon className="size-3.5" />
-              {activeCity?.coverageStatus === 'live'
-                ? 'Ofertas com evidencia'
-                : activeCity
-                  ? 'Coletando cobertura'
-                  : 'Selecione uma cidade'}
-            </span>
-          </div>
-        </div>
-
-        <div className="grid gap-3 rounded-lg border border-border/70 bg-background/85 px-4 py-3 text-sm shadow-sm lg:grid-cols-[1.1fr_1fr_auto] lg:items-center">
+      <Dialog
+        onOpenChange={setIsLocationDialogOpen}
+        open={isLocationDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Localização para otimização local</DialogTitle>
+            <DialogDescription>
+              {locationRadiusDisplay}. Modos locais só calculam distância com
+              coordenadas salvas; CEP e modo cidade não prometem proximidade.
+            </DialogDescription>
+          </DialogHeader>
           <div className="min-w-0">
-            <div className="flex items-center gap-2 font-medium">
-              <LocateFixedIcon className="size-4 text-primary" />
-              Localizacao para otimizacao local
-            </div>
-            <div className="mt-1 text-muted-foreground">
-              {locationRadiusDisplay}. Modos locais so calculam distancia com
-              coordenadas salvas; CEP e modo cidade nao prometem proximidade.
-            </div>
             {locationFeedback ? (
               <div className="mt-2 rounded-md border border-border/70 bg-card px-2.5 py-1 text-xs text-muted-foreground">
                 {locationFeedback}
@@ -338,7 +309,7 @@ export function PublicLayout() {
               </div>
             ) : null}
           </div>
-          <div className="flex flex-wrap gap-2 text-muted-foreground">
+          <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
             <span className="rounded-md border border-border/70 bg-card px-2.5 py-1">
               Cidade:{' '}
               {activeCity
@@ -360,7 +331,7 @@ export function PublicLayout() {
                         : 'manual'}
             </span>
           </div>
-          <div className="grid gap-2">
+          <DialogFooter className="grid gap-2 sm:grid-cols-[1fr_auto]">
             <Button
               disabled={locationPermissionState === 'requesting'}
               onClick={requestBrowserLocation}
@@ -385,9 +356,11 @@ export function PublicLayout() {
                 Salvar CEP
               </Button>
             </form>
-          </div>
-        </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
+      <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-8 px-4 py-6 lg:px-6 lg:py-6">
         <Outlet />
       </main>
 

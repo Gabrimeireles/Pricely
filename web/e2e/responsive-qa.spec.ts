@@ -367,7 +367,7 @@ for (const viewport of [
       await page.goto('/');
       await expect(
         page.getByRole('heading', {
-          name: /Continue sua compra e otimize/,
+          name: /Continue sua lista e otimize preços/,
         }),
       ).toBeVisible();
       await expectNoHorizontalOverflow(page);
