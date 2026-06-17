@@ -588,13 +588,14 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   await expect(page.getByText('Sao Paulo · SP', { exact: true })).toBeVisible();
 
   await page.goto('/listas/nova');
-  await page.getByLabel('Nome da lista').fill('Compra semanal');
-  await page.getByLabel('Cidade').selectOption('sao-paulo-sp');
+  await page.getByLabel('Título da lista').fill('Compra semanal');
   await page.getByLabel('Produto').fill('Arroz');
-  await expect(page.getByRole('button', { name: 'Adicionar' })).toBeVisible();
-  await page.getByRole('button', { name: 'Adicionar' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Adicionar', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Adicionar', exact: true }).click();
   await expect(page.getByText('Arroz tipo 1 1kg').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await page.getByRole('button', { name: 'Salvar rascunho' }).click();
   await expect(
     page.getByRole('heading', { name: 'Minhas listas' }),
   ).toBeVisible();

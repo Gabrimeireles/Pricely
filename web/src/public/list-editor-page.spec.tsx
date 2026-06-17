@@ -90,14 +90,13 @@ describe('ListEditorPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('1. Defina o contexto da compra')).toBeTruthy();
-    expect(screen.getByText('Preview de localização')).toBeTruthy();
-    expect(screen.getByText('Raio local padrão: 5 km')).toBeTruthy();
-    expect(screen.getByText(/distância ainda não altera a otimização/i)).toBeTruthy();
-    expect(screen.getByText('2. Adicione itens reais da sua compra')).toBeTruthy();
-    expect(screen.getByText('3. Salve agora ou otimize depois')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Nova lista' })).toBeTruthy();
+    expect(screen.getByText('Sua lista')).toBeTruthy();
+    expect(screen.getByText('Buscar produtos')).toBeTruthy();
+    expect(screen.getByText('Produtos comparáveis')).toBeTruthy();
+    expect(screen.getByText('Itens da lista')).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText('Nome da lista'), {
+    fireEvent.change(screen.getByLabelText('Título da lista'), {
       target: { value: 'Compra mensal' },
     });
     fireEvent.change(screen.getByLabelText('Produto'), {
@@ -113,7 +112,9 @@ describe('ListEditorPage', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Adicionar' })[0]);
 
-    expect(await screen.findByText('Qualquer variante')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getAllByText('Qualquer variante').length).toBeGreaterThan(0);
+    });
     expect(screen.getAllByText('Arroz tipo 1 1kg').length).toBeGreaterThan(0);
   });
 

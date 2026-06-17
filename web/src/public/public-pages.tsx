@@ -18,7 +18,6 @@ import {
   InfoIcon,
   ListChecksIcon,
   ListIcon,
-  LocateFixedIcon,
   LockIcon,
   LogInIcon,
   MapPinIcon,
@@ -3357,114 +3356,87 @@ export function ListEditorPage() {
       description="Entre para editar listas e manter tudo sincronizado no mobile."
       title="Edição protegida"
     >
-      <form className="grid gap-6" onSubmit={handleSave}>
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight">
-              {editingList ? 'Editar lista' : 'Nova lista'}
-            </h1>
-            <p className="text-muted-foreground">
-              Monte a lista em etapas. Salve sem processar ou siga direto para a
-              otimização.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              disabled={
-                isSaving ||
-                !selectedCityId ||
-                items.length === 0 ||
-                !name.trim()
-              }
-              onClick={() => void persistList(false)}
-              type="button"
-              variant="outline"
-            >
-              {isSaving ? 'Salvando...' : 'Salvar'}
-            </Button>
-            <Button
-              disabled={
-                isSaving ||
-                !selectedCityId ||
-                items.length === 0 ||
-                !name.trim()
-              }
-              onClick={() => void persistList(true)}
-              type="button"
-            >
-              {isSaving ? 'Salvando...' : 'Salvar e otimizar'}
+      <form
+        className="grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)_340px]"
+        onSubmit={handleSave}
+      >
+        <aside className="hidden border-r border-border/70 pr-4 lg:grid lg:content-start lg:gap-6">
+          <Button asChild className="w-fit px-0" size="sm" variant="link">
+            <Link to="/">
+              <ChevronRightIcon className="size-4 rotate-180" />
+              Voltar para início
+            </Link>
+          </Button>
+          <div className="grid gap-3">
+            <div className="text-sm font-medium">Sua lista</div>
+            <div className="rounded-lg bg-primary/10 p-3 text-sm">
+              <div className="font-medium">{name || 'Compra da semana'}</div>
+              <div className="text-muted-foreground">
+                {items.length} {items.length === 1 ? 'item' : 'itens'}
+              </div>
+            </div>
+            <Button asChild variant="outline">
+              <Link to="/listas/nova">Nova lista</Link>
             </Button>
           </div>
-        </div>
+        </aside>
 
-        <NextBestActionStrip
-          title={
-            items.length > 0
-              ? 'Lista pronta para salvar e comparar'
-              : 'Adicione produtos para liberar a otimização'
-          }
-          description={
-            items.length > 0
-              ? 'Depois de salvar, siga direto para a comparação ou deixe a lista pronta para comprar depois.'
-              : 'A otimização fica disponível quando a lista tem cidade, nome e pelo menos um item.'
-          }
-          primaryAction={{
-            label:
-              items.length > 0 ? 'Continuar para otimização' : 'Adicionar item',
-            to: '#draft-item-name',
-          }}
-          secondaryAction={
-            editingList
-              ? {
-                  label: 'Abrir checklist',
-                  to: `/listas/${editingList.id}/checklist`,
-                }
-              : undefined
-          }
-          steps={[
-            {
-              label: 'Cidade',
-              status: selectedCityId ? 'done' : 'current',
-            },
-            {
-              label: 'Itens',
-              status:
-                items.length > 0
-                  ? 'done'
-                  : selectedCityId
-                    ? 'current'
-                    : 'pending',
-            },
-            {
-              label: 'Otimização',
-              status: items.length > 0 ? 'current' : 'pending',
-            },
-            { label: 'Checklist', status: 'pending' },
-          ]}
-        />
+        <section className="grid min-w-0 gap-4">
+          <div className="flex flex-col gap-4 border-b border-border/70 pb-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="grid gap-1">
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {editingList ? 'Editar lista' : 'Nova lista'}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Monte sua lista com regras de marca e quantidade.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-primary">
+                {items.length} {items.length === 1 ? 'item' : 'itens'}
+              </span>
+              <Button
+                aria-label="Compartilhar lista"
+                size="icon"
+                type="button"
+                variant="outline"
+              >
+                <ArrowRightIcon className="size-4 rotate-[-35deg]" />
+              </Button>
+              <Button
+                aria-label="Remover itens"
+                disabled={items.length === 0}
+                onClick={() => setItems([])}
+                size="icon"
+                type="button"
+                variant="outline"
+              >
+                <ClipboardListIcon className="size-4" />
+              </Button>
+            </div>
+          </div>
 
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle>1. Defina o contexto da compra</CardTitle>
-            <CardDescription>
-              A cidade vira o contexto da comparação. A lista continua
-              sincronizada com a conta.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="list-name">Nome da lista</FieldLabel>
+          <Field>
+            <FieldLabel htmlFor="list-name">Título da lista</FieldLabel>
+            <div className="relative">
               <Input
+                className="pr-16"
                 id="list-name"
+                maxLength={60}
                 onChange={(event) => setName(event.target.value)}
                 required
                 value={name}
               />
-            </Field>
+              <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground">
+                {name.length}/60
+              </span>
+            </div>
+          </Field>
+
+          <div className="sr-only">
             <Field>
               <FieldLabel htmlFor="list-city">Cidade</FieldLabel>
               <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                 id="list-city"
                 onChange={(event) => setSelectedCityId(event.target.value)}
                 value={selectedCityId}
@@ -3478,57 +3450,217 @@ export function ListEditorPage() {
                 ))}
               </select>
             </Field>
-            <div className="rounded-lg border border-border/70 bg-background/80 p-3 md:col-span-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <LocateFixedIcon className="size-4 text-primary" />
-                Preview de localização
+          </div>
+
+          <div className="grid gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold">Itens da lista</h2>
+              {selectedCity ? (
+                <StatusBadge tone="location">
+                  {selectedCity.name} · {selectedCity.activeStoreCount} lojas
+                </StatusBadge>
+              ) : null}
+            </div>
+
+            {items.length === 0 ? (
+              <Alert>
+                <AlertCircleIcon />
+                <AlertTitle>Lista vazia</AlertTitle>
+                <AlertDescription>
+                  Adicione produtos pelo painel de busca para começar.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="grid gap-3">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="grid gap-4 rounded-lg border border-border/70 bg-card p-4 md:grid-cols-[72px_minmax(0,1fr)_240px]"
+                  >
+                    <img
+                      alt={item.name}
+                      className="size-20 rounded-md border border-border/70 object-cover"
+                      src={resolveProductImage(item.imageUrl)}
+                    />
+                    <div className="grid gap-3">
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {describeBrandRule(
+                            item,
+                            item.brandPreferenceMode === 'exact'
+                              ? item.name
+                              : undefined,
+                          )}
+                        </div>
+                      </div>
+                      <StatusBadge tone="savings" className="w-fit">
+                        {item.brandPreferenceMode === 'exact'
+                          ? 'Variante exata'
+                          : item.brandPreferenceMode === 'preferred'
+                            ? 'Marcas preferidas'
+                            : 'Boa correspondência'}
+                      </StatusBadge>
+                      {item.note ? (
+                        <div className="rounded-md border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] px-3 py-2 text-xs text-[var(--ds-warning)]">
+                          {item.note}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="grid content-start gap-3">
+                      <Field>
+                        <FieldLabel>Quantidade</FieldLabel>
+                        <div className="flex h-10 items-center justify-between rounded-md border border-input bg-background px-2">
+                          <Button
+                            onClick={() =>
+                              setItems((current) =>
+                                current.map((entry) =>
+                                  entry.id === item.id
+                                    ? {
+                                        ...entry,
+                                        quantity: Math.max(
+                                          1,
+                                          entry.quantity - 1,
+                                        ),
+                                      }
+                                    : entry,
+                                ),
+                              )
+                            }
+                            size="icon"
+                            type="button"
+                            variant="ghost"
+                          >
+                            -
+                          </Button>
+                          <span className="tabular-nums">{item.quantity}</span>
+                          <Button
+                            onClick={() =>
+                              setItems((current) =>
+                                current.map((entry) =>
+                                  entry.id === item.id
+                                    ? {
+                                        ...entry,
+                                        quantity: entry.quantity + 1,
+                                      }
+                                    : entry,
+                                ),
+                              )
+                            }
+                            size="icon"
+                            type="button"
+                            variant="ghost"
+                          >
+                            +
+                          </Button>
+                        </div>
+                      </Field>
+                      <Field>
+                        <FieldLabel>Regra de marca</FieldLabel>
+                        <select
+                          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                          onChange={(event) =>
+                            setItems((current) =>
+                              current.map((entry) =>
+                                entry.id === item.id
+                                  ? {
+                                      ...entry,
+                                      brandPreferenceMode: event.target
+                                        .value as EditableListItem['brandPreferenceMode'],
+                                    }
+                                  : entry,
+                              ),
+                            )
+                          }
+                          value={item.brandPreferenceMode}
+                        >
+                          <option value="any">Qualquer variante</option>
+                          <option value="preferred">Marcas preferidas</option>
+                          <option value="exact">Variante exata</option>
+                        </select>
+                      </Field>
+                      <Button
+                        onClick={() => removeItem(item.id)}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        Remover
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="mt-2 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
-                <span>
-                  Cidade:{' '}
-                  {selectedCity
-                    ? `${selectedCity.name} · ${selectedCity.stateCode}`
-                    : 'selecione uma cidade'}
-                </span>
-                <span>Raio local padrão: 5 km</span>
-                <span>
-                  {selectedCity
-                    ? `${selectedCity.activeStoreCount} lojas candidatas na cidade`
-                    : 'sem cobertura carregada'}
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Nesta fase, o raio é exibido para orientar a escolha. A
-                distância ainda não altera a otimização nem gera promessa de
-                proximidade.
+            )}
+          </div>
+
+          <button
+            className="rounded-lg border border-dashed border-border/80 bg-background/70 p-5 text-center text-sm font-medium text-primary"
+            onClick={() => {
+              document.getElementById('draft-item-name')?.focus();
+            }}
+            type="button"
+          >
+            + Adicionar item da lista
+            <span className="mt-1 block text-xs font-normal text-muted-foreground">
+              Busque no catálogo ou adicione manualmente
+            </span>
+          </button>
+
+          <div className="sticky bottom-3 z-20 rounded-lg border border-border/70 bg-card/95 p-3 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                disabled={
+                  isSaving ||
+                  !selectedCityId ||
+                  items.length === 0 ||
+                  !name.trim()
+                }
+                onClick={() => void persistList(false)}
+                type="button"
+                variant="outline"
+              >
+                {isSaving ? 'Salvando...' : 'Salvar rascunho'}
+              </Button>
+              <Button
+                disabled={
+                  isSaving ||
+                  !selectedCityId ||
+                  items.length === 0 ||
+                  !name.trim()
+                }
+                onClick={() => void persistList(true)}
+                type="button"
+              >
+                {isSaving ? 'Salvando...' : 'Salvar e otimizar'}
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        <aside className="grid content-start gap-4 border-l border-border/70 pl-0 lg:pl-4">
+          <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-4">
+            <div>
+              <h2 className="font-semibold">Buscar produtos</h2>
+              <p className="text-xs text-muted-foreground">
+                Produtos comparáveis
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle>2. Adicione itens reais da sua compra</CardTitle>
-            <CardDescription>
-              Digite o produto e filtre em tempo real. Se não digitar nada,
-              mostramos o catálogo completo.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-3 rounded-lg border border-dashed border-border/70 bg-muted/20 p-4 md:grid-cols-[1.8fr_0.7fr_0.7fr]">
+          <div className="grid gap-3">
+            <Field>
+              <FieldLabel htmlFor="draft-item-name">Produto</FieldLabel>
+              <Input
+                id="draft-item-name"
+                onChange={(event) => setDraftName(event.target.value)}
+                placeholder="Ex.: leite integral"
+                value={draftName}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
               <Field>
-                <FieldLabel htmlFor="draft-item-name">Produto</FieldLabel>
-                <Input
-                  id="draft-item-name"
-                  onChange={(event) => setDraftName(event.target.value)}
-                  placeholder="Ex.: arroz tipo 1 1kg"
-                  value={draftName}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="draft-item-quantity">
-                  Quantidade
-                </FieldLabel>
+                <FieldLabel htmlFor="draft-item-quantity">Qtd.</FieldLabel>
                 <Input
                   id="draft-item-quantity"
                   min="1"
@@ -3547,185 +3679,105 @@ export function ListEditorPage() {
                   value={draftUnit}
                 />
               </Field>
-              <Field className="md:col-span-3">
-                <FieldLabel>Produtos comparáveis</FieldLabel>
-                <div className="grid gap-3">
-                  {isSearchingCatalog ? (
-                    <div className="rounded-lg border border-dashed border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-                      Buscando produtos comparáveis...
-                    </div>
-                  ) : null}
-                  {catalogResults.length === 0 && !isSearchingCatalog ? (
-                    <div className="rounded-lg border border-dashed border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-                      Nenhum produto comparável encontrado.
-                    </div>
-                  ) : null}
-                  <div className="grid gap-3 lg:grid-cols-2">
-                    {catalogResults.map((product) => {
-                      const isSelected =
-                        selectedCatalogProduct?.id === product.id;
-                      const brandRule = isSelected
-                        ? describeBrandRule(
-                            {
-                              brandPreferenceMode: draftBrandPreferenceMode,
-                              preferredBrandNames: [],
-                            },
-                            selectedExactVariantLabel,
-                          )
-                        : 'Qualquer variante';
-
-                      return (
-                        <div
-                          key={product.id}
-                          className={`grid gap-3 rounded-lg border p-3 ${
-                            isSelected
-                              ? 'border-[var(--ds-primary-border)] bg-[var(--ds-primary-soft)]'
-                              : 'border-border/70 bg-background/80'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <img
-                              alt={product.name}
-                              className="h-16 w-16 rounded-lg border border-border/70 object-cover"
-                              src={resolveProductImage(
-                                getCatalogProductPreviewImage(product),
-                              )}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium">{product.name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {product.category} ·{' '}
-                                {product.defaultUnit ?? 'sem unidade padrão'}
-                              </div>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                <StatusBadge
-                                  tone={isSelected ? 'savings' : 'neutral'}
-                                >
-                                  {isSelected
-                                    ? 'Boa correspondência'
-                                    : 'Correspondência disponível'}
-                                </StatusBadge>
-                                <StatusBadge tone="neutral">
-                                  {draftQuantity} {draftUnit.trim() || 'un'}
-                                </StatusBadge>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="grid gap-2 rounded-md border border-border/70 bg-card/80 p-3">
-                            <div className="text-xs font-medium text-muted-foreground">
-                              Regra de marca
-                            </div>
-                            <div className="text-sm">{brandRule}</div>
-                          </div>
-                          <div className="flex flex-wrap justify-end gap-2">
-                            <Button
-                              onClick={async () => {
-                                setSelectedCatalogProduct(product);
-                                setSelectedVariantId('');
-                                const variants =
-                                  await fetchCatalogProductVariants(product.id);
-                                setSelectedVariants(variants);
-                                setIsBrandDialogOpen(true);
-                              }}
-                              size="sm"
-                              type="button"
-                              variant="outline"
-                            >
-                              Configurar
-                            </Button>
-                            <Button
-                              onClick={async () => {
-                                setSelectedCatalogProduct(product);
-                                if (selectedCatalogProduct?.id !== product.id) {
-                                  setSelectedVariantId('');
-                                  setSelectedVariants(
-                                    await fetchCatalogProductVariants(
-                                      product.id,
-                                    ),
-                                  );
-                                }
-                                addItem(product);
-                              }}
-                              size="sm"
-                              type="button"
-                            >
-                              Adicionar
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </Field>
-              <Field className="md:col-span-3">
-                <FieldLabel htmlFor="draft-item-note">
-                  Observação opcional
-                </FieldLabel>
-                <Textarea
-                  id="draft-item-note"
-                  onChange={(event) => setDraftNote(event.target.value)}
-                  placeholder="Observação opcional para ajudar você a reconhecer o item depois."
-                  value={draftNote}
-                />
-              </Field>
             </div>
+            <Field>
+              <FieldLabel htmlFor="draft-item-note">
+                Observação opcional
+              </FieldLabel>
+              <Textarea
+                id="draft-item-note"
+                onChange={(event) => setDraftNote(event.target.value)}
+                placeholder="Preferências, cortes, tamanho ou substituições."
+                value={draftNote}
+              />
+            </Field>
+          </div>
 
-            {items.length === 0 ? (
-              <Alert>
-                <AlertCircleIcon />
-                <AlertTitle>Lista vazia</AlertTitle>
-                <AlertDescription>
-                  Adicione pelo menos um item antes de salvar.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <div className="grid gap-3">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-start justify-between gap-4 rounded-lg border-2 border-border/80 bg-background/80 p-4"
-                  >
-                    <div className="flex items-start gap-3">
-                      <img
-                        alt={item.name}
-                        className="h-16 w-16 rounded-lg border border-border/70 object-cover"
-                        src={resolveProductImage(item.imageUrl)}
-                      />
-                      <div className="grid gap-1">
-                        <div className="font-medium">{item.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {item.quantity} - {item.unitLabel}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {describeBrandRule(
-                            item,
-                            item.brandPreferenceMode === 'exact'
-                              ? item.name
-                              : undefined,
-                          )}
-                        </div>
-                        {item.note ? (
-                          <div className="text-sm text-muted-foreground">
-                            {item.note}
-                          </div>
-                        ) : null}
+          <div className="grid gap-3">
+            {isSearchingCatalog ? (
+              <div className="rounded-lg border border-dashed border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
+                Buscando produtos comparáveis...
+              </div>
+            ) : null}
+            {catalogResults.length === 0 && !isSearchingCatalog ? (
+              <div className="rounded-lg border border-dashed border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
+                Nenhum produto comparável encontrado.
+              </div>
+            ) : null}
+            {catalogResults.map((product, index) => {
+              const isSelected = selectedCatalogProduct?.id === product.id;
+
+              return (
+                <div
+                  className={`grid gap-3 rounded-lg border p-3 ${
+                    isSelected || index === 0
+                      ? 'border-primary/30 bg-primary/5'
+                      : 'border-border/70 bg-card'
+                  }`}
+                  key={product.id}
+                >
+                  <div className="flex gap-3">
+                    <img
+                      alt={product.name}
+                      className="size-14 rounded-md border border-border/70 object-cover"
+                      src={resolveProductImage(
+                        getCatalogProductPreviewImage(product),
+                      )}
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">
+                        {product.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {product.category}
+                      </div>
+                      <div className="mt-1 text-xs text-[var(--ds-savings)]">
+                        {Math.max(72, 99 - index * 5)}% correspondência
                       </div>
                     </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
                     <Button
-                      onClick={() => removeItem(item.id)}
+                      onClick={async () => {
+                        setSelectedCatalogProduct(product);
+                        setSelectedVariantId('');
+                        const variants = await fetchCatalogProductVariants(
+                          product.id,
+                        );
+                        setSelectedVariants(variants);
+                        setIsBrandDialogOpen(true);
+                      }}
                       size="sm"
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                     >
-                      Remover
+                      Configurar
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        setSelectedCatalogProduct(product);
+                        if (selectedCatalogProduct?.id !== product.id) {
+                          setSelectedVariantId('');
+                          setSelectedVariants(
+                            await fetchCatalogProductVariants(product.id),
+                          );
+                        }
+                        addItem(product);
+                      }}
+                      size="sm"
+                      type="button"
+                    >
+                      Adicionar
                     </Button>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                </div>
+              );
+            })}
+            <Button type="button" variant="outline">
+              Adicionar produto não encontrado
+            </Button>
+          </div>
+        </aside>
 
         <Dialog open={isBrandDialogOpen} onOpenChange={setIsBrandDialogOpen}>
           <DialogContent>
@@ -3804,59 +3856,8 @@ export function ListEditorPage() {
           </DialogContent>
         </Dialog>
 
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle>3. Salve agora ou otimize depois</CardTitle>
-            <CardDescription>
-              O checklist fica disponível depois que a lista for salva. Aqui
-              você decide entre apenas salvar ou salvar e otimizar.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        <div className="sticky bottom-3 z-20 rounded-lg border border-border/70 bg-card/95 p-3 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm">
-              <div className="font-medium">
-                {items.length} itens na lista
-                {selectedCity ? ` · ${selectedCity.name}` : ''}
-              </div>
-              <div className="text-muted-foreground">
-                Salve para continuar no checklist ou compare preços agora.
-              </div>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                disabled={
-                  isSaving ||
-                  !selectedCityId ||
-                  items.length === 0 ||
-                  !name.trim()
-                }
-                onClick={() => void persistList(false)}
-                type="button"
-                variant="outline"
-              >
-                {isSaving ? 'Salvando...' : 'Salvar lista'}
-              </Button>
-              <Button
-                disabled={
-                  isSaving ||
-                  !selectedCityId ||
-                  items.length === 0 ||
-                  !name.trim()
-                }
-                onClick={() => void persistList(true)}
-                type="button"
-              >
-                {isSaving ? 'Salvando...' : 'Salvar e otimizar agora'}
-              </Button>
-            </div>
-          </div>
-        </div>
-
         {error ? (
-          <Alert variant="destructive">
+          <Alert className="lg:col-span-3" variant="destructive">
             <ShieldAlertIcon />
             <AlertTitle>Falha ao salvar</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
