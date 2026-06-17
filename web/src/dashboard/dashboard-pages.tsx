@@ -64,7 +64,6 @@ import { formatCurrency, formatFreshnessLabel } from '@/app/format';
 import { resolveProductImage } from '@/app/media';
 import { usePricely } from '@/app/pricely-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   AdminActionQueueItem,
@@ -683,7 +682,7 @@ export function AdminOverviewPage() {
               </div>
               <div className="h-3 rounded-full bg-muted">
                 <div
-                  className="h-3 rounded-full bg-[#0F766E]"
+                  className="h-3 rounded-full bg-[var(--ds-savings)]"
                   style={{ width: `${completionRatio}%` }}
                 />
               </div>
@@ -697,7 +696,7 @@ export function AdminOverviewPage() {
               </div>
               <div className="h-3 rounded-full bg-muted">
                 <div
-                  className="h-3 rounded-full bg-[#2563EB]"
+                  className="h-3 rounded-full bg-[var(--ds-location)]"
                   style={{ width: `${catalogRatio}%` }}
                 />
               </div>
@@ -711,7 +710,7 @@ export function AdminOverviewPage() {
               </div>
               <div className="h-3 rounded-full bg-muted">
                 <div
-                  className="h-3 rounded-full bg-[#84CC16]"
+                  className="h-3 rounded-full bg-[var(--ds-warning)]"
                   style={{ width: `${queuePressure}%` }}
                 />
               </div>
@@ -727,21 +726,21 @@ export function AdminOverviewPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <div className="rounded-lg border border-border/70 bg-[#ECFDF5] p-4">
-              <div className="text-sm text-[#166534]">Regioes ativas</div>
-              <div className="mt-2 text-2xl font-semibold text-[#14532D]">
+            <div className="rounded-lg border border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)] p-4">
+              <div className="text-sm text-[var(--ds-savings)]">Regioes ativas</div>
+              <div className="mt-2 text-2xl font-semibold text-foreground">
                 {data.activeRegions}
               </div>
             </div>
-            <div className="rounded-lg border border-border/70 bg-[#EFF6FF] p-4">
-              <div className="text-sm text-[#1D4ED8]">Ofertas ativas</div>
-              <div className="mt-2 text-2xl font-semibold text-[#1E3A8A]">
+            <div className="rounded-lg border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)] p-4">
+              <div className="text-sm text-[var(--ds-location)]">Ofertas ativas</div>
+              <div className="mt-2 text-2xl font-semibold text-foreground">
                 {data.activeOffers}
               </div>
             </div>
-            <div className="rounded-lg border border-border/70 bg-[#FFF7ED] p-4">
-              <div className="text-sm text-[#C2410C]">Jobs aguardando</div>
-              <div className="mt-2 text-2xl font-semibold text-[#9A3412]">
+            <div className="rounded-lg border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] p-4">
+              <div className="text-sm text-[var(--ds-warning)]">Jobs aguardando</div>
+              <div className="mt-2 text-2xl font-semibold text-foreground">
                 {data.queuedJobs}
               </div>
             </div>
@@ -783,11 +782,11 @@ export function AdminOverviewPage() {
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-4">
           {[
-            ['Usuarios ativos', data.activeUsers, '#0F766E'],
-            ['Listas criadas', data.shoppingListsCount, '#2563EB'],
-            ['Ofertas ativas', data.activeOffers, '#84CC16'],
-            ['Jobs em fila', data.queuedJobs, '#F97316'],
-          ].map(([label, rawValue, color]) => {
+            ['Usuarios ativos', data.activeUsers, 'bg-[var(--ds-savings)]'],
+            ['Listas criadas', data.shoppingListsCount, 'bg-[var(--ds-location)]'],
+            ['Ofertas ativas', data.activeOffers, 'bg-[var(--ds-primary)]'],
+            ['Jobs em fila', data.queuedJobs, 'bg-[var(--ds-warning)]'],
+          ].map(([label, rawValue, barClassName]) => {
             const value = Number(rawValue);
             return (
               <div
@@ -805,9 +804,8 @@ export function AdminOverviewPage() {
                       className="flex-1 rounded-md bg-muted"
                     >
                       <div
-                        className="rounded-md"
+                        className={`rounded-md ${String(barClassName)}`}
                         style={{
-                          backgroundColor: String(color),
                           height: `${Math.max(12, Math.min(100, (value / maxMetric) * 100 * ratio))}%`,
                         }}
                       />
@@ -1226,13 +1224,13 @@ export function AdminPricesPage() {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  <Badge
-                                    variant={
-                                      offer.isActive ? 'secondary' : 'outline'
+                                  <StatusBadge
+                                    tone={
+                                      offer.isActive ? 'savings' : 'neutral'
                                     }
                                   >
                                     {offer.availabilityStatus}
-                                  </Badge>
+                                  </StatusBadge>
                                   <Button
                                     size="sm"
                                     variant="ghost"
@@ -1594,9 +1592,9 @@ export function AdminCatalogPage() {
                 value={variantQuery}
                 onChange={(event) => setVariantQuery(event.target.value)}
               />
-              <Badge variant="secondary">
+              <StatusBadge tone="neutral">
                 {visibleVariants.length} de {variants.length} variantes
-              </Badge>
+              </StatusBadge>
             </div>
             <div className="grid max-h-[520px] gap-2 overflow-auto pr-1">
               {visibleVariants.map((variant) => (
@@ -1623,9 +1621,9 @@ export function AdminCatalogPage() {
                         </div>
                       </div>
                     </div>
-                    <Badge variant={variant.isActive ? 'secondary' : 'outline'}>
+                    <StatusBadge tone={variant.isActive ? 'savings' : 'neutral'}>
                       {variant.isActive ? 'Ativa' : 'Inativa'}
-                    </Badge>
+                    </StatusBadge>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -1699,9 +1697,9 @@ export function AdminCatalogPage() {
               value={catalogQuery}
               onChange={(event) => setCatalogQuery(event.target.value)}
             />
-            <Badge variant="secondary">
+            <StatusBadge tone="neutral">
               {visibleProducts.length} de {products.length} produtos
-            </Badge>
+            </StatusBadge>
           </div>
           {error ? (
             <Alert variant="destructive">
@@ -1747,9 +1745,9 @@ export function AdminCatalogPage() {
                         Identificador público: {product.slug}
                       </div>
                     </div>
-                    <Badge variant="secondary">
+                    <StatusBadge tone="primary">
                       {product._count.productOffers} ofertas
-                    </Badge>
+                    </StatusBadge>
                   </div>
                   <div className="mt-3 flex gap-2">
                     <Button
@@ -1818,9 +1816,9 @@ export function AdminCatalogPage() {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {product.aliases.map((alias) => (
-                      <Badge key={alias.id} variant="outline">
+                      <StatusBadge key={alias.id} tone="neutral">
                         {alias.alias}
-                      </Badge>
+                      </StatusBadge>
                     ))}
                   </div>
                   {variantsExpanded ? (
@@ -2074,11 +2072,14 @@ export function AdminRegionsPage() {
                     {region.activeEstablishmentsCount} estabelecimentos ativos
                   </div>
                 </div>
-                <Badge
-                  variant={
+                <StatusBadge
+                  family="city"
+                  status={
                     region.implantationStatus === 'active'
-                      ? 'secondary'
-                      : 'outline'
+                      ? 'active'
+                      : region.implantationStatus === 'activating'
+                        ? 'activating'
+                        : 'hidden'
                   }
                 >
                   {region.implantationStatus === 'active'
@@ -2086,7 +2087,7 @@ export function AdminRegionsPage() {
                     : region.implantationStatus === 'activating'
                       ? 'em ativação'
                       : 'inativa'}
-                </Badge>
+                </StatusBadge>
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
                 <div className="text-sm text-muted-foreground">
@@ -2156,9 +2157,9 @@ export function AdminRegionsPage() {
                           {establishment.isActive ? 'ativo' : 'inativo'}
                         </div>
                       </div>
-                      <Badge variant="secondary">
+                      <StatusBadge tone="primary">
                         {establishment.auditedProductsCount} produtos auditados
-                      </Badge>
+                      </StatusBadge>
                     </div>
                   ))}
                 </div>
@@ -2521,8 +2522,12 @@ export function AdminUsersPage() {
                         {user.email}
                       </div>
                       <div className="mt-1 flex items-center gap-2">
-                        <Badge variant="secondary">{user.role}</Badge>
-                        <Badge variant="outline">{user.status}</Badge>
+                        <StatusBadge tone="primary">{user.role}</StatusBadge>
+                        <StatusBadge
+                          tone={user.status === 'active' ? 'savings' : 'neutral'}
+                        >
+                          {user.status}
+                        </StatusBadge>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -3223,20 +3228,20 @@ export function AdminReceiptsPage() {
                                   </TableCell>
                                   <TableCell>
                                     <div className="grid gap-1">
-                                      <Badge
-                                        variant={
+                                      <StatusBadge
+                                        tone={
                                           offer.comparison.direction === 'up'
-                                            ? 'destructive'
+                                            ? 'critical'
                                             : offer.comparison.direction ===
                                                 'down'
-                                              ? 'secondary'
-                                              : 'outline'
+                                              ? 'savings'
+                                              : 'neutral'
                                         }
                                       >
                                         {priceDirectionLabel(
                                           offer.comparison.direction,
                                         )}
-                                      </Badge>
+                                      </StatusBadge>
                                       <span className="text-xs text-muted-foreground">
                                         {offer.comparison.previousPriceAmount
                                           ? `${formatCurrency(
@@ -3611,15 +3616,19 @@ export function AdminQueuePage() {
           ) : null}
           {queueHealth ? (
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-lg border border-border/70 bg-[#ECFDF5] p-4">
-                <div className="text-sm text-[#166534]">Concluidos</div>
-                <div className="mt-2 text-2xl font-semibold text-[#14532D]">
+              <div className="rounded-lg border border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)] p-4">
+                <div className="text-sm text-[var(--ds-savings)]">
+                  Concluidos
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-foreground">
                   {queueHealth.completedJobs}
                 </div>
               </div>
-              <div className="rounded-lg border border-border/70 bg-[#EFF6FF] p-4">
-                <div className="text-sm text-[#1D4ED8]">Filas monitoradas</div>
-                <div className="mt-2 text-2xl font-semibold text-[#1E3A8A]">
+              <div className="rounded-lg border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)] p-4">
+                <div className="text-sm text-[var(--ds-location)]">
+                  Filas monitoradas
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-foreground">
                   {queueHealth.queues.length}
                 </div>
               </div>
