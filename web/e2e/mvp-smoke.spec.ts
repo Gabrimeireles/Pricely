@@ -603,13 +603,13 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   await expect(
     page.getByRole('heading', { name: 'Resultado da otimização' }),
   ).toBeVisible();
-  await page.getByText('Usar este modo').first().click();
-  await expect(page.getByText('Decisões por item')).toBeVisible();
+  await expect(page.getByText(/Itens otimizados/)).toBeVisible();
+  await expect(page.getByText(/Plano de compras/)).toBeVisible();
   await expect(page.getByText('Oferta confirmada selecionada')).toBeVisible();
-  await expect(page.getByText('Confiança alta')).toBeVisible();
+  await expect(page.getByText('Confiança alta', { exact: true })).toBeVisible();
   await expect(page.getByText('82/100', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: /Abrir checklist/i }).first().click();
 
-  await page.goto('/listas/list-1/checklist');
   await expect(
     page.getByRole('heading', { name: 'Checklist de compra' }),
   ).toBeVisible();
@@ -641,8 +641,6 @@ test('location-aware web flow saves browser coordinates and shows local result d
   await expect(page.getByText(/Preview local: 2 lojas dentro de 5 km/)).toBeVisible();
 
   await page.goto('/otimizacao/list-1');
-  await page.getByText('Menor preco perto de mim').click();
-  await page.getByText('Usar este modo').nth(1).click();
   await expect(page.getByText('0.8 km do local salvo')).toBeVisible();
 });
 
