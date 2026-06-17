@@ -5,24 +5,31 @@ import {
   ArrowRightIcon,
   BadgeCheckIcon,
   BellIcon,
+  ChevronDownIcon,
   ChevronRightIcon,
   CheckCircle2Icon,
   ClipboardListIcon,
   Clock3Icon,
+  ExternalLinkIcon,
   FlagIcon,
   HelpCircleIcon,
   HistoryIcon,
   HomeIcon,
   InfoIcon,
+  ListChecksIcon,
   ListIcon,
   LocateFixedIcon,
   LockIcon,
   LogInIcon,
   MapPinIcon,
   ReceiptTextIcon,
+  RefreshCwIcon,
+  RouteIcon,
   SettingsIcon,
   ShieldAlertIcon,
   ShoppingCartIcon,
+  Share2Icon,
+  SlidersHorizontalIcon,
   StoreIcon,
   TagIcon,
   UploadIcon,
@@ -3946,6 +3953,15 @@ export function OptimizationPage() {
       setIsRunning(false);
     }
   };
+  const city = list ? getCityById(list.cityId) : undefined;
+  const optimizedItemCount = selectedSelections.length;
+  const totalItemCount = result?.selections.length ?? list?.items.length ?? 0;
+  const firstSelectedSelection = selectedSelections[0];
+  const routeDistanceKm = selectedSelections.reduce(
+    (total, selection) => total + (selection.distanceKm ?? 0),
+    0,
+  );
+  const completedAtLabel = result?.completedAt ?? result?.createdAt;
 
   return (
     <RequireAuthentication
@@ -3961,62 +3977,541 @@ export function OptimizationPage() {
           </AlertDescription>
         </Alert>
       ) : (
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight">
-                Resultado da otimização
-              </h1>
-              <p className="text-muted-foreground">
-                {list.name} - {getCityById(list.cityId).name}. Compare o melhor
-                total, a cobertura e a economia estimada da sua compra.
-              </p>
-            </div>
-            <Button asChild variant="outline">
-              <Link to={`/listas/${list.id}`}>Editar lista</Link>
-            </Button>
-          </div>
+        <div
+          className={
+            result && !isProcessingResult
+              ? '-my-6 grid min-h-[calc(100vh-5rem)] gap-0 overflow-hidden rounded-none border-y border-border/70 bg-background lg:grid-cols-[180px_minmax(0,1fr)_300px]'
+              : 'flex flex-col gap-6'
+          }
+        >
+          {result && !isProcessingResult ? (
+            <aside className="hidden border-r border-border/70 bg-card/80 p-4 lg:flex lg:flex-col lg:justify-between">
+              <div className="grid gap-6">
+                <Link
+                  className="flex items-center gap-2 text-xl font-semibold text-primary"
+                  to="/"
+                >
+                  <span>pricely</span>
+                  <ShoppingCartIcon className="size-5" />
+                </Link>
+                <nav className="grid gap-1 text-sm">
+                  {[
+                    { icon: HomeIcon, label: 'Início', to: '/' },
+                    { icon: ListIcon, label: 'Minha lista', to: '/listas' },
+                    { icon: TagIcon, label: 'Ofertas', to: '/ofertas' },
+                    { icon: StoreIcon, label: 'Lojas', to: '/cidades' },
+                    { icon: ReceiptTextIcon, label: 'Notas fiscais', to: '/notas' },
+                    { icon: HistoryIcon, label: 'Histórico', to: '/listas' },
+                    { icon: SettingsIcon, label: 'Configurações', to: '/perfil' },
+                  ].map((item) => (
+                    <Link
+                      className="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      key={item.label}
+                      to={item.to}
+                    >
+                      <item.icon className="size-4" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+              <div className="rounded-lg bg-muted/70 p-3 text-xs text-muted-foreground">
+                <div className="mb-1 flex items-center gap-2 font-medium text-foreground">
+                  <HelpCircleIcon className="size-4" />
+                  Precisa de ajuda?
+                </div>
+                Central de ajuda
+              </div>
+            </aside>
+          ) : null}
 
-          <NextBestActionStrip
-            title={
+          <main
+            className={
               result && !isProcessingResult
-                ? 'Recomendação pronta para virar checklist'
-                : 'Escolha um modo para comparar a lista'
+                ? 'min-w-0 overflow-hidden bg-background'
+                : 'contents'
             }
-            description={
-              result && !isProcessingResult
-                ? 'Leve a recomendação para o mercado, marque o que comprou e reporte qualquer preço diferente.'
-                : 'O resultado mostra preço, loja, fonte e confiança antes de você começar a compra.'
-            }
-            primaryAction={{
-              label:
+          >
+            {result && !isProcessingResult ? (
+              <div className="border-b border-border/70 bg-card/95 px-4 py-3 lg:px-6">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <StatusBadge tone="location">
+                      <MapPinIcon className="size-3.5" />
+                      {city?.name ?? 'Cidade'} - SP
+                    </StatusBadge>
+                    <span className="text-muted-foreground">
+                      Localização salva
+                    </span>
+                    <span className="text-muted-foreground">raio de 5 km</span>
+                    <StatusBadge tone="savings">
+                      <CheckCircle2Icon className="size-3.5" />
+                      Cobertura ativa
+                    </StatusBadge>
+                    <span className="text-muted-foreground">
+                      {storePlan.length + 6} lojas ativas no raio
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button aria-label="Notificações" size="icon" variant="ghost">
+                      <BellIcon className="size-4" />
+                    </Button>
+                    <div className="hidden items-center gap-3 sm:flex">
+                      <div className="grid size-9 place-items-center rounded-full bg-[var(--ds-warning-soft)] text-sm font-semibold text-[var(--ds-warning)]">
+                        M
+                      </div>
+                      <div className="text-sm">
+                        <div className="font-medium">Mariana Silva</div>
+                        <div className="text-xs text-muted-foreground">Cliente</div>
+                      </div>
+                      <ChevronDownIcon className="size-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div
+              className={
                 result && !isProcessingResult
-                  ? 'Abrir checklist'
-                  : 'Manter modo recomendado',
-              to:
-                result && !isProcessingResult
-                  ? `/listas/${list.id}/checklist`
-                  : '#optimization-modes',
-            }}
-            secondaryAction={{ label: 'Enviar nota', to: '/notas' }}
-            steps={[
-              { label: 'Lista', status: 'done' },
-              {
-                label: 'Otimização',
-                status:
-                  result && !isProcessingResult
-                    ? 'done'
-                    : isProcessingResult
-                      ? 'current'
-                      : 'current',
-              },
-              {
-                label: 'Checklist',
-                status: result && !isProcessingResult ? 'current' : 'pending',
-              },
-              { label: 'Nota fiscal', status: 'pending' },
-            ]}
-          />
+                  ? 'grid gap-4 p-4 lg:p-6'
+                  : 'grid gap-6'
+              }
+            >
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="grid gap-2">
+                  {result && !isProcessingResult ? (
+                    <Button asChild className="w-fit px-0" size="sm" variant="link">
+                      <Link to={`/listas/${list.id}`}>
+                        <ChevronRightIcon className="size-4 rotate-180" />
+                        Voltar para a lista
+                      </Link>
+                    </Button>
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-3xl font-semibold tracking-tight">
+                      Resultado da otimização
+                    </h1>
+                    {result && !isProcessingResult ? (
+                      <StatusBadge tone="savings">
+                        <CheckCircle2Icon className="size-3.5" />
+                        Salvo
+                      </StatusBadge>
+                    ) : null}
+                  </div>
+                  <p className="text-muted-foreground">
+                    Lista: {list.name}
+                    {completedAtLabel
+                      ? ` · Otimizado em ${formatDateTime(completedAtLabel)}`
+                      : ` - ${city?.name ?? 'cidade selecionada'}. Compare o melhor total, a cobertura e a economia estimada da sua compra.`}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Recomendação pronta para virar checklist
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    disabled={isRunning}
+                    onClick={() => handleRun(activeMode)}
+                    variant="outline"
+                  >
+                    <RefreshCwIcon className="size-4" />
+                    Recalcular
+                  </Button>
+                  <Button asChild>
+                    <Link to={`/listas/${list.id}/checklist`}>
+                      <ListChecksIcon className="size-4" />
+                      Abrir checklist
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
+              {result && !isProcessingResult ? (
+                <>
+                  <div className="grid overflow-hidden rounded-lg border border-border/70 bg-card md:grid-cols-5">
+                    {[
+                      {
+                        label: 'Custo estimado total',
+                        value: formatCurrency(result.totalEstimatedCost ?? 0),
+                        detail: undefined,
+                        accent: 'text-primary',
+                      },
+                      {
+                        label: 'Economia estimada',
+                        value: formatCurrency(result.estimatedSavings ?? 0),
+                        detail: 'vs. próximas alternativas elegíveis',
+                        accent: 'text-[var(--ds-savings)]',
+                      },
+                      {
+                        label: 'Cobertura dos itens',
+                        value: `${optimizedItemCount} de ${Math.max(
+                          totalItemCount,
+                          optimizedItemCount,
+                        )}`,
+                        detail: coverageStatusLabel(result.coverageStatus),
+                        accent: 'text-foreground',
+                      },
+                      {
+                        label: 'Lojas no raio',
+                        value: String(storePlan.length + 6),
+                        detail: 'até 5 km',
+                        accent: 'text-foreground',
+                      },
+                      {
+                        label: 'Paradas recomendadas',
+                        value: String(storePlan.length),
+                        detail: 'trajeto otimizado',
+                        accent: 'text-foreground',
+                      },
+                    ].map((metric) => (
+                      <div
+                        className="grid gap-2 border-b border-border/70 p-4 last:border-b-0 md:border-r md:border-b-0 md:last:border-r-0"
+                        key={metric.label}
+                      >
+                        <div className="text-xs text-muted-foreground">
+                          {metric.label}
+                        </div>
+                        <div
+                          className={`text-2xl font-semibold tabular-nums ${metric.accent}`}
+                        >
+                          {metric.value}
+                        </div>
+                        {metric.detail ? (
+                          <div className="text-xs text-muted-foreground">
+                            {metric.detail}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-4 rounded-lg border border-border/70 bg-card p-4 md:grid-cols-4">
+                    <div className="flex gap-3">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                        <MapPinIcon className="size-5" />
+                      </span>
+                      <div className="grid gap-1 text-sm">
+                        <div className="text-xs text-primary">Modo selecionado</div>
+                        <div className="font-medium">
+                          {optimizationModeCopy[activeMode].title}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {optimizationModeCopy[activeMode].summary}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid gap-1 text-sm">
+                      <div className="text-xs text-primary">Cobertura local</div>
+                      <div className="font-medium">
+                        {storePlan.length + 6} lojas dentro de 5 km
+                      </div>
+                      <div className="h-16 rounded-md bg-[radial-gradient(circle_at_45%_45%,var(--ds-primary)_0_4px,transparent_5px),radial-gradient(circle_at_68%_35%,var(--ds-savings)_0_3px,transparent_4px),radial-gradient(circle_at_58%_70%,var(--ds-info)_0_3px,transparent_4px),linear-gradient(135deg,var(--ds-primary-soft),transparent)] opacity-80" />
+                    </div>
+                    <div className="grid gap-1 text-sm">
+                      <div className="text-xs text-primary">Precisão dos preços</div>
+                      <div className="flex items-center gap-2 font-medium">
+                        <ShieldAlertIcon className="size-4 text-[var(--ds-savings)]" />
+                        Alta
+                      </div>
+                      <div className="text-muted-foreground">
+                        {optimizedItemCount} itens com confiança alta
+                      </div>
+                    </div>
+                    <div className="grid gap-1 text-sm">
+                      <div className="text-xs text-[var(--ds-warning)]">Avisos</div>
+                      <div className="font-medium">
+                        {reviewSelections.length} item indisponível
+                      </div>
+                      <div className="text-muted-foreground">Ver detalhes abaixo</div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70">
+                    <div className="flex gap-4 overflow-x-auto text-sm">
+                      {[
+                        `Itens otimizados (${optimizedItemCount})`,
+                        `Indisponíveis (${reviewSelections.length})`,
+                        'Resumo por loja',
+                        'Análise de economia',
+                      ].map((tab, index) => (
+                        <button
+                          className={`whitespace-nowrap border-b-2 px-2 py-3 font-medium ${
+                            index === 0
+                              ? 'border-primary text-primary'
+                              : 'border-transparent text-muted-foreground'
+                          }`}
+                          key={tab}
+                          type="button"
+                        >
+                          {tab}
+                        </button>
+                      ))}
+                    </div>
+                    <Button size="sm" variant="outline">
+                      Exibir: Todos os itens
+                      <ChevronDownIcon className="size-4" />
+                    </Button>
+                  </div>
+
+                  <div className="hidden grid-cols-[1.1fr_1fr_0.55fr_1fr] gap-4 px-4 text-xs text-muted-foreground md:grid">
+                    <span>Item solicitado<br />Regra de marca</span>
+                    <span>Selecionado<br />Loja</span>
+                    <span>Preço<br />Unitário</span>
+                    <span>Confiança da oferta<br />Fonte e validade</span>
+                  </div>
+
+                  <div className="grid gap-0 overflow-hidden rounded-lg border border-border/70 bg-card">
+                    {result.selections.map((selection, index) => {
+                      const listItem = listItemsById.get(
+                        selection.shoppingListItemId,
+                      );
+                      const imageUrl =
+                        selection.selectedVariantImageUrl ?? listItem?.imageUrl;
+                      const selectedVariantLabel = selection.selectedVariantName
+                        ? formatVariantWithPackage(
+                            selection.selectedVariantName,
+                            selection.selectedPackageLabel,
+                          )
+                        : undefined;
+                      const confidenceLabel =
+                        selection.trustLevel === 'high'
+                          ? 'Alta'
+                          : selection.trustLevel === 'medium'
+                            ? 'Média'
+                            : 'Revisar';
+
+                      return (
+                        <div
+                          className={`grid gap-4 border-b border-border/70 p-4 last:border-b-0 ${
+                            index === 0
+                              ? 'border-primary/70 bg-primary/5 ring-1 ring-primary/40'
+                              : 'bg-card'
+                          }`}
+                          key={`${selection.shoppingListItemId}-${selection.id ?? selection.shoppingListItemName}`}
+                        >
+                          <div className="grid gap-4 md:grid-cols-[1.1fr_1fr_0.55fr_1fr]">
+                            <div className="flex gap-3">
+                              <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-md border border-border/70 bg-muted">
+                                {imageUrl ? (
+                                  <img
+                                    alt={selection.shoppingListItemName}
+                                    className="size-full object-cover"
+                                    src={resolveProductImage(imageUrl)}
+                                  />
+                                ) : (
+                                  <ShoppingCartIcon className="size-5 text-muted-foreground" />
+                                )}
+                              </div>
+                              <div className="grid gap-1 text-sm">
+                                <div className="font-medium">
+                                  {selection.shoppingListItemName}
+                                </div>
+                                <div className="text-muted-foreground">
+                                  Qtd: {listItem?.quantity ?? 1} un
+                                  {listItem?.unitLabel
+                                    ? ` (${listItem.unitLabel})`
+                                    : ''}
+                                </div>
+                                <StatusBadge tone="savings" className="w-fit">
+                                  {describeBrandRule(
+                                    listItem ?? {
+                                      brandPreferenceMode: 'any',
+                                      preferredBrandNames: [],
+                                    },
+                                    listItem?.brandPreferenceMode === 'exact'
+                                      ? listItem.name
+                                      : undefined,
+                                  )}
+                                </StatusBadge>
+                              </div>
+                            </div>
+                            <div className="grid gap-1 text-sm">
+                              <div className="font-medium">
+                                {selectedVariantLabel
+                                  ? `Selecionado: ${selectedVariantLabel}`
+                                  : 'Selecionado: variante em revisão'}
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <StatusBadge family="queue" status="completed">
+                                  {selectionStatusLabel(
+                                    selection.selectionStatus,
+                                  )}
+                                </StatusBadge>
+                                {decisionReasonLabel(
+                                  selection.decisionReason,
+                                ) ? (
+                                  <StatusBadge tone="neutral">
+                                    {decisionReasonLabel(
+                                      selection.decisionReason,
+                                    )}
+                                  </StatusBadge>
+                                ) : null}
+                              </div>
+                              <div>{selection.establishmentName ?? 'Sem loja definida'}</div>
+                              <div className="text-muted-foreground">
+                                {selection.establishmentNeighborhood ??
+                                  'Bairro não informado'}
+                              </div>
+                              {selection.distanceKm !== undefined ? (
+                                <div className="text-muted-foreground">
+                                  {selection.distanceKm.toFixed(1)} km do local
+                                  salvo
+                                </div>
+                              ) : null}
+                            </div>
+                            <div className="grid gap-1 text-sm">
+                              <div className="text-lg font-semibold tabular-nums">
+                                {formatCurrency(
+                                  selection.priceAmount ??
+                                    selection.estimatedCost ??
+                                    0,
+                                )}
+                              </div>
+                              <div className="text-muted-foreground">cada</div>
+                              {selection.savingsVsComparison &&
+                              selection.savingsVsComparison > 0 ? (
+                                <div className="text-xs text-muted-foreground">
+                                  {savingsComparisonLabel(selection)}
+                                </div>
+                              ) : null}
+                            </div>
+                            <div className="flex items-start justify-between gap-3 text-sm">
+                              <div className="grid gap-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <StatusBadge tone="savings">
+                                    {confidenceLabel}
+                                  </StatusBadge>
+                                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium">
+                                    score {selection.trustFactor ?? 0}
+                                  </span>
+                                </div>
+                                <div className="text-muted-foreground">
+                                  {selection.sourceLabel ?? 'Origem operacional'}
+                                </div>
+                                <div className="text-muted-foreground">
+                                  {selection.trustEvidenceCount ?? 0} notas fiscais aceitas
+                                </div>
+                                {selection.observedAt ? (
+                                  <div className="text-muted-foreground">
+                                    {formatFreshnessLabel(selection.observedAt)}
+                                  </div>
+                                ) : null}
+                              </div>
+                              <Button size="sm" variant="outline">
+                                Ver evidência
+                              </Button>
+                            </div>
+                          </div>
+                          {index === 0 ? (
+                            <div className="rounded-md border border-border/70 bg-background p-3">
+                              <ShopperEvidenceModule
+                                listId={list.id}
+                                selection={selection}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {reviewSelections.length > 0 ? (
+                    <Card className="border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)]/40">
+                      <CardHeader>
+                        <CardTitle>Itens sem confirmação completa</CardTitle>
+                        <CardDescription>
+                          Revise antes de comprar ou envie nota fiscal para melhorar
+                          a cobertura da cidade.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid gap-3">
+                        {reviewSelections.map((selection) => (
+                          <PriceRow
+                            key={`${selection.shoppingListItemId}-review`}
+                            title={selection.shoppingListItemName}
+                            subtitle={
+                              selection.rejectedReason
+                                ? rejectedReasonLabel(selection.rejectedReason)
+                                : 'Sem oferta confirmada suficiente'
+                            }
+                            price={
+                              selection.priceAmount !== undefined
+                                ? formatCurrency(selection.priceAmount)
+                                : 'Sem preço'
+                            }
+                            meta={
+                              <StatusBadge
+                                family="queue"
+                                status={
+                                  selection.selectionStatus === 'review'
+                                    ? 'retrying'
+                                    : 'failed'
+                                }
+                              >
+                                {selectionStatusLabel(selection.selectionStatus)}
+                              </StatusBadge>
+                            }
+                            actions={
+                              <Button asChild size="sm" variant="outline">
+                                <Link to="/notas">Enviar nota</Link>
+                              </Button>
+                            }
+                          />
+                        ))}
+                      </CardContent>
+                    </Card>
+                  ) : null}
+
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <InfoIcon className="size-4 text-primary" />
+                    Preços e ofertas baseados em notas fiscais validadas e origem
+                    operacional. Mais dados = mais economia para você.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <NextBestActionStrip
+                    title={
+                      result && !isProcessingResult
+                        ? 'Recomendação pronta para virar checklist'
+                        : 'Escolha um modo para comparar a lista'
+                    }
+                    description={
+                      result && !isProcessingResult
+                        ? 'Leve a recomendação para o mercado, marque o que comprou e reporte qualquer preço diferente.'
+                        : 'O resultado mostra preço, loja, fonte e confiança antes de você começar a compra.'
+                    }
+                    primaryAction={{
+                      label:
+                        result && !isProcessingResult
+                          ? 'Abrir checklist'
+                          : 'Manter modo recomendado',
+                      to:
+                        result && !isProcessingResult
+                          ? `/listas/${list.id}/checklist`
+                          : '#optimization-modes',
+                    }}
+                    secondaryAction={{ label: 'Enviar nota', to: '/notas' }}
+                    steps={[
+                      { label: 'Lista', status: 'done' },
+                      {
+                        label: 'Otimização',
+                        status:
+                          result && !isProcessingResult
+                            ? 'done'
+                            : isProcessingResult
+                              ? 'current'
+                              : 'current',
+                      },
+                      {
+                        label: 'Checklist',
+                        status:
+                          result && !isProcessingResult ? 'current' : 'pending',
+                      },
+                      { label: 'Nota fiscal', status: 'pending' },
+                    ]}
+                  />
 
           <Card id="optimization-modes">
             <CardHeader>
@@ -4375,6 +4870,148 @@ export function OptimizationPage() {
               ) : null}
             </>
           )}
+                </>
+              )}
+            </div>
+          </main>
+
+          {result && !isProcessingResult ? (
+            <aside className="grid gap-4 border-l border-border/70 bg-card/60 p-4 lg:content-start lg:p-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <RouteIcon className="size-4 text-primary" />
+                    Plano de compras ({storePlan.length}{' '}
+                    {storePlan.length === 1 ? 'parada' : 'paradas'})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-3">
+                  {storePlan.map((store, index) => {
+                    const storeItems = selectedSelections.filter(
+                      (selection) =>
+                        (selection.establishmentName ?? 'Sem loja definida') ===
+                        store.name,
+                    );
+
+                    return (
+                      <div
+                        className="rounded-lg border border-border/70 bg-background p-3"
+                        key={store.name}
+                      >
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div className="flex gap-2">
+                            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                              {index + 1}
+                            </span>
+                            <div className="grid gap-0.5 text-sm">
+                              <div className="font-medium">{store.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {store.neighborhood ?? 'Bairro'} ·{' '}
+                                {firstSelectedSelection?.distanceKm?.toFixed(1) ??
+                                  '1.2'}{' '}
+                                km
+                              </div>
+                            </div>
+                          </div>
+                          <StatusBadge tone="savings">
+                            {store.items} {store.items === 1 ? 'item' : 'itens'}
+                          </StatusBadge>
+                        </div>
+                        <div className="grid gap-2 text-sm">
+                          {storeItems.slice(0, 5).map((selection) => (
+                            <div
+                              className="flex items-center justify-between gap-3"
+                              key={`${store.name}-${selection.shoppingListItemId}`}
+                            >
+                              <span className="truncate">
+                                {selection.shoppingListItemName}
+                              </span>
+                              <span className="shrink-0 text-muted-foreground">
+                                1 un
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <Button
+                          asChild
+                          className="mt-3 w-full"
+                          size="sm"
+                          variant="link"
+                        >
+                          <Link to={`/listas/${list.id}/checklist`}>
+                            Ver itens da parada
+                          </Link>
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  <div className="rounded-lg bg-primary/10 p-3 text-sm text-primary">
+                    <div className="font-medium">Trajeto otimizado</div>
+                    <div>
+                      {storePlan.length} paradas ·{' '}
+                      {Math.max(routeDistanceKm, storePlan.length * 1.2).toFixed(1)}{' '}
+                      km estimados
+                    </div>
+                    <Button className="mt-2 px-0" size="sm" variant="link">
+                      Ver no mapa
+                      <ExternalLinkIcon className="size-3.5" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Ações rápidas</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                  {[
+                    {
+                      icon: FlagIcon,
+                      title: 'Corrigir preço',
+                      description: 'Ajude a manter os preços atualizados',
+                      to: `/listas/${list.id}/checklist`,
+                    },
+                    {
+                      icon: ReceiptTextIcon,
+                      title: 'Enviar nota fiscal',
+                      description: 'Aumente a confiança das ofertas',
+                      to: '/notas',
+                    },
+                    {
+                      icon: SlidersHorizontalIcon,
+                      title: 'Atualizar lista',
+                      description: 'Rever itens e preferências',
+                      to: `/listas/${list.id}`,
+                    },
+                    {
+                      icon: Share2Icon,
+                      title: 'Compartilhar resultado',
+                      description: 'Enviar plano por link ou WhatsApp',
+                      to: `/listas/${list.id}/checklist`,
+                    },
+                  ].map((action) => (
+                    <Button
+                      asChild
+                      className="h-auto justify-start gap-3 rounded-md bg-muted/70 p-3 text-left"
+                      key={action.title}
+                      variant="ghost"
+                    >
+                      <Link to={action.to}>
+                        <action.icon className="size-4 shrink-0" />
+                        <span className="grid gap-0.5">
+                          <span className="font-medium">{action.title}</span>
+                          <span className="text-xs font-normal text-muted-foreground">
+                            {action.description}
+                          </span>
+                        </span>
+                      </Link>
+                    </Button>
+                  ))}
+                </CardContent>
+              </Card>
+            </aside>
+          ) : null}
         </div>
       )}
     </RequireAuthentication>
