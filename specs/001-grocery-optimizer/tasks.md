@@ -569,6 +569,23 @@ the missing feature.
 - [ ] T223 [P] Add map/deep-link support for optimized store plans using saved establishment address/coordinates without exposing precise user location in `backend/src/establishments/`, `backend/src/optimization/`, and `web/src/public/`
 - [ ] T224 Add generic processing-job lifecycle operations for retry, mark-reviewed, and cancel with queue safety rules, audit logging, admin API endpoints, and dashboard actions in `backend/src/processing/`, `backend/src/admin/`, and `web/src/dashboard/`
 
+### Phase 29: Action Placeholders, Tooltips, and Monetary Privacy
+
+**Purpose**: Make every action/status state explain the next useful step, add tooltips
+where compact controls or operational terms need clarification, and let users/admins hide
+sensitive monetary values across web surfaces.
+
+- [X] T225 Map web action placeholders, tooltip needs, and monetary privacy surfaces in `docs/product/web-action-placeholder-tooltip-privacy-plan.md`
+- [ ] T226 [P] Add design-system primitives for action-oriented empty states, contextual help tooltips, and masked monetary values in `web/src/components/design-system/`
+- [ ] T227 [P] Add web context support for persistent hide/show monetary visibility with sidebar/account controls and tests in `web/src/app/`, `web/src/components/design-system/`, and `web/src/public/`
+- [ ] T228 [P] Apply monetary masking to public home, offers, offer detail, profile/list summary, checklist, receipt submission, and optimization result values in `web/src/public/`
+- [ ] T229 [P] Apply monetary masking to admin overview, catalog/offers, receipt processing, user operations, list operations, and queue detail values in `web/src/dashboard/`
+- [ ] T230 [P] Replace passive public placeholders with action-oriented states for no city, no receipt, no list, no savings, no paid total, no result, no evidence, and no store plan in `web/src/public/`
+- [ ] T231 [P] Replace passive admin placeholders with action-oriented states for empty receipt queues, healthy/empty job queues, no failed jobs, no low-trust offers, no user activity, and disabled job actions in `web/src/dashboard/`
+- [ ] T232 [P] Add required tooltips for public icon buttons, status badges, trust/freshness/reward copy, receipt terms, location states, and sensitive monetary toggles in `web/src/public/` and `web/src/components/design-system/`
+- [ ] T233 [P] Add required tooltips for admin icon buttons, status badges, destructive actions, technical IDs, billing-disabled copy, receipt moderation terms, and queue/job actions in `web/src/dashboard/`
+- [ ] T234 Add Playwright and unit coverage for action placeholders, tooltip presence, and hidden monetary values across public and admin web views in `web/src/` and `web/e2e/`
+
 **Homolog validation note (2026-06-15)**: Web/admin/backend MVP smoke passed on
 `https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.
 Validated public bundle load, customer login, receipt submission with
