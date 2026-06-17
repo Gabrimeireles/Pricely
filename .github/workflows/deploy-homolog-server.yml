@@ -1,6 +1,9 @@
 name: Deploy Homolog Server
 
 on:
+  push:
+    branches:
+      - homolog
   workflow_dispatch:
     inputs:
       reset_database:
@@ -67,6 +70,7 @@ jobs:
       BACKEND_PORT: ${{ vars.BACKEND_PORT || '3000' }}
       WEB_PORT: ${{ vars.WEB_PORT || '5173' }}
       WEB_APP_URL: ${{ vars.WEB_APP_URL || 'https://pricely.grmeireles.dev' }}
+      HEALTH_URL: ${{ inputs.health_url || vars.WEB_APP_URL || 'https://pricely.grmeireles.dev' }}
       CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS || vars.WEB_APP_URL || 'https://pricely.grmeireles.dev' }}
       VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://apipricely.grmeireles.dev' }}
       VITE_ALLOWED_HOSTS: ${{ vars.VITE_ALLOWED_HOSTS || 'pricely.grmeireles.dev' }}
@@ -184,7 +188,7 @@ jobs:
           fi
 
           ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-            "GHCR_AUTH_TOKEN='$GHCR_AUTH_TOKEN' GITHUB_REPOSITORY_OWNER='${{ github.repository_owner }}' RESET_DATABASE='${{ inputs.reset_database }}' RUN_SEEDERS='${{ inputs.run_seeders }}' DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'ENDSSH'
+            "GHCR_AUTH_TOKEN='$GHCR_AUTH_TOKEN' GITHUB_REPOSITORY_OWNER='${{ github.repository_owner }}' RESET_DATABASE='${{ inputs.reset_database || false }}' RUN_SEEDERS='${{ inputs.run_seeders || false }}' DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'ENDSSH'
           set -euo pipefail
 
           cd "$DEPLOY_PATH"
@@ -244,11 +248,10 @@ jobs:
           ENDSSH
 
       - name: Health check
-        if: ${{ inputs.health_url != '' }}
         shell: bash
         run: |
           for attempt in $(seq 1 20); do
-            status=$(curl -sS -L --connect-timeout 5 --max-time 15 -o /tmp/health.body -w "%{http_code}" "${{ inputs.health_url }}" || true)
+            status=$(curl -sS -L --connect-timeout 5 --max-time 15 -o /tmp/health.body -w "%{http_code}" "$HEALTH_URL" || true)
             if echo "$status" | grep -q '^2[0-9][0-9]$'; then
               echo "Health check passed"
               exit 0
