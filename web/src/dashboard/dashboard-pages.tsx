@@ -4841,95 +4841,241 @@ export function AdminQueueDetailPage() {
 
   return (
     <div className="grid gap-4">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <CardTitle>{jobResourceTitle(job)}</CardTitle>
-              <CardDescription>
-                {jobOwnerLabel(job)} · {job.queueName} · tentativa{' '}
-                {job.attemptCount}
-              </CardDescription>
-            </div>
+      <div className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <a className="text-[var(--ds-location)]" href="/dashboard/fila">
+              Fila de processamento
+            </a>
+            <span>/</span>
+            <span>Jobs</span>
+            <span>/</span>
+            <span>{job.id}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {jobResourceTitle(job)}
+            </h1>
             <StatusBadge family="queue" status={job.status}>
               {jobStatusLabel(job.status)}
             </StatusBadge>
           </div>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-lg border border-border/70 bg-background/80 p-4">
-              <div className="text-sm font-medium">Linha do tempo</div>
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                {jobTimeline.map((step) => (
+          <p className="mt-1 text-sm text-muted-foreground">
+            {jobOwnerLabel(job)} · {job.queueName} · tentativa{' '}
+            {job.attemptCount}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <a href="/dashboard/fila">Ver na fila</a>
+          </Button>
+          {auditTarget ? (
+            <Button asChild variant="outline">
+              <a href={auditTarget.href}>
+                {auditTarget.label}
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid min-w-0 gap-4">
+          <div className="grid gap-3 md:grid-cols-5">
+            {[
+              {
+                label: 'Status atual',
+                value: jobStatusLabel(job.status),
+                detail:
+                  job.status === 'failed'
+                    ? `Após ${job.attemptCount} tentativas`
+                    : `Tentativa ${job.attemptCount}`,
+              },
+              {
+                label: 'Fila',
+                value: job.queueName,
+                detail: 'Prioridade padrão',
+              },
+              {
+                label: 'Tipo',
+                value: job.jobType,
+                detail: job.resourceType.replace(/_/g, ' '),
+              },
+              {
+                label: 'Enviado em',
+                value: formatFreshnessLabel(job.createdAt),
+                detail: job.createdAt,
+              },
+              {
+                label: 'Conclusão',
+                value: job.finishedAt
+                  ? formatFreshnessLabel(job.finishedAt)
+                  : 'Pendente',
+                detail: `Tentativas: ${job.attemptCount}`,
+              },
+            ].map((entry) => (
+              <div
+                className="rounded-lg border border-border/70 bg-background/80 p-4"
+                key={entry.label}
+              >
+                <div className="text-xs text-muted-foreground">
+                  {entry.label}
+                </div>
+                <div className="mt-2 font-mono text-sm font-semibold">
+                  {entry.value}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {entry.detail}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card className="border-border/70 bg-card/90 shadow-sm">
+              <CardHeader>
+                <CardTitle>Contexto humano</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-lg border border-border/70 bg-background/80 p-4">
+                  <div className="text-sm text-muted-foreground">Recurso</div>
+                  <div className="mt-2 font-medium">{jobResourceTitle(job)}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {job.receiptRecord?.storeName ??
+                      job.shoppingList?.name ??
+                      job.resourceType.replace(/_/g, ' ')}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border/70 bg-background/80 p-4">
+                  <div className="text-sm text-muted-foreground">
+                    Proprietário
+                  </div>
+                  <div className="mt-2 font-medium">
+                    {job.owner
+                      ? job.owner.displayName || job.owner.email
+                      : 'Sem usuário vinculado'}
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {job.owner?.email ?? 'ID do usuário oculto'}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70 bg-card/90 shadow-sm">
+              <CardHeader>
+                <CardTitle>
+                  {job.failureReason
+                    ? 'Motivo da falha'
+                    : 'Ação recomendada'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                {job.failureReason ? (
+                  <Alert variant="destructive">
+                    <AlertTriangleIcon />
+                    <AlertTitle>Falha operacional</AlertTitle>
+                    <AlertDescription>{job.failureReason}</AlertDescription>
+                  </Alert>
+                ) : null}
+                <div className="rounded-lg border border-[var(--ds-evidence-border)] bg-[var(--ds-evidence-soft)]/60 p-4 text-sm">
+                  <div className="font-medium">Próximo passo recomendado</div>
+                  <div className="mt-1 text-muted-foreground">
+                    {job.status === 'failed'
+                      ? 'Verifique o serviço de OCR, reprocessamento e a nota relacionada antes de aceitar reward.'
+                      : job.status === 'completed'
+                        ? 'Verificar a auditoria de negócio e manter como evidência.'
+                        : 'Acompanhar worker antes de tomar decisão manual.'}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="border-border/70 bg-card/90 shadow-sm">
+            <CardHeader>
+              <CardTitle>Linha do tempo</CardTitle>
+              <CardDescription>
+                Eventos operacionais sem expor payload técnico por padrão.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3">
+                {jobTimeline.map((step, index) => (
                   <div
-                    className="rounded-md border border-border/70 bg-card/70 p-3"
+                    className="grid gap-3 rounded-lg border border-border/70 bg-background/80 p-4 md:grid-cols-[32px_1fr_1fr]"
                     key={step.label}
                   >
-                    <StatusBadge
-                      family="severity"
-                      status={step.active ? 'healthy' : 'info'}
+                    <div
+                      className={
+                        step.active
+                          ? 'flex size-8 items-center justify-center rounded-full bg-[var(--ds-savings-soft)] text-[var(--ds-savings)]'
+                          : 'flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground'
+                      }
                     >
-                      {step.label}
-                    </StatusBadge>
-                    <div className="mt-2 text-sm text-muted-foreground">
-                      {step.value}
+                      {index + 1}
+                    </div>
+                    <div>
+                      <div className="font-medium">{step.label}</div>
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        {step.value}
+                      </div>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {step.label === 'Worker executou'
+                        ? `Tentativas: ${job.attemptCount}`
+                        : step.label === 'Falhou'
+                          ? (job.failureReason ?? 'Falha sem detalhe')
+                          : job.status === 'queued'
+                            ? 'Aguardando processamento'
+                            : 'Evento registrado'}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-            <div className="rounded-lg border border-[var(--ds-evidence-border)] bg-[var(--ds-evidence-soft)]/60 p-4">
-              <div className="text-sm font-medium">Ação recomendada</div>
-              <div className="mt-1 text-sm text-muted-foreground">
-                {job.status === 'failed'
-                  ? 'Reprocessar e conferir a nota relacionada antes de aceitar reward.'
-                  : job.status === 'completed'
-                    ? 'Verificar a auditoria de negócio e manter como evidência.'
-                    : 'Acompanhar worker antes de tomar decisão manual.'}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {auditTarget ? (
-                  <Button asChild size="sm" variant="outline">
-                    <a href={auditTarget.href}>
-                      {auditTarget.label}
-                      <ExternalLinkIcon className="size-4" />
-                    </a>
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-lg border border-border/70 p-4">
-              <div className="text-sm text-muted-foreground">Recurso</div>
-              <div className="mt-1 font-medium">{jobResourceTitle(job)}</div>
-            </div>
-            <div className="rounded-lg border border-border/70 p-4">
-              <div className="text-sm text-muted-foreground">Solicitado</div>
-              <div className="mt-1 font-medium">
-                {formatFreshnessLabel(job.createdAt)}
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/70 p-4">
-              <div className="text-sm text-muted-foreground">Concluído</div>
-              <div className="mt-1 font-medium">
-                {job.finishedAt
-                  ? formatFreshnessLabel(job.finishedAt)
-                  : 'Ainda sem conclusão'}
-              </div>
-            </div>
-          </div>
-          {job.failureReason ? (
-            <Alert variant="destructive">
-              <AlertTriangleIcon />
-              <AlertTitle>Falha operacional</AlertTitle>
-              <AlertDescription>{job.failureReason}</AlertDescription>
-            </Alert>
+            </CardContent>
+          </Card>
+
+          {job.receiptRecord?.lineItems?.length ? (
+            <Card className="border-border/70 bg-card/90 shadow-sm">
+              <CardHeader>
+                <CardTitle>Itens extraídos da nota</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto rounded-lg border border-border/70">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item lido</TableHead>
+                        <TableHead>Normalizado</TableHead>
+                        <TableHead>Quantidade</TableHead>
+                        <TableHead>Preço</TableHead>
+                        <TableHead>Confiança</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {job.receiptRecord.lineItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.rawProductName}</TableCell>
+                          <TableCell>{item.normalizedName}</TableCell>
+                          <TableCell>{item.quantity}</TableCell>
+                          <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                          <TableCell>
+                            {Math.round(item.matchConfidence * 100)}%
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           ) : null}
+
           <TechnicalDisclosure
             title="Dados técnicos"
-            description="IDs usados para rastrear o processamento"
+            description="Payload, IDs e correlação usados para depuração"
           >
             <div className="grid gap-2 text-sm md:grid-cols-3">
               <span>job_id: {job.id}</span>
@@ -4937,132 +5083,126 @@ export function AdminQueueDetailPage() {
                 resource: {job.resourceType} · {job.resourceId}
               </span>
               <span>job_type: {job.jobType}</span>
+              <span>queue: {job.queueName}</span>
+              <span>status: {job.status}</span>
+              <span>attempts: {job.attemptCount}</span>
             </div>
           </TechnicalDisclosure>
-          {auditTarget ? (
-            <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-background/80 p-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="text-sm font-medium">Auditoria de negócio</div>
-                <div className="text-sm text-muted-foreground">
-                  A fila mostra somente execução. Detalhes de lista e nota ficam
-                  nas telas de auditoria correspondentes.
+        </div>
+
+        <aside className="grid content-start gap-4">
+          {job.receiptRecord ? (
+            <Card className="border-border/70 bg-card/95 shadow-sm">
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle>Nota fiscal relacionada</CardTitle>
+                    <CardDescription>
+                      {job.receiptRecord.storeName ?? 'Loja não identificada'}
+                    </CardDescription>
+                  </div>
+                  <StatusBadge
+                    family="receipt"
+                    status={receiptModerationStatus(
+                      job.receiptRecord.moderationStatus,
+                    )}
+                  >
+                    {receiptModerationLabel(job.receiptRecord.moderationStatus)}
+                  </StatusBadge>
                 </div>
-              </div>
-              <Button asChild size="sm" variant="outline">
-                <a href={auditTarget.href}>
-                  {auditTarget.label}
-                  <ExternalLinkIcon className="size-4" />
-                </a>
-              </Button>
-            </div>
-          ) : null}
-          {job.receiptRecord?.lineItems?.length ? (
-            <div className="rounded-lg border border-border/70 bg-background/80 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-medium">Recibo contribuído</div>
-                  <div className="text-sm text-muted-foreground">
-                    {job.receiptRecord.storeName ?? 'Loja nao identificada'} ·{' '}
-                    {receiptTrustLabel(job.receiptRecord.trustLevel)}
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                <div className="text-sm font-medium">Recibo contribuído</div>
+                <div className="rounded-lg border border-border/70 bg-background/80 p-3 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Itens extraídos</span>
+                    <span className="font-medium">
+                      {job.receiptRecord.lineItems?.length ?? 0}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex justify-between gap-3">
+                    <span className="text-muted-foreground">Confiança</span>
+                    <span className="font-medium">
+                      {receiptTrustLabel(job.receiptRecord.trustLevel)}
+                    </span>
                   </div>
                 </div>
-                <StatusBadge
-                  family="receipt"
-                  status={receiptModerationStatus(
-                    job.receiptRecord.moderationStatus,
-                  )}
-                >
-                  {receiptModerationLabel(job.receiptRecord.moderationStatus)}
-                </StatusBadge>
-              </div>
-              {job.receiptRecord.reviewReason ? (
-                <div className="mt-3 rounded-md border border-amber-300/60 bg-amber-50/70 px-3 py-2 text-sm text-amber-900">
-                  {job.receiptRecord.reviewReason}
-                </div>
-              ) : null}
-              <div className="mt-3 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item lido</TableHead>
-                      <TableHead>Normalizado</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                      <TableHead>Preço</TableHead>
-                      <TableHead>Confiança</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {job.receiptRecord.lineItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.rawProductName}</TableCell>
-                        <TableCell>{item.normalizedName}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
-                        <TableCell>
-                          {Math.round(item.matchConfidence * 100)}%
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
+                {auditTarget ? (
+                  <Button asChild variant="outline">
+                    <a href={auditTarget.href}>
+                      Abrir nota fiscal
+                      <ExternalLinkIcon className="size-4" />
+                    </a>
+                  </Button>
+                ) : null}
+              </CardContent>
+            </Card>
           ) : null}
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Operação</CardTitle>
-          <CardDescription>
-            Leitura operacional do processamento, com dados técnicos apenas
-            quando ajudam no diagnóstico.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">
-              Identificador do job
+          {job.receiptRecord ? (
+            <Card className="border-border/70 bg-card/95 shadow-sm">
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <CardTitle>Status de moderação</CardTitle>
+                  <StatusBadge
+                    family="receipt"
+                    status={receiptModerationStatus(
+                      job.receiptRecord.moderationStatus,
+                    )}
+                  >
+                    {receiptModerationLabel(job.receiptRecord.moderationStatus)}
+                  </StatusBadge>
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-3 text-sm">
+                <div className="text-muted-foreground">
+                  {job.receiptRecord.reviewReason ??
+                    'Aguardando revisão manual se houver falha de extração.'}
+                </div>
+                {auditTarget ? (
+                  <Button asChild variant="outline">
+                    <a href={auditTarget.href}>Ir para moderação</a>
+                  </Button>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card className="border-border/70 bg-card/95 shadow-sm">
+            <CardHeader>
+              <CardTitle>Ações</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              <Button type="button" disabled={job.status !== 'failed'}>
+                Tentar novamente
+              </Button>
+              {auditTarget ? (
+                <Button asChild variant="outline">
+                  <a href={auditTarget.href}>{auditTarget.label}</a>
+                </Button>
+              ) : null}
+              <Button type="button" variant="outline">
+                Marcar como revisado
+              </Button>
+              <Button
+                className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                type="button"
+                variant="outline"
+              >
+                Cancelar job
+              </Button>
+            </CardContent>
+          </Card>
+
+          <TechnicalDisclosure title="IDs e correlação">
+            <div className="grid gap-2 text-sm">
+              <span>ID técnico: {job.resourceType} · {job.resourceId} · job {job.id}</span>
+              <span>Fila: {job.queueName}</span>
+              <span>Tipo: {job.jobType}</span>
             </div>
-            <div className="mt-1 font-medium">{job.id}</div>
-          </div>
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">Status atual</div>
-            <div className="mt-1 font-medium">{jobStatusLabel(job.status)}</div>
-          </div>
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">
-              Objeto processado
-            </div>
-            <div className="mt-1 font-medium">{jobResourceTitle(job)}</div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {job.resourceType} · {job.resourceId}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">Responsável</div>
-            <div className="mt-1 font-medium">
-              {job.owner
-                ? `${job.owner.displayName || job.owner.email}`
-                : 'Sem usuário vinculado'}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">Entrada na fila</div>
-            <div className="mt-1 font-medium">
-              {formatFreshnessLabel(job.createdAt)}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">Conclusão</div>
-            <div className="mt-1 font-medium">
-              {job.finishedAt
-                ? formatFreshnessLabel(job.finishedAt)
-                : 'Ainda sem conclusão'}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </TechnicalDisclosure>
+        </aside>
+      </div>
     </div>
   );
 }
