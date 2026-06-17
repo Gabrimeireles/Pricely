@@ -302,12 +302,13 @@ describe('Admin dashboard pages', () => {
 
     render(<AdminOverviewPage />);
 
-    expect(await screen.findByText('Saude das filas')).toBeTruthy();
-    expect(screen.getByText('Prioridades operacionais')).toBeTruthy();
-    expect(screen.getAllByText('Jobs aguardando').length).toBeGreaterThan(0);
-    expect(screen.getByText('Cobertura da operacao')).toBeTruthy();
-    expect(screen.getByText('Sinais do dia')).toBeTruthy();
-    expect(screen.getByText('Painel comparativo')).toBeTruthy();
+    expect(await screen.findByText('Saúde das filas')).toBeTruthy();
+    expect(screen.getByText('Fila de ações')).toBeTruthy();
+    expect(screen.getAllByText(/jobs na fila/i).length).toBeGreaterThan(0);
+    expect(screen.getByText('Moderação de notas fiscais')).toBeTruthy();
+    expect(screen.getByText('Confiança das ofertas')).toBeTruthy();
+    expect(screen.getByText('Cobertura por cidade')).toBeTruthy();
+    expect(screen.getByText('Ações rápidas')).toBeTruthy();
   });
 
   it('shows an empty-state message when all overview metrics are zero', async () => {
