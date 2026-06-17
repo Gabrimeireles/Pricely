@@ -33,7 +33,7 @@ void main() {
 
     expect(find.text('Escolha sua cidade'), findsWidgets);
     expect(find.textContaining('precisamos salvar sua cidade'), findsOneWidget);
-    expect(find.textContaining('Campinas · SP'), findsOneWidget);
+    expect(find.textContaining('Campinas'), findsOneWidget);
   });
 
   testWidgets('shows zero-store messaging for collecting regions', (
@@ -45,39 +45,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('Ainda não temos estabelecimentos ativos'),
-      findsOneWidget,
+      find.textContaining('estabelecimentos ativos'),
+      findsWidgets,
     );
     expect(
       find.textContaining('contribuir com recibos'),
       findsOneWidget,
     );
     await tester.scrollUntilVisible(
-      find.text('Localização e raio'),
+      find.textContaining('e raio'),
       220,
     );
-    expect(find.text('Localização e raio'), findsOneWidget);
-    expect(find.text('Raio local padrao: 5 km.'), findsOneWidget);
+    expect(find.textContaining('e raio'), findsOneWidget);
+    expect(find.textContaining('lojas em 5 km'), findsOneWidget);
     expect(find.textContaining('nao promete proximidade'), findsOneWidget);
   });
 
-  testWidgets('renders active city offers and opens the offer detail sheet', (tester) async {
+  testWidgets('renders active city offers and opens the offer detail sheet', (
+    tester,
+  ) async {
     final app = await _buildApp(preselectedRegionSlug: 'sao-paulo-sp');
 
     await tester.pumpWidget(app.widget);
     await tester.pumpAndSettle();
 
     expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
-    expect(find.textContaining('2 lojas'), findsOneWidget);
+    expect(find.textContaining('2 lojas ativas'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.textContaining('2 lojas candidatas na cidade'),
+      find.text('Ofertas ativas'),
       220,
     );
-    expect(find.textContaining('2 lojas candidatas na cidade'), findsOneWidget);
+    expect(find.text('Ofertas ativas'), findsOneWidget);
     expect(app.discoveryController.offers, hasLength(1));
     expect(app.discoveryController.offers.single.productName, 'Cafe torrado');
-    final detail =
-        await app.discoveryController.fetchOfferDetail(app.discoveryController.offers.single.id);
+    final detail = await app.discoveryController.fetchOfferDetail(
+      app.discoveryController.offers.single.id,
+    );
     expect(detail.productName, 'Cafe torrado');
     expect(detail.alternativeOffers.single.storeName, 'Mercado Bairro');
   });
