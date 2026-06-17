@@ -11,6 +11,7 @@ import {
   InfoIcon,
   ListChecksIcon,
   ReceiptTextIcon,
+  RefreshCwIcon,
   SparklesIcon,
   UserCogIcon,
 } from 'lucide-react';
@@ -603,7 +604,9 @@ export function AdminOverviewPage() {
     ? Math.round(((queueHealth?.runningJobs ?? 0) / totalJobs) * 100)
     : 0;
   const queuedJobPercent = totalJobs
-    ? Math.round(((queueHealth?.queuedJobs ?? data.queuedJobs) / totalJobs) * 100)
+    ? Math.round(
+        ((queueHealth?.queuedJobs ?? data.queuedJobs) / totalJobs) * 100,
+      )
     : 0;
   const failedJobPercent = totalJobs
     ? Math.round(((queueHealth?.failedJobs ?? 0) / totalJobs) * 100)
@@ -612,9 +615,7 @@ export function AdminOverviewPage() {
     {
       title: `${failedJobs} jobs falharam`,
       detail:
-        failedJobs > 0
-          ? 'Reprocessamento necessário'
-          : 'Nenhuma falha ativa',
+        failedJobs > 0 ? 'Reprocessamento necessário' : 'Nenhuma falha ativa',
       href: '/dashboard/fila',
       severity: failedJobs > 0 ? ('critical' as const) : ('healthy' as const),
       cta: failedJobs > 0 ? 'Ver falhas' : 'Ver filas',
@@ -626,7 +627,8 @@ export function AdminOverviewPage() {
           ? 'Aguardando liberação manual'
           : 'Sem nota fiscal pendente',
       href: '/dashboard/notas',
-      severity: pendingReceipts > 0 ? ('warning' as const) : ('healthy' as const),
+      severity:
+        pendingReceipts > 0 ? ('warning' as const) : ('healthy' as const),
       cta: 'Revisar notas',
     },
     {
@@ -636,7 +638,8 @@ export function AdminOverviewPage() {
           ? 'Aguardando revisão de confiança'
           : 'Confiança operacional estável',
       href: '/dashboard/ofertas',
-      severity: lowTrustOffers > 0 ? ('warning' as const) : ('healthy' as const),
+      severity:
+        lowTrustOffers > 0 ? ('warning' as const) : ('healthy' as const),
       cta: 'Revisar ofertas',
     },
     {
@@ -736,9 +739,7 @@ export function AdminOverviewPage() {
       <div className="flex flex-col gap-4 border-b border-border/70 pb-5 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-semibold tracking-tight">Visão geral</h1>
-          <p className="text-muted-foreground">
-            Resumo operacional do Pricely
-          </p>
+          <p className="text-muted-foreground">Resumo operacional do Pricely</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge tone="location" icon={InfoIcon}>
@@ -813,9 +814,7 @@ export function AdminOverviewPage() {
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
             <CardTitle>Saúde das filas</CardTitle>
-            <CardDescription>
-              Visão geral dos últimos jobs
-            </CardDescription>
+            <CardDescription>Visão geral dos últimos jobs</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="mx-auto grid size-36 place-items-center rounded-full border-[18px] border-[var(--ds-savings-border)] bg-background">
@@ -843,7 +842,12 @@ export function AdminOverviewPage() {
                 <span className="font-medium">{value}%</span>
               </div>
             ))}
-            <Button asChild className="justify-self-end" size="sm" variant="ghost">
+            <Button
+              asChild
+              className="justify-self-end"
+              size="sm"
+              variant="ghost"
+            >
               <a href="/dashboard/fila">
                 Ver filas e jobs
                 <ExternalLinkIcon className="size-4" />
@@ -880,7 +884,12 @@ export function AdminOverviewPage() {
                 <StatusBadge tone={entry.tone}>{entry.value}</StatusBadge>
               </div>
             ))}
-            <Button asChild className="justify-self-end" size="sm" variant="ghost">
+            <Button
+              asChild
+              className="justify-self-end"
+              size="sm"
+              variant="ghost"
+            >
               <a href="/dashboard/notas">
                 Revisar notas fiscais
                 <ExternalLinkIcon className="size-4" />
@@ -933,7 +942,12 @@ export function AdminOverviewPage() {
                 </div>
               </div>
             ) : null}
-            <Button asChild className="justify-self-end" size="sm" variant="ghost">
+            <Button
+              asChild
+              className="justify-self-end"
+              size="sm"
+              variant="ghost"
+            >
               <a href="/dashboard/ofertas">
                 Gerenciar ofertas
                 <ExternalLinkIcon className="size-4" />
@@ -971,7 +985,12 @@ export function AdminOverviewPage() {
                 </div>
               </div>
             ))}
-            <Button asChild className="justify-self-end" size="sm" variant="ghost">
+            <Button
+              asChild
+              className="justify-self-end"
+              size="sm"
+              variant="ghost"
+            >
               <a href="/dashboard/regioes">
                 Gerenciar cidades
                 <ExternalLinkIcon className="size-4" />
@@ -997,10 +1016,17 @@ export function AdminOverviewPage() {
                   {activity.time}
                 </div>
                 <div className="min-w-0 text-sm">{activity.label}</div>
-                <StatusBadge tone={activity.tone}>{activity.status}</StatusBadge>
+                <StatusBadge tone={activity.tone}>
+                  {activity.status}
+                </StatusBadge>
               </div>
             ))}
-            <Button asChild className="justify-self-end" size="sm" variant="ghost">
+            <Button
+              asChild
+              className="justify-self-end"
+              size="sm"
+              variant="ghost"
+            >
               <a href="/dashboard/fila">
                 Ver histórico completo
                 <ExternalLinkIcon className="size-4" />
@@ -1878,7 +1904,9 @@ export function AdminCatalogPage() {
                         </div>
                       </div>
                     </div>
-                    <StatusBadge tone={variant.isActive ? 'savings' : 'neutral'}>
+                    <StatusBadge
+                      tone={variant.isActive ? 'savings' : 'neutral'}
+                    >
                       {variant.isActive ? 'Ativa' : 'Inativa'}
                     </StatusBadge>
                   </div>
@@ -1923,7 +1951,10 @@ export function AdminCatalogPage() {
                           return;
                         }
 
-                        await deleteAdminProductVariant(accessToken, variant.id);
+                        await deleteAdminProductVariant(
+                          accessToken,
+                          variant.id,
+                        );
                         await reloadVariants();
                         await reload();
                       }}
@@ -2781,7 +2812,9 @@ export function AdminUsersPage() {
                       <div className="mt-1 flex items-center gap-2">
                         <StatusBadge tone="primary">{user.role}</StatusBadge>
                         <StatusBadge
-                          tone={user.status === 'active' ? 'savings' : 'neutral'}
+                          tone={
+                            user.status === 'active' ? 'savings' : 'neutral'
+                          }
                         >
                           {user.status}
                         </StatusBadge>
@@ -2965,7 +2998,9 @@ export function AdminListsPage() {
                   </div>
                   {list.latestOptimization?.jobId ? (
                     <Button asChild size="sm" variant="outline">
-                      <a href={`/dashboard/fila/${list.latestOptimization.jobId}`}>
+                      <a
+                        href={`/dashboard/fila/${list.latestOptimization.jobId}`}
+                      >
                         Auditar processamento
                         <ExternalLinkIcon className="size-4" />
                       </a>
@@ -3093,6 +3128,19 @@ export function AdminReceiptsPage() {
   const pendingReviewCount = receipts.filter((receipt) =>
     ['pending', 'quarantined'].includes(receipt.moderationStatus),
   ).length;
+  const waitingReleaseCount = receipts.filter(
+    (receipt) =>
+      !receipt.processingJob && receipt.moderationStatus === 'pending',
+  ).length;
+  const rejectedCount = receipts.filter(
+    (receipt) => receipt.moderationStatus === 'rejected',
+  ).length;
+  const quarantinedCount = receipts.filter(
+    (receipt) => receipt.moderationStatus === 'quarantined',
+  ).length;
+  const duplicatedCount = receipts.filter(
+    (receipt) => receipt.moderationStatus === 'duplicate',
+  ).length;
   const acceptedCount = receipts.filter(
     (receipt) => receipt.moderationStatus === 'accepted',
   ).length;
@@ -3121,6 +3169,10 @@ export function AdminReceiptsPage() {
       new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
     );
   });
+  const selectedReceipt =
+    sortedReceipts.find((receipt) => receipt.id === expandedReceiptId) ??
+    sortedReceipts[0] ??
+    null;
 
   if (error) {
     return (
@@ -3133,467 +3185,663 @@ export function AdminReceiptsPage() {
 
   return (
     <div className="grid gap-4">
-      <div className="grid gap-3 md:grid-cols-4">
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle>Ação agora</CardTitle>
-            <CardDescription>Quarentena ou job com falha.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold">{blockedCount}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle>Pendentes</CardTitle>
-            <CardDescription>Notas que ainda exigem revisão.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold">{pendingReviewCount}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle>Aceitas</CardTitle>
-            <CardDescription>Notas úteis para reforçar preços.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold">{acceptedCount}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle>Baixa confiança</CardTitle>
-            <CardDescription>Matcher ou extração para auditar.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold">{lowConfidenceCount}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle>Rewards prontos</CardTitle>
-            <CardDescription>
-              Elegíveis após qualidade, sem billing automático.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold">{rewardReadyCount}</div>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Fila de notas fiscais
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Revise, libere e gerencie notas fiscais enviadas pelos usuários.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <StatusBadge tone="critical">
+              <span>{blockedCount}</span>
+              <span>Ação agora</span>
+            </StatusBadge>
+            <StatusBadge tone="warning">
+              <span>{lowConfidenceCount}</span>
+              <span>Baixa confiança</span>
+            </StatusBadge>
+            <StatusBadge tone="savings">
+              {rewardReadyCount} rewards prontos
+            </StatusBadge>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => void reload()} type="button" variant="outline">
+            <RefreshCwIcon className="size-4" />
+            Atualizar
+          </Button>
+          <Button asChild variant="outline">
+            <a href="/dashboard/fila">Mais ações</a>
+          </Button>
+        </div>
       </div>
 
-      <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardHeader>
-          <CardTitle>Notas fiscais processadas</CardTitle>
-          <CardDescription>
-            Conteúdo, qualidade de leitura, moderação e prontidão de reward.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          {receipts.length === 0 ? (
-            <div className="rounded-lg border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-              Nenhuma nota fiscal recebida ainda.
-            </div>
-          ) : null}
-          {sortedReceipts.map((receipt) => (
-            <div
-              key={receipt.id}
-              className="rounded-lg border border-border/70 bg-background/80 p-4"
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <ReceiptTextIcon className="size-4 text-muted-foreground" />
-                    <span className="font-medium">
-                      {receipt.storeName ?? 'Loja não identificada'}
-                    </span>
-                    <StatusBadge
-                      family="receipt"
-                      status={receiptModerationStatus(
-                        receipt.moderationStatus,
-                      )}
-                    >
-                      {receiptModerationLabel(receipt.moderationStatus)}
-                    </StatusBadge>
-                    <StatusBadge
-                      family="severity"
-                      status={
-                        receiptActionPriority(receipt) <= 1
-                          ? 'warning'
-                          : 'info'
-                      }
-                    >
-                      {receiptNextActionLabel(receipt)}
-                    </StatusBadge>
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {[
+          {
+            title: 'Aguardando liberação',
+            value: waitingReleaseCount,
+            detail: 'Necessitam ação',
+            tone: 'warning' as const,
+          },
+          {
+            title: 'Pendente de revisão',
+            value: pendingReviewCount,
+            detail: 'Necessitam revisão',
+            tone: 'warning' as const,
+          },
+          {
+            title: 'Rejeitadas',
+            value: rejectedCount,
+            detail: 'Não serão processadas',
+            tone: 'critical' as const,
+          },
+          {
+            title: 'Quarentenadas',
+            value: quarantinedCount,
+            detail: 'Análise adicional',
+            tone: 'neutral' as const,
+          },
+          {
+            title: 'Duplicadas',
+            value: duplicatedCount,
+            detail: 'Ignoradas',
+            tone: 'neutral' as const,
+          },
+          {
+            title: 'Aceitas',
+            value: acceptedCount,
+            detail: 'Processadas',
+            tone: 'savings' as const,
+          },
+        ].map((entry) => (
+          <Card
+            className="border-border/70 bg-card/90 shadow-sm"
+            key={entry.title}
+          >
+            <CardHeader className="gap-2">
+              <StatusBadge className="w-fit" tone={entry.tone}>
+                {entry.value}
+              </StatusBadge>
+              <CardTitle className="text-base">{entry.title}</CardTitle>
+              <CardDescription>{entry.detail}</CardDescription>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <Card className="min-w-0 border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Notas fiscais processadas</CardTitle>
+            <CardDescription>
+              Conteúdo, qualidade de leitura, moderação e prontidão de reward.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {receipts.length === 0 ? (
+              <div className="rounded-lg border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
+                Nenhuma nota fiscal recebida ainda.
+              </div>
+            ) : null}
+            {sortedReceipts.map((receipt) => (
+              <div
+                key={receipt.id}
+                className="rounded-lg border border-border/70 bg-background/80 p-4"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ReceiptTextIcon className="size-4 text-muted-foreground" />
+                      <span className="font-medium">
+                        {receipt.storeName ?? 'Loja não identificada'}
+                      </span>
+                      <StatusBadge
+                        family="receipt"
+                        status={receiptModerationStatus(
+                          receipt.moderationStatus,
+                        )}
+                      >
+                        {receiptModerationLabel(receipt.moderationStatus)}
+                      </StatusBadge>
+                      <StatusBadge
+                        family="severity"
+                        status={
+                          receiptActionPriority(receipt) <= 1
+                            ? 'warning'
+                            : 'info'
+                        }
+                      >
+                        {receiptNextActionLabel(receipt)}
+                      </StatusBadge>
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {receipt.owner.displayName || receipt.owner.email} ·{' '}
+                      {receipt.storeCnpj ?? 'CNPJ não identificado'} · recebida{' '}
+                      {formatFreshnessLabel(receipt.createdAt)}
+                    </div>
                   </div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    {receipt.owner.displayName || receipt.owner.email} ·{' '}
-                    {receipt.storeCnpj ?? 'CNPJ não identificado'} · recebida{' '}
-                    {formatFreshnessLabel(receipt.createdAt)}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button asChild size="sm" variant="outline">
-                    <a href={`/dashboard/nota/${receipt.id}`}>
-                      {receipt.processingJob
-                        ? 'Auditar processamento'
-                        : 'Auditar nota fiscal'}
-                      <ExternalLinkIcon className="size-4" />
-                    </a>
-                  </Button>
-                  {receipt.processingJob ? (
-                    <>
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild size="sm" variant="outline">
+                      <a href={`/dashboard/nota/${receipt.id}`}>
+                        {receipt.processingJob
+                          ? 'Auditar processamento'
+                          : 'Auditar nota fiscal'}
+                        <ExternalLinkIcon className="size-4" />
+                      </a>
+                    </Button>
+                    {receipt.processingJob ? (
+                      <>
+                        <Button
+                          disabled={releasingId === receipt.id}
+                          onClick={() => void reprocessReceipt(receipt.id)}
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          Reprocessar
+                        </Button>
+                      </>
+                    ) : (
                       <Button
                         disabled={releasingId === receipt.id}
-                        onClick={() => void reprocessReceipt(receipt.id)}
+                        onClick={() => void releaseReceipt(receipt.id)}
                         size="sm"
                         type="button"
-                        variant="outline"
                       >
-                        Reprocessar
+                        Liberar processamento
                       </Button>
-                    </>
-                  ) : (
+                    )}
                     <Button
-                      disabled={releasingId === receipt.id}
-                      onClick={() => void releaseReceipt(receipt.id)}
+                      className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                      disabled={
+                        releasingId === receipt.id ||
+                        receipt.moderationStatus === 'rejected'
+                      }
+                      onClick={() => {
+                        const confirmed = window.confirm(
+                          'Recusar esta nota fiscal? Esta ação bloqueia reward e evidência desta nota.',
+                        );
+
+                        if (confirmed) {
+                          void rejectReceipt(receipt.id);
+                        }
+                      }}
                       size="sm"
                       type="button"
+                      variant="outline"
                     >
-                      Liberar processamento
+                      Recusar
                     </Button>
-                  )}
-                  <Button
-                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
-                    disabled={
-                      releasingId === receipt.id ||
-                      receipt.moderationStatus === 'rejected'
-                    }
-                    onClick={() => {
-                      const confirmed = window.confirm(
-                        'Recusar esta nota fiscal? Esta ação bloqueia reward e evidência desta nota.',
-                      );
+                  </div>
+                </div>
 
-                      if (confirmed) {
-                        void rejectReceipt(receipt.id);
-                      }
-                    }}
+                <div className="mt-4 rounded-md border border-[var(--ds-evidence-border)] bg-[var(--ds-evidence-soft)]/60 p-3 text-sm">
+                  <div className="font-medium">Próxima ação</div>
+                  <div className="mt-1 text-muted-foreground">
+                    {receiptNextActionLabel(receipt)} · IDs técnicos ficam no
+                    detalhe da auditoria.
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">Leitura</div>
+                    <div className="mt-1 font-medium">
+                      {receipt.parseStatus}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Qualidade
+                    </div>
+                    <div className="mt-1 font-medium">
+                      {receiptQualityLabel(receipt)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      média{' '}
+                      {Math.round(receipt.quality.averageMatchConfidence * 100)}
+                      %
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {receiptUsefulDataLabel(receipt)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Confiança
+                    </div>
+                    <div className="mt-1">
+                      <StatusBadge
+                        family="trust"
+                        status={receiptTrustStatus(receipt.trustLevel)}
+                      >
+                        {receiptTrustLabel(receipt.trustLevel)}
+                      </StatusBadge>
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">Reward</div>
+                    <div className="mt-1 font-medium">
+                      {receipt.reward.label}
+                    </div>
+                    <div className="mt-1">
+                      <StatusBadge
+                        family="reward"
+                        status={rewardStatus(receipt.rewardEligibilityStatus)}
+                      >
+                        {rewardEligibilityLabel(
+                          receipt.rewardEligibilityStatus,
+                        )}
+                      </StatusBadge>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 text-sm text-muted-foreground">
+                  {receipt.reviewReason ??
+                    'Sem motivo de revisão registrado para esta nota.'}
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3">
+                  <div className="text-sm text-muted-foreground">
+                    {receipt.lineItems.length} itens extraídos ·{' '}
+                    {
+                      receipt.lineItems.filter((item) => item.offers.length > 0)
+                        .length
+                    }{' '}
+                    com oferta gerada
+                  </div>
+                  <Button
+                    onClick={() =>
+                      setExpandedReceiptId((current) =>
+                        current === receipt.id ? null : receipt.id,
+                      )
+                    }
                     size="sm"
                     type="button"
                     variant="outline"
                   >
-                    Recusar
+                    {expandedReceiptId === receipt.id ? (
+                      <ChevronUpIcon className="size-4" />
+                    ) : (
+                      <ChevronDownIcon className="size-4" />
+                    )}
+                    {expandedReceiptId === receipt.id
+                      ? 'Ocultar conteúdo'
+                      : 'Ver conteúdo e matcher'}
                   </Button>
                 </div>
-              </div>
 
-              <div className="mt-4 rounded-md border border-[var(--ds-evidence-border)] bg-[var(--ds-evidence-soft)]/60 p-3 text-sm">
-                <div className="font-medium">Próxima ação</div>
-                <div className="mt-1 text-muted-foreground">
-                  {receiptNextActionLabel(receipt)} · IDs técnicos ficam no
-                  detalhe da auditoria.
-                </div>
-              </div>
+                {expandedReceiptId === receipt.id ? (
+                  <div className="mt-4 grid gap-3">
+                    <div className="grid gap-3 rounded-md border border-border/70 bg-card/70 p-3 md:grid-cols-4">
+                      <div>
+                        <div className="text-xs text-muted-foreground">
+                          Payload extraído
+                        </div>
+                        <div className="mt-1 font-medium">
+                          {receipt.extractedPayload.lineItemCount} itens ·{' '}
+                          {formatCurrency(
+                            receipt.extractedPayload.totalLineAmount,
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">
+                          Chave NFC-e
+                        </div>
+                        <div className="mt-1 truncate font-medium">
+                          {receipt.extractedPayload.accessKey ??
+                            'Não informada'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">
+                          Origem
+                        </div>
+                        <div className="mt-1 truncate font-medium">
+                          {receipt.extractedPayload.sefazUrl
+                            ? 'QR/NFC-e'
+                            : (receipt.extractedPayload.rawReference ??
+                              'Entrada manual')}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">
+                          Matcher
+                        </div>
+                        <div className="mt-1 font-medium">
+                          {
+                            receipt.lineItems.filter(
+                              (item) => item.matcherStatus === 'matched_offer',
+                            ).length
+                          }{' '}
+                          ofertas ·{' '}
+                          {
+                            receipt.lineItems.filter(
+                              (item) =>
+                                item.matcherStatus === 'needs_product_review',
+                            ).length
+                          }{' '}
+                          para revisar
+                        </div>
+                      </div>
+                    </div>
+                    {receipt.lineItems.length === 0 ? (
+                      <div className="rounded-md border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">
+                        Nenhum item extraído da nota fiscal ainda.
+                      </div>
+                    ) : null}
+                    {receipt.lineItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="rounded-md border border-border/70 bg-card/70 p-3"
+                      >
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0">
+                            <div className="font-medium">
+                              {item.rawProductName}
+                            </div>
+                            <div className="mt-1 text-sm text-muted-foreground">
+                              Normalizado: {item.normalizedName} · EAN{' '}
+                              {item.ean ?? 'não informado'} · qtd{' '}
+                              {item.quantity}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <StatusBadge
+                              tone={
+                                item.matcherStatus === 'matched_offer'
+                                  ? 'savings'
+                                  : item.matcherStatus ===
+                                      'needs_product_review'
+                                    ? 'critical'
+                                    : 'warning'
+                              }
+                            >
+                              {receiptMatcherStatusLabel(item.matcherStatus)}
+                            </StatusBadge>
+                            <StatusBadge tone="neutral">
+                              {Math.round(item.matchConfidence * 100)}%
+                            </StatusBadge>
+                          </div>
+                        </div>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
-                <div className="rounded-md border border-border/70 p-3">
-                  <div className="text-xs text-muted-foreground">Leitura</div>
-                  <div className="mt-1 font-medium">{receipt.parseStatus}</div>
+                        <div className="mt-3 grid gap-3 md:grid-cols-3">
+                          <div className="rounded-md border border-border/70 p-3">
+                            <div className="text-xs text-muted-foreground">
+                              Preço lido
+                            </div>
+                            <div className="mt-1 font-medium">
+                              {formatCurrency(item.unitPrice)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              total {formatCurrency(item.lineTotal)}
+                            </div>
+                            {item.originalUnitPrice &&
+                            item.originalUnitPrice !== item.unitPrice ? (
+                              <div className="text-xs text-muted-foreground">
+                                original{' '}
+                                {formatCurrency(item.originalUnitPrice)}
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="rounded-md border border-border/70 p-3">
+                            <div className="text-xs text-muted-foreground">
+                              Maker
+                            </div>
+                            <div className="mt-1 font-medium">
+                              {receiptMakerActionLabel(item.makerAction)}
+                            </div>
+                            <Button
+                              asChild
+                              className="mt-2"
+                              size="sm"
+                              variant="outline"
+                            >
+                              <a
+                                href={
+                                  item.makerAction === 'offer_created'
+                                    ? '/dashboard/precos'
+                                    : '/dashboard/catalogo'
+                                }
+                              >
+                                {receiptMakerActionButtonLabel(
+                                  item.makerAction,
+                                )}
+                              </a>
+                            </Button>
+                          </div>
+                          <div className="rounded-md border border-border/70 p-3">
+                            <div className="text-xs text-muted-foreground">
+                              Ofertas geradas
+                            </div>
+                            <div className="mt-1 font-medium">
+                              {item.offers.length}
+                            </div>
+                          </div>
+                        </div>
+
+                        {item.offers.length > 0 ? (
+                          <div className="mt-3 overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Produto</TableHead>
+                                  <TableHead>Loja</TableHead>
+                                  <TableHead>Preço da nota</TableHead>
+                                  <TableHead>Comparativo</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {item.offers.map((offer) => (
+                                  <TableRow key={offer.id}>
+                                    <TableCell>
+                                      <div className="grid gap-1">
+                                        <span>{offer.variantName}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {offer.catalogProductName} ·{' '}
+                                          {offer.packageLabel}
+                                        </span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      {offer.establishmentName} ·{' '}
+                                      {offer.neighborhood}
+                                    </TableCell>
+                                    <TableCell>
+                                      {formatCurrency(offer.priceAmount)}
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="grid gap-1">
+                                        <StatusBadge
+                                          tone={
+                                            offer.comparison.direction === 'up'
+                                              ? 'critical'
+                                              : offer.comparison.direction ===
+                                                  'down'
+                                                ? 'savings'
+                                                : 'neutral'
+                                          }
+                                        >
+                                          {priceDirectionLabel(
+                                            offer.comparison.direction,
+                                          )}
+                                        </StatusBadge>
+                                        <span className="text-xs text-muted-foreground">
+                                          {offer.comparison.previousPriceAmount
+                                            ? `${formatCurrency(
+                                                offer.comparison
+                                                  .previousPriceAmount,
+                                              )} anterior · ${formatCurrency(
+                                                offer.comparison.deltaAmount ??
+                                                  0,
+                                              )}`
+                                            : 'Sem oferta anterior comparável'}
+                                        </span>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        {selectedReceipt ? (
+          <aside className="grid content-start gap-4 rounded-lg border border-border/70 bg-card/95 p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-semibold">
+                  Nota selecionada
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Enviada {formatFreshnessLabel(selectedReceipt.createdAt)}
+                </p>
+              </div>
+              <StatusBadge
+                family="receipt"
+                status={receiptModerationStatus(
+                  selectedReceipt.moderationStatus,
+                )}
+              >
+                {receiptModerationLabel(selectedReceipt.moderationStatus)}
+              </StatusBadge>
+            </div>
+
+            <div className="grid gap-2 border-b border-border/70 pb-4 text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Total da nota</span>
+                <span className="font-medium">
+                  {formatCurrency(
+                    selectedReceipt.extractedPayload.totalLineAmount,
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Comprador</span>
+                <span className="font-medium">
+                  {selectedReceipt.owner.displayName ||
+                    selectedReceipt.owner.email}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">E-mail</span>
+                <span className="truncate font-medium">
+                  {selectedReceipt.owner.email}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)]/45 p-3 text-sm">
+              <div className="font-medium">Resumo da extração</div>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                <div>
+                  <div className="text-xl font-semibold">
+                    {selectedReceipt.quality.lineItemCount}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Linhas</div>
                 </div>
-                <div className="rounded-md border border-border/70 p-3">
-                  <div className="text-xs text-muted-foreground">Qualidade</div>
-                  <div className="mt-1 font-medium">
-                    {receiptQualityLabel(receipt)}
+                <div>
+                  <div className="text-xl font-semibold">
+                    {Math.round(
+                      selectedReceipt.quality.averageMatchConfidence * 100,
+                    )}
+                    %
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    média{' '}
-                    {Math.round(receipt.quality.averageMatchConfidence * 100)}%
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {receiptUsefulDataLabel(receipt)}
-                  </div>
-                </div>
-                <div className="rounded-md border border-border/70 p-3">
                   <div className="text-xs text-muted-foreground">Confiança</div>
-                  <div className="mt-1">
-                    <StatusBadge
-                      family="trust"
-                      status={receiptTrustStatus(receipt.trustLevel)}
-                    >
-                      {receiptTrustLabel(receipt.trustLevel)}
-                    </StatusBadge>
-                  </div>
                 </div>
-                <div className="rounded-md border border-border/70 p-3">
-                  <div className="text-xs text-muted-foreground">Reward</div>
-                  <div className="mt-1 font-medium">
-                    {receipt.reward.label}
+                <div>
+                  <div className="text-xl font-semibold">
+                    {Math.round(selectedReceipt.quality.usefulDataRatio * 100)}%
                   </div>
-                  <div className="mt-1">
-                    <StatusBadge
-                      family="reward"
-                      status={rewardStatus(receipt.rewardEligibilityStatus)}
-                    >
-                      {rewardEligibilityLabel(
-                        receipt.rewardEligibilityStatus,
-                      )}
-                    </StatusBadge>
+                  <div className="text-xs text-muted-foreground">
+                    Dados úteis
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className="mt-3 text-sm text-muted-foreground">
-                {receipt.reviewReason ??
-                  'Sem motivo de revisão registrado para esta nota.'}
-              </div>
+            {selectedReceipt.reviewReason ? (
+              <Alert>
+                <AlertTriangleIcon />
+                <AlertTitle>Atenção</AlertTitle>
+                <AlertDescription>
+                  {selectedReceipt.reviewReason}
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3">
-                <div className="text-sm text-muted-foreground">
-                  {receipt.lineItems.length} itens extraídos ·{' '}
-                  {
-                    receipt.lineItems.filter((item) => item.offers.length > 0)
-                      .length
-                  }{' '}
-                  com oferta gerada
-                </div>
+            <div className="grid gap-2">
+              {!selectedReceipt.processingJob ? (
                 <Button
-                  onClick={() =>
-                    setExpandedReceiptId((current) =>
-                      current === receipt.id ? null : receipt.id,
-                    )
-                  }
-                  size="sm"
+                  disabled={releasingId === selectedReceipt.id}
+                  onClick={() => void releaseReceipt(selectedReceipt.id)}
+                  type="button"
+                >
+                  Liberar nota selecionada
+                </Button>
+              ) : (
+                <Button
+                  disabled={releasingId === selectedReceipt.id}
+                  onClick={() => void reprocessReceipt(selectedReceipt.id)}
                   type="button"
                   variant="outline"
                 >
-                  {expandedReceiptId === receipt.id ? (
-                    <ChevronUpIcon className="size-4" />
-                  ) : (
-                    <ChevronDownIcon className="size-4" />
-                  )}
-                  {expandedReceiptId === receipt.id
-                    ? 'Ocultar conteúdo'
-                    : 'Ver conteúdo e matcher'}
+                  Reprocessar extração
                 </Button>
-              </div>
+              )}
+              <Button
+                className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                disabled={
+                  releasingId === selectedReceipt.id ||
+                  selectedReceipt.moderationStatus === 'rejected'
+                }
+                onClick={() => {
+                  const confirmed = window.confirm(
+                    'Recusar esta nota fiscal? Esta ação bloqueia reward e evidência desta nota.',
+                  );
 
-              {expandedReceiptId === receipt.id ? (
-                <div className="mt-4 grid gap-3">
-                  <div className="grid gap-3 rounded-md border border-border/70 bg-card/70 p-3 md:grid-cols-4">
-                    <div>
-                      <div className="text-xs text-muted-foreground">
-                        Payload extraído
-                      </div>
-                      <div className="mt-1 font-medium">
-                        {receipt.extractedPayload.lineItemCount} itens ·{' '}
-                        {formatCurrency(
-                          receipt.extractedPayload.totalLineAmount,
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">
-                        Chave NFC-e
-                      </div>
-                      <div className="mt-1 truncate font-medium">
-                        {receipt.extractedPayload.accessKey ?? 'Não informada'}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">
-                        Origem
-                      </div>
-                      <div className="mt-1 truncate font-medium">
-                        {receipt.extractedPayload.sefazUrl
-                          ? 'QR/NFC-e'
-                          : (receipt.extractedPayload.rawReference ??
-                            'Entrada manual')}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">
-                        Matcher
-                      </div>
-                      <div className="mt-1 font-medium">
-                        {
-                          receipt.lineItems.filter(
-                            (item) => item.matcherStatus === 'matched_offer',
-                          ).length
-                        }{' '}
-                        ofertas ·{' '}
-                        {
-                          receipt.lineItems.filter(
-                            (item) =>
-                              item.matcherStatus === 'needs_product_review',
-                          ).length
-                        }{' '}
-                        para revisar
-                      </div>
-                    </div>
-                  </div>
-                  {receipt.lineItems.length === 0 ? (
-                    <div className="rounded-md border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">
-                      Nenhum item extraído da nota fiscal ainda.
-                    </div>
-                  ) : null}
-                  {receipt.lineItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-md border border-border/70 bg-card/70 p-3"
-                    >
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="min-w-0">
-                          <div className="font-medium">
-                            {item.rawProductName}
-                          </div>
-                          <div className="mt-1 text-sm text-muted-foreground">
-                            Normalizado: {item.normalizedName} · EAN{' '}
-                            {item.ean ?? 'não informado'} · qtd {item.quantity}
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <StatusBadge
-                            tone={
-                              item.matcherStatus === 'matched_offer'
-                                ? 'savings'
-                                : item.matcherStatus === 'needs_product_review'
-                                  ? 'critical'
-                                  : 'warning'
-                            }
-                          >
-                            {receiptMatcherStatusLabel(item.matcherStatus)}
-                          </StatusBadge>
-                          <StatusBadge tone="neutral">
-                            {Math.round(item.matchConfidence * 100)}%
-                          </StatusBadge>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 grid gap-3 md:grid-cols-3">
-                        <div className="rounded-md border border-border/70 p-3">
-                          <div className="text-xs text-muted-foreground">
-                            Preço lido
-                          </div>
-                          <div className="mt-1 font-medium">
-                            {formatCurrency(item.unitPrice)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            total {formatCurrency(item.lineTotal)}
-                          </div>
-                          {item.originalUnitPrice &&
-                          item.originalUnitPrice !== item.unitPrice ? (
-                            <div className="text-xs text-muted-foreground">
-                              original {formatCurrency(item.originalUnitPrice)}
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="rounded-md border border-border/70 p-3">
-                          <div className="text-xs text-muted-foreground">
-                            Maker
-                          </div>
-                          <div className="mt-1 font-medium">
-                            {receiptMakerActionLabel(item.makerAction)}
-                          </div>
-                          <Button
-                            asChild
-                            className="mt-2"
-                            size="sm"
-                            variant="outline"
-                          >
-                            <a
-                              href={
-                                item.makerAction === 'offer_created'
-                                  ? '/dashboard/precos'
-                                  : '/dashboard/catalogo'
-                              }
-                            >
-                              {receiptMakerActionButtonLabel(item.makerAction)}
-                            </a>
-                          </Button>
-                        </div>
-                        <div className="rounded-md border border-border/70 p-3">
-                          <div className="text-xs text-muted-foreground">
-                            Ofertas geradas
-                          </div>
-                          <div className="mt-1 font-medium">
-                            {item.offers.length}
-                          </div>
-                        </div>
-                      </div>
-
-                      {item.offers.length > 0 ? (
-                        <div className="mt-3 overflow-x-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Produto</TableHead>
-                                <TableHead>Loja</TableHead>
-                                <TableHead>Preço da nota</TableHead>
-                                <TableHead>Comparativo</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {item.offers.map((offer) => (
-                                <TableRow key={offer.id}>
-                                  <TableCell>
-                                    <div className="grid gap-1">
-                                      <span>{offer.variantName}</span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {offer.catalogProductName} ·{' '}
-                                        {offer.packageLabel}
-                                      </span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    {offer.establishmentName} ·{' '}
-                                    {offer.neighborhood}
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatCurrency(offer.priceAmount)}
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="grid gap-1">
-                                      <StatusBadge
-                                        tone={
-                                          offer.comparison.direction === 'up'
-                                            ? 'critical'
-                                            : offer.comparison.direction ===
-                                                'down'
-                                              ? 'savings'
-                                              : 'neutral'
-                                        }
-                                      >
-                                        {priceDirectionLabel(
-                                          offer.comparison.direction,
-                                        )}
-                                      </StatusBadge>
-                                      <span className="text-xs text-muted-foreground">
-                                        {offer.comparison.previousPriceAmount
-                                          ? `${formatCurrency(
-                                              offer.comparison
-                                                .previousPriceAmount,
-                                            )} anterior · ${formatCurrency(
-                                              offer.comparison.deltaAmount ?? 0,
-                                            )}`
-                                          : 'Sem oferta anterior comparável'}
-                                      </span>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+                  if (confirmed) {
+                    void rejectReceipt(selectedReceipt.id);
+                  }
+                }}
+                type="button"
+                variant="outline"
+              >
+                Rejeitar nota fiscal
+              </Button>
+              <Button asChild variant="ghost">
+                <a href={`/dashboard/nota/${selectedReceipt.id}`}>
+                  Abrir auditoria completa
+                </a>
+              </Button>
             </div>
-          ))}
-        </CardContent>
-      </Card>
+
+            <TechnicalDisclosure title="Dados técnicos">
+              <div className="grid gap-2">
+                <span>ID técnico: {selectedReceipt.id}</span>
+                <span>
+                  CNPJ: {selectedReceipt.storeCnpj ?? 'não identificado'}
+                </span>
+                <span>
+                  Chave NFC-e: disponível no conteúdo expandido da nota
+                </span>
+              </div>
+            </TechnicalDisclosure>
+          </aside>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -3876,9 +4124,7 @@ export function AdminReceiptAuditPage() {
                     <div className="text-xs text-muted-foreground">
                       Ofertas geradas
                     </div>
-                    <div className="mt-1 font-medium">
-                      {item.offers.length}
-                    </div>
+                    <div className="mt-1 font-medium">{item.offers.length}</div>
                   </div>
                 </div>
               </div>
@@ -4291,10 +4537,10 @@ export function AdminQueueDetailPage() {
             <div className="mt-1 font-medium">{jobStatusLabel(job.status)}</div>
           </div>
           <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">Objeto processado</div>
-            <div className="mt-1 font-medium">
-              {jobResourceTitle(job)}
+            <div className="text-sm text-muted-foreground">
+              Objeto processado
             </div>
+            <div className="mt-1 font-medium">{jobResourceTitle(job)}</div>
             <div className="mt-1 text-xs text-muted-foreground">
               {job.resourceType} · {job.resourceId}
             </div>
@@ -4323,7 +4569,6 @@ export function AdminQueueDetailPage() {
           </div>
         </CardContent>
       </Card>
-
     </div>
   );
 }
