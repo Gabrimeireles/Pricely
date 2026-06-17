@@ -2469,6 +2469,9 @@ export function ChecklistPage() {
   const allItemsPurchased = Boolean(
     list && list.items.length > 0 && purchasedCount === list.items.length,
   );
+  const checklistProgress = list?.items.length
+    ? Math.round((purchasedCount / list.items.length) * 100)
+    : 0;
 
   useEffect(() => {
     if (!list || optimizationResult) {
@@ -2646,6 +2649,60 @@ export function ChecklistPage() {
             </Alert>
           ) : null}
 
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="border-border/70 bg-card/90 shadow-sm">
+              <CardHeader>
+                <CardDescription>Progresso da compra</CardDescription>
+                <CardTitle className="tabular-nums">
+                  {purchasedCount}/{list.items.length}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-2">
+                <div className="h-2 rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full bg-[var(--ds-savings)]"
+                    style={{ width: `${Math.max(8, checklistProgress)}%` }}
+                  />
+                </div>
+                <StatusBadge
+                  family="severity"
+                  status={allItemsPurchased ? 'healthy' : 'info'}
+                >
+                  {allItemsPurchased ? 'Pronta para concluir' : 'Em compra'}
+                </StatusBadge>
+              </CardContent>
+            </Card>
+            <Card className="border-border/70 bg-card/90 shadow-sm">
+              <CardHeader>
+                <CardDescription>Fonte da recomendação</CardDescription>
+                <CardTitle>
+                  {optimizationResult ? 'Otimização carregada' : 'Lista manual'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  {optimizationResult
+                    ? 'Itens mostram variante selecionada, preço previsto e evidência quando disponível.'
+                    : 'Sem otimização salva, use o checklist como conferência manual.'}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/70 bg-card/90 shadow-sm">
+              <CardHeader>
+                <CardDescription>Nota fiscal</CardDescription>
+                <CardTitle>
+                  {list.completedAt ? 'Pronta para envio' : 'Após concluir'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  A nota valida preços e pode liberar reward somente depois da
+                  revisão do backend.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
           <StickyActionBar id="checklist-actions">
             <div>
               <div className="font-medium">
@@ -2688,15 +2745,13 @@ export function ChecklistPage() {
                   a melhorar a confiança das próximas ofertas.
                 </p>
                 <div className="grid gap-2 text-sm sm:grid-cols-3">
-                  <span className="rounded-md border border-border/70 bg-background px-3 py-2">
-                    Envio recebido
-                  </span>
-                  <span className="rounded-md border border-border/70 bg-background px-3 py-2">
+                  <StatusBadge tone="neutral">Envio recebido</StatusBadge>
+                  <StatusBadge family="reward" status="eligible_pending">
                     Reward em processamento
-                  </span>
-                  <span className="rounded-md border border-border/70 bg-background px-3 py-2">
+                  </StatusBadge>
+                  <StatusBadge family="reward" status="granted">
                     Reward validado após nota confiável
-                  </span>
+                  </StatusBadge>
                 </div>
                 <Button asChild size="sm" variant="outline">
                   <Link to="/notas">Enviar nota fiscal</Link>
@@ -2721,7 +2776,11 @@ export function ChecklistPage() {
               return (
                 <PriceRow
                   key={item.id}
-                  className={checked ? 'border-lime-300' : undefined}
+                  className={
+                    checked
+                      ? 'border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)]/35'
+                      : undefined
+                  }
                   image={
                     item.imageUrl ? (
                       <img
@@ -3605,6 +3664,40 @@ export function OptimizationPage() {
   const isStaleProcessing =
     isProcessingResult &&
     Date.now() - new Date(result.createdAt).getTime() > 30_000;
+  const selectedSelections =
+    result?.selections.filter(
+      (selection) => selection.selectionStatus === 'selected',
+    ) ?? [];
+  const reviewSelections =
+    result?.selections.filter(
+      (selection) => selection.selectionStatus !== 'selected',
+    ) ?? [];
+  const storePlan = Array.from(
+    selectedSelections.reduce(
+      (stores, selection) => {
+        const key = selection.establishmentName ?? 'Sem loja definida';
+        const current = stores.get(key) ?? {
+          name: key,
+          neighborhood: selection.establishmentNeighborhood,
+          items: 0,
+          total: 0,
+        };
+        current.items += 1;
+        current.total += selection.priceAmount ?? selection.estimatedCost ?? 0;
+        stores.set(key, current);
+        return stores;
+      },
+      new Map<
+        string,
+        {
+          name: string;
+          neighborhood?: string;
+          items: number;
+          total: number;
+        }
+      >(),
+    ).values(),
+  );
 
   useEffect(() => {
     if (!list || result || latestLoadAttemptedFor === listId) {
@@ -3791,11 +3884,11 @@ export function OptimizationPage() {
             </Alert>
           ) : isProcessingResult ? null : (
             <>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                   <CardHeader>
                     <CardDescription>Custo estimado</CardDescription>
-                    <CardTitle>
+                    <CardTitle className="tabular-nums">
                       {formatCurrency(result.totalEstimatedCost ?? 0)}
                     </CardTitle>
                   </CardHeader>
@@ -3803,8 +3896,16 @@ export function OptimizationPage() {
                 <Card>
                   <CardHeader>
                     <CardDescription>Economia estimada</CardDescription>
-                    <CardTitle>
+                    <CardTitle className="tabular-nums text-[var(--ds-savings)]">
                       {formatCurrency(result.estimatedSavings ?? 0)}
+                    </CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardDescription>Paradas</CardDescription>
+                    <CardTitle className="tabular-nums">
+                      {storePlan.length}
                     </CardTitle>
                   </CardHeader>
                 </Card>
@@ -3833,6 +3934,43 @@ export function OptimizationPage() {
                   </CardHeader>
                 </Card>
               </div>
+
+              {storePlan.length > 0 ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Plano por loja</CardTitle>
+                    <CardDescription>
+                      Paradas sugeridas, quantidade de itens e subtotal previsto.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-3 md:grid-cols-2">
+                    {storePlan.map((store) => (
+                      <div
+                        key={store.name}
+                        className="grid gap-2 rounded-lg border border-border/70 bg-background/80 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-medium">{store.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {store.neighborhood ?? 'Bairro não informado'}
+                            </div>
+                          </div>
+                          <StatusBadge tone="location">
+                            {store.items} {store.items === 1 ? 'item' : 'itens'}
+                          </StatusBadge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Subtotal previsto:{' '}
+                          <span className="font-medium tabular-nums text-foreground">
+                            {formatCurrency(store.total)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
 
               <Card>
                 <CardHeader>
@@ -3963,6 +4101,53 @@ export function OptimizationPage() {
                   })}
                 </CardContent>
               </Card>
+
+              {reviewSelections.length > 0 ? (
+                <Card className="border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)]/40">
+                  <CardHeader>
+                    <CardTitle>Itens sem confirmação completa</CardTitle>
+                    <CardDescription>
+                      Revise antes de comprar ou envie nota fiscal para melhorar
+                      a cobertura da cidade.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-3">
+                    {reviewSelections.map((selection) => (
+                      <PriceRow
+                        key={`${selection.shoppingListItemId}-review`}
+                        title={selection.shoppingListItemName}
+                        subtitle={
+                          selection.rejectedReason
+                            ? rejectedReasonLabel(selection.rejectedReason)
+                            : 'Sem oferta confirmada suficiente'
+                        }
+                        price={
+                          selection.priceAmount !== undefined
+                            ? formatCurrency(selection.priceAmount)
+                            : 'Sem preço'
+                        }
+                        meta={
+                          <StatusBadge
+                            family="queue"
+                            status={
+                              selection.selectionStatus === 'review'
+                                ? 'retrying'
+                                : 'failed'
+                            }
+                          >
+                            {selectionStatusLabel(selection.selectionStatus)}
+                          </StatusBadge>
+                        }
+                        actions={
+                          <Button asChild size="sm" variant="outline">
+                            <Link to="/notas">Enviar nota</Link>
+                          </Button>
+                        }
+                      />
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
             </>
           )}
         </div>
