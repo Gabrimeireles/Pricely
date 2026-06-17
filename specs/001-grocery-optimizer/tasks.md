@@ -555,6 +555,20 @@ Premium access and extra optimization credits are support/admin operations for n
 - [X] T216 Adopt `web/src/assets/pricely-icon.png` as the official brand icon in web shell/header and plan reuse for favicon/mobile app assets.
 - [~] T217 Continue location web/mobile UX refactors with explicit location/radius preview, manual fallback, denied-permission states, and no-proximity claims until distance-aware optimization is fully active.
 
+### Phase 28: Web Button Integration Audit and Action Gaps
+
+**Purpose**: Ensure every visible web button either performs an existing action, routes to
+an implemented surface, clearly communicates disabled scope, or has a Spec Kit task for
+the missing feature.
+
+- [X] T218 Map web button integration state, existing-feature coverage, dead placeholders, and missing feature gaps in `docs/product/web-button-integration-audit.md`
+- [ ] T219 [P] Wire existing public UI affordances for location confirmation, optimization-result tabs, result item filtering, per-item evidence expansion, and browser-settings guidance in `web/src/public/` and `web/src/components/design-system/`
+- [ ] T220 [P] Add shopper shareable-list support with access policy, public/share route behavior, and copy-link UI in `specs/001-grocery-optimizer/contracts/grocery-optimizer-api.yaml`, `backend/src/lists/`, and `web/src/public/`
+- [ ] T221 [P] Add shopper missing-product request intake, admin triage, and catalog conversion workflow in `backend/src/catalog/`, `backend/src/admin/`, `web/src/public/`, and `web/src/dashboard/`
+- [ ] T222 [P] Specify and implement user notification preferences, alert triggers, and web notification-center states for price changes, receipt outcomes, and optimization readiness in `backend/src/users/`, `backend/src/receipts/`, `backend/src/optimization/`, and `web/src/public/`
+- [ ] T223 [P] Add map/deep-link support for optimized store plans using saved establishment address/coordinates without exposing precise user location in `backend/src/establishments/`, `backend/src/optimization/`, and `web/src/public/`
+- [ ] T224 Add generic processing-job lifecycle operations for retry, mark-reviewed, and cancel with queue safety rules, audit logging, admin API endpoints, and dashboard actions in `backend/src/processing/`, `backend/src/admin/`, and `web/src/dashboard/`
+
 **Homolog validation note (2026-06-15)**: Web/admin/backend MVP smoke passed on
 `https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.
 Validated public bundle load, customer login, receipt submission with
