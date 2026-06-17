@@ -14,7 +14,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Preços com contexto real'), findsOneWidget);
+    expect(find.text('Cliente Pricely'), findsOneWidget);
+    expect(find.text('Cidade ativa'), findsWidgets);
   });
 }
 
