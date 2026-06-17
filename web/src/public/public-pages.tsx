@@ -1309,7 +1309,7 @@ export function OffersPage() {
               </div>
               {(group.savingsVsSecondCheapest ?? 0) > 0 &&
               group.secondCheapestPriceAmount ? (
-                <div className="text-sm font-medium text-emerald-700">
+                <div className="text-sm font-medium text-[var(--ds-savings)]">
                   {formatCurrency(group.savingsVsSecondCheapest ?? 0)} abaixo do
                   próximo menor preço (
                   {formatCurrency(group.secondCheapestPriceAmount)}).
@@ -1478,7 +1478,7 @@ export function OfferDetailPage() {
             />
             {offer.activeOffer.savingsVsComparison &&
             offer.activeOffer.savingsVsComparison > 0 ? (
-              <p className="text-sm font-medium text-emerald-700">
+              <p className="text-sm font-medium text-[var(--ds-savings)]">
                 Economize{' '}
                 {formatCurrency(offer.activeOffer.savingsVsComparison)} versus o
                 segundo menor preco elegivel para esta variante.
@@ -2098,7 +2098,7 @@ export function ReceiptSubmissionPage() {
                 </div>
                 {submission.rewardEligibilityStatus === 'eligible_pending' ||
                 submission.rewardEligibilityStatus === 'granted' ? (
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
+                  <div className="rounded-lg border border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)] p-3 text-sm text-[var(--ds-savings)]">
                     {submission.rewardEligibilityStatus === 'granted'
                       ? 'Reward validado: '
                       : 'Reward previsto após validação: '}
@@ -2119,7 +2119,7 @@ export function ReceiptSubmissionPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/70 bg-emerald-50/80 shadow-sm">
+        <Card className="border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)]/70 shadow-sm">
           <CardHeader>
             <CardTitle>Como o reward funciona</CardTitle>
             <CardDescription>
@@ -2135,7 +2135,7 @@ export function ReceiptSubmissionPage() {
               'Reward sai de processamento para validado quando a nota é confiável.',
             ].map((step, index) => (
               <div
-                className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-white/70 p-3"
+                className="flex items-center gap-3 rounded-lg border border-[var(--ds-savings-border)] bg-card/80 p-3"
                 key={step}
               >
                 <StatusBadge icon={null} tone="savings">
@@ -2284,7 +2284,7 @@ export function ListsPage() {
           </Card>
         </div>
 
-        <Card className="border-border/70 bg-emerald-50/80 shadow-sm">
+        <Card className="border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)]/70 shadow-sm">
           <CardHeader className="gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge
