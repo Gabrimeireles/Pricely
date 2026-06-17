@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -77,6 +83,7 @@ describe('ChecklistPage', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    cleanup();
   });
 
   it('renders checklist items and syncs purchased state', async () => {
@@ -88,14 +95,15 @@ describe('ChecklistPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Checklist de compra')).toBeTruthy();
-    expect(screen.getByText('Use o checklist dentro do mercado')).toBeTruthy();
-    expect(screen.getByText('Arroz tipo 1 1kg')).toBeTruthy();
-    expect(screen.getByText('0 de 1 itens comprados')).toBeTruthy();
     expect(
-      screen.getByText('Variante otimizada: Arroz Camil 1kg'),
+      screen.getByRole('heading', { name: 'Checklist de compras' }),
     ).toBeTruthy();
+    expect(screen.getByText('Plano de compras')).toBeTruthy();
+    expect(screen.getByText('Arroz tipo 1 1kg')).toBeTruthy();
+    expect(screen.getByText('0 de 1')).toBeTruthy();
+    expect(screen.getByText('Arroz Camil 1kg')).toBeTruthy();
     expect(screen.getByText('Preço previsto: R$ 21,90')).toBeTruthy();
+    expect(screen.getByText('Resumo da compra')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('checkbox'));
 
@@ -168,9 +176,7 @@ describe('ChecklistPage', () => {
       </MemoryRouter>,
     );
 
-    expect(
-      screen.getByText('Compra fechada, valide com a nota fiscal'),
-    ).toBeTruthy();
+    expect(screen.getByText('Compra concluída')).toBeTruthy();
     expect(screen.getByText('Envio recebido')).toBeTruthy();
     expect(screen.getByText('Reward em processamento')).toBeTruthy();
     expect(

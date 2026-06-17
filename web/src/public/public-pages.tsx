@@ -2703,6 +2703,49 @@ export function ChecklistPage() {
   const checklistProgress = list?.items.length
     ? Math.round((purchasedCount / list.items.length) * 100)
     : 0;
+  const selectionByItemId = new Map(
+    optimizationResult?.selections.map((selection) => [
+      selection.shoppingListItemId,
+      selection,
+    ]) ?? [],
+  );
+  const expectedTotal =
+    list?.items.reduce((total, item) => {
+      const selection = selectionByItemId.get(item.id);
+      return total + (selection?.priceAmount ?? 0) * Math.max(1, item.quantity);
+    }, 0) ?? 0;
+  const itemsWithExpectedPrice =
+    list?.items.filter((item) => selectionByItemId.has(item.id)).length ?? 0;
+  const groupedChecklist = Array.from(
+    (list?.items ?? [])
+      .reduce(
+        (groups, item) => {
+          const selection = selectionByItemId.get(item.id);
+          const storeName =
+            selection?.establishmentName ??
+            (optimizationResult ? 'Sem loja definida' : 'Conferência manual');
+          const current = groups.get(storeName) ?? {
+            storeName,
+            neighborhood: selection?.establishmentNeighborhood,
+            items: [] as ShoppingListItem[],
+          };
+
+          current.items.push(item);
+          groups.set(storeName, current);
+
+          return groups;
+        },
+        new Map<
+          string,
+          {
+            storeName: string;
+            neighborhood?: string;
+            items: ShoppingListItem[];
+          }
+        >(),
+      )
+      .values(),
+  );
 
   useEffect(() => {
     if (!list || optimizationResult) {
@@ -2804,65 +2847,39 @@ export function ChecklistPage() {
           </AlertDescription>
         </Alert>
       ) : (
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight">
-                Checklist de compra
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
+          <div className="grid gap-4 border-b border-border/70 pb-4 lg:grid-cols-[auto_minmax(0,1fr)_200px] lg:items-center">
+            <Button asChild className="w-fit px-0" size="sm" variant="link">
+              <Link to={`/listas/${list.id}`}>
+                <ChevronRightIcon className="size-4 rotate-180" />
+                Voltar
+              </Link>
+            </Button>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                Checklist de compras
               </h1>
-              <p className="text-muted-foreground">
-                {list.name} - {getCityById(list.cityId).name}. Marque os itens
-                conforme a compra acontece no mercado.
+              <p className="mt-1 text-sm text-muted-foreground">
+                {list.name} · Modo:{' '}
+                {optimizationModeCopy[list.lastMode]?.title ??
+                  'Menor total na cidade'}
               </p>
             </div>
-            <Button asChild variant="outline">
-              <Link to={`/listas/${list.id}`}>Voltar para a lista</Link>
-            </Button>
+            <div className="rounded-lg border border-border/70 bg-card p-4">
+              <div className="text-xl font-semibold tabular-nums">
+                {purchasedCount} de {list.items.length}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                itens comprados
+              </div>
+              <div className="mt-3 h-2 rounded-full bg-muted">
+                <div
+                  className="h-2 rounded-full bg-[var(--ds-savings)]"
+                  style={{ width: `${Math.max(8, checklistProgress)}%` }}
+                />
+              </div>
+            </div>
           </div>
-
-          <NextBestActionStrip
-            title={
-              list.completedAt
-                ? 'Compra fechada, valide com a nota fiscal'
-                : allItemsPurchased
-                  ? 'Todos os itens marcados, conclua a lista'
-                  : 'Use o checklist dentro do mercado'
-            }
-            description={
-              list.completedAt
-                ? 'A nota fiscal confirma preços, melhora o trust factor e deixa o reward em validação.'
-                : allItemsPurchased
-                  ? 'O total pago é opcional. Depois disso, envie a nota fiscal para reforçar as ofertas.'
-                  : 'Marque os produtos, reporte divergências de preço e finalize quando a compra estiver completa.'
-            }
-            primaryAction={{
-              label: list.completedAt
-                ? 'Enviar nota fiscal'
-                : allItemsPurchased
-                  ? 'Concluir lista'
-                  : 'Continuar checklist',
-              to: list.completedAt ? '/notas' : '#checklist-actions',
-            }}
-            secondaryAction={{
-              label: 'Ver otimização',
-              to: `/otimizacao/${list.id}`,
-            }}
-            steps={[
-              { label: 'Lista', status: 'done' },
-              {
-                label: 'Otimização',
-                status: optimizationResult ? 'done' : 'pending',
-              },
-              {
-                label: 'Checklist',
-                status: list.completedAt ? 'done' : 'current',
-              },
-              {
-                label: 'Nota fiscal',
-                status: list.completedAt ? 'current' : 'pending',
-              },
-            ]}
-          />
 
           {error ? (
             <Alert variant="destructive">
@@ -2880,91 +2897,284 @@ export function ChecklistPage() {
             </Alert>
           ) : null}
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-border/70 bg-card/90 shadow-sm">
-              <CardHeader>
-                <CardDescription>Progresso da compra</CardDescription>
-                <CardTitle className="tabular-nums">
-                  {purchasedCount}/{list.items.length}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-2">
-                <div className="h-2 rounded-full bg-muted">
-                  <div
-                    className="h-2 rounded-full bg-[var(--ds-savings)]"
-                    style={{ width: `${Math.max(8, checklistProgress)}%` }}
-                  />
+          <div className="rounded-lg border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)]/45 p-4 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-full bg-[var(--ds-location-soft)] text-[var(--ds-location)]">
+                  <MapPinIcon className="size-5" />
                 </div>
-                <StatusBadge
-                  family="severity"
-                  status={allItemsPurchased ? 'healthy' : 'info'}
-                >
-                  {allItemsPurchased ? 'Pronta para concluir' : 'Em compra'}
-                </StatusBadge>
-              </CardContent>
-            </Card>
-            <Card className="border-border/70 bg-card/90 shadow-sm">
-              <CardHeader>
-                <CardDescription>Fonte da recomendação</CardDescription>
-                <CardTitle>
-                  {optimizationResult ? 'Otimização carregada' : 'Lista manual'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {optimizationResult
-                    ? 'Itens mostram variante selecionada, preço previsto e evidência quando disponível.'
-                    : 'Sem otimização salva, use o checklist como conferência manual.'}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/70 bg-card/90 shadow-sm">
-              <CardHeader>
-                <CardDescription>Nota fiscal</CardDescription>
-                <CardTitle>
-                  {list.completedAt ? 'Pronta para envio' : 'Após concluir'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  A nota valida preços e pode liberar reward somente depois da
-                  revisão do backend.
-                </p>
-              </CardContent>
-            </Card>
+                <div>
+                  <div className="font-semibold">Plano de compras</div>
+                  <div className="text-sm text-muted-foreground">
+                    {groupedChecklist.length}{' '}
+                    {groupedChecklist.length === 1 ? 'parada' : 'paradas'} ·{' '}
+                    {getCityById(list.cityId).name} ·{' '}
+                    {optimizationResult
+                      ? 'preços esperados carregados'
+                      : 'conferência manual'}
+                  </div>
+                </div>
+              </div>
+              <Button asChild size="sm" variant="outline">
+                <Link to={`/otimizacao/${list.id}`}>
+                  Ver otimização
+                  <ExternalLinkIcon className="size-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
 
-          <StickyActionBar id="checklist-actions">
-            <div>
-              <div className="font-medium">
-                {purchasedCount} de {list.items.length} itens comprados
+          <div className="grid gap-4">
+            {groupedChecklist.map((group, groupIndex) => (
+              <section
+                className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
+                key={group.storeName}
+              >
+                <div className="flex items-center justify-between gap-3 border-b border-border/70 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                      {groupIndex + 1}
+                    </div>
+                    <div>
+                      <h2 className="font-semibold">{group.storeName}</h2>
+                      <p className="text-sm text-muted-foreground">
+                        {group.neighborhood ?? getCityById(list.cityId).name}
+                      </p>
+                    </div>
+                  </div>
+                  <StatusBadge tone="savings">
+                    {group.items.length}{' '}
+                    {group.items.length === 1 ? 'item' : 'itens'}
+                  </StatusBadge>
+                </div>
+
+                <div className="divide-y divide-border/70">
+                  {group.items.map((item) => {
+                    const checked = item.purchaseStatus === 'purchased';
+                    const optimizationSelection = selectionByItemId.get(
+                      item.id,
+                    );
+                    const expectedPrice = optimizationSelection?.priceAmount;
+                    const optimizedVariantLabel =
+                      optimizationSelection?.selectedVariantName ??
+                      (item.optimizedProductVariantId
+                        ? 'variante definida pela otimização'
+                        : undefined);
+                    const isReporting = reportItem?.id === item.id;
+
+                    return (
+                      <div key={item.id} className="grid gap-0">
+                        <div
+                          className={`grid gap-3 p-4 sm:grid-cols-[36px_64px_minmax(0,1fr)_150px_auto] sm:items-center ${
+                            checked
+                              ? 'bg-[var(--ds-savings-soft)]/25'
+                              : 'bg-card'
+                          }`}
+                        >
+                          <input
+                            aria-label={`Marcar ${item.name} como comprado`}
+                            checked={checked}
+                            className="size-6 rounded"
+                            disabled={pendingItemId === item.id}
+                            onChange={() =>
+                              void toggleItem(
+                                item.id,
+                                item.purchaseStatus ?? 'pending',
+                              )
+                            }
+                            type="checkbox"
+                          />
+                          <img
+                            alt={item.name}
+                            className="size-16 rounded-md border border-border/70 object-cover"
+                            src={resolveProductImage(item.imageUrl)}
+                          />
+                          <div className="min-w-0">
+                            <div className="font-medium">{item.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {optimizedVariantLabel ??
+                                `${item.quantity} ${item.unitLabel}`}
+                            </div>
+                            {expectedPrice !== undefined ? (
+                              <div className="text-xs text-muted-foreground">
+                                Preço previsto: {formatCurrency(expectedPrice)}
+                              </div>
+                            ) : null}
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <StatusBadge
+                                tone={
+                                  item.brandPreferenceMode === 'preferred'
+                                    ? 'warning'
+                                    : 'savings'
+                                }
+                              >
+                                {describeBrandRule(
+                                  item,
+                                  item.brandPreferenceMode === 'exact'
+                                    ? item.name
+                                    : undefined,
+                                )}
+                              </StatusBadge>
+                              <StatusBadge
+                                family="queue"
+                                status={checked ? 'completed' : 'queued'}
+                              >
+                                {checked ? 'Comprado' : 'Pendente'}
+                              </StatusBadge>
+                            </div>
+                          </div>
+                          <div className="text-sm sm:text-right">
+                            <div className="font-semibold">
+                              {expectedPrice !== undefined
+                                ? formatCurrency(expectedPrice)
+                                : 'Sem preço'}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              cada
+                            </div>
+                            {optimizationSelection?.trustFactor !== undefined ? (
+                              <StatusBadge
+                                family="trust"
+                                status={
+                                  optimizationSelection.trustFactor >= 75
+                                    ? 'high'
+                                    : 'medium'
+                                }
+                                className="mt-2"
+                              >
+                                {optimizationSelection.trustFactor}/100
+                              </StatusBadge>
+                            ) : null}
+                          </div>
+                          <Button
+                            aria-label={`Reportar preço de ${item.name}`}
+                            onClick={() => {
+                              setReportItem(isReporting ? null : item);
+                              setReportedPrice(
+                                expectedPrice !== undefined
+                                  ? String(expectedPrice).replace('.', ',')
+                                  : '',
+                              );
+                              setReportReason('');
+                            }}
+                            size="sm"
+                            type="button"
+                            variant={isReporting ? 'secondary' : 'ghost'}
+                          >
+                            Reportar preço
+                          </Button>
+                        </div>
+
+                        {isReporting ? (
+                          <div className="grid gap-3 border-t border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)]/55 p-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 font-medium text-[var(--ds-warning)]">
+                                <FlagIcon className="size-4" />
+                                Preço diferente na gôndola
+                              </div>
+                              <Button
+                                onClick={() => {
+                                  setReportItem(null);
+                                  setReportedPrice('');
+                                  setReportReason('');
+                                }}
+                                size="sm"
+                                type="button"
+                                variant="link"
+                              >
+                                Desfazer
+                              </Button>
+                            </div>
+                            <div className="grid gap-3 md:grid-cols-[180px_1fr_auto]">
+                              <Field>
+                                <FieldLabel>Preço encontrado</FieldLabel>
+                                <Input
+                                  inputMode="decimal"
+                                  onChange={(event) =>
+                                    setReportedPrice(event.target.value)
+                                  }
+                                  placeholder="Ex.: 21,90"
+                                  value={reportedPrice}
+                                />
+                              </Field>
+                              <Field>
+                                <FieldLabel>Observação opcional</FieldLabel>
+                                <Textarea
+                                  onChange={(event) =>
+                                    setReportReason(event.target.value)
+                                  }
+                                  placeholder="Ex.: etiqueta mostrava outro valor ou item indisponível"
+                                  value={reportReason}
+                                />
+                              </Field>
+                              <div className="flex items-end">
+                                <Button
+                                  onClick={submitPriceReport}
+                                  type="button"
+                                >
+                                  Enviar reporte
+                                </Button>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Obrigado. Vamos verificar e atualizar se
+                              confirmado.
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          <div className="rounded-lg border border-border/70 bg-card p-4 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="font-semibold">Resumo da compra</h2>
+              <StatusBadge
+                family="severity"
+                status={allItemsPurchased ? 'healthy' : 'warning'}
+              >
+                {allItemsPurchased ? 'Completa' : 'Parcial'}
+              </StatusBadge>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-4">
+              <div>
+                <div className="text-xs text-muted-foreground">
+                  Itens comprados
+                </div>
+                <div className="mt-1 text-2xl font-semibold text-primary">
+                  {purchasedCount} / {list.items.length}
+                </div>
               </div>
-              <div className="text-sm text-muted-foreground">
-                {list.completedAt
-                  ? `Lista concluída em ${formatDateTime(list.completedAt)}${
-                      list.paidTotal !== undefined
-                        ? ` · total pago ${formatCurrency(list.paidTotal)}`
-                        : ''
-                    }`
-                  : allItemsPurchased
-                    ? 'Todos os itens foram marcados. Informe o total pago se quiser salvar essa conferência.'
-                    : 'Marque os itens conforme encontra os produtos no estabelecimento.'}
+              <div>
+                <div className="text-xs text-muted-foreground">
+                  Economia estimada
+                </div>
+                <div className="mt-1 text-2xl font-semibold text-[var(--ds-savings)]">
+                  {formatCurrency(list.expectedSavings ?? 0)}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">
+                  Total esperado
+                </div>
+                <div className="mt-1 text-2xl font-semibold">
+                  {formatCurrency(expectedTotal)}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">
+                  Cobertura dos itens
+                </div>
+                <div className="mt-1 text-2xl font-semibold">
+                  {itemsWithExpectedPrice} de {list.items.length}
+                </div>
               </div>
             </div>
-            {allItemsPurchased && !list.completedAt ? (
-              <div className="flex flex-col gap-2 sm:min-w-72 sm:flex-row">
-                <Input
-                  inputMode="decimal"
-                  onChange={(event) => setPaidTotal(event.target.value)}
-                  placeholder="Total pago opcional"
-                  value={paidTotal}
-                />
-                <Button disabled={isCompleting} onClick={completeChecklist}>
-                  Concluir
-                </Button>
-              </div>
-            ) : null}
-          </StickyActionBar>
+          </div>
 
           {list.completedAt ? (
             <Alert>
@@ -2972,8 +3182,11 @@ export function ChecklistPage() {
               <AlertTitle>Compra concluída</AlertTitle>
               <AlertDescription className="space-y-3">
                 <p>
-                  Use a nota fiscal para validar os preços encontrados e ajudar
-                  a melhorar a confiança das próximas ofertas.
+                  Lista concluída em {formatDateTime(list.completedAt)}
+                  {list.paidTotal !== undefined
+                    ? ` · total pago ${formatCurrency(list.paidTotal)}`
+                    : ''}
+                  . Use a nota fiscal para validar os preços encontrados.
                 </p>
                 <div className="grid gap-2 text-sm sm:grid-cols-3">
                   <StatusBadge tone="neutral">Envio recebido</StatusBadge>
@@ -2991,152 +3204,42 @@ export function ChecklistPage() {
             </Alert>
           ) : null}
 
-          <div className="grid gap-4">
-            {list.items.map((item) => {
-              const checked = item.purchaseStatus === 'purchased';
-              const optimizationSelection = optimizationResult?.selections.find(
-                (selection) => selection.shoppingListItemId === item.id,
-              );
-              const expectedPrice = optimizationSelection?.priceAmount;
-              const optimizedVariantLabel =
-                optimizationSelection?.selectedVariantName ??
-                (item.optimizedProductVariantId
-                  ? 'variante definida pela otimizacao'
-                  : undefined);
-
-              return (
-                <PriceRow
-                  key={item.id}
-                  className={
-                    checked
-                      ? 'border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)]/35'
-                      : undefined
-                  }
-                  image={
-                    item.imageUrl ? (
-                      <img
-                        alt={item.name}
-                        className="size-full object-cover"
-                        src={resolveProductImage(item.imageUrl)}
-                      />
-                    ) : null
-                  }
-                  title={item.name}
-                  subtitle={
-                    <span className="grid gap-1">
-                      <span>
-                        {item.quantity} {item.unitLabel} -{' '}
-                        {describeBrandRule(
-                          item,
-                          item.brandPreferenceMode === 'exact'
-                            ? item.name
-                            : undefined,
-                        )}
-                      </span>
-                      {item.note ? <span>{item.note}</span> : null}
-                      {optimizedVariantLabel ? (
-                        <span>Variante otimizada: {optimizedVariantLabel}</span>
-                      ) : null}
-                      {expectedPrice !== undefined ? (
-                        <span>
-                          Preço previsto: {formatCurrency(expectedPrice)}
-                        </span>
-                      ) : null}
-                    </span>
-                  }
-                  price={
-                    expectedPrice !== undefined
-                      ? formatCurrency(expectedPrice)
-                      : 'Sem preço'
-                  }
-                  comparison={
-                    expectedPrice !== undefined ? 'preço previsto' : undefined
-                  }
-                  meta={
-                    <StatusBadge
-                      family="queue"
-                      status={checked ? 'completed' : 'queued'}
-                    >
-                      {checked ? 'Comprado' : 'Pendente'}
-                    </StatusBadge>
-                  }
-                  actions={
-                    <div className="flex items-center gap-2">
-                      <input
-                        checked={checked}
-                        className="h-5 w-5"
-                        disabled={pendingItemId === item.id}
-                        onChange={() =>
-                          void toggleItem(
-                            item.id,
-                            item.purchaseStatus ?? 'pending',
-                          )
-                        }
-                        type="checkbox"
-                      />
-                      <Button
-                        onClick={() => {
-                          setReportItem(item);
-                          setReportedPrice(
-                            expectedPrice !== undefined
-                              ? String(expectedPrice).replace('.', ',')
-                              : '',
-                          );
-                        }}
-                        size="sm"
-                        variant="ghost"
-                      >
-                        Reportar preço
-                      </Button>
-                    </div>
-                  }
-                />
-              );
-            })}
-          </div>
-
-          <Dialog
-            open={Boolean(reportItem)}
-            onOpenChange={(open) => {
-              if (!open) {
-                setReportItem(null);
-                setReportedPrice('');
-                setReportReason('');
-              }
-            }}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Reportar preço diferente</DialogTitle>
-                <DialogDescription>
-                  Avise quando o produto não estiver com o preço citado no app.
-                  Isso ajuda a revisar a oferta e a confiança da evidência.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4">
-                <Field>
-                  <FieldLabel>Preço encontrado</FieldLabel>
-                  <Input
-                    inputMode="decimal"
-                    onChange={(event) => setReportedPrice(event.target.value)}
-                    placeholder="Ex.: 21,90"
-                    value={reportedPrice}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel>Observação opcional</FieldLabel>
-                  <Textarea
-                    onChange={(event) => setReportReason(event.target.value)}
-                    placeholder="Ex.: etiqueta mostrava outro valor ou item indisponível"
-                    value={reportReason}
-                  />
-                </Field>
+          <StickyActionBar id="checklist-actions">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <ReceiptTextIcon className="size-5" />
               </div>
-              <DialogFooter>
-                <Button onClick={submitPriceReport}>Enviar reporte</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              <div>
+                <div className="font-medium">Total pago opcional</div>
+                <div className="text-sm text-muted-foreground">
+                  Ajuda a aumentar a precisão, sem prometer reward antes da
+                  validação da nota.
+                </div>
+              </div>
+            </div>
+            {!list.completedAt ? (
+              <div className="flex flex-col gap-2 sm:min-w-[420px] sm:flex-row">
+                <Input
+                  inputMode="decimal"
+                  onChange={(event) => setPaidTotal(event.target.value)}
+                  placeholder="R$ 0,00"
+                  value={paidTotal}
+                />
+                <Button
+                  disabled={isCompleting || !allItemsPurchased}
+                  onClick={completeChecklist}
+                  type="button"
+                >
+                  <CheckCircle2Icon className="size-4" />
+                  Concluir lista
+                </Button>
+              </div>
+            ) : (
+              <Button asChild>
+                <Link to="/notas">Enviar nota fiscal</Link>
+              </Button>
+            )}
+          </StickyActionBar>
         </div>
       )}
     </RequireAuthentication>
