@@ -201,7 +201,7 @@ export function PublicLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.14),transparent_28%),radial-gradient(circle_at_85%_15%,rgba(37,99,235,0.10),transparent_22%),linear-gradient(180deg,#f8fafb_0%,#f3f8f6_48%,#eef7f8_100%)]">
+    <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/92 backdrop-blur">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-6">
           <div className="flex items-center gap-6">
@@ -333,7 +333,7 @@ export function PublicLayout() {
               </div>
             ) : null}
             {locationPreview ? (
-              <div className="mt-2 rounded-md border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs text-teal-950">
+              <div className="mt-2 rounded-md border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)] px-2.5 py-1 text-xs text-[var(--ds-location)]">
                 {locationPreview}
               </div>
             ) : null}
