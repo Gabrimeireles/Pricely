@@ -499,6 +499,58 @@ function receiptMakerActionButtonLabel(
   return labels[action];
 }
 
+function adminOfferConfidenceTone(confidenceLevel: string) {
+  if (confidenceLevel === 'high') {
+    return 'savings' as const;
+  }
+
+  if (confidenceLevel === 'low') {
+    return 'critical' as const;
+  }
+
+  return 'warning' as const;
+}
+
+function adminOfferConfidenceLabel(confidenceLevel: string) {
+  if (confidenceLevel === 'high') {
+    return 'Alta confiança';
+  }
+
+  if (confidenceLevel === 'low') {
+    return 'Baixa confiança';
+  }
+
+  return 'Confiança média';
+}
+
+function adminOfferFreshnessTone(observedAt: string) {
+  const ageInDays = Math.floor(
+    (Date.now() - new Date(observedAt).getTime()) / 86_400_000,
+  );
+
+  if (ageInDays >= 14) {
+    return 'critical' as const;
+  }
+
+  if (ageInDays >= 7) {
+    return 'warning' as const;
+  }
+
+  return 'savings' as const;
+}
+
+function adminOfferSourceLabel(offer: AdminOfferResponse) {
+  if (offer.confidenceLevel === 'high') {
+    return 'Evidência forte';
+  }
+
+  if (offer.confidenceLevel === 'low') {
+    return 'Revisão manual';
+  }
+
+  return 'Painel admin';
+}
+
 export function AdminOverviewPage() {
   const { data, error } = useAdminData<AdminMetricsResponse | null>(
     fetchAdminMetrics,
@@ -1589,10 +1641,20 @@ export function AdminCatalogPage() {
   const { data: variants, reload: reloadVariants } = useAdminData<
     AdminProductVariantResponse[]
   >(fetchAdminProductVariants, []);
+  const { data: offers } = useAdminData<AdminOfferResponse[]>(
+    fetchAdminOffers,
+    [],
+  );
   const { accessToken } = usePricely();
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
   const [variantImageFile, setVariantImageFile] = useState<File | null>(null);
+  const [selectedCatalogProductId, setSelectedCatalogProductId] = useState<
+    string | null
+  >(null);
+  const [selectedCatalogVariantId, setSelectedCatalogVariantId] = useState<
+    string | null
+  >(null);
   const [form, setForm] = useState({
     slug: '',
     name: '',
@@ -1647,6 +1709,46 @@ export function AdminCatalogPage() {
         ].some((value) => value.toLowerCase().includes(normalizedVariantQuery)),
       )
     : variants;
+  const selectedCatalogProduct =
+    products.find((product) => product.id === selectedCatalogProductId) ??
+    visibleProducts[0] ??
+    products[0] ??
+    null;
+  const selectedCatalogProductVariants = selectedCatalogProduct
+    ? variants.filter(
+        (variant) => variant.catalogProductId === selectedCatalogProduct.id,
+      )
+    : [];
+  const selectedCatalogVariant =
+    selectedCatalogProductVariants.find(
+      (variant) => variant.id === selectedCatalogVariantId,
+    ) ??
+    selectedCatalogProductVariants[0] ??
+    null;
+  const selectedVariantOffers = selectedCatalogVariant
+    ? offers.filter((offer) => offer.productVariant.id === selectedCatalogVariant.id)
+    : selectedCatalogProduct
+      ? offers.filter((offer) => offer.catalogProduct.id === selectedCatalogProduct.id)
+      : [];
+  const selectedBestOffer = selectedVariantOffers
+    .filter((offer) => offer.isActive)
+    .sort(
+      (first, second) =>
+        Number(first.priceAmount) - Number(second.priceAmount),
+    )[0];
+  const productsMissingImages = products.filter((product) => {
+    const productVariants = variants.filter(
+      (variant) => variant.catalogProductId === product.id,
+    );
+
+    return !product.imageUrl && !productVariants.some((variant) => variant.imageUrl);
+  }).length;
+  const staleOffersCount = offers.filter(
+    (offer) => adminOfferFreshnessTone(offer.observedAt) !== 'savings',
+  ).length;
+  const lowTrustOffersCount = offers.filter(
+    (offer) => offer.confidenceLevel === 'low',
+  ).length;
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
@@ -1969,16 +2071,67 @@ export function AdminCatalogPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="border-border/70 bg-card/90 shadow-sm">
         <CardHeader>
-          <CardTitle>Catálogo</CardTitle>
-          <CardDescription>
-            Produtos base e variantes saem do banco real. Aliases existentes
-            aparecem como leitura para apoiar o matcher.
-          </CardDescription>
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <CardTitle>Catálogo e ofertas</CardTitle>
+              <CardDescription>
+                Produtos, variantes e ofertas com qualidade e confiança.
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline">
+                <a href="/dashboard/ofertas">Adicionar oferta</a>
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setEditingProductId(null);
+                  setForm({
+                    slug: '',
+                    name: '',
+                    category: '',
+                    defaultUnit: '',
+                  });
+                }}
+              >
+                Adicionar produto
+              </Button>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="grid gap-3">
-          <div className="grid gap-3 rounded-lg border border-border/70 bg-muted/20 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+        <CardContent className="grid gap-4">
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-lg border border-border/70 p-3">
+              <div className="text-sm text-muted-foreground">Produtos</div>
+              <div className="mt-1 text-2xl font-semibold">
+                {products.length}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-3">
+              <div className="text-sm text-muted-foreground">Variantes</div>
+              <div className="mt-1 text-2xl font-semibold">
+                {variants.length}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-3">
+              <div className="text-sm text-muted-foreground">Sem imagem</div>
+              <div className="mt-1 text-2xl font-semibold">
+                {productsMissingImages}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-3">
+              <div className="text-sm text-muted-foreground">
+                Ofertas para revisar
+              </div>
+              <div className="mt-1 text-2xl font-semibold">
+                {staleOffersCount + lowTrustOffersCount}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 rounded-lg border border-border/70 bg-muted/20 p-3 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
             <Input
               aria-label="Buscar no catalogo"
               placeholder="Buscar produto, alias, marca ou variante"
@@ -1986,222 +2139,563 @@ export function AdminCatalogPage() {
               onChange={(event) => setCatalogQuery(event.target.value)}
             />
             <StatusBadge tone="neutral">
+              Categoria: Todas
+            </StatusBadge>
+            <StatusBadge tone="neutral">Marca: Todas</StatusBadge>
+            <StatusBadge tone="neutral">
               {visibleProducts.length} de {products.length} produtos
             </StatusBadge>
           </div>
+
           {error ? (
             <Alert variant="destructive">
               <AlertTitle>Falha ao carregar catálogo</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
-          ) : (
-            visibleProducts.map((product) => {
-              const productVariants = variants.filter(
-                (variant) => variant.catalogProductId === product.id,
-              );
-              const previewImage =
-                productVariants.find((variant) => variant.imageUrl)?.imageUrl ??
-                product.imageUrl;
-              const variantsExpanded =
-                expandedCatalogProductId === product.id ||
-                normalizedCatalogQuery.length > 0;
+          ) : null}
 
-              return (
-                <div
-                  key={product.id}
-                  className="rounded-xl border-2 border-border/80 bg-card/95 p-4 shadow-sm"
-                >
+          {!error && products.length === 0 ? (
+            <div className="rounded-lg border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
+              Catálogo vazio. Adicione o primeiro produto para criar variantes e
+              ofertas.
+            </div>
+          ) : null}
+
+          {!error && products.length > 0 ? (
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+              <div className="min-w-0 overflow-hidden rounded-lg border border-border/70">
+                <div className="grid grid-cols-[minmax(220px,1fr)_130px_90px_110px_130px] gap-3 border-b border-border/70 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground max-lg:hidden">
+                  <span>Produto</span>
+                  <span>Status da imagem</span>
+                  <span>Variantes</span>
+                  <span>Ofertas ativas</span>
+                  <span>Qualidade</span>
+                </div>
+                <div className="grid divide-y divide-border/70">
+                  {visibleProducts.map((product) => {
+                    const productVariants = variants.filter(
+                      (variant) => variant.catalogProductId === product.id,
+                    );
+                    const productOffers = offers.filter(
+                      (offer) => offer.catalogProduct.id === product.id,
+                    );
+                    const activeOfferCount = productOffers.filter(
+                      (offer) => offer.isActive,
+                    ).length;
+                    const previewImage =
+                      productVariants.find((variant) => variant.imageUrl)
+                        ?.imageUrl ?? product.imageUrl;
+                    const missingImage = !previewImage;
+                    const hasStaleOffer = productOffers.some(
+                      (offer) =>
+                        adminOfferFreshnessTone(offer.observedAt) !== 'savings',
+                    );
+                    const hasLowTrustOffer = productOffers.some(
+                      (offer) => offer.confidenceLevel === 'low',
+                    );
+                    const variantsExpanded =
+                      expandedCatalogProductId === product.id ||
+                      normalizedCatalogQuery.length > 0;
+                    const selected = selectedCatalogProduct?.id === product.id;
+
+                    return (
+                      <div
+                        key={product.id}
+                        className={
+                          selected
+                            ? 'bg-[var(--ds-location-soft)]/40'
+                            : 'bg-background/80'
+                        }
+                      >
+                        <button
+                          className="grid w-full gap-3 px-4 py-3 text-left transition hover:bg-muted/30 lg:grid-cols-[minmax(220px,1fr)_130px_90px_110px_130px] lg:items-center"
+                          type="button"
+                          onClick={() => {
+                            setSelectedCatalogProductId(product.id);
+                            setSelectedCatalogVariantId(
+                              productVariants[0]?.id ?? null,
+                            );
+                          }}
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            {previewImage ? (
+                              <img
+                                alt={product.name}
+                                className="size-12 rounded-lg border border-border/70 object-cover"
+                                src={resolveProductImage(previewImage)}
+                              />
+                            ) : (
+                              <div className="flex size-12 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-xs text-muted-foreground">
+                                <ImageUpIcon className="size-4" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="truncate font-medium">
+                                {product.name}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {product.category} ·{' '}
+                                {product.defaultUnit ?? 'sem unidade padrão'}
+                              </div>
+                            </div>
+                          </div>
+                          <StatusBadge
+                            className="w-fit"
+                            tone={missingImage ? 'warning' : 'savings'}
+                          >
+                            {missingImage ? 'Imagem ausente' : 'Imagem OK'}
+                          </StatusBadge>
+                          <span className="text-sm font-medium">
+                            {productVariants.length}
+                          </span>
+                          <span className="text-sm font-medium">
+                            {activeOfferCount}
+                          </span>
+                          <StatusBadge
+                            className="w-fit"
+                            tone={
+                              missingImage || hasStaleOffer || hasLowTrustOffer
+                                ? 'warning'
+                                : 'savings'
+                            }
+                          >
+                            {missingImage || hasStaleOffer || hasLowTrustOffer
+                              ? 'Atenção'
+                              : 'Bom'}
+                          </StatusBadge>
+                        </button>
+                        <div className="flex flex-wrap gap-2 px-4 pb-3">
+                          <Button
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingProductId(product.id);
+                              setForm({
+                                slug: product.slug,
+                                name: product.name,
+                                category: product.category,
+                                defaultUnit: product.defaultUnit ?? '',
+                              });
+                            }}
+                          >
+                            Editar produto
+                          </Button>
+                          <Button
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                            onClick={async () => {
+                              if (!accessToken) {
+                                return;
+                              }
+                              await updateAdminProduct(accessToken, product.id, {
+                                isActive: !product.isActive,
+                              });
+                              await reload();
+                            }}
+                          >
+                            {product.isActive ? 'Desativar' : 'Ativar'}
+                          </Button>
+                          <Button
+                            className="text-destructive hover:text-destructive"
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                            onClick={async () => {
+                              if (!accessToken) {
+                                return;
+                              }
+                              await deleteAdminProduct(accessToken, product.id);
+                              await reload();
+                              await reloadVariants();
+                            }}
+                          >
+                            Excluir produto
+                          </Button>
+                          <Button
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                              setExpandedCatalogProductId(
+                                variantsExpanded ? null : product.id,
+                              )
+                            }
+                          >
+                            {variantsExpanded ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            )}
+                            {productVariants.length} variantes
+                          </Button>
+                        </div>
+                        {product.aliases.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 px-4 pb-3">
+                            {product.aliases.map((alias) => (
+                              <StatusBadge key={alias.id} tone="neutral">
+                                {alias.alias}
+                              </StatusBadge>
+                            ))}
+                          </div>
+                        ) : null}
+                        {variantsExpanded ? (
+                          <div className="grid gap-2 px-4 pb-4 md:grid-cols-2">
+                            {productVariants.length === 0 ? (
+                              <div className="rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+                                Sem variantes cadastradas.
+                              </div>
+                            ) : null}
+                            {productVariants.map((variant) => (
+                              <div
+                                key={variant.id}
+                                className="rounded-lg border border-border/70 bg-card/70 p-3"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    <img
+                                      alt={variant.displayName}
+                                      className="size-12 rounded-lg border border-border/70 object-cover"
+                                      src={resolveProductImage(variant.imageUrl)}
+                                    />
+                                    <div className="min-w-0">
+                                      <div className="truncate text-sm font-medium">
+                                        {variant.brandName
+                                          ? `${variant.brandName} - `
+                                          : ''}
+                                        {variant.displayName}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {variant.packageLabel ??
+                                          'Apresentação não informada'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setEditingVariantId(variant.id);
+                                      setVariantForm({
+                                        catalogProductId:
+                                          variant.catalogProductId,
+                                        slug: variant.slug ?? '',
+                                        displayName: variant.displayName,
+                                        brandName: variant.brandName ?? '',
+                                        variantLabel:
+                                          variant.variantLabel ?? '',
+                                        packageLabel:
+                                          variant.packageLabel ?? '',
+                                      });
+                                      setVariantImageFile(null);
+                                    }}
+                                  >
+                                    Editar
+                                  </Button>
+                                </div>
+                                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2">
+                                  <span className="text-sm font-medium">
+                                    Ativo
+                                  </span>
+                                  <Switch
+                                    checked={variant.isActive}
+                                    onCheckedChange={async (checked) => {
+                                      if (!accessToken) {
+                                        return;
+                                      }
+                                      await updateAdminProductVariant(
+                                        accessToken,
+                                        variant.id,
+                                        { isActive: checked },
+                                      );
+                                      await reloadVariants();
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {selectedCatalogProduct ? (
+                <aside className="grid content-start gap-4 rounded-lg border border-border/70 bg-card/95 p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      {previewImage ? (
-                        <img
-                          alt={product.name}
-                          className="mb-3 h-24 w-24 rounded-lg border border-border/70 object-cover"
-                          src={resolveProductImage(previewImage)}
-                        />
-                      ) : (
-                        <div className="mb-3 flex h-24 w-24 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-xs text-muted-foreground">
-                          Sem imagem
-                        </div>
-                      )}
-                      <div className="font-medium">{product.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {product.category} -{' '}
-                        {product.defaultUnit ?? 'sem unidade padrão'}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Identificador público: {product.slug}
-                      </div>
+                      <h2 className="text-lg font-semibold">
+                        {selectedCatalogProduct.name}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedCatalogProduct.category} ·{' '}
+                        {selectedCatalogProduct.defaultUnit ??
+                          'sem unidade padrão'}
+                      </p>
                     </div>
-                    <StatusBadge tone="primary">
-                      {product._count.productOffers} ofertas
-                    </StatusBadge>
-                  </div>
-                  <div className="mt-3 flex gap-2">
                     <Button
                       size="sm"
-                      variant="ghost"
+                      type="button"
+                      variant="outline"
                       onClick={() => {
-                        setEditingProductId(product.id);
+                        setEditingProductId(selectedCatalogProduct.id);
                         setForm({
-                          slug: product.slug,
-                          name: product.name,
-                          category: product.category,
-                          defaultUnit: product.defaultUnit ?? '',
+                          slug: selectedCatalogProduct.slug,
+                          name: selectedCatalogProduct.name,
+                          category: selectedCatalogProduct.category,
+                          defaultUnit:
+                            selectedCatalogProduct.defaultUnit ?? '',
                         });
                       }}
                     >
                       Editar produto
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={async () => {
-                        if (!accessToken) {
-                          return;
-                        }
-                        await updateAdminProduct(accessToken, product.id, {
-                          isActive: !product.isActive,
-                        });
-                        await reload();
-                      }}
-                    >
-                      {product.isActive ? 'Desativar' : 'Ativar'}
-                    </Button>
-                    <Button
-                      className="text-destructive hover:text-destructive"
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                      onClick={async () => {
-                        if (!accessToken) {
-                          return;
-                        }
-                        await deleteAdminProduct(accessToken, product.id);
-                        await reload();
-                        await reloadVariants();
-                      }}
-                    >
-                      Excluir produto
-                    </Button>
-                    <Button
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        setExpandedCatalogProductId(
-                          variantsExpanded ? null : product.id,
-                        )
-                      }
-                    >
-                      {variantsExpanded ? (
-                        <ChevronUpIcon className="size-4" />
-                      ) : (
-                        <ChevronDownIcon className="size-4" />
-                      )}
-                      {productVariants.length} variantes
-                    </Button>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {product.aliases.map((alias) => (
-                      <StatusBadge key={alias.id} tone="neutral">
-                        {alias.alias}
-                      </StatusBadge>
-                    ))}
-                  </div>
-                  {variantsExpanded ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {productVariants.map((variant) => (
-                        <div
-                          key={variant.id}
-                          className="min-w-[280px] rounded-lg border-2 border-border/70 bg-muted/20 p-3"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <img
-                                alt={variant.displayName}
-                                className="h-12 w-12 rounded-lg border border-border/70 object-cover"
-                                src={resolveProductImage(variant.imageUrl)}
-                              />
-                              <div className="grid gap-1">
-                                <div className="text-sm font-medium">
-                                  {variant.brandName
-                                    ? `${variant.brandName} - `
-                                    : ''}
-                                  {variant.displayName}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {variant.packageLabel ??
-                                    'Apresentação não informada'}{' '}
-                                  · Identificador público:{' '}
-                                  {variant.slug ?? 'não definido'}
-                                </div>
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              type="button"
-                              variant="ghost"
-                              onClick={() => {
-                                setEditingVariantId(variant.id);
-                                setVariantForm({
-                                  catalogProductId: variant.catalogProductId,
-                                  slug: variant.slug ?? '',
-                                  displayName: variant.displayName,
-                                  brandName: variant.brandName ?? '',
-                                  variantLabel: variant.variantLabel ?? '',
-                                  packageLabel: variant.packageLabel ?? '',
-                                });
-                                setVariantImageFile(null);
-                              }}
-                            >
-                              Editar
-                            </Button>
-                            <Button
-                              className="text-destructive hover:text-destructive"
-                              size="sm"
-                              type="button"
-                              variant="ghost"
-                              onClick={async () => {
-                                if (!accessToken) {
-                                  return;
-                                }
-                                await deleteAdminProductVariant(
-                                  accessToken,
-                                  variant.id,
-                                );
-                                await reloadVariants();
-                                await reload();
-                              }}
-                            >
-                              Excluir
-                            </Button>
-                          </div>
-                          <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2">
-                            <span className="text-sm font-medium">Ativo</span>
-                            <Switch
-                              checked={variant.isActive}
-                              onCheckedChange={async (checked) => {
-                                if (!accessToken) {
-                                  return;
-                                }
-                                await updateAdminProductVariant(
-                                  accessToken,
-                                  variant.id,
-                                  { isActive: checked },
-                                );
-                                await reloadVariants();
-                              }}
-                            />
-                          </div>
+
+                  {productsMissingImages > 0 ||
+                  staleOffersCount > 0 ||
+                  lowTrustOffersCount > 0 ? (
+                    <Alert>
+                      <AlertTriangleIcon />
+                      <AlertTitle>Qualidade para revisar</AlertTitle>
+                      <AlertDescription>
+                        Existem imagens ausentes, ofertas desatualizadas ou
+                        baixa confiança no catálogo.
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+
+                  <div className="grid gap-2">
+                    <div className="text-sm font-medium">
+                      Variantes ({selectedCatalogProductVariants.length})
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedCatalogProductVariants.length === 0 ? (
+                        <div className="col-span-2 rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+                          Sem variantes para este produto.
                         </div>
+                      ) : null}
+                      {selectedCatalogProductVariants.slice(0, 8).map((variant) => (
+                        <button
+                          className={
+                            selectedCatalogVariant?.id === variant.id
+                              ? 'rounded-lg border border-primary bg-primary/10 p-2 text-left'
+                              : 'rounded-lg border border-border/70 bg-background/80 p-2 text-left transition hover:bg-muted/30'
+                          }
+                          key={variant.id}
+                          type="button"
+                          onClick={() => setSelectedCatalogVariantId(variant.id)}
+                        >
+                          <img
+                            alt={variant.displayName}
+                            className="mb-2 h-20 w-full rounded-md border border-border/70 object-cover"
+                            src={resolveProductImage(variant.imageUrl)}
+                          />
+                          <div className="truncate text-sm font-medium">
+                            Variante: {variant.displayName}
+                          </div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {variant.packageLabel ??
+                              'Apresentação não informada'}
+                          </div>
+                        </button>
                       ))}
                     </div>
+                  </div>
+
+                  {selectedCatalogVariant ? (
+                    <div className="rounded-lg border border-border/70 bg-background/80 p-3">
+                      <div className="flex gap-3">
+                        <img
+                          alt={selectedCatalogVariant.displayName}
+                          className="size-20 rounded-lg border border-border/70 object-cover"
+                          src={resolveProductImage(
+                            selectedCatalogVariant.imageUrl,
+                          )}
+                        />
+                        <div className="min-w-0">
+                          <div className="font-medium">Variante selecionada</div>
+                          <div className="text-sm text-muted-foreground">
+                            {selectedCatalogVariant.brandName ??
+                              'Marca livre'}{' '}
+                            ·{' '}
+                            {selectedCatalogVariant.packageLabel ??
+                              'sem embalagem'}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <StatusBadge
+                              tone={
+                                selectedCatalogVariant.isActive
+                                  ? 'savings'
+                                  : 'neutral'
+                              }
+                            >
+                              {selectedCatalogVariant.isActive
+                                ? 'Ativa'
+                                : 'Inativa'}
+                            </StatusBadge>
+                            <StatusBadge
+                              tone={
+                                selectedCatalogVariant.imageUrl
+                                  ? 'savings'
+                                  : 'warning'
+                              }
+                            >
+                              {selectedCatalogVariant.imageUrl
+                                ? 'Imagem OK'
+                                : 'Sem imagem'}
+                            </StatusBadge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-3 gap-3 border-t border-border/70 pt-3 text-sm">
+                        <div>
+                          <div className="text-muted-foreground">
+                            Ofertas ativas
+                          </div>
+                          <div className="font-medium">
+                            {
+                              selectedVariantOffers.filter(
+                                (offer) => offer.isActive,
+                              ).length
+                            }
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">
+                            Melhor preço
+                          </div>
+                          <div className="font-medium">
+                            {selectedBestOffer
+                              ? formatCurrency(
+                                  Number(selectedBestOffer.priceAmount),
+                                )
+                              : 'sem oferta'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">
+                            Confiança
+                          </div>
+                          <div className="font-medium">
+                            {selectedVariantOffers.length > 0
+                              ? adminOfferConfidenceLabel(
+                                  selectedVariantOffers[0].confidenceLevel,
+                                )
+                              : 'sem dados'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingVariantId(selectedCatalogVariant.id);
+                            setVariantForm({
+                              catalogProductId:
+                                selectedCatalogVariant.catalogProductId,
+                              slug: selectedCatalogVariant.slug ?? '',
+                              displayName: selectedCatalogVariant.displayName,
+                              brandName:
+                                selectedCatalogVariant.brandName ?? '',
+                              variantLabel:
+                                selectedCatalogVariant.variantLabel ?? '',
+                              packageLabel:
+                                selectedCatalogVariant.packageLabel ?? '',
+                            });
+                            setVariantImageFile(null);
+                          }}
+                        >
+                          Editar variante selecionada
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <a href="/dashboard/ofertas">Adicionar oferta</a>
+                        </Button>
+                      </div>
+                    </div>
                   ) : null}
-                </div>
-              );
-            })
-          )}
+
+                  <div className="grid gap-2">
+                    <div className="text-sm font-medium">
+                      Ofertas desta variante ({selectedVariantOffers.length})
+                    </div>
+                    {selectedVariantOffers.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+                        Nenhuma oferta ativa para revisar.
+                      </div>
+                    ) : null}
+                    {selectedVariantOffers.map((offer) => (
+                      <div
+                        className="grid gap-3 rounded-lg border border-border/70 bg-background/80 p-3"
+                        key={offer.id}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-medium">
+                              {offer.establishment.unitName}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {offer.establishment.neighborhood} ·{' '}
+                              {formatFreshnessLabel(offer.observedAt)}
+                            </div>
+                          </div>
+                          <div className="text-right font-semibold">
+                            {formatCurrency(Number(offer.priceAmount))}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <StatusBadge
+                            tone={adminOfferConfidenceTone(
+                              offer.confidenceLevel,
+                            )}
+                          >
+                            {adminOfferConfidenceLabel(offer.confidenceLevel)}
+                          </StatusBadge>
+                          <StatusBadge
+                            tone={adminOfferFreshnessTone(offer.observedAt)}
+                          >
+                            {formatFreshnessLabel(offer.observedAt)}
+                          </StatusBadge>
+                          <StatusBadge
+                            tone={offer.isActive ? 'savings' : 'neutral'}
+                          >
+                            {offer.availabilityStatus}
+                          </StatusBadge>
+                          <StatusBadge tone="neutral">
+                            {adminOfferSourceLabel(offer)}
+                          </StatusBadge>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button asChild size="sm" variant="ghost">
+                            <a href="/dashboard/ofertas">Revisar oferta</a>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <TechnicalDisclosure title="Dados técnicos">
+                    <div className="grid gap-2 text-sm">
+                      <span>Produto: {selectedCatalogProduct.slug}</span>
+                      <span>
+                        Variante:{' '}
+                        {selectedCatalogVariant?.slug ?? 'não selecionada'}
+                      </span>
+                      <span>
+                        Ofertas carregadas: {selectedVariantOffers.length}
+                      </span>
+                    </div>
+                  </TechnicalDisclosure>
+                </aside>
+              ) : null}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
