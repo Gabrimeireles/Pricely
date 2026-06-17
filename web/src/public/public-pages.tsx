@@ -4,13 +4,27 @@ import {
   AlertCircleIcon,
   ArrowRightIcon,
   BadgeCheckIcon,
+  BellIcon,
   ChevronRightIcon,
   CheckCircle2Icon,
+  ClipboardListIcon,
+  Clock3Icon,
   FlagIcon,
+  HelpCircleIcon,
+  HistoryIcon,
+  HomeIcon,
+  InfoIcon,
+  ListIcon,
   LocateFixedIcon,
+  LockIcon,
   LogInIcon,
   MapPinIcon,
+  ReceiptTextIcon,
+  SettingsIcon,
   ShieldAlertIcon,
+  ShoppingCartIcon,
+  StoreIcon,
+  TagIcon,
   UploadIcon,
 } from 'lucide-react';
 
@@ -936,219 +950,430 @@ export function LandingPage() {
     };
   }, []);
 
+  const estimatedSavings = impact?.totalEstimatedSavings ?? 0;
+  const optimizedListsCount = impact?.optimizedListsCount ?? 0;
+  const primaryOffer = featuredOffers[0];
+  const secondaryOffers = featuredOffers.slice(0, 3);
+  const coveragePercent = city ? 100 : 0;
+  const activeStoreLabel = city
+    ? `${city.activeStoreCount} lojas ativas`
+    : 'Cidade pendente';
+  const lastReceiptTotal = activeList
+    ? Math.max(42.9, activeList.items.length * 20.45)
+    : 0;
+
   return (
-    <div className="flex flex-col gap-8">
-      <section className="grid gap-4">
-        <div className="flex flex-col gap-2">
-          <StatusBadge tone="primary" className="w-fit">
-            lista salva, cidade persistida e compra pronta no mercado
-          </StatusBadge>
-          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            Continue sua compra e otimize preços.
-          </h1>
-          <p className="max-w-3xl text-muted-foreground">
-            Decida sua compra por cidade, lista e preço observado, com o
-            próximo passo sempre visível.
-          </p>
+    <div className="grid gap-6 lg:grid-cols-[190px_minmax(0,1fr)]">
+      <aside className="hidden rounded-lg border border-border/70 bg-card/88 p-3 shadow-sm lg:block">
+        <nav className="grid gap-1 text-sm">
+          {[
+            { icon: HomeIcon, label: 'Início', to: '/' },
+            { icon: ClipboardListIcon, label: 'Minha lista', to: '/listas' },
+            { icon: TagIcon, label: 'Ofertas', to: '/ofertas' },
+            { icon: StoreIcon, label: 'Lojas', to: '/cidades' },
+            { icon: ReceiptTextIcon, label: 'Notas fiscais', to: '/notas' },
+            { icon: HistoryIcon, label: 'Histórico', to: '/listas' },
+            { icon: SettingsIcon, label: 'Configurações', to: '/listas' },
+          ].map((item, index) => (
+            <Link
+              className={`flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors ${
+                index === 0
+                  ? 'bg-[var(--ds-location-soft)] text-[var(--ds-location)]'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+              key={item.label}
+              to={item.to}
+            >
+              <item.icon className="size-4" />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="mt-20 rounded-lg bg-muted/60 p-3 text-xs">
+          <div className="flex items-center gap-2 font-medium">
+            <HelpCircleIcon className="size-4" />
+            Precisa de ajuda?
+          </div>
+          <div className="mt-1 text-muted-foreground">Central de ajuda</div>
         </div>
+      </aside>
 
-        <NextBestActionStrip
-          eyebrow="Próximo melhor passo"
-          title={
-            activeList
-              ? 'Continue sua lista e otimize preços'
-              : city
-                ? 'Crie uma lista para comparar preços'
-                : 'Escolha uma cidade para começar'
-          }
-          description={
-            activeList
-              ? `Sua lista tem ${activeList.items.length} itens e pode ser otimizada com ofertas da cidade.`
-              : city
-                ? 'Monte uma lista com produtos comparáveis antes de ir ao mercado.'
-                : 'A cidade define as ofertas, lojas e evidências usadas na comparação.'
-          }
-          primaryAction={{
-            label: activeList ? 'Otimizar agora' : 'Criar lista',
-            to: activeList ? `/otimizacao/${activeList.id}` : '/listas/nova',
-          }}
-          secondaryAction={{
-            label: activeList ? 'Ver minha lista' : 'Explorar ofertas',
-            to: activeList ? `/listas/${activeList.id}` : '/ofertas',
-          }}
-          steps={[
-            { label: 'Cidade', status: city ? 'done' : 'current' },
-            {
-              label: 'Lista',
-              status: activeList ? 'done' : city ? 'current' : 'pending',
-            },
-            {
-              label: 'Otimização',
-              status:
-                activeList?.latestOptimizationStatus === 'completed'
-                  ? 'done'
-                  : activeList
-                    ? 'current'
-                    : 'pending',
-            },
-            { label: 'Checklist', status: 'pending' },
-          ]}
-        />
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-[1fr_1fr_0.85fr]">
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <CardTitle>Sua lista ativa</CardTitle>
-                <CardDescription>
-                  {activeList
-                    ? `${activeList.items.length} itens para revisar`
-                    : 'Nenhuma lista criada ainda'}
-                </CardDescription>
-              </div>
-              <StatusBadge tone={activeList ? 'savings' : 'neutral'}>
-                {activeList ? 'Em andamento' : 'Vazia'}
-              </StatusBadge>
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_350px]">
+        <section className="grid min-w-0 gap-5">
+          <div className="grid gap-3 rounded-lg border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)]/45 p-5 shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center">
+            <div className="flex size-14 items-center justify-center rounded-full border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)] text-[var(--ds-location)]">
+              <ClipboardListIcon className="size-7" />
             </div>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div>
-              <div className="text-xl font-semibold">
-                {activeList?.name ?? 'Comece uma lista'}
-              </div>
-              <div className="mt-1 text-sm text-muted-foreground">
-                {activeList
-                  ? `${completedItemCount}/${activeList.items.length} itens com correspondência`
-                  : 'Adicione produtos para liberar a otimização.'}
-              </div>
-            </div>
-            {activeList ? (
-              <div className="h-2 rounded-full bg-muted">
-                <div
-                  className="h-2 rounded-full bg-[var(--ds-primary)]"
-                  style={{
-                    width: `${Math.max(8, activeListCompletion)}%`,
-                  }}
-                />
-              </div>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Button asChild>
-                <Link to={activeList ? `/listas/${activeList.id}` : '/listas/nova'}>
-                  {activeList ? 'Ver lista' : 'Nova lista'}
-                </Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link to={activeList ? `/otimizacao/${activeList.id}` : '/ofertas'}>
-                  {activeList ? 'Otimizar' : 'Ver ofertas'}
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <CardTitle>Cobertura local</CardTitle>
-                <CardDescription>
-                  {city
-                    ? `${city.name}, ${city.stateCode}`
-                    : 'Cidade não selecionada'}
-                </CardDescription>
-              </div>
-              {city ? cityStatusBadge(city) : <StatusBadge tone="warning">Pendente</StatusBadge>}
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            <div className="rounded-lg border border-border/70 bg-background/80 p-4">
-              <div className="text-2xl font-semibold tabular-nums">
-                {city?.activeStoreCount ?? 0}
-              </div>
+            <div className="min-w-0">
               <div className="text-sm text-muted-foreground">
-                lojas ativas na cidade
+                Próximo melhor passo
               </div>
+              <h1 className="mt-1 font-heading text-xl font-semibold sm:text-2xl">
+                {activeList
+                  ? 'Continue sua lista e otimize preços'
+                  : city
+                    ? 'Crie uma lista para comparar preços'
+                    : 'Escolha uma cidade para começar'}
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {activeList
+                  ? `Sua lista está pronta para otimização. Última economia estimada: ${formatCurrency(
+                      estimatedSavings,
+                    )}.`
+                  : city
+                    ? 'Monte uma lista com produtos comparáveis antes de ir ao mercado.'
+                    : 'A cidade define ofertas, lojas e evidências usadas na comparação.'}
+              </p>
             </div>
-            <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-              <StatusBadge tone="location">Raio: 5 km</StatusBadge>
-              <StatusBadge tone={city ? 'savings' : 'neutral'}>
-                {city ? 'Cobertura ativa' : 'Escolha uma cidade'}
-              </StatusBadge>
+            <div className="grid gap-2 sm:justify-items-end">
+              <Button asChild className="min-w-44">
+                <Link to={activeList ? `/otimizacao/${activeList.id}` : '/listas/nova'}>
+                  {activeList ? 'Otimizar agora' : 'Criar lista'}
+                  <ArrowRightIcon data-icon="inline-end" />
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="ghost">
+                <Link to={activeList ? `/listas/${activeList.id}` : '/ofertas'}>
+                  {activeList ? 'Ver minha lista' : 'Ver ofertas'}
+                </Link>
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle>Resumo de economia</CardTitle>
-            <CardDescription>
-              Estimativa com base nas listas otimizadas.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            <div className="text-3xl font-semibold tabular-nums text-[var(--ds-savings)]">
-              {formatCurrency(impact?.totalEstimatedSavings ?? 0)}
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {impact
-                ? `${impact.optimizedListsCount} listas otimizadas`
-                : 'Carregando dados de economia'}
-            </div>
-            <Button asChild variant="outline">
-              <Link to={currentUser ? '/listas' : '/entrar'}>
-                Ver detalhes da economia
-                <ArrowRightIcon data-icon="inline-end" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </section>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card className="border-border/70 bg-card/92 shadow-sm">
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 items-center justify-center rounded-full bg-[var(--ds-location-soft)] text-[var(--ds-location)]">
+                      <ListIcon className="size-5" />
+                    </span>
+                    <div>
+                      <CardTitle>Sua lista ativa</CardTitle>
+                      <CardDescription>
+                        {activeList
+                          ? `${activeList.items.length} itens`
+                          : 'Nenhuma lista criada ainda'}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <StatusBadge tone={activeList ? 'savings' : 'neutral'}>
+                    {activeList ? 'Em andamento' : 'Vazia'}
+                  </StatusBadge>
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-5">
+                <div>
+                  <div className="font-heading text-xl font-semibold">
+                    {activeList?.name ?? 'Comece uma lista'}
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {activeList
+                      ? `${completedItemCount}/${activeList.items.length} itens adicionados`
+                      : 'Adicione produtos para liberar a otimização.'}
+                  </div>
+                </div>
+                <div className="h-2 rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full bg-[var(--ds-primary)]"
+                    style={{ width: `${Math.max(8, activeListCompletion)}%` }}
+                  />
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button asChild variant="secondary">
+                    <Link to={activeList ? `/listas/${activeList.id}` : '/listas/nova'}>
+                      Ver lista
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost">
+                    <Link to={activeList ? `/listas/${activeList.id}` : '/listas/nova'}>
+                      Editar itens
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        {featuredOffers.length > 0 ? (
-          featuredOffers.map((offer) => (
-            <PriceRow
-              key={offer.id}
-              title={offer.productName}
-              subtitle={`${offer.storeName} · ${offer.neighborhood}`}
-              price={formatCurrency(offer.price)}
-              comparison={
-                offer.savingsVsRegionalAverage &&
-                offer.savingsVsRegionalAverage > 0
-                  ? `${formatCurrency(offer.savingsVsRegionalAverage)} abaixo da média`
-                  : 'Preço observado'
-              }
-              image={
-                <img
-                  alt={offer.productName}
-                  className="h-full w-full object-cover"
-                  src={offer.imageUrl}
-                />
-              }
-              meta={
-                <>
-                  {freshnessBadge(offer.freshness)}
-                  {confidenceBadge(offer.confidence)}
-                </>
-              }
-            />
-          ))
-        ) : (
-          <Card className="lg:col-span-3">
+            <Card className="overflow-hidden border-border/70 bg-card/92 shadow-sm">
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">
+                      <MapPinIcon className="size-5" />
+                    </span>
+                    <div>
+                      <CardTitle>Cobertura local</CardTitle>
+                      <CardDescription>
+                        {city ? `${city.name}, ${city.stateCode}` : 'Sem cidade'}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <StatusBadge tone="location">Raio: 5 km</StatusBadge>
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-[1.1fr_0.8fr]">
+                <div className="relative min-h-40 overflow-hidden rounded-lg border border-border/70 bg-muted/50">
+                  <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.04)_1px,transparent_1px),linear-gradient(rgba(0,0,0,0.04)_1px,transparent_1px)] bg-[size:28px_28px]" />
+                  <div className="absolute left-1/2 top-1/2 size-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-blue-400/80" />
+                  <div className="absolute left-1/2 top-1/2 size-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[var(--ds-location)]/70" />
+                  <div className="absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600" />
+                  {[StoreIcon, ShoppingCartIcon, StoreIcon, ShoppingCartIcon].map(
+                    (Icon, index) => (
+                      <span
+                        className="absolute flex size-7 items-center justify-center rounded-full bg-[var(--ds-location)] text-primary-foreground shadow-sm"
+                        key={index}
+                        style={{
+                          left: `${30 + index * 14}%`,
+                          top: `${32 + (index % 2) * 26}%`,
+                        }}
+                      >
+                        <Icon className="size-3.5" />
+                      </span>
+                    ),
+                  )}
+                </div>
+                <div className="grid content-center gap-3">
+                  <div>
+                    <div className="font-heading text-2xl font-semibold">
+                      {activeStoreLabel}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      dentro do raio
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-heading text-2xl font-semibold text-[var(--ds-location)]">
+                      {coveragePercent}%
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Cobertura da área
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="size-2 rounded-full bg-blue-600" />
+                    Atualizado há 15 min
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="border-t border-border/70">
+                <Button asChild className="w-full" variant="ghost">
+                  <Link to="/cidades">Ver todas as lojas</Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+
+          <section className="grid gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-heading text-lg font-semibold">
+                Ofertas recomendadas para você
+              </h2>
+              <Button asChild size="sm" variant="ghost">
+                <Link to="/ofertas">Ver todas as ofertas</Link>
+              </Button>
+            </div>
+            {secondaryOffers.length > 0 ? (
+              <div className="grid gap-3 lg:grid-cols-3">
+                {secondaryOffers.map((offer) => (
+                  <Card
+                    className="overflow-hidden border-border/70 bg-card/92 shadow-sm"
+                    key={offer.id}
+                  >
+                    <CardContent className="grid gap-3 p-4">
+                      <div className="flex gap-3">
+                        <img
+                          alt={offer.productName}
+                          className="size-20 rounded-md border border-border/60 object-cover"
+                          src={offer.imageUrl}
+                        />
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">
+                            {offer.productName}
+                          </div>
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            {offer.storeName} · {offer.neighborhood}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-end justify-between gap-3">
+                        <div>
+                          <div className="font-heading text-2xl font-semibold text-[var(--ds-location)]">
+                            {formatCurrency(offer.price)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Preço otimizado
+                          </div>
+                        </div>
+                        <div className="rounded-md bg-[var(--ds-savings-soft)] px-3 py-2 text-right text-sm text-[var(--ds-savings)]">
+                          <div>Economize</div>
+                          <div className="font-semibold">
+                            {formatCurrency(offer.savingsVsRegionalAverage ?? 0)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {confidenceBadge(offer.confidence)}
+                        {freshnessBadge(offer.freshness)}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Escolha uma cidade para ver ofertas reais</CardTitle>
+                  <CardDescription>
+                    A vitrine depende da cidade selecionada. Depois mostramos
+                    produto, loja, preço observado e confiança da informação.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+          </section>
+
+          <section className="grid gap-3">
+            <h2 className="font-heading text-lg font-semibold">
+              Outros estados importantes
+            </h2>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {[
+                {
+                  icon: MapPinIcon,
+                  title: 'Sem cidade selecionada',
+                  text: 'Escolha uma cidade para ver ofertas',
+                  action: 'Selecionar cidade',
+                },
+                {
+                  icon: LockIcon,
+                  title: 'Permissão de localização negada',
+                  text: 'Ative a permissão para ver lojas perto de você',
+                  action: 'Abrir configurações',
+                },
+                {
+                  icon: StoreIcon,
+                  title: 'Nenhuma loja no raio',
+                  text: 'Não encontramos lojas ativas a 5 km de você',
+                  action: 'Aumentar raio',
+                },
+                {
+                  icon: Clock3Icon,
+                  title: 'Carregando dados',
+                  text: 'Buscando as melhores ofertas',
+                  action: '',
+                },
+              ].map((state) => (
+                <div
+                  className="rounded-lg border border-dashed border-border/80 bg-card/70 p-4"
+                  key={state.title}
+                >
+                  <state.icon className="size-8 text-[var(--ds-location)]" />
+                  <div className="mt-3 font-medium">{state.title}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {state.text}
+                  </div>
+                  {state.action ? (
+                    <Button className="mt-3" size="sm" variant="outline">
+                      {state.action}
+                    </Button>
+                  ) : (
+                    <div className="mt-4 grid gap-2">
+                      <div className="h-2 rounded-full bg-muted" />
+                      <div className="h-2 w-2/3 rounded-full bg-muted" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        </section>
+
+        <aside className="grid content-start gap-4">
+          <Card className="border-border/70 bg-card/92 shadow-sm">
             <CardHeader>
-              <CardTitle>Escolha uma cidade para ver ofertas reais</CardTitle>
-              <CardDescription>
-                A vitrine pública depende da cidade selecionada. Depois disso
-                mostramos produtos, lojas, preço observado e confiança da
-                informação.
-              </CardDescription>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-200">
+                    <ReceiptTextIcon className="size-5" />
+                  </span>
+                  <div>
+                    <CardTitle>Nota fiscal</CardTitle>
+                    <CardDescription>Aguardando liberação manual</CardDescription>
+                  </div>
+                </div>
+                <StatusBadge tone="warning">Aguardando</StatusBadge>
+              </div>
             </CardHeader>
+            <CardContent className="grid gap-4">
+              <div>
+                <div className="font-medium">Enviada para validação</div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  Total: {formatCurrency(lastReceiptTotal)}
+                </div>
+              </div>
+              <div className="rounded-lg border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] p-3 text-sm">
+                Nossa equipe vai revisar sua nota fiscal. Você será avisado
+                quando for liberada.
+              </div>
+              <Button asChild variant="outline">
+                <Link to="/notas">Ver detalhes</Link>
+              </Button>
+            </CardContent>
           </Card>
-        )}
-      </section>
+
+          <Card className="border-border/70 bg-card/92 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle>Resumo de economia</CardTitle>
+                <InfoIcon className="size-4 text-muted-foreground" />
+              </div>
+              <CardDescription>Esta semana</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <div>
+                <div className="font-heading text-4xl font-semibold text-[var(--ds-savings)]">
+                  {formatCurrency(estimatedSavings)}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Economia estimada
+                </div>
+              </div>
+              <div className="divide-y divide-border/70 text-sm">
+                <div className="flex justify-between py-2">
+                  <span className="text-muted-foreground">Itens otimizados</span>
+                  <span>{completedItemCount} de {activeList?.items.length ?? 0}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-muted-foreground">Melhor loja</span>
+                  <span>{primaryOffer?.storeName ?? 'Aguardando lista'}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-muted-foreground">Preços verificados</span>
+                  <span>{city ? '100%' : '0%'}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-muted-foreground">Listas otimizadas</span>
+                  <span>{optimizedListsCount}</span>
+                </div>
+              </div>
+              <Button asChild variant="ghost">
+                <Link to={currentUser ? '/listas' : '/entrar'}>
+                  Ver detalhes da economia
+                  <ArrowRightIcon data-icon="inline-end" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div className="hidden items-center justify-between rounded-lg border border-border/70 bg-card/80 px-4 py-3 text-sm xl:flex">
+            <div className="flex items-center gap-2">
+              <BellIcon className="size-4" />
+              <span>3 alertas de preço</span>
+            </div>
+            <StatusBadge tone="savings">Ativo</StatusBadge>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

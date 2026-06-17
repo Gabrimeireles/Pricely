@@ -181,18 +181,16 @@ describe('PublicLayout', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Contexto da compra')).toBeTruthy();
-    expect(screen.getByText('Localizacao para otimizacao local')).toBeTruthy();
-    expect(screen.getByText(/raio local padrao 5 km/i)).toBeTruthy();
+    expect(screen.getByText('Localização manual')).toBeTruthy();
+    expect(screen.getByText(/raio de 5 km/i)).toBeTruthy();
     expect(
-      screen.getByText(/modos locais so calculam distancia com/i),
+      screen.getByRole('button', { name: /configurar localização/i }),
     ).toBeTruthy();
     expect(
       screen.queryByText('Sua compra continua de onde voce parou'),
     ).toBeNull();
-    expect(
-      screen.getAllByText(/0 estabelecimentos ativos/).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getByRole('combobox', { name: 'Escolha sua cidade' }))
+      .toBeTruthy();
 
     fireEvent.change(
       screen.getByRole('combobox', { name: 'Escolha sua cidade' }),
@@ -211,6 +209,9 @@ describe('PublicLayout', () => {
       </MemoryRouter>,
     );
 
+    fireEvent.click(
+      screen.getByRole('button', { name: /configurar localização/i }),
+    );
     fireEvent.click(screen.getByRole('button', { name: /usar localizacao/i }));
 
     expect(document.body.textContent).toMatch(/Permiss[aã]o:/);
@@ -259,6 +260,9 @@ describe('PublicLayout', () => {
       </MemoryRouter>,
     );
 
+    fireEvent.click(
+      screen.getByRole('button', { name: /configurar localização/i }),
+    );
     fireEvent.click(screen.getByRole('button', { name: /usar localizacao/i }));
 
     await waitFor(() =>
@@ -304,6 +308,9 @@ describe('PublicLayout', () => {
       </MemoryRouter>,
     );
 
+    fireEvent.click(
+      screen.getByRole('button', { name: /configurar localização/i }),
+    );
     fireEvent.change(screen.getByLabelText('CEP para fallback manual'), {
       target: { value: '13010-000' },
     });
@@ -321,7 +328,7 @@ describe('PublicLayout', () => {
         coverageRadiusKm: 5,
       }),
     );
-    expect(document.body.textContent).toMatch(/nao prometem proximidade/i);
+    expect(document.body.textContent).toMatch(/n[aã]o prometem proximidade/i);
     expect(document.body.textContent).toMatch(/Preview por CEP: 2 lojas/i);
     await waitFor(() =>
       expect(document.body.textContent).toMatch(/CEP salvo como fallback/i),

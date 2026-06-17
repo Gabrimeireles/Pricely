@@ -634,6 +634,9 @@ test('location-aware web flow saves browser coordinates and shows local result d
   ).toBeVisible();
 
   await page.goto('/');
+  await page
+    .getByRole('button', { name: /Configurar localização/i })
+    .click();
   await page.getByRole('button', { name: /Usar localizacao/i }).click();
   await expect(page.getByText(/Preview local: 2 lojas dentro de 5 km/)).toBeVisible();
 
