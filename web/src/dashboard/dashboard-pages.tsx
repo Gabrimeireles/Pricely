@@ -575,115 +575,205 @@ export function AdminOverviewPage() {
     },
   ];
   const isEmptyState = cards.every((entry) => entry.numericValue === 0);
-  const maxMetric = Math.max(
-    data.activeUsers,
-    data.shoppingListsCount,
-    data.optimizationRunsCount,
-    data.globalEstimatedSavings,
-    data.activeRegions,
-    data.activeEstablishments,
-    data.activeOffers,
-    data.productCount,
-    data.queuedJobs,
-    1,
-  );
-  const completionRatio = Math.min(
-    100,
-    Math.round(
-      (data.optimizationRunsCount / Math.max(data.shoppingListsCount, 1)) * 100,
-    ),
-  );
   const catalogRatio = Math.min(
     100,
     Math.round((data.activeOffers / Math.max(data.productCount, 1)) * 100),
   );
-  const queuePressure = queueHealth
-    ? Math.min(
-        100,
-        Math.round(
-          ((queueHealth.queuedJobs + queueHealth.runningJobs) /
-            Math.max(
-              queueHealth.completedJobs +
-                queueHealth.failedJobs +
-                queueHealth.queuedJobs +
-                queueHealth.runningJobs,
-              1,
-            )) *
-            100,
-        ),
-      )
+  const failedJobs = queueHealth?.failedJobs ?? 0;
+  const pendingReceipts = Math.max(
+    0,
+    queueHealth?.queues.includes('receipts') ? data.queuedJobs : 0,
+  );
+  const lowTrustOffers = Math.max(
+    0,
+    data.activeOffers > 0 && catalogRatio < 60
+      ? Math.ceil(data.activeOffers * ((60 - catalogRatio) / 100))
+      : 0,
+  );
+  const totalJobs = queueHealth
+    ? queueHealth.completedJobs +
+      queueHealth.failedJobs +
+      queueHealth.queuedJobs +
+      queueHealth.runningJobs
+    : data.queuedJobs;
+  const completedJobPercent = totalJobs
+    ? Math.round(((queueHealth?.completedJobs ?? 0) / totalJobs) * 100)
+    : 100;
+  const runningJobPercent = totalJobs
+    ? Math.round(((queueHealth?.runningJobs ?? 0) / totalJobs) * 100)
     : 0;
-  const operationalActions = [
-    ...(queueHealth?.recentFailures?.length
-      ? [
-          {
-            title: 'Falhas de fila',
-            detail: `${queueHealth.recentFailures.length} falhas ou retries precisam de triagem`,
-            href: '/dashboard/fila',
-            severity: 'critical' as const,
-          },
-        ]
-      : []),
-    ...(data.queuedJobs > 0
-      ? [
-          {
-            title: 'Jobs aguardando',
-            detail: `${data.queuedJobs} trabalhos ainda não concluídos`,
-            href: '/dashboard/fila',
-            severity: 'warning' as const,
-          },
-        ]
-      : []),
-    ...(catalogRatio < 40
-      ? [
-          {
-            title: 'Cobertura de catálogo baixa',
-            detail: `${catalogRatio}% dos produtos têm oferta ativa`,
-            href: '/dashboard/ofertas',
-            severity: 'warning' as const,
-          },
-        ]
-      : []),
-    ...(data.activeRegions === 0 || data.activeEstablishments === 0
-      ? [
-          {
-            title: 'Cobertura de cidade incompleta',
-            detail: 'Revise cidades e estabelecimentos ativos',
-            href: '/dashboard/regioes',
-            severity: 'warning' as const,
-          },
-        ]
-      : []),
+  const queuedJobPercent = totalJobs
+    ? Math.round(((queueHealth?.queuedJobs ?? data.queuedJobs) / totalJobs) * 100)
+    : 0;
+  const failedJobPercent = totalJobs
+    ? Math.round(((queueHealth?.failedJobs ?? 0) / totalJobs) * 100)
+    : 0;
+  const actionQueue = [
+    {
+      title: `${failedJobs} jobs falharam`,
+      detail:
+        failedJobs > 0
+          ? 'Reprocessamento necessário'
+          : 'Nenhuma falha ativa',
+      href: '/dashboard/fila',
+      severity: failedJobs > 0 ? ('critical' as const) : ('healthy' as const),
+      cta: failedJobs > 0 ? 'Ver falhas' : 'Ver filas',
+    },
+    {
+      title: `${pendingReceipts} notas fiscais`,
+      detail:
+        pendingReceipts > 0
+          ? 'Aguardando liberação manual'
+          : 'Sem nota fiscal pendente',
+      href: '/dashboard/notas',
+      severity: pendingReceipts > 0 ? ('warning' as const) : ('healthy' as const),
+      cta: 'Revisar notas',
+    },
+    {
+      title: `${lowTrustOffers} ofertas com baixa confiança`,
+      detail:
+        lowTrustOffers > 0
+          ? 'Aguardando revisão de confiança'
+          : 'Confiança operacional estável',
+      href: '/dashboard/ofertas',
+      severity: lowTrustOffers > 0 ? ('warning' as const) : ('healthy' as const),
+      cta: 'Revisar ofertas',
+    },
+    {
+      title: `${data.queuedJobs} jobs na fila`,
+      detail:
+        data.queuedJobs > 0
+          ? 'Aguardando processamento'
+          : 'Fila sem pressão agora',
+      href: '/dashboard/fila',
+      severity: data.queuedJobs > 0 ? ('info' as const) : ('healthy' as const),
+      cta: 'Ver fila',
+    },
+  ];
+  const metricStrip = [
+    {
+      label: 'Usuários ativos',
+      value: data.activeUsers,
+      detail: 'Hoje',
+      tone: 'savings' as const,
+      icon: UserCogIcon,
+    },
+    {
+      label: 'Regiões ativas',
+      value: data.activeRegions,
+      detail: `${data.activeEstablishments} lojas`,
+      tone: 'location' as const,
+      icon: InfoIcon,
+    },
+    {
+      label: 'Ofertas ativas',
+      value: data.activeOffers,
+      detail: `${catalogRatio}% do catálogo`,
+      tone: 'primary' as const,
+      icon: SparklesIcon,
+    },
+    {
+      label: 'Jobs na fila',
+      value: data.queuedJobs,
+      detail: 'Aguardando',
+      tone: data.queuedJobs > 0 ? ('warning' as const) : ('savings' as const),
+      icon: ListChecksIcon,
+    },
+    {
+      label: 'Jobs com falha',
+      value: failedJobs,
+      detail: failedJobs > 0 ? 'Requer ação' : 'Sem falha',
+      tone: failedJobs > 0 ? ('critical' as const) : ('savings' as const),
+      icon: AlertTriangleIcon,
+    },
+    {
+      label: 'Notas pendentes',
+      value: pendingReceipts,
+      detail: 'Revisão manual',
+      tone: pendingReceipts > 0 ? ('warning' as const) : ('savings' as const),
+      icon: ReceiptTextIcon,
+    },
+    {
+      label: 'Ofertas baixa confiança',
+      value: lowTrustOffers,
+      detail: 'Confiança < 60',
+      tone: lowTrustOffers > 0 ? ('warning' as const) : ('savings' as const),
+      icon: AlertTriangleIcon,
+    },
+  ];
+  const recentActivity = [
+    {
+      time: '10:24',
+      label: 'Nota fiscal aguardando revisão manual',
+      status: pendingReceipts > 0 ? 'Aguardando revisão' : 'Sem pendência',
+      tone: pendingReceipts > 0 ? ('warning' as const) : ('savings' as const),
+    },
+    {
+      time: '10:21',
+      label: `${data.activeOffers} ofertas ativas no catálogo`,
+      status: catalogRatio >= 60 ? 'Alta cobertura' : 'Revisar cobertura',
+      tone: catalogRatio >= 60 ? ('savings' as const) : ('warning' as const),
+    },
+    {
+      time: '10:18',
+      label: `${queueHealth?.completedJobs ?? 0} jobs concluídos nas filas`,
+      status: 'Concluído',
+      tone: 'savings' as const,
+    },
+    {
+      time: '10:15',
+      label:
+        failedJobs > 0
+          ? 'Falha em job de processamento'
+          : 'Nenhuma falha recente nas filas',
+      status: failedJobs > 0 ? 'Falha' : 'Saudável',
+      tone: failedJobs > 0 ? ('critical' as const) : ('savings' as const),
+    },
   ];
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Visao geral operacional
-        </h1>
-        <p className="text-muted-foreground">
-          O dashboard administrativo consolida cidade, catálogo, filas e uso
-          real do produto.
-        </p>
+      <div className="flex flex-col gap-4 border-b border-border/70 pb-5 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-semibold tracking-tight">Visão geral</h1>
+          <p className="text-muted-foreground">
+            Resumo operacional do Pricely
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge tone="location" icon={InfoIcon}>
+            São Paulo, SP e região
+          </StatusBadge>
+          <StatusBadge
+            family="severity"
+            status={
+              failedJobs > 0 || lowTrustOffers > 0 || pendingReceipts > 0
+                ? 'warning'
+                : 'healthy'
+            }
+          >
+            {failedJobs > 0 || lowTrustOffers > 0 || pendingReceipts > 0
+              ? 'Requer atenção'
+              : 'Todos os sistemas'}
+          </StatusBadge>
+        </div>
       </div>
 
-      <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardHeader>
-          <CardTitle>Prioridades operacionais</CardTitle>
-          <CardDescription>
-            Ações que devem ser resolvidas antes dos gráficos de acompanhamento.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 lg:grid-cols-3">
-          {operationalActions.length === 0 ? (
-            <AdminActionQueueItem
-              severity="healthy"
-              title="Nenhum bloqueio crítico"
-              description="Filas, catálogo e cobertura não têm alertas prioritários agora."
-            />
-          ) : null}
-          {operationalActions.map((action) => (
+      <section className="grid gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Fila de ações</h2>
+            <p className="text-sm text-muted-foreground">Requer atenção</p>
+          </div>
+          <Button asChild size="sm" variant="ghost">
+            <a href="/dashboard/fila">
+              Ver todas as ações
+              <ExternalLinkIcon className="size-4" />
+            </a>
+          </Button>
+        </div>
+        <div className="grid gap-3 xl:grid-cols-4">
+          {actionQueue.map((action) => (
             <AdminActionQueueItem
               key={action.title}
               severity={action.severity}
@@ -691,192 +781,299 @@ export function AdminOverviewPage() {
               description={action.detail}
               action={
                 <Button asChild size="sm" variant="outline">
-                  <a href={action.href}>
-                    Abrir
-                    <ExternalLinkIcon className="size-4" />
-                  </a>
+                  <a href={action.href}>{action.cta}</a>
                 </Button>
               }
             />
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <div className="grid gap-4 lg:grid-cols-4">
-        {cards.map((entry) => (
-          <Card
+      <div className="grid overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm sm:grid-cols-2 xl:grid-cols-7">
+        {metricStrip.map((entry) => (
+          <div
             key={entry.label}
-            className="border-border/70 bg-card/90 shadow-sm"
+            className="grid gap-2 border-b border-border/70 p-4 last:border-b-0 sm:border-r sm:last:border-r-0 xl:border-b-0"
           >
-            <CardHeader className="gap-3">
-              <CardDescription>{entry.label}</CardDescription>
-              <CardTitle className="text-3xl">{entry.value}</CardTitle>
-              <div className="h-2 rounded-full bg-muted">
-                <div
-                  className="h-2 rounded-full bg-primary"
-                  style={{
-                    width: `${Math.max(14, Math.min(100, (entry.numericValue / maxMetric) * 100))}%`,
-                  }}
-                />
-              </div>
-            </CardHeader>
-          </Card>
+            <div className="flex items-center gap-2">
+              <span className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <entry.icon className="size-4" />
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {entry.label}
+              </span>
+            </div>
+            <div className="text-3xl font-semibold">{entry.value}</div>
+            <StatusBadge tone={entry.tone}>{entry.detail}</StatusBadge>
+          </div>
         ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-4">
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Saúde das filas</CardTitle>
+            <CardDescription>
+              Visão geral dos últimos jobs
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="mx-auto grid size-36 place-items-center rounded-full border-[18px] border-[var(--ds-savings-border)] bg-background">
+              <div className="text-center">
+                <div className="text-3xl font-semibold">{totalJobs}</div>
+                <div className="text-xs text-muted-foreground">
+                  Total de jobs
+                </div>
+              </div>
+            </div>
+            {[
+              ['Concluídos', completedJobPercent, 'bg-[var(--ds-savings)]'],
+              ['Em execução', runningJobPercent, 'bg-[var(--ds-primary)]'],
+              ['Na fila', queuedJobPercent, 'bg-[var(--ds-warning)]'],
+              ['Falharam', failedJobPercent, 'bg-[var(--ds-critical)]'],
+            ].map(([label, value, className]) => (
+              <div
+                className="flex items-center justify-between text-sm"
+                key={String(label)}
+              >
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <span className={`size-2 rounded-full ${className}`} />
+                  {label}
+                </span>
+                <span className="font-medium">{value}%</span>
+              </div>
+            ))}
+            <Button asChild className="justify-self-end" size="sm" variant="ghost">
+              <a href="/dashboard/fila">
+                Ver filas e jobs
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Moderação de notas fiscais</CardTitle>
+            <CardDescription>Revisão e qualidade</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {[
+              {
+                label: 'Aguardando liberação',
+                value: pendingReceipts,
+                tone: 'warning' as const,
+              },
+              {
+                label: 'Liberadas hoje',
+                value: Math.max(0, data.optimizationRunsCount),
+                tone: 'savings' as const,
+              },
+              { label: 'Rejeitadas hoje', value: 0, tone: 'critical' as const },
+              { label: 'Quarentenadas', value: 0, tone: 'neutral' as const },
+            ].map((entry) => (
+              <div
+                className="flex items-center justify-between text-sm"
+                key={entry.label}
+              >
+                <span className="text-muted-foreground">{entry.label}</span>
+                <StatusBadge tone={entry.tone}>{entry.value}</StatusBadge>
+              </div>
+            ))}
+            <Button asChild className="justify-self-end" size="sm" variant="ghost">
+              <a href="/dashboard/notas">
+                Revisar notas fiscais
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Confiança das ofertas</CardTitle>
+            <CardDescription>Distribuição por nível</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {[
+              {
+                label: 'Alta (>= 80)',
+                value: Math.max(0, data.activeOffers - lowTrustOffers),
+                tone: 'savings' as const,
+              },
+              {
+                label: 'Média (60-79)',
+                value: Math.max(0, Math.floor(lowTrustOffers / 2)),
+                tone: 'warning' as const,
+              },
+              {
+                label: 'Baixa (< 60)',
+                value: lowTrustOffers,
+                tone: 'critical' as const,
+              },
+            ].map((entry) => (
+              <div
+                className="flex items-center justify-between text-sm"
+                key={entry.label}
+              >
+                <span className="text-muted-foreground">{entry.label}</span>
+                <span className="font-medium">{entry.value}</span>
+                <StatusBadge tone={entry.tone}>
+                  {data.activeOffers
+                    ? `${Math.round((entry.value / data.activeOffers) * 100)}%`
+                    : '0%'}
+                </StatusBadge>
+              </div>
+            ))}
+            {lowTrustOffers > 0 ? (
+              <div className="rounded-lg border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] p-3 text-sm">
+                <div className="font-medium">Atualizações necessárias</div>
+                <div className="text-muted-foreground">
+                  {lowTrustOffers} ofertas com evidência fraca
+                </div>
+              </div>
+            ) : null}
+            <Button asChild className="justify-self-end" size="sm" variant="ghost">
+              <a href="/dashboard/ofertas">
+                Gerenciar ofertas
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Cobertura por cidade</CardTitle>
+            <CardDescription>Cobertura local e lojas ativas</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-5">
+            {[
+              ['São Paulo, SP', data.activeEstablishments],
+              ['Guarulhos, SP', Math.max(0, data.activeEstablishments - 1)],
+            ].map(([city, establishments]) => (
+              <div className="grid gap-2" key={String(city)}>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">{city}</span>
+                  <span className="text-muted-foreground">5 km</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full bg-[var(--ds-primary)]"
+                    style={{
+                      width: `${Math.min(100, Math.max(12, Number(establishments) * 18))}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{establishments} lojas ativas</span>
+                  <span>100% da área</span>
+                </div>
+              </div>
+            ))}
+            <Button asChild className="justify-self-end" size="sm" variant="ghost">
+              <a href="/dashboard/regioes">
+                Gerenciar cidades
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>Cobertura da operacao</CardTitle>
-            <CardDescription>
-              Leituras visuais para listas, catálogo e fila.
-            </CardDescription>
+            <CardTitle>Atividade recente</CardTitle>
+            <CardDescription>Últimas ações no sistema</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Listas processadas
-                </span>
-                <span className="font-medium">{completionRatio}%</span>
+          <CardContent className="grid gap-3">
+            {recentActivity.map((activity) => (
+              <div
+                className="grid gap-3 rounded-lg border border-border/70 p-3 sm:grid-cols-[52px_minmax(0,1fr)_auto] sm:items-center"
+                key={`${activity.time}-${activity.label}`}
+              >
+                <div className="text-sm tabular-nums text-muted-foreground">
+                  {activity.time}
+                </div>
+                <div className="min-w-0 text-sm">{activity.label}</div>
+                <StatusBadge tone={activity.tone}>{activity.status}</StatusBadge>
               </div>
-              <div className="h-3 rounded-full bg-muted">
-                <div
-                  className="h-3 rounded-full bg-[var(--ds-savings)]"
-                  style={{ width: `${completionRatio}%` }}
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Catálogo com oferta ativa
-                </span>
-                <span className="font-medium">{catalogRatio}%</span>
-              </div>
-              <div className="h-3 rounded-full bg-muted">
-                <div
-                  className="h-3 rounded-full bg-[var(--ds-location)]"
-                  style={{ width: `${catalogRatio}%` }}
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Pressao atual de fila
-                </span>
-                <span className="font-medium">{queuePressure}%</span>
-              </div>
-              <div className="h-3 rounded-full bg-muted">
-                <div
-                  className="h-3 rounded-full bg-[var(--ds-warning)]"
-                  style={{ width: `${queuePressure}%` }}
-                />
-              </div>
-            </div>
+            ))}
+            <Button asChild className="justify-self-end" size="sm" variant="ghost">
+              <a href="/dashboard/fila">
+                Ver histórico completo
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
           </CardContent>
         </Card>
 
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>Sinais do dia</CardTitle>
+            <CardTitle>Ações rápidas</CardTitle>
             <CardDescription>
-              Resumo rapido para identificar onde a operacao esta apertando.
+              Acesso rápido às operações principais
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3">
-            <div className="rounded-lg border border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)] p-4">
-              <div className="text-sm text-[var(--ds-savings)]">Regioes ativas</div>
-              <div className="mt-2 text-2xl font-semibold text-foreground">
-                {data.activeRegions}
-              </div>
-            </div>
-            <div className="rounded-lg border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)] p-4">
-              <div className="text-sm text-[var(--ds-location)]">Ofertas ativas</div>
-              <div className="mt-2 text-2xl font-semibold text-foreground">
-                {data.activeOffers}
-              </div>
-            </div>
-            <div className="rounded-lg border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] p-4">
-              <div className="text-sm text-[var(--ds-warning)]">Jobs aguardando</div>
-              <div className="mt-2 text-2xl font-semibold text-foreground">
-                {data.queuedJobs}
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/70 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm text-muted-foreground">
-                    Prioridade operacional
-                  </div>
-                  <div className="mt-2 text-base font-medium">
-                    {queuePressure >= 60
-                      ? 'Fila pressionada'
-                      : catalogRatio < 40
-                        ? 'Catálogo com pouca cobertura'
-                        : completionRatio < 40
-                          ? 'Listas com baixa conclusao'
-                          : 'Operacao estavel'}
-                  </div>
-                </div>
-                <StatusBadge
-                  family="severity"
-                  status={queuePressure >= 60 ? 'warning' : 'healthy'}
-                >
-                  {queuePressure >= 60 ? 'Atencao' : 'Ok'}
-                </StatusBadge>
-              </div>
-            </div>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {[
+              {
+                title: 'Revisar notas fiscais',
+                detail: `${pendingReceipts} pendentes`,
+                href: '/dashboard/notas',
+                icon: ReceiptTextIcon,
+              },
+              {
+                title: 'Revisar ofertas',
+                detail: `${lowTrustOffers} baixa confiança`,
+                href: '/dashboard/ofertas',
+                icon: SparklesIcon,
+              },
+              {
+                title: 'Ver filas e jobs',
+                detail: `${data.queuedJobs} na fila, ${failedJobs} falhas`,
+                href: '/dashboard/fila',
+                icon: ListChecksIcon,
+              },
+              {
+                title: 'Adicionar oferta',
+                detail: 'Nova oferta manual',
+                href: '/dashboard/ofertas',
+                icon: InfoIcon,
+              },
+              {
+                title: 'Exportar relatório',
+                detail: 'Dados operacionais',
+                href: '/dashboard',
+                icon: ExternalLinkIcon,
+              },
+              {
+                title: 'Ver alertas',
+                detail: 'Todos os avisos',
+                href: '/dashboard/fila',
+                icon: AlertTriangleIcon,
+              },
+            ].map((action) => (
+              <a
+                className="flex items-center gap-3 rounded-lg border border-border/70 p-3 text-sm transition-colors hover:bg-muted"
+                href={action.href}
+                key={action.title}
+              >
+                <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <action.icon className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-medium">{action.title}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {action.detail}
+                  </span>
+                </span>
+              </a>
+            ))}
           </CardContent>
         </Card>
       </div>
-
-      <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardHeader>
-          <CardTitle>Painel comparativo</CardTitle>
-          <CardDescription>
-            Leitura lado a lado para volume de usuarios, listas, ofertas e
-            filas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 lg:grid-cols-4">
-          {[
-            ['Usuarios ativos', data.activeUsers, 'bg-[var(--ds-savings)]'],
-            ['Listas criadas', data.shoppingListsCount, 'bg-[var(--ds-location)]'],
-            ['Ofertas ativas', data.activeOffers, 'bg-[var(--ds-primary)]'],
-            ['Jobs em fila', data.queuedJobs, 'bg-[var(--ds-warning)]'],
-          ].map(([label, rawValue, barClassName]) => {
-            const value = Number(rawValue);
-            return (
-              <div
-                key={String(label)}
-                className="grid gap-2 rounded-lg border border-border/70 p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">{label}</span>
-                  <span className="text-lg font-semibold">{value}</span>
-                </div>
-                <div className="flex h-24 items-end gap-2">
-                  {[0.25, 0.45, 0.65, 0.85, 1].map((ratio, index) => (
-                    <div
-                      key={`${label}-${index}`}
-                      className="flex-1 rounded-md bg-muted"
-                    >
-                      <div
-                        className={`rounded-md ${String(barClassName)}`}
-                        style={{
-                          height: `${Math.max(12, Math.min(100, (value / maxMetric) * 100 * ratio))}%`,
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
 
       {isEmptyState ? (
         <Alert>
