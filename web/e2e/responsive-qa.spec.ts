@@ -367,7 +367,7 @@ for (const viewport of [
       await page.goto('/');
       await expect(
         page.getByRole('heading', {
-          name: 'Decida sua compra por cidade, lista e preço observado.',
+          name: /Continue sua compra e otimize/,
         }),
       ).toBeVisible();
       await expectNoHorizontalOverflow(page);

@@ -19,7 +19,7 @@ import {
   formatDateTime,
   formatFreshnessLabel,
 } from '@/app/format';
-import { landingHeroImage, resolveProductImage } from '@/app/media';
+import { resolveProductImage } from '@/app/media';
 import { getCityById, optimizationModes } from '@/app/mock-data';
 import {
   type CatalogProductSearchResponse,
@@ -46,7 +46,6 @@ import type {
   SupportedCity,
 } from '@/app/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   EvidenceModule,
@@ -72,14 +71,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 
 type EditableListItem = {
@@ -299,18 +290,20 @@ function NextBestActionStrip({
   }>;
 }) {
   const statusTone = {
-    done: 'border-lime-200 bg-lime-50 text-lime-950',
-    current: 'border-teal-200 bg-teal-50 text-teal-950',
-    pending: 'border-border/70 bg-background text-muted-foreground',
+    done: 'border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)] text-[var(--ds-savings)]',
+    current:
+      'border-[var(--ds-primary-border)] bg-[var(--ds-primary-soft)] text-[var(--ds-primary)]',
+    pending:
+      'border-[var(--ds-neutral-border)] bg-[var(--ds-neutral-soft)] text-muted-foreground',
   };
 
   return (
     <div className="rounded-lg border border-border/70 bg-card/95 p-4 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="grid gap-2">
-          <Badge variant="secondary" className="w-fit">
+          <StatusBadge tone="primary" className="w-fit">
             {eyebrow}
-          </Badge>
+          </StatusBadge>
           <div>
             <div className="font-heading text-lg font-semibold">{title}</div>
             <p className="text-sm text-muted-foreground">{description}</p>
@@ -843,10 +836,19 @@ function AuthCard({
 }
 
 export function LandingPage() {
-  const { cityId, cities, currentUser } = usePricely();
+  const { cityId, cities, currentUser, lists } = usePricely();
   const city = cityId
     ? (cities.find((entry) => entry.id === cityId) ?? getCityById(cityId))
     : null;
+  const activeList =
+    lists.find((list) => list.latestOptimizationStatus !== 'completed') ??
+    lists[0];
+  const completedItemCount =
+    activeList?.items.filter((item) => item.status !== 'missing').length ?? 0;
+  const activeListCompletion =
+    activeList && activeList.items.length > 0
+      ? Math.round((completedItemCount / activeList.items.length) * 100)
+      : 0;
   const [impact, setImpact] = useState<PublicImpactResponse | null>(null);
   const [featuredOffers, setFeaturedOffers] = useState<
     Array<{
@@ -936,156 +938,203 @@ export function LandingPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="flex flex-col justify-between rounded-xl border border-border/70 bg-card/85 p-6 shadow-sm sm:p-8">
-          <div className="flex flex-col gap-5">
-            <Badge
-              variant="secondary"
-              className="max-w-full whitespace-normal text-left"
-            >
-              lista salva, cidade persistida e compra pronta no mercado
-            </Badge>
-            <div className="flex flex-col gap-4">
-              <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-                Decida sua compra por cidade, lista e preço observado.
-              </h1>
-              <p className="max-w-2xl text-lg text-muted-foreground">
-                Monte a lista no computador, continue no celular e chegue ao
-                mercado com a cidade certa, os produtos comparáveis definidos e
-                a melhor estratégia de compra.
-              </p>
-              {impact && impact.totalEstimatedSavings > 0 ? (
-                <div className="rounded-lg border border-border/70 bg-background/75 px-4 py-3">
-                  <div className="text-sm font-medium text-foreground">
-                    O Pricely já ajudou pessoas a economizar{' '}
-                    {formatCurrency(impact.totalEstimatedSavings)}
-                  </div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    Economia estimada acumulada em {impact.optimizedListsCount}{' '}
-                    listas otimizadas.
-                  </div>
-                </div>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button asChild size="lg">
-                <Link to={currentUser ? '/listas' : '/criar-conta'}>
-                  {currentUser ? 'Abrir minhas listas' : 'Criar minha conta'}
-                  <ArrowRightIcon data-icon="inline-end" />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link to="/ofertas">Explorar ofertas</Link>
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            <Card size="sm">
-              <CardHeader>
-                <CardTitle>Continue sua compra em qualquer tela</CardTitle>
-                <CardDescription>
-                  Salve a cidade, monte a lista no computador e finalize a
-                  compra com checklist no celular.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <Card size="sm">
-              <CardHeader>
-                <CardTitle>Lista reaproveitável</CardTitle>
-                <CardDescription>
-                  Salve uma vez e reotimize depois quando os preços mudarem.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <Card size="sm">
-              <CardHeader>
-                <CardTitle>Cidade com contexto real</CardTitle>
-                <CardDescription>
-                  {city
-                    ? `${city.name} - ${city.activeStoreCount} estabelecimentos ativos`
-                    : 'Escolha uma cidade para carregar cobertura e ofertas públicas'}
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
+      <section className="grid gap-4">
+        <div className="flex flex-col gap-2">
+          <StatusBadge tone="primary" className="w-fit">
+            lista salva, cidade persistida e compra pronta no mercado
+          </StatusBadge>
+          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+            Continue sua compra e otimize preços.
+          </h1>
+          <p className="max-w-3xl text-muted-foreground">
+            Decida sua compra por cidade, lista e preço observado, com o
+            próximo passo sempre visível.
+          </p>
         </div>
 
-        <div className="relative overflow-hidden rounded-xl border border-border/70 shadow-sm">
-          <img
-            alt="Visao geral do fluxo de compras por cidade no Pricely"
-            className="h-full min-h-[360px] w-full object-cover"
-            src={landingHeroImage}
-          />
-        </div>
+        <NextBestActionStrip
+          eyebrow="Próximo melhor passo"
+          title={
+            activeList
+              ? 'Continue sua lista e otimize preços'
+              : city
+                ? 'Crie uma lista para comparar preços'
+                : 'Escolha uma cidade para começar'
+          }
+          description={
+            activeList
+              ? `Sua lista tem ${activeList.items.length} itens e pode ser otimizada com ofertas da cidade.`
+              : city
+                ? 'Monte uma lista com produtos comparáveis antes de ir ao mercado.'
+                : 'A cidade define as ofertas, lojas e evidências usadas na comparação.'
+          }
+          primaryAction={{
+            label: activeList ? 'Otimizar agora' : 'Criar lista',
+            to: activeList ? `/otimizacao/${activeList.id}` : '/listas/nova',
+          }}
+          secondaryAction={{
+            label: activeList ? 'Ver minha lista' : 'Explorar ofertas',
+            to: activeList ? `/listas/${activeList.id}` : '/ofertas',
+          }}
+          steps={[
+            { label: 'Cidade', status: city ? 'done' : 'current' },
+            {
+              label: 'Lista',
+              status: activeList ? 'done' : city ? 'current' : 'pending',
+            },
+            {
+              label: 'Otimização',
+              status:
+                activeList?.latestOptimizationStatus === 'completed'
+                  ? 'done'
+                  : activeList
+                    ? 'current'
+                    : 'pending',
+            },
+            { label: 'Checklist', status: 'pending' },
+          ]}
+        />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3">
+      <section className="grid gap-4 lg:grid-cols-[1fr_1fr_0.85fr]">
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>1. Escolha a cidade</CardTitle>
-            <CardDescription>
-              Mostramos somente cidades ativas ou em ativação, sempre com a
-              contagem atual de estabelecimentos ativos.
-            </CardDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle>Sua lista ativa</CardTitle>
+                <CardDescription>
+                  {activeList
+                    ? `${activeList.items.length} itens para revisar`
+                    : 'Nenhuma lista criada ainda'}
+                </CardDescription>
+              </div>
+              <StatusBadge tone={activeList ? 'savings' : 'neutral'}>
+                {activeList ? 'Em andamento' : 'Vazia'}
+              </StatusBadge>
+            </div>
           </CardHeader>
+          <CardContent className="grid gap-4">
+            <div>
+              <div className="text-xl font-semibold">
+                {activeList?.name ?? 'Comece uma lista'}
+              </div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                {activeList
+                  ? `${completedItemCount}/${activeList.items.length} itens com correspondência`
+                  : 'Adicione produtos para liberar a otimização.'}
+              </div>
+            </div>
+            {activeList ? (
+              <div className="h-2 rounded-full bg-muted">
+                <div
+                  className="h-2 rounded-full bg-[var(--ds-primary)]"
+                  style={{
+                    width: `${Math.max(8, activeListCompletion)}%`,
+                  }}
+                />
+              </div>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <Link to={activeList ? `/listas/${activeList.id}` : '/listas/nova'}>
+                  {activeList ? 'Ver lista' : 'Nova lista'}
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to={activeList ? `/otimizacao/${activeList.id}` : '/ofertas'}>
+                  {activeList ? 'Otimizar' : 'Ver ofertas'}
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
         </Card>
+
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>2. Monte a lista</CardTitle>
-            <CardDescription>
-              Selecione um produto comparável primeiro e, se precisar, trave uma
-              variante exata.
-            </CardDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle>Cobertura local</CardTitle>
+                <CardDescription>
+                  {city
+                    ? `${city.name}, ${city.stateCode}`
+                    : 'Cidade não selecionada'}
+                </CardDescription>
+              </div>
+              {city ? cityStatusBadge(city) : <StatusBadge tone="warning">Pendente</StatusBadge>}
+            </div>
           </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="rounded-lg border border-border/70 bg-background/80 p-4">
+              <div className="text-2xl font-semibold tabular-nums">
+                {city?.activeStoreCount ?? 0}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                lojas ativas na cidade
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+              <StatusBadge tone="location">Raio: 5 km</StatusBadge>
+              <StatusBadge tone={city ? 'savings' : 'neutral'}>
+                {city ? 'Cobertura ativa' : 'Escolha uma cidade'}
+              </StatusBadge>
+            </div>
+          </CardContent>
         </Card>
+
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>3. Compare os modos</CardTitle>
+            <CardTitle>Resumo de economia</CardTitle>
             <CardDescription>
-              Local, Global único e Global completo deixam claro o equilíbrio
-              entre deslocamento e economia.
+              Estimativa com base nas listas otimizadas.
             </CardDescription>
           </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="text-3xl font-semibold tabular-nums text-[var(--ds-savings)]">
+              {formatCurrency(impact?.totalEstimatedSavings ?? 0)}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {impact
+                ? `${impact.optimizedListsCount} listas otimizadas`
+                : 'Carregando dados de economia'}
+            </div>
+            <Button asChild variant="outline">
+              <Link to={currentUser ? '/listas' : '/entrar'}>
+                Ver detalhes da economia
+                <ArrowRightIcon data-icon="inline-end" />
+              </Link>
+            </Button>
+          </CardContent>
         </Card>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
         {featuredOffers.length > 0 ? (
           featuredOffers.map((offer) => (
-            <Card key={offer.id} className="overflow-hidden">
-              <div className="aspect-[16/9] overflow-hidden">
+            <PriceRow
+              key={offer.id}
+              title={offer.productName}
+              subtitle={`${offer.storeName} · ${offer.neighborhood}`}
+              price={formatCurrency(offer.price)}
+              comparison={
+                offer.savingsVsRegionalAverage &&
+                offer.savingsVsRegionalAverage > 0
+                  ? `${formatCurrency(offer.savingsVsRegionalAverage)} abaixo da média`
+                  : 'Preço observado'
+              }
+              image={
                 <img
                   alt={offer.productName}
                   className="h-full w-full object-cover"
                   src={offer.imageUrl}
                 />
-              </div>
-              <CardHeader>
-                <CardTitle>{offer.productName}</CardTitle>
-                <CardDescription>
-                  {offer.storeName} · {offer.neighborhood}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                <div className="flex flex-wrap gap-2">
+              }
+              meta={
+                <>
                   {freshnessBadge(offer.freshness)}
                   {confidenceBadge(offer.confidence)}
-                </div>
-                <PriceDisplay
-                  basePriceAmount={offer.basePrice}
-                  priceAmount={offer.price}
-                  promotionalPriceAmount={offer.promotionalPrice}
-                />
-                {offer.savingsVsRegionalAverage &&
-                offer.savingsVsRegionalAverage > 0 ? (
-                  <div className="text-sm text-emerald-700">
-                    {formatCurrency(offer.savingsVsRegionalAverage)} abaixo da
-                    média da cidade
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
+                </>
+              }
+            />
           ))
         ) : (
           <Card className="lg:col-span-3">
@@ -3209,120 +3258,113 @@ export function ListEditorPage() {
               </Field>
               <Field className="md:col-span-3">
                 <FieldLabel>Produtos comparáveis</FieldLabel>
-                <div className="overflow-hidden rounded-lg border border-border/70">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Produto</TableHead>
-                        <TableHead>Marca</TableHead>
-                        <TableHead>Quantidade</TableHead>
-                        <TableHead className="text-right">Adicionar</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {catalogResults.length === 0 && !isSearchingCatalog ? (
-                        <TableRow>
-                          <TableCell
-                            className="text-muted-foreground"
-                            colSpan={4}
-                          >
-                            Nenhum produto comparável encontrado.
-                          </TableCell>
-                        </TableRow>
-                      ) : null}
-                      {catalogResults.map((product) => {
-                        const isSelected =
-                          selectedCatalogProduct?.id === product.id;
-                        return (
-                          <TableRow
-                            key={product.id}
-                            className={isSelected ? 'bg-primary/5' : undefined}
-                          >
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <img
-                                  alt={product.name}
-                                  className="h-14 w-14 rounded-lg border border-border/70 object-cover"
-                                  src={resolveProductImage(
-                                    getCatalogProductPreviewImage(product),
-                                  )}
-                                />
-                                <div className="grid gap-1">
-                                  <div className="font-medium">
-                                    {product.name}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {product.category} ·{' '}
-                                    {product.defaultUnit ??
-                                      'sem unidade padrão'}
-                                  </div>
-                                </div>
+                <div className="grid gap-3">
+                  {isSearchingCatalog ? (
+                    <div className="rounded-lg border border-dashed border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
+                      Buscando produtos comparáveis...
+                    </div>
+                  ) : null}
+                  {catalogResults.length === 0 && !isSearchingCatalog ? (
+                    <div className="rounded-lg border border-dashed border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
+                      Nenhum produto comparável encontrado.
+                    </div>
+                  ) : null}
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    {catalogResults.map((product) => {
+                      const isSelected =
+                        selectedCatalogProduct?.id === product.id;
+                      const brandRule = isSelected
+                        ? describeBrandRule(
+                            {
+                              brandPreferenceMode: draftBrandPreferenceMode,
+                              preferredBrandNames: [],
+                            },
+                            selectedExactVariantLabel,
+                          )
+                        : 'Qualquer variante';
+
+                      return (
+                        <div
+                          key={product.id}
+                          className={`grid gap-3 rounded-lg border p-3 ${
+                            isSelected
+                              ? 'border-[var(--ds-primary-border)] bg-[var(--ds-primary-soft)]'
+                              : 'border-border/70 bg-background/80'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <img
+                              alt={product.name}
+                              className="h-16 w-16 rounded-lg border border-border/70 object-cover"
+                              src={resolveProductImage(
+                                getCatalogProductPreviewImage(product),
+                              )}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium">{product.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {product.category} ·{' '}
+                                {product.defaultUnit ?? 'sem unidade padrão'}
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="grid gap-2">
-                                <span className="text-sm text-muted-foreground">
-                                  {isSelected
-                                    ? describeBrandRule(
-                                        {
-                                          brandPreferenceMode:
-                                            draftBrandPreferenceMode,
-                                          preferredBrandNames: [],
-                                        },
-                                        selectedExactVariantLabel,
-                                      )
-                                    : 'Qualquer variante'}
-                                </span>
-                                <Button
-                                  onClick={async () => {
-                                    setSelectedCatalogProduct(product);
-                                    setSelectedVariantId('');
-                                    const variants =
-                                      await fetchCatalogProductVariants(
-                                        product.id,
-                                      );
-                                    setSelectedVariants(variants);
-                                    setIsBrandDialogOpen(true);
-                                  }}
-                                  size="sm"
-                                  type="button"
-                                  variant="outline"
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <StatusBadge
+                                  tone={isSelected ? 'savings' : 'neutral'}
                                 >
-                                  Configurar
-                                </Button>
+                                  {isSelected
+                                    ? 'Boa correspondência'
+                                    : 'Correspondência disponível'}
+                                </StatusBadge>
+                                <StatusBadge tone="neutral">
+                                  {draftQuantity} {draftUnit.trim() || 'un'}
+                                </StatusBadge>
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm text-muted-foreground">
-                                {draftQuantity} {draftUnit.trim() || 'un'}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                onClick={async () => {
-                                  setSelectedCatalogProduct(product);
-                                  if (
-                                    selectedCatalogProduct?.id !== product.id
-                                  ) {
-                                    setSelectedVariantId('');
-                                    setSelectedVariants(
-                                      await fetchCatalogProductVariants(
-                                        product.id,
-                                      ),
-                                    );
-                                  }
-                                  addItem(product);
-                                }}
-                                type="button"
-                              >
-                                Adicionar
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                            </div>
+                          </div>
+                          <div className="grid gap-2 rounded-md border border-border/70 bg-card/80 p-3">
+                            <div className="text-xs font-medium text-muted-foreground">
+                              Regra de marca
+                            </div>
+                            <div className="text-sm">{brandRule}</div>
+                          </div>
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Button
+                              onClick={async () => {
+                                setSelectedCatalogProduct(product);
+                                setSelectedVariantId('');
+                                const variants =
+                                  await fetchCatalogProductVariants(product.id);
+                                setSelectedVariants(variants);
+                                setIsBrandDialogOpen(true);
+                              }}
+                              size="sm"
+                              type="button"
+                              variant="outline"
+                            >
+                              Configurar
+                            </Button>
+                            <Button
+                              onClick={async () => {
+                                setSelectedCatalogProduct(product);
+                                if (selectedCatalogProduct?.id !== product.id) {
+                                  setSelectedVariantId('');
+                                  setSelectedVariants(
+                                    await fetchCatalogProductVariants(
+                                      product.id,
+                                    ),
+                                  );
+                                }
+                                addItem(product);
+                              }}
+                              size="sm"
+                              type="button"
+                            >
+                              Adicionar
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </Field>
               <Field className="md:col-span-3">
