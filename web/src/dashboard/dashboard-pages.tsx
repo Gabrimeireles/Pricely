@@ -377,6 +377,66 @@ function receiptQualityLabel(receipt: AdminReceiptProcessingResponse) {
   return `${receipt.quality.highConfidenceLineItemCount}/${receipt.quality.lineItemCount} itens fortes`;
 }
 
+function receiptUsefulDataLabel(receipt: AdminReceiptProcessingResponse) {
+  return `${Math.round(receipt.quality.usefulDataRatio * 100)}% útil para preço`;
+}
+
+function receiptActionPriority(receipt: AdminReceiptProcessingResponse) {
+  if (receipt.moderationStatus === 'quarantined') {
+    return 0;
+  }
+
+  if (receipt.trustLevel === 'untrusted') {
+    return 1;
+  }
+
+  if (!receipt.processingJob && receipt.moderationStatus === 'pending') {
+    return 2;
+  }
+
+  if (receipt.rewardEligibilityStatus === 'eligible_pending') {
+    return 3;
+  }
+
+  if (receipt.processingJob?.status === 'failed') {
+    return 4;
+  }
+
+  if (receipt.moderationStatus === 'accepted') {
+    return 5;
+  }
+
+  return 6;
+}
+
+function receiptNextActionLabel(receipt: AdminReceiptProcessingResponse) {
+  if (receipt.moderationStatus === 'rejected') {
+    return 'Sem ação: nota recusada';
+  }
+
+  if (receipt.moderationStatus === 'quarantined') {
+    return 'Revisar quarentena antes de liberar';
+  }
+
+  if (receipt.trustLevel === 'untrusted') {
+    return 'Conferir baixa confiança e decidir rejeição';
+  }
+
+  if (!receipt.processingJob && receipt.moderationStatus === 'pending') {
+    return 'Liberar processamento manual';
+  }
+
+  if (receipt.processingJob?.status === 'failed') {
+    return 'Reprocessar job com falha';
+  }
+
+  if (receipt.rewardEligibilityStatus === 'eligible_pending') {
+    return 'Validar reward pendente após qualidade';
+  }
+
+  return 'Monitorar como evidência aceita';
+}
+
 function receiptMatcherStatusLabel(
   status: AdminReceiptProcessingResponse['lineItems'][number]['matcherStatus'],
 ) {
@@ -2842,6 +2902,28 @@ export function AdminReceiptsPage() {
   const rewardReadyCount = receipts.filter(
     (receipt) => receipt.rewardEligibilityStatus === 'eligible_pending',
   ).length;
+  const lowConfidenceCount = receipts.filter(
+    (receipt) =>
+      receipt.trustLevel === 'untrusted' ||
+      receipt.quality.averageMatchConfidence < 0.7,
+  ).length;
+  const blockedCount = receipts.filter(
+    (receipt) =>
+      receipt.moderationStatus === 'quarantined' ||
+      receipt.processingJob?.status === 'failed',
+  ).length;
+  const sortedReceipts = [...receipts].sort((first, second) => {
+    const priorityDelta =
+      receiptActionPriority(first) - receiptActionPriority(second);
+
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+
+    return (
+      new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
+    );
+  });
 
   if (error) {
     return (
@@ -2854,7 +2936,16 @@ export function AdminReceiptsPage() {
 
   return (
     <div className="grid gap-4">
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-4">
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Ação agora</CardTitle>
+            <CardDescription>Quarentena ou job com falha.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold">{blockedCount}</div>
+          </CardContent>
+        </Card>
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
             <CardTitle>Pendentes</CardTitle>
@@ -2871,6 +2962,15 @@ export function AdminReceiptsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold">{acceptedCount}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Baixa confiança</CardTitle>
+            <CardDescription>Matcher ou extração para auditar.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold">{lowConfidenceCount}</div>
           </CardContent>
         </Card>
         <Card className="border-border/70 bg-card/90 shadow-sm">
@@ -2899,7 +2999,7 @@ export function AdminReceiptsPage() {
               Nenhuma nota fiscal recebida ainda.
             </div>
           ) : null}
-          {receipts.map((receipt) => (
+          {sortedReceipts.map((receipt) => (
             <div
               key={receipt.id}
               className="rounded-lg border border-border/70 bg-background/80 p-4"
@@ -2918,6 +3018,16 @@ export function AdminReceiptsPage() {
                       )}
                     >
                       {receiptModerationLabel(receipt.moderationStatus)}
+                    </StatusBadge>
+                    <StatusBadge
+                      family="severity"
+                      status={
+                        receiptActionPriority(receipt) <= 1
+                          ? 'warning'
+                          : 'info'
+                      }
+                    >
+                      {receiptNextActionLabel(receipt)}
                     </StatusBadge>
                   </div>
                   <div className="mt-1 text-sm text-muted-foreground">
@@ -2963,13 +3073,29 @@ export function AdminReceiptsPage() {
                       releasingId === receipt.id ||
                       receipt.moderationStatus === 'rejected'
                     }
-                    onClick={() => void rejectReceipt(receipt.id)}
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        'Recusar esta nota fiscal? Esta ação bloqueia reward e evidência desta nota.',
+                      );
+
+                      if (confirmed) {
+                        void rejectReceipt(receipt.id);
+                      }
+                    }}
                     size="sm"
                     type="button"
                     variant="outline"
                   >
                     Recusar
                   </Button>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-md border border-[var(--ds-evidence-border)] bg-[var(--ds-evidence-soft)]/60 p-3 text-sm">
+                <div className="font-medium">Próxima ação</div>
+                <div className="mt-1 text-muted-foreground">
+                  {receiptNextActionLabel(receipt)} · IDs técnicos ficam no
+                  detalhe da auditoria.
                 </div>
               </div>
 
@@ -2986,6 +3112,9 @@ export function AdminReceiptsPage() {
                   <div className="text-xs text-muted-foreground">
                     média{' '}
                     {Math.round(receipt.quality.averageMatchConfidence * 100)}%
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {receiptUsefulDataLabel(receipt)}
                   </div>
                 </div>
                 <div className="rounded-md border border-border/70 p-3">
@@ -3740,6 +3869,38 @@ export function AdminQueueDetailPage() {
   }
 
   const auditTarget = jobBusinessAuditTarget(job);
+  const jobTimeline = [
+    {
+      label: 'Entrou na fila',
+      value: formatFreshnessLabel(job.createdAt),
+      active: true,
+    },
+    {
+      label:
+        job.status === 'queued'
+          ? 'Aguardando worker'
+          : job.status === 'running'
+            ? 'Worker em execução'
+            : 'Worker executou',
+      value:
+        job.status === 'queued'
+          ? 'Ainda sem tentativa concluída'
+          : `${job.attemptCount} tentativa${job.attemptCount === 1 ? '' : 's'}`,
+      active: job.status !== 'queued',
+    },
+    {
+      label:
+        job.status === 'failed'
+          ? 'Falhou'
+          : job.status === 'completed'
+            ? 'Concluiu'
+            : 'Conclusão pendente',
+      value: job.finishedAt
+        ? formatFreshnessLabel(job.finishedAt)
+        : 'Sem conclusão registrada',
+      active: Boolean(job.finishedAt),
+    },
+  ];
 
   return (
     <div className="grid gap-4">
@@ -3759,6 +3920,49 @@ export function AdminQueueDetailPage() {
           </div>
         </CardHeader>
         <CardContent className="grid gap-3">
+          <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="rounded-lg border border-border/70 bg-background/80 p-4">
+              <div className="text-sm font-medium">Linha do tempo</div>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {jobTimeline.map((step) => (
+                  <div
+                    className="rounded-md border border-border/70 bg-card/70 p-3"
+                    key={step.label}
+                  >
+                    <StatusBadge
+                      family="severity"
+                      status={step.active ? 'healthy' : 'info'}
+                    >
+                      {step.label}
+                    </StatusBadge>
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      {step.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-lg border border-[var(--ds-evidence-border)] bg-[var(--ds-evidence-soft)]/60 p-4">
+              <div className="text-sm font-medium">Ação recomendada</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                {job.status === 'failed'
+                  ? 'Reprocessar e conferir a nota relacionada antes de aceitar reward.'
+                  : job.status === 'completed'
+                    ? 'Verificar a auditoria de negócio e manter como evidência.'
+                    : 'Acompanhar worker antes de tomar decisão manual.'}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {auditTarget ? (
+                  <Button asChild size="sm" variant="outline">
+                    <a href={auditTarget.href}>
+                      {auditTarget.label}
+                      <ExternalLinkIcon className="size-4" />
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
           <div className="grid gap-3 md:grid-cols-3">
             <div className="rounded-lg border border-border/70 p-4">
               <div className="text-sm text-muted-foreground">Recurso</div>

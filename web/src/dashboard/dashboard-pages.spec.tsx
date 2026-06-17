@@ -476,7 +476,12 @@ describe('Admin dashboard pages', () => {
     ).toBeGreaterThan(0);
     expect(screen.getAllByText('Concluido').length).toBeGreaterThan(0);
     expect(screen.getByText('Dados técnicos')).toBeTruthy();
-    expect(screen.getByText('Abrir auditoria de listas')).toBeTruthy();
+    expect(screen.getAllByText('Abrir auditoria de listas').length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByText('Linha do tempo')).toBeTruthy();
+    expect(screen.getByText(/Worker execut/)).toBeTruthy();
+    expect(screen.getByText(/Verificar a auditoria/)).toBeTruthy();
     expect(screen.queryByText('Como o resultado foi montado')).toBeNull();
     expect(screen.queryByText('Selecionada')).toBeNull();
     expect(screen.queryByText(/Nota Aceita · Confiável/)).toBeNull();
@@ -857,8 +862,14 @@ describe('Admin dashboard pages', () => {
     render(<AdminReceiptsPage />);
 
     expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
+    expect(screen.getByText('Ação agora')).toBeTruthy();
+    expect(screen.getByText(/Baixa confian/)).toBeTruthy();
     expect(screen.getByText(/Mercado Centro/)).toBeTruthy();
     expect(screen.getByText('3/4 itens fortes')).toBeTruthy();
+    expect(screen.getByText('75% útil para preço')).toBeTruthy();
+    expect(
+      screen.getAllByText(/Validar reward pendente após qualidade/),
+    ).toHaveLength(2);
     expect(screen.getByText('100 pontos + 1 credito pendente')).toBeTruthy();
     expect(screen.getByText('Elegível pendente')).toBeTruthy();
     expect(screen.getByText('Auditar processamento')).toBeTruthy();
