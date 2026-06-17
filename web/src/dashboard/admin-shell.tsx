@@ -95,7 +95,8 @@ export function AdminLayout() {
           <ShieldCheckIcon />
           <AlertTitle>Acesso restrito</AlertTitle>
           <AlertDescription>
-            O dashboard administrativo so pode ser acessado por contas admin no web.
+            O dashboard administrativo so pode ser acessado por contas admin no
+            web.
           </AlertDescription>
         </Alert>
       </div>
@@ -106,13 +107,18 @@ export function AdminLayout() {
     <SidebarProvider>
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
-          <Link className="flex items-center gap-3 rounded-lg px-2 py-2" to="/dashboard">
+          <Link
+            className="flex items-center gap-3 rounded-lg px-2 py-2"
+            to="/dashboard"
+          >
             <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
               <ShieldCheckIcon />
             </div>
             <div className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
               <span className="text-sm font-semibold">Pricely</span>
-              <span className="text-xs text-sidebar-foreground/70">Area administrativa</span>
+              <span className="text-xs text-sidebar-foreground/70">
+                Area administrativa
+              </span>
             </div>
           </Link>
         </SidebarHeader>
@@ -126,7 +132,9 @@ export function AdminLayout() {
                     <SidebarMenuButton asChild tooltip={item.label}>
                       <NavLink
                         className={({ isActive }) =>
-                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                          isActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                            : ''
                         }
                         to={item.to}
                       >
@@ -141,48 +149,77 @@ export function AdminLayout() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          <div className="flex items-center gap-3 rounded-lg border border-sidebar-border p-2">
-            <Avatar className="size-8">
-              <AvatarFallback>
-                {currentUser.displayName.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
-              <span className="text-sm font-medium">{currentUser.displayName}</span>
-              <span className="text-xs text-sidebar-foreground/70">{currentUser.email}</span>
+          <div className="grid gap-2 rounded-lg border border-sidebar-border p-2 group-data-[collapsible=icon]:hidden">
+            <div className="flex items-center gap-3">
+              <Avatar className="size-8">
+                <AvatarFallback>
+                  {currentUser.displayName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
+                <span className="text-sm font-medium">
+                  {currentUser.displayName}
+                </span>
+                <span className="text-xs text-sidebar-foreground/70">
+                  {currentUser.email}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                aria-label={
+                  theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
+                }
+                onClick={toggleTheme}
+                size="icon-sm"
+                type="button"
+                variant="outline"
+              >
+                {theme === 'dark' ? (
+                  <SunMediumIcon className="size-4" />
+                ) : (
+                  <MoonStarIcon className="size-4" />
+                )}
+              </Button>
+              <Button asChild className="flex-1" size="sm" variant="outline">
+                <Link to="/">Publico</Link>
+              </Button>
             </div>
           </div>
+          <Button
+            aria-label={
+              theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
+            }
+            className="hidden group-data-[collapsible=icon]:inline-flex"
+            onClick={toggleTheme}
+            size="icon-sm"
+            type="button"
+            variant="outline"
+          >
+            {theme === 'dark' ? (
+              <SunMediumIcon className="size-4" />
+            ) : (
+              <MoonStarIcon className="size-4" />
+            )}
+          </Button>
         </SidebarFooter>
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/70 bg-background/92 px-4 py-3 backdrop-blur lg:px-6">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-30 flex min-h-14 shrink-0 items-center justify-between border-b border-border/70 bg-background/92 px-4 backdrop-blur lg:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <SidebarTrigger />
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">Dashboard restrito a administradores</span>
-              <span className="text-xs text-muted-foreground">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">
+                Dashboard restrito a administradores
+              </p>
+              <p className="text-xs text-muted-foreground">
                 Metricas rastreaveis, filas, catalogo e operacao da base
-              </span>
+              </p>
             </div>
-          </div>
-          <div className="hidden items-center gap-2 md:flex">
-            <Button
-              aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
-              className="border-border/80 bg-card/90"
-              onClick={toggleTheme}
-              size="icon"
-              type="button"
-              variant="outline"
-            >
-              {theme === 'dark' ? <SunMediumIcon className="size-4" /> : <MoonStarIcon className="size-4" />}
-            </Button>
             <StatusBadge icon={ShieldCheckIcon} tone="primary">
               Acesso admin
             </StatusBadge>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/">Voltar para o publico</Link>
-            </Button>
           </div>
         </header>
 
