@@ -1,6 +1,9 @@
 import { useState, type FormEvent, type PropsWithChildren } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import {
+  BellIcon,
+  Building2Icon,
+  HistoryIcon,
   HomeIcon,
   LayoutDashboardIcon,
   ListChecksIcon,
@@ -9,7 +12,10 @@ import {
   MoonStarIcon,
   ReceiptTextIcon,
   SearchIcon,
+  SettingsIcon,
+  ShoppingCartIcon,
   SunMediumIcon,
+  TagsIcon,
   UserIcon,
 } from 'lucide-react';
 
@@ -51,16 +57,23 @@ import {
 } from '@/components/ui/sidebar';
 
 const publicNavItems = [
-  { label: 'Início', to: '/', icon: HomeIcon },
+  { label: 'Inicio', to: '/', icon: HomeIcon },
+  { label: 'Minha lista', to: '/listas', icon: ListChecksIcon },
   { label: 'Ofertas', to: '/ofertas', icon: SearchIcon },
-  { label: 'Cidades', to: '/cidades', icon: MapPinIcon },
-  { label: 'Minhas listas', to: '/listas', icon: ListChecksIcon },
+  { label: 'Lojas', to: '/cidades', icon: Building2Icon },
+  { label: 'Cupons', icon: TagsIcon, disabledReason: 'Cupons em breve' },
   { label: 'Notas fiscais', to: '/notas', icon: ReceiptTextIcon },
+  { label: 'Historico', icon: HistoryIcon, disabledReason: 'Historico em breve' },
+  {
+    label: 'Configuracoes',
+    icon: SettingsIcon,
+    disabledReason: 'Configuracoes em breve',
+  },
 ];
 
 function SidebarLogo() {
   return (
-    <Link className="flex items-center gap-3 rounded-lg px-2 py-2" to="/">
+    <Link className="flex items-center gap-2.5 rounded-lg px-2 py-2" to="/">
       <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
         <img
           alt=""
@@ -69,7 +82,9 @@ function SidebarLogo() {
         />
       </div>
       <div className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
-        <span className="text-sm font-semibold tracking-tight">Pricely</span>
+        <span className="font-heading text-base font-semibold tracking-tight">
+          pricely
+        </span>
         <span className="text-xs text-sidebar-foreground/70">
           economia com contexto real
         </span>
@@ -230,21 +245,34 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
             <SidebarGroupContent>
               <SidebarMenu aria-label="Navegacao principal">
                 {publicNavItems.map((item) => (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton asChild tooltip={item.label}>
-                      <NavLink
-                        className={({ isActive }) =>
-                          isActive
-                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                            : ''
-                        }
-                        end={item.to === '/'}
-                        to={item.to}
+                  <SidebarMenuItem key={item.label}>
+                    {item.to ? (
+                      <SidebarMenuButton asChild tooltip={item.label}>
+                        <NavLink
+                          className={({ isActive }) =>
+                            isActive
+                              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                              : ''
+                          }
+                          end={item.to === '/'}
+                          to={item.to}
+                        >
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    ) : (
+                      <SidebarMenuButton
+                        aria-disabled="true"
+                        className="opacity-55"
+                        disabled
+                        tooltip={item.disabledReason}
+                        type="button"
                       >
                         <item.icon />
                         <span>{item.label}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
+                      </SidebarMenuButton>
+                    )}
                   </SidebarMenuItem>
                 ))}
                 {currentUser?.role === 'admin' ? (
@@ -267,56 +295,18 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-
-          <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-            <SidebarGroupLabel>Contexto</SidebarGroupLabel>
-            <SidebarGroupContent className="grid gap-2">
-              <Select
-                onValueChange={(value) => void setCityId(value)}
-                value={cityId ?? ''}
-              >
-                <SelectTrigger className="h-9 w-full bg-background">
-                  <MapPinIcon />
-                  <SelectValue placeholder="Escolha sua cidade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {cities.map((city) => (
-                      <SelectItem key={city.id} value={city.id}>
-                        {city.name} - {city.activeStoreCount} estabelecimentos
-                        ativos
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-
-              <Button
-                className="justify-start"
-                onClick={() => setIsLocationDialogOpen(true)}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                <LocateFixedIcon data-icon="inline-start" />
-                Configurar localização
-              </Button>
-            </SidebarGroupContent>
-          </SidebarGroup>
         </SidebarContent>
 
         <SidebarFooter className="shrink-0">
           <div className="grid gap-2 rounded-lg border border-sidebar-border p-2 group-data-[collapsible=icon]:hidden">
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">
-                {isAuthenticated
-                  ? (currentUser?.displayName ?? 'Minha conta')
-                  : 'Visitante'}
+                {activeCity ? activeCity.name : 'Cidade pendente'}
               </p>
               <p className="truncate text-xs text-sidebar-foreground/70">
                 {activeCity
-                  ? `${activeCity.name} - ${activeCity.activeStoreCount} lojas`
-                  : 'Cidade pendente'}
+                  ? `${activeCity.activeStoreCount} lojas ativas`
+                  : 'Escolha no header'}
               </p>
             </div>
             <div className="flex gap-2">
@@ -335,20 +325,16 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
                   <MoonStarIcon className="size-4" />
                 )}
               </Button>
-              {isAuthenticated ? (
-                <Button
-                  className="flex-1"
-                  onClick={signOut}
-                  size="sm"
-                  variant="outline"
-                >
-                  Sair
-                </Button>
-              ) : (
-                <Button asChild className="flex-1" size="sm">
-                  <Link to="/entrar">Entrar</Link>
-                </Button>
-              )}
+              <Button
+                className="flex-1"
+                onClick={() => setIsLocationDialogOpen(true)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <LocateFixedIcon data-icon="inline-start" />
+                Local
+              </Button>
             </div>
           </div>
           <Button
@@ -371,7 +357,7 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-30 flex min-h-14 shrink-0 items-center justify-between border-b border-border/70 bg-background/92 px-4 backdrop-blur lg:px-6">
+        <header className="sticky top-0 z-30 flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-background/94 px-4 backdrop-blur lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <SidebarTrigger />
             <div className="min-w-0">
@@ -386,18 +372,72 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
               </p>
             </div>
           </div>
-          <Button asChild size="sm" variant="outline">
-            <Link to={isAuthenticated ? '/listas' : '/criar-conta'}>
-              {isAuthenticated ? (
-                <>
-                  <UserIcon data-icon="inline-start" />
-                  Minha conta
-                </>
-              ) : (
-                'Criar conta'
-              )}
-            </Link>
-          </Button>
+          <div className="flex min-w-0 items-center justify-end gap-2">
+            <Select
+              onValueChange={(value) => void setCityId(value)}
+              value={cityId ?? ''}
+            >
+              <SelectTrigger className="hidden h-9 w-[260px] bg-background md:inline-flex">
+                <MapPinIcon />
+                <SelectValue placeholder="Escolha sua cidade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {cities.map((city) => (
+                    <SelectItem key={city.id} value={city.id}>
+                      {city.name} - {city.activeStoreCount} estabelecimentos
+                      ativos
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <Button
+              aria-label="Configurar localização"
+              onClick={() => setIsLocationDialogOpen(true)}
+              size="icon-sm"
+              type="button"
+              variant="outline"
+            >
+              <LocateFixedIcon className="size-4" />
+            </Button>
+            <Button
+              aria-label="Notificacoes"
+              size="icon-sm"
+              type="button"
+              variant="outline"
+            >
+              <BellIcon className="size-4" />
+            </Button>
+            {isAuthenticated ? (
+              <>
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/listas">
+                    <UserIcon data-icon="inline-start" />
+                    <span className="hidden sm:inline">
+                      {currentUser?.displayName ?? 'Minha conta'}
+                    </span>
+                  </Link>
+                </Button>
+                <Button
+                  className="hidden lg:inline-flex"
+                  onClick={signOut}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  Sair
+                </Button>
+              </>
+            ) : (
+              <Button asChild size="sm" variant="outline">
+                <Link to="/criar-conta">
+                  <ShoppingCartIcon data-icon="inline-start" />
+                  Criar conta
+                </Link>
+              </Button>
+            )}
+          </div>
         </header>
 
         <div className="flex flex-1 flex-col gap-8 bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.08),transparent_26%),radial-gradient(circle_at_85%_15%,rgba(37,99,235,0.06),transparent_22%)] px-4 py-6 lg:px-6">

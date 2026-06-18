@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CitiesPage,
+  LandingPage,
   ListsPage,
   OfferDetailPage,
   OffersPage,
@@ -20,11 +21,13 @@ import {
 
 const fetchRegionOffers = vi.fn();
 const fetchOfferDetail = vi.fn();
+const fetchPublicImpact = vi.fn();
 const requestCityInclusion = vi.fn();
 const submitReceipt = vi.fn();
 
 const setCityId = vi.fn();
 const pricelyMockState = vi.hoisted(() => ({
+  isAuthenticated: true,
   profileOverride: null as Record<string, unknown> | null,
 }));
 
@@ -33,13 +36,15 @@ vi.mock('@/app/pricely-context', () => ({
     accessToken: 'token',
     cityId: 'campinas-sp',
     setCityId,
-    currentUser: {
-      id: 'user-1',
-      email: 'cliente@pricely.local',
-      displayName: 'Cliente',
-      role: 'customer',
-    },
-    isAuthenticated: true,
+    currentUser: pricelyMockState.isAuthenticated
+      ? {
+          id: 'user-1',
+          email: 'cliente@pricely.local',
+          displayName: 'Cliente',
+          role: 'customer',
+        }
+      : null,
+    isAuthenticated: pricelyMockState.isAuthenticated,
     isBootstrapping: false,
     profile: {
       listsCreated: 1,
@@ -52,30 +57,32 @@ vi.mock('@/app/pricely-context', () => ({
       checkoutEnabled: false,
       ...pricelyMockState.profileOverride,
     },
-    lists: [
-      {
-        id: 'list-1',
-        name: 'Compra semanal',
-        cityId: 'sao-paulo-sp',
-        lastMode: 'global_multi',
-        updatedAt: '2026-05-10T10:00:00.000Z',
-        expectedSavings: 12.4,
-        latestOptimizationStatus: 'completed',
-        items: [
+    lists: pricelyMockState.isAuthenticated
+      ? [
           {
-            id: 'item-1',
-            name: 'Arroz tipo 1 5kg',
-            quantity: 1,
-            unitLabel: 'un',
-            purchaseStatus: 'pending',
-            status: 'resolved',
-            imageUrl: 'https://example.com/arroz.png',
-            brandPreferenceMode: 'any',
-            preferredBrandNames: [],
+            id: 'list-1',
+            name: 'Compra semanal',
+            cityId: 'sao-paulo-sp',
+            lastMode: 'global_multi',
+            updatedAt: '2026-05-10T10:00:00.000Z',
+            expectedSavings: 12.4,
+            latestOptimizationStatus: 'completed',
+            items: [
+              {
+                id: 'item-1',
+                name: 'Arroz tipo 1 5kg',
+                quantity: 1,
+                unitLabel: 'un',
+                purchaseStatus: 'pending',
+                status: 'resolved',
+                imageUrl: 'https://example.com/arroz.png',
+                brandPreferenceMode: 'any',
+                preferredBrandNames: [],
+              },
+            ],
           },
-        ],
-      },
-    ],
+        ]
+      : [],
     cities: [
       {
         id: 'campinas-sp',
@@ -122,6 +129,7 @@ vi.mock('@/app/api', async () => {
     ...actual,
     fetchRegionOffers: (...args: unknown[]) => fetchRegionOffers(...args),
     fetchOfferDetail: (...args: unknown[]) => fetchOfferDetail(...args),
+    fetchPublicImpact: (...args: unknown[]) => fetchPublicImpact(...args),
     requestCityInclusion: (...args: unknown[]) => requestCityInclusion(...args),
     submitReceipt: (...args: unknown[]) => submitReceipt(...args),
   };
@@ -131,15 +139,48 @@ describe('public pages', () => {
   beforeEach(() => {
     fetchRegionOffers.mockReset();
     fetchOfferDetail.mockReset();
+    fetchPublicImpact.mockReset();
+    fetchPublicImpact.mockResolvedValue({
+      totalEstimatedSavings: 7.69,
+      optimizedListsCount: 8,
+    });
     requestCityInclusion.mockReset();
     submitReceipt.mockReset();
     setCityId.mockReset();
+    pricelyMockState.isAuthenticated = true;
     pricelyMockState.profileOverride = null;
   });
 
   afterEach(() => {
     vi.clearAllMocks();
     cleanup();
+  });
+
+  it('uses action placeholders on logged-out home receipt and savings cards', async () => {
+    pricelyMockState.isAuthenticated = false;
+    fetchRegionOffers.mockResolvedValue({
+      region: {
+        id: 'campinas-sp',
+        slug: 'campinas-sp',
+        name: 'Campinas',
+        stateCode: 'SP',
+      },
+      activeEstablishmentCount: 0,
+      offerCoverageStatus: 'collecting_data',
+      offers: [],
+    });
+
+    render(
+      <MemoryRouter>
+        <LandingPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Envie sua primeira nota fiscal')).toBeTruthy();
+    expect(screen.getByText('Entre para ver sua economia')).toBeTruthy();
+    expect(screen.getAllByText('Aguardando lista').length).toBeGreaterThan(0);
+    expect(screen.queryByText('R$ 7,69')).toBeNull();
+    await waitFor(() => expect(fetchPublicImpact).toHaveBeenCalledTimes(1));
   });
 
   it('renders zero-store and collecting-data messaging for supported cities', () => {

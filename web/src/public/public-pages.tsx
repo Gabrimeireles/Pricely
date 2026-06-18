@@ -723,17 +723,82 @@ function RequireAuthentication({
   }
 
   if (!isAuthenticated) {
+    const isReceiptRoute = title.toLowerCase().includes('nota');
+
     return (
-      <Alert>
-        <LogInIcon />
-        <AlertTitle>{title}</AlertTitle>
-        <AlertDescription className="space-y-3">
-          <p>{description}</p>
-          <Button asChild size="sm">
-            <Link to="/entrar">Entrar agora</Link>
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <Card className="border-border/70 bg-card/95 shadow-sm">
+          <CardHeader>
+            <div className="flex items-start gap-3">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--ds-location-soft)] text-[var(--ds-location)]">
+                <LogInIcon className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <CardTitle className="font-heading text-2xl">
+                  {isReceiptRoute
+                    ? 'Entre para acompanhar suas notas fiscais'
+                    : 'Entre para salvar suas listas'}
+                </CardTitle>
+                <CardDescription className="mt-1 text-base">
+                  {description}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                isReceiptRoute
+                  ? 'Envie sua primeira nota fiscal'
+                  : 'Crie sua primeira lista',
+                'Continue no celular',
+                'Preserve cidade e preferencias',
+              ].map((item) => (
+                <div
+                  className="rounded-lg border border-border/70 bg-background/80 p-3 text-sm"
+                  key={item}
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <Link to="/entrar">Entrar agora</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/criar-conta">Criar conta</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <Link to="/ofertas">Ver ofertas da cidade</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>
+              {isReceiptRoute
+                ? 'Depois do envio'
+                : 'Depois da primeira lista'}
+            </CardTitle>
+            <CardDescription>
+              Preview sem dados pessoais ate voce entrar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 text-sm">
+            <div className="rounded-lg border border-dashed border-border/80 p-3">
+              {isReceiptRoute
+                ? 'Status da nota, validacao e historico aparecem aqui.'
+                : 'Itens, marcas preferidas e otimizacao aparecem aqui.'}
+            </div>
+            <Button asChild variant="secondary">
+              <Link to="/cidades">Escolher cidade</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
     );
   }
 
@@ -955,13 +1020,14 @@ export function LandingPage() {
 
   const estimatedSavings = impact?.totalEstimatedSavings ?? 0;
   const optimizedListsCount = impact?.optimizedListsCount ?? 0;
+  const hasAccount = Boolean(currentUser);
   const primaryOffer = featuredOffers[0];
   const secondaryOffers = featuredOffers.slice(0, 3);
   const coveragePercent = city ? 100 : 0;
   const activeStoreLabel = city
     ? `${city.activeStoreCount} lojas ativas`
     : 'Cidade pendente';
-  const lastReceiptTotal = activeList
+  const lastReceiptTotal = hasAccount && activeList
     ? Math.max(42.9, activeList.items.length * 20.45)
     : 0;
 
@@ -1223,18 +1289,21 @@ export function LandingPage() {
                 title: 'Sem cidade selecionada',
                 text: 'Escolha uma cidade para ver ofertas',
                 action: 'Selecionar cidade',
+                to: '/cidades',
               },
               {
                 icon: LockIcon,
                 title: 'Permissão de localização negada',
                 text: 'Ative a permissão para ver lojas perto de você',
-                action: 'Abrir configurações',
+                action: 'Escolher cidade',
+                to: '/cidades',
               },
               {
                 icon: StoreIcon,
                 title: 'Nenhuma loja no raio',
                 text: 'Não encontramos lojas ativas a 5 km de você',
-                action: 'Aumentar raio',
+                action: 'Ver lojas',
+                to: '/cidades',
               },
               {
                 icon: Clock3Icon,
@@ -1253,8 +1322,8 @@ export function LandingPage() {
                   {state.text}
                 </div>
                 {state.action ? (
-                  <Button className="mt-3" size="sm" variant="outline">
-                    {state.action}
+                  <Button asChild className="mt-3" size="sm" variant="outline">
+                    <Link to={state.to ?? '/cidades'}>{state.action}</Link>
                   </Button>
                 ) : (
                   <div className="mt-4 grid gap-2">
@@ -1278,25 +1347,40 @@ export function LandingPage() {
                 </span>
                 <div>
                   <CardTitle>Nota fiscal</CardTitle>
-                  <CardDescription>Aguardando liberação manual</CardDescription>
+                  <CardDescription>
+                    {hasAccount
+                      ? 'Aguardando liberação manual'
+                      : 'Envie sua primeira nota fiscal'}
+                  </CardDescription>
                 </div>
               </div>
-              <StatusBadge tone="warning">Aguardando</StatusBadge>
+              <StatusBadge tone={hasAccount ? 'warning' : 'neutral'}>
+                {hasAccount ? 'Aguardando' : 'Primeira nota'}
+              </StatusBadge>
             </div>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div>
-              <div className="font-medium">Enviada para validação</div>
+              <div className="font-medium">
+                {hasAccount
+                  ? 'Enviada para validação'
+                  : 'Acompanhe a validação depois do envio'}
+              </div>
               <div className="mt-1 text-sm text-muted-foreground">
-                Total: {formatCurrency(lastReceiptTotal)}
+                {hasAccount
+                  ? `Total: ${formatCurrency(lastReceiptTotal)}`
+                  : 'Entre ou crie conta para salvar a nota e receber status.'}
               </div>
             </div>
             <div className="rounded-lg border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] p-3 text-sm">
-              Nossa equipe vai revisar sua nota fiscal. Você será avisado quando
-              for liberada.
+              {hasAccount
+                ? 'Nossa equipe vai revisar sua nota fiscal. Você será avisado quando for liberada.'
+                : 'Saiba como funciona: a nota entra em validação e só depois libera histórico e status na conta.'}
             </div>
             <Button asChild variant="outline">
-              <Link to="/notas">Ver detalhes</Link>
+              <Link to={hasAccount ? '/notas' : '/entrar'}>
+                {hasAccount ? 'Ver detalhes' : 'Enviar primeira nota fiscal'}
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -1311,38 +1395,54 @@ export function LandingPage() {
           </CardHeader>
           <CardContent className="grid gap-4">
             <div>
-              <div className="font-heading text-4xl font-semibold text-[var(--ds-savings)]">
-                {formatCurrency(estimatedSavings)}
-              </div>
+              {hasAccount ? (
+                <div className="font-heading text-4xl font-semibold text-[var(--ds-savings)]">
+                  {formatCurrency(estimatedSavings)}
+                </div>
+              ) : (
+                <div className="font-heading text-2xl font-semibold text-foreground">
+                  Entre para ver sua economia
+                </div>
+              )}
               <div className="text-sm text-muted-foreground">
-                Economia estimada
+                {hasAccount
+                  ? 'Economia estimada'
+                  : 'Seu resumo aparece depois da primeira lista otimizada.'}
               </div>
             </div>
             <div className="divide-y divide-border/70 text-sm">
               <div className="flex justify-between py-2">
                 <span className="text-muted-foreground">Itens otimizados</span>
                 <span>
-                  {completedItemCount} de {activeList?.items.length ?? 0}
+                  {hasAccount
+                    ? `${completedItemCount} de ${activeList?.items.length ?? 0}`
+                    : 'Aguardando lista'}
                 </span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-muted-foreground">Melhor loja</span>
-                <span>{primaryOffer?.storeName ?? 'Aguardando lista'}</span>
+                <span>
+                  {hasAccount
+                    ? (primaryOffer?.storeName ?? 'Aguardando lista')
+                    : 'Aguardando cidade'}
+                </span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-muted-foreground">
                   Preços verificados
                 </span>
-                <span>{city ? '100%' : '0%'}</span>
+                <span>{hasAccount && city ? '100%' : 'Aguardando lista'}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-muted-foreground">Listas otimizadas</span>
-                <span>{optimizedListsCount}</span>
+                <span>
+                  {hasAccount ? optimizedListsCount : 'Aguardando lista'}
+                </span>
               </div>
             </div>
             <Button asChild variant="ghost">
               <Link to={currentUser ? '/listas' : '/entrar'}>
-                Ver detalhes da economia
+                {hasAccount ? 'Ver detalhes da economia' : 'Saiba como funciona'}
                 <ArrowRightIcon data-icon="inline-end" />
               </Link>
             </Button>
@@ -1473,18 +1573,23 @@ export function OffersPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
         {visibleOfferGroups.map((group) => (
-          <Card key={group.id} className="overflow-hidden">
-            <div className="aspect-[16/9] overflow-hidden">
+          <Card
+            key={group.id}
+            className="flex h-full min-h-[520px] flex-col overflow-hidden"
+          >
+            <div className="h-44 shrink-0 overflow-hidden">
               <img
                 alt={group.variantName}
                 className="h-full w-full object-cover"
                 src={resolveProductImage(group.imageUrl)}
               />
             </div>
-            <CardHeader>
-              <CardTitle>{group.variantName}</CardTitle>
+            <CardHeader className="shrink-0">
+              <CardTitle className="line-clamp-2 min-h-[2.5rem]">
+                {group.variantName}
+              </CardTitle>
               <CardDescription>
                 {formatVariantWithPackage(
                   group.productName,
@@ -1492,7 +1597,7 @@ export function OffersPage() {
                 )}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-3">
+            <CardContent className="flex flex-1 flex-col gap-3">
               <div className="flex flex-wrap gap-2">
                 {freshnessBadge('fresh')}
                 {confidenceBadge(
@@ -1553,7 +1658,7 @@ export function OffersPage() {
                 </div>
               ) : null}
               {group.alternativeOffers.length > 0 ? (
-                <details className="rounded-lg border border-border/70 p-3 text-sm">
+                <details className="mt-auto rounded-lg border border-border/70 p-3 text-sm">
                   <summary className="cursor-pointer font-medium">
                     Ver outros estabelecimentos
                   </summary>
@@ -1581,9 +1686,11 @@ export function OffersPage() {
                     ))}
                   </div>
                 </details>
-              ) : null}
+              ) : (
+                <div className="mt-auto min-h-12" />
+              )}
             </CardContent>
-            <CardFooter className="justify-end">
+            <CardFooter className="mt-auto shrink-0 justify-end border-t border-border/70">
               <Button asChild size="sm" variant="outline">
                 <Link to={`/ofertas/${group.bestOffer.id}`}>
                   Detalhe

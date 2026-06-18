@@ -588,10 +588,10 @@ sensitive monetary values across web surfaces.
 
 ### Phase 30: Web Shell, Auth Prompts, and Offer Card Visual QA
 
-- [ ] T235 [P] Align public web shell with `docs/design-system/reference-screens/web-public/public_web_home.png`: brand mark/wordmark, sidebar menu labels/order, fixed sidebar/header behavior, and header account/location/notification controls in `web/src/public/` and `web/src/components/design-system/`
+- [X] T235 [P] Align public web shell with `docs/design-system/reference-screens/web-public/public_web_home.png`: brand mark/wordmark, sidebar menu labels/order, fixed sidebar/header behavior, and header account/location/notification controls in `web/src/public/` and `web/src/components/design-system/`
 - [X] T236 [P] Add ChatGPT/Stitch-ready prompts for login, registration, and protected auth-required screens in `docs/design-system/screen-prompts/web-public/`
-- [ ] T237 [P] Fix public offer-card grid alignment, card height stability, action footer placement, and responsive spacing across logged-out/logged-in desktop and mobile states in `web/src/public/` and `web/e2e/`
-- [ ] T238 Extend smoke screenshot extraction to validate logged-out/logged-in shell state, protected auth-required state, offer-card alignment, and home placeholder copy against generated artifacts in `.tmp/smoke-screens-*` and `web/e2e/`
+- [X] T237 [P] Fix public offer-card grid alignment, card height stability, action footer placement, and responsive spacing across logged-out/logged-in desktop and mobile states in `web/src/public/` and `web/e2e/`
+- [X] T238 Extend smoke screenshot extraction to validate logged-out/logged-in shell state, protected auth-required state, offer-card alignment, and home placeholder copy against generated artifacts in `.tmp/smoke-screens-*` and `web/e2e/`
 
 **Homolog validation note (2026-06-15)**: Web/admin/backend MVP smoke passed on
 `https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.
