@@ -2,11 +2,8 @@ import * as React from 'react';
 import { InfoIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import type { TooltipContent } from '@/components/ui/tooltip';
+import { WithTooltip } from '@/components/design-system/with-tooltip';
 import { cn } from '@/lib/utils';
 
 type InfoTooltipProps = {
@@ -23,23 +20,19 @@ function InfoTooltip({
   triggerLabel = 'Saiba como funciona',
 }: InfoTooltipProps) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          aria-label={triggerLabel}
-          className={cn('size-7 text-muted-foreground', className)}
-          size="icon-sm"
-          type="button"
-          variant="ghost"
-        >
-          <InfoIcon className="size-4" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side={side}>{label}</TooltipContent>
-    </Tooltip>
+    <WithTooltip label={label} side={side}>
+      <Button
+        aria-label={triggerLabel}
+        className={cn('size-7 text-muted-foreground', className)}
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+      >
+        <InfoIcon className="size-4" />
+      </Button>
+    </WithTooltip>
   );
 }
 
 export { InfoTooltip };
 export type { InfoTooltipProps };
-

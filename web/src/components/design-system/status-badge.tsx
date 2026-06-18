@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { WithTooltip } from '@/components/design-system/with-tooltip';
 import { cn } from '@/lib/utils';
 
 const statusBadgeVariants = cva(
@@ -107,6 +108,8 @@ type StatusBadgeProps = React.ComponentProps<typeof Badge> &
     status?: string;
     icon?: React.ElementType | null;
     label?: string;
+    tooltip?: React.ReactNode;
+    tooltipSide?: React.ComponentProps<typeof WithTooltip>['side'];
   };
 
 function getStatusPreset(family?: StatusFamily, status?: string) {
@@ -129,6 +132,8 @@ function StatusBadge({
   icon,
   label,
   tone,
+  tooltip,
+  tooltipSide,
   children,
   ...props
 }: StatusBadgeProps) {
@@ -137,7 +142,7 @@ function StatusBadge({
   const badgeTone = tone ?? preset?.tone ?? 'neutral';
   const content = children ?? label ?? preset?.label ?? status;
 
-  return (
+  const badge = (
     <Badge
       data-slot="status-badge"
       variant="outline"
@@ -147,6 +152,16 @@ function StatusBadge({
       {Icon ? <Icon aria-hidden="true" /> : null}
       {content}
     </Badge>
+  );
+
+  if (!tooltip) {
+    return badge;
+  }
+
+  return (
+    <WithTooltip label={tooltip} side={tooltipSide}>
+      {badge}
+    </WithTooltip>
   );
 }
 
