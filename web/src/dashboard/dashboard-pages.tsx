@@ -67,6 +67,7 @@ import { usePricely } from '@/app/pricely-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
+  ActionPlaceholder,
   AdminActionQueueItem,
   MaskedMoney,
   StatusBadge,
@@ -996,7 +997,15 @@ export function AdminOverviewPage() {
                   {lowTrustOffers} ofertas com evidência fraca
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <ActionPlaceholder
+                icon={<SparklesIcon className="size-5" />}
+                title="Sem ofertas críticas"
+                description="As ofertas de baixa confiança estão zeradas. Continue acompanhando entradas de notas fiscais e revisões do catálogo."
+                primaryAction={<a href="/dashboard/ofertas">Auditar ofertas</a>}
+                secondaryAction={<a href="/dashboard/notas">Ver notas</a>}
+              />
+            )}
             <Button
               asChild
               className="justify-self-end"
@@ -1157,13 +1166,13 @@ export function AdminOverviewPage() {
       </div>
 
       {isEmptyState ? (
-        <Alert>
-          <AlertTitle>Nenhuma metrica operacional ainda</AlertTitle>
-          <AlertDescription>
-            O ambiente ainda não registrou usuários ativos, listas, ofertas ou
-            jobs. Use seed ou operações admin para popular o sistema.
-          </AlertDescription>
-        </Alert>
+        <ActionPlaceholder
+          icon={<InfoIcon className="size-5" />}
+          title="Nenhuma métrica operacional ainda"
+          description="O ambiente ainda não registrou usuários ativos, listas, ofertas ou jobs. Use seed ou operações admin para popular o sistema."
+          primaryAction={<a href="/dashboard/catalogo">Cadastrar catálogo</a>}
+          secondaryAction={<a href="/dashboard/notas">Ver entrada de notas</a>}
+        />
       ) : null}
 
       {queueHealth ? (
@@ -3311,46 +3320,69 @@ export function AdminUsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="font-medium">{user.displayName}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {user.email}
-                      </div>
-                      <div className="mt-1 flex items-center gap-2">
-                        <StatusBadge tone="primary">{user.role}</StatusBadge>
-                        <StatusBadge
-                          tone={
-                            user.status === 'active' ? 'savings' : 'neutral'
-                          }
-                        >
-                          {user.status}
-                        </StatusBadge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {adminUserLocationLabel(user)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        ultimo acesso{' '}
-                        {user.lastLoginAt
-                          ? formatFreshnessLabel(user.lastLoginAt)
-                          : 'nao registrado'}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {user.counts.shoppingLists} listas ·{' '}
-                        {user.counts.optimizationRuns} otimizacoes
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {user.counts.receiptRecords} notas ·{' '}
-                        {user.counts.priceMismatchReports} reports
-                      </div>
-                    </TableCell>
-                    <TableCell>
+                {users.map((user) => {
+                  const hasActivity =
+                    user.counts.shoppingLists +
+                      user.counts.optimizationRuns +
+                      user.counts.receiptRecords +
+                      user.counts.priceMismatchReports >
+                    0;
+
+                  return (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="font-medium">{user.displayName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {user.email}
+                        </div>
+                        <div className="mt-1 flex items-center gap-2">
+                          <StatusBadge tone="primary">{user.role}</StatusBadge>
+                          <StatusBadge
+                            tone={
+                              user.status === 'active' ? 'savings' : 'neutral'
+                            }
+                          >
+                            {user.status}
+                          </StatusBadge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {adminUserLocationLabel(user)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          ultimo acesso{' '}
+                          {user.lastLoginAt
+                            ? formatFreshnessLabel(user.lastLoginAt)
+                            : 'nao registrado'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {hasActivity ? (
+                          <>
+                            <div className="text-sm">
+                              {user.counts.shoppingLists} listas ·{' '}
+                              {user.counts.optimizationRuns} otimizacoes
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {user.counts.receiptRecords} notas ·{' '}
+                              {user.counts.priceMismatchReports} reports
+                            </div>
+                          </>
+                        ) : (
+                          <ActionPlaceholder
+                            className="bg-background/80"
+                            icon={<UserCogIcon className="size-5" />}
+                            title="Sem atividade"
+                            description="Oriente o usuário a criar uma lista, salvar cidade e enviar a primeira nota fiscal."
+                            primaryAction={
+                              <a href={`/dashboard/usuarios`}>Auditar conta</a>
+                            }
+                            secondaryAction={<a href="/dashboard/notas">Ver notas</a>}
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell>
                       <div className="flex items-center gap-2">
                         <UserCogIcon className="size-4 text-muted-foreground" />
                         <span className="font-medium">
@@ -3360,8 +3392,8 @@ export function AdminUsersPage() {
                       <div className="text-xs text-muted-foreground">
                         Origem {user.entitlement.source}; billing desativado
                       </div>
-                    </TableCell>
-                    <TableCell>
+                      </TableCell>
+                      <TableCell>
                       <div className="text-sm">
                         {user.entitlement.lastPaymentAt ?? 'Sem cobranca ativa'}
                       </div>
@@ -3371,8 +3403,8 @@ export function AdminUsersPage() {
                           ? 'Billing desativado'
                           : user.entitlement.lastPaymentStatus}
                       </div>
-                    </TableCell>
-                    <TableCell>
+                      </TableCell>
+                      <TableCell>
                       <div className="flex flex-col gap-2">
                         <Button
                           onClick={() => void handlePremiumToggle(user)}
@@ -3413,9 +3445,10 @@ export function AdminUsersPage() {
                           </Button>
                         </div>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -3797,9 +3830,13 @@ export function AdminReceiptsPage() {
           </CardHeader>
           <CardContent className="grid gap-3">
             {receipts.length === 0 ? (
-              <div className="rounded-lg border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-                Nenhuma nota fiscal recebida ainda.
-              </div>
+              <ActionPlaceholder
+                icon={<ReceiptTextIcon className="size-5" />}
+                title="Nenhuma nota pendente"
+                description="As notas enviadas pelos shoppers aparecem aqui depois do upload público. Enquanto a fila estiver vazia, acompanhe a saúde dos jobs e o fluxo de entrada."
+                primaryAction={<a href="/dashboard/fila">Ver filas</a>}
+                secondaryAction={<a href="/notas">Abrir envio público</a>}
+              />
             ) : null}
             {sortedReceipts.map((receipt) => (
               <div
@@ -4048,9 +4085,20 @@ export function AdminReceiptsPage() {
                       </div>
                     </div>
                     {receipt.lineItems.length === 0 ? (
-                      <div className="rounded-md border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">
-                        Nenhum item extraído da nota fiscal ainda.
-                      </div>
+                      <ActionPlaceholder
+                        className="bg-muted/20"
+                        icon={<ReceiptTextIcon className="size-5" />}
+                        title="Aguardando extração"
+                        description="Nenhum item foi extraído desta nota fiscal ainda. Reprocesse a nota ou audite o job antes de liberar reward."
+                        primaryAction={
+                          <a href={`/dashboard/nota/${receipt.id}`}>
+                            Auditar nota
+                          </a>
+                        }
+                        secondaryAction={
+                          <a href="/dashboard/fila">Ver jobs</a>
+                        }
+                      />
                     ) : null}
                     {receipt.lineItems.map((item) => (
                       <div
@@ -4612,9 +4660,14 @@ export function AdminReceiptAuditPage() {
 
           <div className="grid gap-3">
             {receipt.lineItems.length === 0 ? (
-              <div className="rounded-md border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">
-                Nenhum item extraído da nota fiscal ainda.
-              </div>
+              <ActionPlaceholder
+                className="bg-muted/20"
+                icon={<ReceiptTextIcon className="size-5" />}
+                title="Aguardando extração"
+                description="Esta nota ainda não possui itens extraídos. Reprocesse a leitura ou acompanhe o job antes de liberar qualquer decisão operacional."
+                primaryAction={<a href={`/dashboard/nota/${receipt.id}`}>Revisar nota</a>}
+                secondaryAction={<a href="/dashboard/fila">Ver jobs</a>}
+              />
             ) : null}
             {receipt.lineItems.map((item) => (
               <div
@@ -4712,9 +4765,13 @@ export function AdminQueuePage() {
             </div>
           ) : null}
           {queueHealth && queueHealth.queues.length === 0 ? (
-            <div className="rounded-lg border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-              Nenhuma fila registrada ainda.
-            </div>
+            <ActionPlaceholder
+              icon={<ListChecksIcon className="size-5" />}
+              title="Nenhuma fila registrada"
+              description="Nenhum worker publicou fila monitorada ainda. Verifique o deploy, Redis e os jobs de notas/otimização antes de considerar o ambiente saudável."
+              primaryAction={<a href="/dashboard">Ver overview</a>}
+              secondaryAction={<a href="/dashboard/notas">Ver notas</a>}
+            />
           ) : null}
           {queueHealth?.recentFailures?.length ? (
             <div className="rounded-lg border border-destructive/30 p-4">
@@ -4730,6 +4787,14 @@ export function AdminQueuePage() {
                 ))}
               </div>
             </div>
+          ) : queueHealth ? (
+            <ActionPlaceholder
+              icon={<AlertTriangleIcon className="size-5" />}
+              title="Sem falhas recentes"
+              description="A fila não reportou falhas recentes. Continue monitorando jobs concluídos e entradas pendentes de notas fiscais."
+              primaryAction={<a href="/dashboard/notas">Revisar notas</a>}
+              secondaryAction={<a href="/dashboard">Ver métricas</a>}
+            />
           ) : null}
           {queueHealth ? (
             <div className="grid gap-3 md:grid-cols-2">
@@ -4764,9 +4829,13 @@ export function AdminQueuePage() {
         </CardHeader>
         <CardContent className="grid gap-3">
           {jobs.length === 0 ? (
-            <div className="rounded-lg border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-              Fila vazia no momento. Nenhum job recente para auditoria.
-            </div>
+            <ActionPlaceholder
+              icon={<ListChecksIcon className="size-5" />}
+              title="Nenhum job recente"
+              description="A fila está vazia no momento. Jobs de otimização e leitura de notas aparecerão aqui quando shoppers gerarem listas ou enviarem notas."
+              primaryAction={<a href="/dashboard/notas">Ver notas</a>}
+              secondaryAction={<a href="/dashboard">Ver overview</a>}
+            />
           ) : null}
           {jobs.slice(0, 10).map((job) => (
             <AdminActionQueueItem
@@ -5231,6 +5300,20 @@ export function AdminQueueDetailPage() {
               <Button type="button" disabled={job.status !== 'failed'}>
                 Tentar novamente
               </Button>
+              {job.status !== 'failed' ? (
+                <ActionPlaceholder
+                  className="bg-background/80"
+                  icon={<RefreshCwIcon className="size-5" />}
+                  title="Retry indisponível"
+                  description="A tentativa manual só fica disponível para jobs com falha. Jobs em fila, execução ou concluídos devem ser auditados pelo histórico."
+                  primaryAction={
+                    auditTarget ? (
+                      <a href={auditTarget.href}>{auditTarget.label}</a>
+                    ) : undefined
+                  }
+                  secondaryAction={<a href="/dashboard/fila">Voltar para fila</a>}
+                />
+              ) : null}
               {auditTarget ? (
                 <Button asChild variant="outline">
                   <a href={auditTarget.href}>{auditTarget.label}</a>
