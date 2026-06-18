@@ -344,8 +344,9 @@ describe('Admin dashboard pages', () => {
     render(<AdminOverviewPage />);
 
     expect(
-      await screen.findByText(/Nenhuma metrica operacional ainda/),
+      await screen.findByText(/Nenhuma m[eé]trica operacional ainda/),
     ).toBeTruthy();
+    expect(screen.getByText('Cadastrar catálogo')).toBeTruthy();
   });
 
   it('renders queue diagnostics and recent jobs in the dedicated queue page', async () => {
