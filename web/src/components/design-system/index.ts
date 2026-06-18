@@ -23,3 +23,5 @@ export { StickyActionBar } from './sticky-action-bar';
 export type { StickyActionBarProps } from './sticky-action-bar';
 export { TechnicalDisclosure } from './technical-disclosure';
 export type { TechnicalDisclosureProps } from './technical-disclosure';
+export { WithTooltip } from './with-tooltip';
+export type { WithTooltipProps } from './with-tooltip';

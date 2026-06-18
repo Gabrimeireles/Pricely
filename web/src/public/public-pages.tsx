@@ -71,6 +71,7 @@ import {
   PriceRow,
   StatusBadge,
   StickyActionBar,
+  WithTooltip,
 } from '@/components/design-system';
 import {
   Card,
@@ -259,32 +260,62 @@ function toOptimizationError(error: unknown) {
 function freshnessBadge(level: FreshnessLevel) {
   if (level === 'fresh') {
     return (
-      <StatusBadge family="freshness" status="fresh">
+      <StatusBadge
+        family="freshness"
+        status="fresh"
+        tooltip="Preço validado hoje ou dentro da janela mais recente da cidade."
+      >
         Atualizado hoje
       </StatusBadge>
     );
   }
   if (level === 'aging') {
-    return <StatusBadge family="freshness" status="aging" />;
+    return (
+      <StatusBadge
+        family="freshness"
+        status="aging"
+        tooltip="Há evidência de preço, mas a cobertura ainda é parcial ou menos recente."
+      />
+    );
   }
 
-  return <StatusBadge family="freshness" status="stale" />;
+  return (
+    <StatusBadge
+      family="freshness"
+      status="stale"
+      tooltip="Preço antigo: use como referência e confirme antes de comprar."
+    />
+  );
 }
 
 function confidenceBadge(level: ConfidenceLevel) {
   if (level === 'alta') {
     return (
-      <StatusBadge family="trust" status="high">
+      <StatusBadge
+        family="trust"
+        status="high"
+        tooltip="Alta confiança: preço sustentado por evidências recentes e consistentes."
+      >
         Confiança alta
       </StatusBadge>
     );
   }
   if (level === 'media') {
-    return <StatusBadge family="trust" status="medium" />;
+    return (
+      <StatusBadge
+        family="trust"
+        status="medium"
+        tooltip="Confiança média: preço útil para comparação, mas ainda pede confirmação."
+      />
+    );
   }
 
   return (
-    <StatusBadge family="trust" status="low">
+    <StatusBadge
+      family="trust"
+      status="low"
+      tooltip="Confiança baixa: revise loja, variante e data antes de tomar decisão."
+    >
       Revisar
     </StatusBadge>
   );
@@ -466,21 +497,33 @@ function PriceDisplay({
 function cityStatusBadge(city: SupportedCity) {
   if (city.status === 'supported') {
     return (
-      <StatusBadge family="city" status="active">
+      <StatusBadge
+        family="city"
+        status="active"
+        tooltip="Cidade disponível para ofertas, listas e otimização com cobertura local."
+      >
         Disponível
       </StatusBadge>
     );
   }
   if (city.status === 'pilot') {
     return (
-      <StatusBadge family="city" status="activating">
+      <StatusBadge
+        family="city"
+        status="activating"
+        tooltip="Cidade em piloto: parte dos dados ainda está sendo calibrada."
+      >
         Piloto
       </StatusBadge>
     );
   }
 
   return (
-    <StatusBadge family="city" status="hidden">
+    <StatusBadge
+      family="city"
+      status="hidden"
+      tooltip="Ainda sem cobertura pública; você pode registrar interesse para priorização."
+    >
       Em breve
     </StatusBadge>
   );
@@ -2441,6 +2484,7 @@ export function ReceiptSubmissionPage() {
                             ? 'warning'
                             : undefined
                         }
+                        tooltip="Status da fila após o envio: a nota pode aguardar liberação manual, processamento ou nova tentativa."
                       >
                         {submission.processingStatus ===
                         'waiting_manual_release'
@@ -2469,6 +2513,7 @@ export function ReceiptSubmissionPage() {
                             ? 'rejected'
                             : submission.rewardEligibilityStatus
                         }
+                        tooltip="Reward depende da qualidade da nota, validação da evidência e regras antifraude."
                       >
                         {submission.rewardEligibilityStatus === 'granted'
                           ? 'Validado e concedido'
@@ -2516,7 +2561,13 @@ export function ReceiptSubmissionPage() {
 
         <Card className="border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)]/70 shadow-sm">
           <CardHeader>
-            <CardTitle>Como o reward funciona</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle>Como o reward funciona</CardTitle>
+              <InfoTooltip
+                label="O reward só é concedido depois que a nota passa por liberação, processamento e validação de confiança."
+                triggerLabel="Entender regras do reward"
+              />
+            </div>
             <CardDescription>
               Envio recebido, reward em processamento, nota validada e reward
               concedido depois da liberação/admin e processamento da fila.
@@ -3693,24 +3744,30 @@ export function ListEditorPage() {
               <span className="text-sm font-medium text-primary">
                 {items.length} {items.length === 1 ? 'item' : 'itens'}
               </span>
-              <Button
-                aria-label="Compartilhar lista"
-                size="icon"
-                type="button"
-                variant="outline"
-              >
-                <ArrowRightIcon className="size-4 rotate-[-35deg]" />
-              </Button>
-              <Button
-                aria-label="Remover itens"
-                disabled={items.length === 0}
-                onClick={() => setItems([])}
-                size="icon"
-                type="button"
-                variant="outline"
-              >
-                <ClipboardListIcon className="size-4" />
-              </Button>
+              <WithTooltip label="Compartilhar lista quando o link público estiver disponível.">
+                <Button
+                  aria-label="Compartilhar lista"
+                  size="icon"
+                  type="button"
+                  variant="outline"
+                >
+                  <ArrowRightIcon className="size-4 rotate-[-35deg]" />
+                </Button>
+              </WithTooltip>
+              <WithTooltip label="Remove todos os itens desta lista antes de salvar.">
+                <span className="inline-flex">
+                  <Button
+                    aria-label="Remover itens"
+                    disabled={items.length === 0}
+                    onClick={() => setItems([])}
+                    size="icon"
+                    type="button"
+                    variant="outline"
+                  >
+                    <ClipboardListIcon className="size-4" />
+                  </Button>
+                </span>
+              </WithTooltip>
             </div>
           </div>
 
@@ -4321,13 +4378,15 @@ export function OptimizationPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Button
-                      aria-label="Notificações"
-                      size="icon"
-                      variant="ghost"
-                    >
-                      <BellIcon className="size-4" />
-                    </Button>
+                    <WithTooltip label="Alertas sobre preço, cobertura e revisão desta otimização aparecerão aqui.">
+                      <Button
+                        aria-label="Notificações"
+                        size="icon"
+                        variant="ghost"
+                      >
+                        <BellIcon className="size-4" />
+                      </Button>
+                    </WithTooltip>
                     <div className="hidden items-center gap-3 sm:flex">
                       <div className="grid size-9 place-items-center rounded-full bg-[var(--ds-warning-soft)] text-sm font-semibold text-[var(--ds-warning)]">
                         M
@@ -4397,6 +4456,10 @@ export function OptimizationPage() {
                     <RefreshCwIcon className="size-4" />
                     Recalcular
                   </Button>
+                  <InfoTooltip
+                    label="Recalcula a lista com preços, cobertura e regras atuais da cidade selecionada."
+                    triggerLabel="Como funciona o recálculo"
+                  />
                   <Button asChild>
                     <Link to={`/listas/${list.id}/checklist`}>
                       <ListChecksIcon className="size-4" />

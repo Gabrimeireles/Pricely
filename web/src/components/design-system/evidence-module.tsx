@@ -59,9 +59,17 @@ function EvidenceModule({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="font-medium">{title}</div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <StatusBadge family="trust" status={trustLevel} />
+          <StatusBadge
+            family="trust"
+            status={trustLevel}
+            tooltip="Confiança combina origem, frescor e quantidade de evidências para este preço."
+          />
           {trustScore !== undefined ? (
-            <StatusBadge icon={GaugeIcon} tone="neutral">
+            <StatusBadge
+              icon={GaugeIcon}
+              tone="neutral"
+              tooltip="Score interno de confiança usado para destacar preços que precisam de revisão."
+            >
               <span className="tabular-nums">{trustScore}/100</span>
             </StatusBadge>
           ) : null}
@@ -85,14 +93,22 @@ function EvidenceModule({
         <StatusBadge
           icon={ReceiptTextIcon}
           tone={evidenceCount ? 'savings' : 'neutral'}
+          tooltip="Origem informada para explicar se o preço veio de nota fiscal aceita, seed operacional ou outra fonte."
         >
           {sourceLabel ?? 'Origem operacional'}
         </StatusBadge>
-        <StatusBadge tone={evidenceCount ? 'savings' : 'neutral'}>
+        <StatusBadge
+          tone={evidenceCount ? 'savings' : 'neutral'}
+          tooltip="Quantidade de notas fiscais aceitas que sustentam este preço observado."
+        >
           {evidenceLabel}
         </StatusBadge>
         {freshnessLabel ? (
-          <StatusBadge family="freshness" status="aging">
+          <StatusBadge
+            family="freshness"
+            status="aging"
+            tooltip="Frescor indica quando a última evidência de preço foi validada."
+          >
             {freshnessLabel}
           </StatusBadge>
         ) : null}

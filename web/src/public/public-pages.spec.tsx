@@ -314,7 +314,7 @@ describe('public pages', () => {
         ],
       }),
     );
-    expect(screen.getByText('Nota recebida')).toBeTruthy();
+    expect(await screen.findByText('Nota recebida')).toBeTruthy();
     expect(
       screen.getAllByText(/aguardando liberação manual/).length,
     ).toBeGreaterThan(0);

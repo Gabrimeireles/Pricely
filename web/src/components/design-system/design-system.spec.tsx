@@ -18,6 +18,7 @@ import {
   StatusBadge,
   StickyActionBar,
   TechnicalDisclosure,
+  WithTooltip,
 } from './index';
 
 afterEach(() => {
@@ -35,7 +36,13 @@ function renderDesignSystem(ui: React.ReactNode) {
 
 describe('design-system component foundation', () => {
   it('renders semantic status badges with accessible text', () => {
-    renderDesignSystem(<StatusBadge family="trust" status="high" />);
+    renderDesignSystem(
+      <StatusBadge
+        family="trust"
+        status="high"
+        tooltip="Confiança combina origem, frescor e quantidade de evidências."
+      />,
+    );
 
     expect(screen.getByText('Confiança alta')).toBeTruthy();
   });
@@ -113,6 +120,9 @@ describe('design-system component foundation', () => {
         />
         <InfoTooltip label="Valores podem ser ocultados." />
         <MaskedMoney value="R$ 42,90" />
+        <WithTooltip label="Ação contextual">
+          <button type="button">Acao com tooltip</button>
+        </WithTooltip>
       </>,
     );
 

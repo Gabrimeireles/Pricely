@@ -58,6 +58,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
+import { WithTooltip } from '@/components/design-system/with-tooltip';
 
 const publicNavItems = [
   { label: 'Inicio', to: '/', icon: HomeIcon },
@@ -314,38 +315,50 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
-                aria-label={
+              <WithTooltip
+                label={
                   isMoneyVisible
-                    ? 'Ocultar valores monetários'
-                    : 'Mostrar valores monetários'
+                    ? 'Oculta valores monetários sensíveis em cards, listas e otimizações.'
+                    : 'Mostra novamente valores monetários em cards, listas e otimizações.'
                 }
-                onClick={toggleMoneyVisibility}
-                size="icon-sm"
-                type="button"
-                variant="outline"
               >
-                {isMoneyVisible ? (
-                  <EyeIcon className="size-4" />
-                ) : (
-                  <EyeOffIcon className="size-4" />
-                )}
-              </Button>
-              <Button
-                aria-label={
-                  theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
-                }
-                onClick={toggleTheme}
-                size="icon-sm"
-                type="button"
-                variant="outline"
-              >
-                {theme === 'dark' ? (
-                  <SunMediumIcon className="size-4" />
-                ) : (
-                  <MoonStarIcon className="size-4" />
-                )}
-              </Button>
+                <Button
+                  aria-label={
+                    isMoneyVisible
+                      ? 'Ocultar valores monetários'
+                      : 'Mostrar valores monetários'
+                  }
+                  onClick={toggleMoneyVisibility}
+                  size="icon-sm"
+                  type="button"
+                  variant="outline"
+                >
+                  {isMoneyVisible ? (
+                    <EyeIcon className="size-4" />
+                  ) : (
+                    <EyeOffIcon className="size-4" />
+                  )}
+                </Button>
+              </WithTooltip>
+              <WithTooltip label="Alterna entre tema claro e escuro.">
+                <Button
+                  aria-label={
+                    theme === 'dark'
+                      ? 'Ativar modo claro'
+                      : 'Ativar modo escuro'
+                  }
+                  onClick={toggleTheme}
+                  size="icon-sm"
+                  type="button"
+                  variant="outline"
+                >
+                  {theme === 'dark' ? (
+                    <SunMediumIcon className="size-4" />
+                  ) : (
+                    <MoonStarIcon className="size-4" />
+                  )}
+                </Button>
+              </WithTooltip>
               <Button
                 className="flex-1"
                 onClick={() => setIsLocationDialogOpen(true)}
@@ -358,40 +371,50 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
               </Button>
             </div>
           </div>
-          <Button
-            aria-label={
+          <WithTooltip
+            label={
               isMoneyVisible
-                ? 'Ocultar valores monetários'
-                : 'Mostrar valores monetários'
+                ? 'Oculta valores monetários sensíveis em cards, listas e otimizações.'
+                : 'Mostra novamente valores monetários em cards, listas e otimizações.'
             }
-            className="hidden group-data-[collapsible=icon]:inline-flex"
-            onClick={toggleMoneyVisibility}
-            size="icon-sm"
-            type="button"
-            variant="outline"
           >
-            {isMoneyVisible ? (
-              <EyeIcon className="size-4" />
-            ) : (
-              <EyeOffIcon className="size-4" />
-            )}
-          </Button>
-          <Button
-            aria-label={
-              theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
-            }
-            className="hidden group-data-[collapsible=icon]:inline-flex"
-            onClick={toggleTheme}
-            size="icon-sm"
-            type="button"
-            variant="outline"
-          >
-            {theme === 'dark' ? (
-              <SunMediumIcon className="size-4" />
-            ) : (
-              <MoonStarIcon className="size-4" />
-            )}
-          </Button>
+            <Button
+              aria-label={
+                isMoneyVisible
+                  ? 'Ocultar valores monetários'
+                  : 'Mostrar valores monetários'
+              }
+              className="hidden group-data-[collapsible=icon]:inline-flex"
+              onClick={toggleMoneyVisibility}
+              size="icon-sm"
+              type="button"
+              variant="outline"
+            >
+              {isMoneyVisible ? (
+                <EyeIcon className="size-4" />
+              ) : (
+                <EyeOffIcon className="size-4" />
+              )}
+            </Button>
+          </WithTooltip>
+          <WithTooltip label="Alterna entre tema claro e escuro.">
+            <Button
+              aria-label={
+                theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
+              }
+              className="hidden group-data-[collapsible=icon]:inline-flex"
+              onClick={toggleTheme}
+              size="icon-sm"
+              type="button"
+              variant="outline"
+            >
+              {theme === 'dark' ? (
+                <SunMediumIcon className="size-4" />
+              ) : (
+                <MoonStarIcon className="size-4" />
+              )}
+            </Button>
+          </WithTooltip>
         </SidebarFooter>
       </Sidebar>
 
@@ -431,23 +454,27 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <Button
-              aria-label="Configurar localização"
-              onClick={() => setIsLocationDialogOpen(true)}
-              size="icon-sm"
-              type="button"
-              variant="outline"
-            >
-              <LocateFixedIcon className="size-4" />
-            </Button>
-            <Button
-              aria-label="Notificacoes"
-              size="icon-sm"
-              type="button"
-              variant="outline"
-            >
-              <BellIcon className="size-4" />
-            </Button>
+            <WithTooltip label="Configure cidade, CEP ou localização precisa para calcular cobertura local.">
+              <Button
+                aria-label="Configurar localização"
+                onClick={() => setIsLocationDialogOpen(true)}
+                size="icon-sm"
+                type="button"
+                variant="outline"
+              >
+                <LocateFixedIcon className="size-4" />
+              </Button>
+            </WithTooltip>
+            <WithTooltip label="Notificações de preço, cobertura e revisão aparecerão aqui quando habilitadas.">
+              <Button
+                aria-label="Notificacoes"
+                size="icon-sm"
+                type="button"
+                variant="outline"
+              >
+                <BellIcon className="size-4" />
+              </Button>
+            </WithTooltip>
             {isAuthenticated ? (
               <>
                 <Button asChild size="sm" variant="outline">
