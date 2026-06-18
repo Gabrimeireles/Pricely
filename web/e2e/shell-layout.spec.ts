@@ -247,9 +247,11 @@ test('public shell uses fixed sidebar navigation instead of topbar nav', async (
   await expect(page.locator('[data-slot="sidebar-header"]')).toBeVisible();
   await expect(page.locator('[data-slot="sidebar-footer"]')).toBeVisible();
   await expect(page.locator('header nav')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Minha lista/i })).toBeVisible();
   await expect(
-    page.getByRole('link', { name: /Minhas listas/i }),
+    page.getByRole('button', { name: /Configurar localização/i }),
   ).toBeVisible();
+  await expect(page.getByRole('button', { name: /Notificacoes/i })).toBeVisible();
 
   const extraction = await extractShell(page, 'public-home-sidebar');
   expect(extraction.header).not.toBeNull();
@@ -257,7 +259,13 @@ test('public shell uses fixed sidebar navigation instead of topbar nav', async (
   expect(extraction.sidebarFooter).not.toBeNull();
   expect(extraction.headerNavCount).toBe(0);
   expect(extraction.navLabels).toEqual(
-    expect.arrayContaining(['Início', 'Ofertas', 'Cidades', 'Minhas listas']),
+    expect.arrayContaining([
+      'Inicio',
+      'Minha lista',
+      'Ofertas',
+      'Lojas',
+      'Notas fiscais',
+    ]),
   );
 });
 

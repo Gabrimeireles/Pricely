@@ -205,12 +205,13 @@ describe('PublicLayout', () => {
     renderPublicLayout();
 
     expect(screen.getByText('Navegacao')).toBeTruthy();
-    expect(screen.getByRole('link', { name: /Minhas listas/i })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Minha lista/i })).toBeTruthy();
     expect(document.body.textContent).toMatch(/Localiza/);
     expect(screen.getByText(/raio de 5 km/i)).toBeTruthy();
     expect(
       screen.getByRole('button', { name: /configurar localiza/i }),
     ).toBeTruthy();
+    expect(screen.getByRole('button', { name: /notificacoes/i })).toBeTruthy();
     expect(
       screen.queryByText('Sua compra continua de onde voce parou'),
     ).toBeNull();
