@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MonetaryPrivacyProvider } from '@/app/monetary-privacy-context';
+
 import { OptimizationPage } from './public-pages';
 
 const runOptimization = vi.fn();
@@ -32,6 +34,18 @@ vi.mock('@/app/pricely-context', () => ({
   }),
 }));
 
+function renderOptimizationPage() {
+  return render(
+    <MonetaryPrivacyProvider>
+      <MemoryRouter initialEntries={['/otimizacao/list-1']}>
+        <Routes>
+          <Route path="/otimizacao/:listId" element={<OptimizationPage />} />
+        </Routes>
+      </MemoryRouter>
+    </MonetaryPrivacyProvider>,
+  );
+}
+
 describe('OptimizationPage', () => {
   beforeEach(() => {
     runOptimization.mockReset();
@@ -46,13 +60,7 @@ describe('OptimizationPage', () => {
   });
 
   it('renders explicit mode guidance without technical backend copy', () => {
-    render(
-      <MemoryRouter initialEntries={['/otimizacao/list-1']}>
-        <Routes>
-          <Route path="/otimizacao/:listId" element={<OptimizationPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderOptimizationPage();
 
     expect(screen.getByText('Escolha o modo')).toBeTruthy();
     expect(screen.getByText('Uma loja perto de mim')).toBeTruthy();
@@ -98,13 +106,7 @@ describe('OptimizationPage', () => {
       ),
     );
 
-    render(
-      <MemoryRouter initialEntries={['/otimizacao/list-1']}>
-        <Routes>
-          <Route path="/otimizacao/:listId" element={<OptimizationPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderOptimizationPage();
 
     fireEvent.click(screen.getAllByText('Uma loja perto de mim')[0]);
 
@@ -165,13 +167,7 @@ describe('OptimizationPage', () => {
       },
     };
 
-    render(
-      <MemoryRouter initialEntries={['/otimizacao/list-1']}>
-        <Routes>
-          <Route path="/otimizacao/:listId" element={<OptimizationPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderOptimizationPage();
 
     expect(screen.getByText('Completa')).toBeTruthy();
     expect(screen.getByText('Oferta selecionada')).toBeTruthy();

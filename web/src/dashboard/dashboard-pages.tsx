@@ -599,7 +599,9 @@ export function AdminOverviewPage() {
     },
     {
       label: 'Economia global',
-      value: formatCurrency(data.globalEstimatedSavings),
+      value: (
+        <MaskedMoney value={formatCurrency(data.globalEstimatedSavings)} />
+      ),
       numericValue: data.globalEstimatedSavings,
     },
     {
@@ -2577,11 +2579,15 @@ export function AdminCatalogPage() {
                             Melhor preço
                           </div>
                           <div className="font-medium">
-                            {selectedBestOffer
-                              ? formatCurrency(
+                            {selectedBestOffer ? (
+                              <MaskedMoney
+                                value={formatCurrency(
                                   Number(selectedBestOffer.priceAmount),
-                                )
-                              : 'sem oferta'}
+                                )}
+                              />
+                            ) : (
+                              'sem oferta'
+                            )}
                           </div>
                         </div>
                         <div>
@@ -4256,9 +4262,11 @@ export function AdminReceiptsPage() {
               <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Total da nota</span>
                 <span className="font-medium">
-                  {formatCurrency(
-                    selectedReceipt.extractedPayload.totalLineAmount,
-                  )}
+                  <MaskedMoney
+                    value={formatCurrency(
+                      selectedReceipt.extractedPayload.totalLineAmount,
+                    )}
+                  />
                 </span>
               </div>
               <div className="flex justify-between gap-3">
