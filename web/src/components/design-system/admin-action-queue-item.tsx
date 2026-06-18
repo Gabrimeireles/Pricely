@@ -13,6 +13,7 @@ type AdminActionQueueItemProps = Omit<React.ComponentProps<'article'>, 'title'> 
   age?: React.ReactNode;
   action?: React.ReactNode;
   meta?: React.ReactNode;
+  severityTooltip?: React.ReactNode;
 };
 
 function AdminActionQueueItem({
@@ -23,6 +24,7 @@ function AdminActionQueueItem({
   description,
   meta,
   severity = 'info',
+  severityTooltip,
   title,
   ...props
 }: AdminActionQueueItemProps) {
@@ -37,7 +39,14 @@ function AdminActionQueueItem({
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge family="severity" status={severity} />
+          <StatusBadge
+            family="severity"
+            status={severity}
+            tooltip={
+              severityTooltip ??
+              'Prioridade operacional calculada para orientar a triagem desta fila.'
+            }
+          />
           {age ? (
             <span className="text-xs text-muted-foreground">{age}</span>
           ) : null}
