@@ -68,6 +68,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   AdminActionQueueItem,
+  MaskedMoney,
   StatusBadge,
   TechnicalDisclosure,
 } from '@/components/design-system';
@@ -1544,13 +1545,19 @@ export function AdminPricesPage() {
                                   {offer.promotionalPriceAmount &&
                                   offer.basePriceAmount ? (
                                     <span className="text-xs text-muted-foreground line-through">
-                                      {formatCurrency(
-                                        Number(offer.basePriceAmount),
-                                      )}
+                                      <MaskedMoney
+                                        value={formatCurrency(
+                                          Number(offer.basePriceAmount),
+                                        )}
+                                      />
                                     </span>
                                   ) : null}
                                   <span>
-                                    {formatCurrency(Number(offer.priceAmount))}
+                                    <MaskedMoney
+                                      value={formatCurrency(
+                                        Number(offer.priceAmount),
+                                      )}
+                                    />
                                   </span>
                                 </div>
                               </TableCell>
@@ -2646,7 +2653,9 @@ export function AdminCatalogPage() {
                             </div>
                           </div>
                           <div className="text-right font-semibold">
-                            {formatCurrency(Number(offer.priceAmount))}
+                            <MaskedMoney
+                              value={formatCurrency(Number(offer.priceAmount))}
+                            />
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -3456,7 +3465,9 @@ export function AdminListsPage() {
                   Economia global estimada
                 </div>
                 <div className="text-2xl font-semibold">
-                  {formatCurrency(metrics.globalEstimatedSavings)}
+                  <MaskedMoney
+                    value={formatCurrency(metrics.globalEstimatedSavings)}
+                  />
                 </div>
               </div>
               <div className="rounded-lg border border-border/70 p-4">
@@ -3545,13 +3556,17 @@ export function AdminListsPage() {
                 </div>
                 <div className="mt-2 text-sm text-muted-foreground">
                   Custo{' '}
-                  {formatCurrency(
-                    selectedAudit.latestOptimization.totalEstimatedCost,
-                  )}{' '}
+                  <MaskedMoney
+                    value={formatCurrency(
+                      selectedAudit.latestOptimization.totalEstimatedCost,
+                    )}
+                  />{' '}
                   · economia{' '}
-                  {formatCurrency(
-                    selectedAudit.latestOptimization.estimatedSavings,
-                  )}
+                  <MaskedMoney
+                    value={formatCurrency(
+                      selectedAudit.latestOptimization.estimatedSavings,
+                    )}
+                  />
                 </div>
               </div>
             ) : null}
@@ -3978,9 +3993,11 @@ export function AdminReceiptsPage() {
                         </div>
                         <div className="mt-1 font-medium">
                           {receipt.extractedPayload.lineItemCount} itens ·{' '}
-                          {formatCurrency(
-                            receipt.extractedPayload.totalLineAmount,
-                          )}
+                          <MaskedMoney
+                            value={formatCurrency(
+                              receipt.extractedPayload.totalLineAmount,
+                            )}
+                          />
                         </div>
                       </div>
                       <div>
@@ -4070,16 +4087,23 @@ export function AdminReceiptsPage() {
                               Preço lido
                             </div>
                             <div className="mt-1 font-medium">
-                              {formatCurrency(item.unitPrice)}
+                              <MaskedMoney
+                                value={formatCurrency(item.unitPrice)}
+                              />
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              total {formatCurrency(item.lineTotal)}
+                              total{' '}
+                              <MaskedMoney
+                                value={formatCurrency(item.lineTotal)}
+                              />
                             </div>
                             {item.originalUnitPrice &&
                             item.originalUnitPrice !== item.unitPrice ? (
                               <div className="text-xs text-muted-foreground">
                                 original{' '}
-                                {formatCurrency(item.originalUnitPrice)}
+                                <MaskedMoney
+                                  value={formatCurrency(item.originalUnitPrice)}
+                                />
                               </div>
                             ) : null}
                           </div>
@@ -4147,7 +4171,11 @@ export function AdminReceiptsPage() {
                                       {offer.neighborhood}
                                     </TableCell>
                                     <TableCell>
-                                      {formatCurrency(offer.priceAmount)}
+                                      <MaskedMoney
+                                        value={formatCurrency(
+                                          offer.priceAmount,
+                                        )}
+                                      />
                                     </TableCell>
                                     <TableCell>
                                       <div className="grid gap-1">
@@ -4166,15 +4194,26 @@ export function AdminReceiptsPage() {
                                           )}
                                         </StatusBadge>
                                         <span className="text-xs text-muted-foreground">
-                                          {offer.comparison.previousPriceAmount
-                                            ? `${formatCurrency(
-                                                offer.comparison
-                                                  .previousPriceAmount,
-                                              )} anterior · ${formatCurrency(
-                                                offer.comparison.deltaAmount ??
-                                                  0,
-                                              )}`
-                                            : 'Sem oferta anterior comparável'}
+                                          {offer.comparison
+                                            .previousPriceAmount ? (
+                                            <>
+                                              <MaskedMoney
+                                                value={formatCurrency(
+                                                  offer.comparison
+                                                    .previousPriceAmount,
+                                                )}
+                                              />{' '}
+                                              anterior ·{' '}
+                                              <MaskedMoney
+                                                value={formatCurrency(
+                                                  offer.comparison
+                                                    .deltaAmount ?? 0,
+                                                )}
+                                              />
+                                            </>
+                                          ) : (
+                                            'Sem oferta anterior comparável'
+                                          )}
                                         </span>
                                       </div>
                                     </TableCell>
@@ -4523,7 +4562,11 @@ export function AdminReceiptAuditPage() {
               </div>
               <div className="mt-1 font-medium">
                 {receipt.extractedPayload.lineItemCount} itens ·{' '}
-                {formatCurrency(receipt.extractedPayload.totalLineAmount)}
+                <MaskedMoney
+                  value={formatCurrency(
+                    receipt.extractedPayload.totalLineAmount,
+                  )}
+                />
               </div>
             </div>
             <div>
@@ -4602,10 +4645,10 @@ export function AdminReceiptAuditPage() {
                       Preço lido
                     </div>
                     <div className="mt-1 font-medium">
-                      {formatCurrency(item.unitPrice)}
+                      <MaskedMoney value={formatCurrency(item.unitPrice)} />
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      total {formatCurrency(item.lineTotal)}
+                      total <MaskedMoney value={formatCurrency(item.lineTotal)} />
                     </div>
                   </div>
                   <div className="rounded-md border border-border/70 p-3">
@@ -5060,7 +5103,11 @@ export function AdminQueueDetailPage() {
                           <TableCell>{item.rawProductName}</TableCell>
                           <TableCell>{item.normalizedName}</TableCell>
                           <TableCell>{item.quantity}</TableCell>
-                          <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                          <TableCell>
+                            <MaskedMoney
+                              value={formatCurrency(item.unitPrice)}
+                            />
+                          </TableCell>
                           <TableCell>
                             {Math.round(item.matchConfidence * 100)}%
                           </TableCell>

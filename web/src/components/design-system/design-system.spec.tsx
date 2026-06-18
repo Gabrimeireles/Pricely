@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 
+import type React from 'react';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { MonetaryPrivacyProvider } from '@/app/monetary-privacy-context';
+import { TooltipProvider } from '@/components/ui/tooltip';
+
 import {
+  ActionPlaceholder,
   AdminActionQueueItem,
   EvidenceModule,
+  InfoTooltip,
+  MaskedMoney,
   NextActionStrip,
   PriceRow,
   StatusBadge,
@@ -13,17 +20,28 @@ import {
   TechnicalDisclosure,
 } from './index';
 
-afterEach(cleanup);
+afterEach(() => {
+  window.localStorage.clear();
+  cleanup();
+});
+
+function renderDesignSystem(ui: React.ReactNode) {
+  return render(
+    <TooltipProvider>
+      <MonetaryPrivacyProvider>{ui}</MonetaryPrivacyProvider>
+    </TooltipProvider>,
+  );
+}
 
 describe('design-system component foundation', () => {
   it('renders semantic status badges with accessible text', () => {
-    render(<StatusBadge family="trust" status="high" />);
+    renderDesignSystem(<StatusBadge family="trust" status="high" />);
 
     expect(screen.getByText('Confiança alta')).toBeTruthy();
   });
 
   it('renders an evidence module with trust score and receipt evidence', () => {
-    render(
+    renderDesignSystem(
       <EvidenceModule
         selectedVariant="Camil Arroz tipo 1 1kg"
         requestedRule="Qualquer variante"
@@ -45,7 +63,7 @@ describe('design-system component foundation', () => {
   });
 
   it('renders a reusable price row', () => {
-    render(
+    renderDesignSystem(
       <PriceRow
         title="Arroz tipo 1"
         subtitle="Mercado Centro"
@@ -59,7 +77,7 @@ describe('design-system component foundation', () => {
   });
 
   it('renders workflow and admin primitives', () => {
-    render(
+    renderDesignSystem(
       <>
         <NextActionStrip
           eyebrow="Próximo passo"
@@ -82,5 +100,27 @@ describe('design-system component foundation', () => {
     expect(screen.getByText('Ação fixa')).toBeTruthy();
     expect(screen.getByText('Nota aguardando liberacao')).toBeTruthy();
     expect(screen.getByText('receipt-1')).toBeTruthy();
+  });
+
+  it('renders action placeholders, info tooltip triggers, and masked money', () => {
+    window.localStorage.setItem('pricely-money-visible-v1', 'hidden');
+
+    renderDesignSystem(
+      <>
+        <ActionPlaceholder
+          title="Envie sua primeira nota fiscal"
+          description="Acompanhe a validação depois do envio."
+        />
+        <InfoTooltip label="Valores podem ser ocultados." />
+        <MaskedMoney value="R$ 42,90" />
+      </>,
+    );
+
+    expect(screen.getByText('Envie sua primeira nota fiscal')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /saiba como funciona/i }),
+    ).toBeTruthy();
+    expect(screen.getByText('R$ •••')).toBeTruthy();
+    expect(screen.queryByText('R$ 42,90')).toBeNull();
   });
 });

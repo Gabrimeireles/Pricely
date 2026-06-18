@@ -4,6 +4,9 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { MonetaryPrivacyProvider } from '@/app/monetary-privacy-context';
+import { TooltipProvider } from '@/components/ui/tooltip';
+
 import { OfferDetailPage } from './public-pages';
 
 const fetchOfferDetail = vi.fn();
@@ -69,11 +72,15 @@ describe('public web security rendering', () => {
     });
 
     const { container } = render(
-      <MemoryRouter initialEntries={['/ofertas/offer-xss']}>
-        <Routes>
-          <Route path="/ofertas/:offerId" element={<OfferDetailPage />} />
-        </Routes>
-      </MemoryRouter>,
+      <TooltipProvider>
+        <MonetaryPrivacyProvider>
+          <MemoryRouter initialEntries={['/ofertas/offer-xss']}>
+            <Routes>
+              <Route path="/ofertas/:offerId" element={<OfferDetailPage />} />
+            </Routes>
+          </MemoryRouter>
+        </MonetaryPrivacyProvider>
+      </TooltipProvider>,
     );
 
     await waitFor(() =>

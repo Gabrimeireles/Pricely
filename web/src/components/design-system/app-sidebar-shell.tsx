@@ -3,6 +3,8 @@ import { Link, NavLink } from 'react-router-dom';
 import {
   BellIcon,
   Building2Icon,
+  EyeIcon,
+  EyeOffIcon,
   HistoryIcon,
   HomeIcon,
   LayoutDashboardIcon,
@@ -19,6 +21,7 @@ import {
   UserIcon,
 } from 'lucide-react';
 
+import { useMonetaryPrivacy } from '@/app/monetary-privacy-context';
 import { usePricely } from '@/app/pricely-context';
 import { useTheme } from '@/app/theme-context';
 import pricelyIcon from '@/assets/pricely-icon.png';
@@ -107,6 +110,7 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
     setCityId,
     signOut,
   } = usePricely();
+  const { isMoneyVisible, toggleMoneyVisibility } = useMonetaryPrivacy();
   const { theme, toggleTheme } = useTheme();
   const [locationPermissionState, setLocationPermissionState] = useState<
     | 'manual'
@@ -312,6 +316,23 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
             <div className="flex gap-2">
               <Button
                 aria-label={
+                  isMoneyVisible
+                    ? 'Ocultar valores monetários'
+                    : 'Mostrar valores monetários'
+                }
+                onClick={toggleMoneyVisibility}
+                size="icon-sm"
+                type="button"
+                variant="outline"
+              >
+                {isMoneyVisible ? (
+                  <EyeIcon className="size-4" />
+                ) : (
+                  <EyeOffIcon className="size-4" />
+                )}
+              </Button>
+              <Button
+                aria-label={
                   theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
                 }
                 onClick={toggleTheme}
@@ -337,6 +358,24 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
               </Button>
             </div>
           </div>
+          <Button
+            aria-label={
+              isMoneyVisible
+                ? 'Ocultar valores monetários'
+                : 'Mostrar valores monetários'
+            }
+            className="hidden group-data-[collapsible=icon]:inline-flex"
+            onClick={toggleMoneyVisibility}
+            size="icon-sm"
+            type="button"
+            variant="outline"
+          >
+            {isMoneyVisible ? (
+              <EyeIcon className="size-4" />
+            ) : (
+              <EyeOffIcon className="size-4" />
+            )}
+          </Button>
           <Button
             aria-label={
               theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
