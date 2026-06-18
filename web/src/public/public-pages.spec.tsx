@@ -9,7 +9,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MonetaryPrivacyProvider } from '@/app/monetary-privacy-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -140,6 +140,14 @@ vi.mock('@/app/api', async () => {
 });
 
 describe('public pages', () => {
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  });
+
   beforeEach(() => {
     fetchRegionOffers.mockReset();
     fetchOfferDetail.mockReset();
@@ -189,10 +197,17 @@ describe('public pages', () => {
     expect(screen.getByText('Entre para ver sua economia')).toBeTruthy();
     expect(screen.getAllByText('Aguardando lista').length).toBeGreaterThan(0);
     expect(screen.queryByText('R$ 7,69')).toBeNull();
+    fireEvent.pointerMove(
+      screen.getAllByRole('button', { name: 'Saiba como funciona' })[0],
+      { pointerType: 'mouse' },
+    );
+    expect(
+      await screen.findAllByText(/Valores monetários podem ser ocultados/i),
+    ).not.toHaveLength(0);
     await waitFor(() => expect(fetchPublicImpact).toHaveBeenCalledTimes(1));
   });
 
-  it('renders zero-store and collecting-data messaging for supported cities', () => {
+  it('renders zero-store and collecting-data messaging for supported cities', async () => {
     renderPublicPage(<CitiesPage />);
 
     expect(screen.getByText('Cidades suportadas')).toBeTruthy();
@@ -206,6 +221,12 @@ describe('public pages', () => {
     ).toBeTruthy();
     expect(screen.getAllByText(/Em ativa/).length).toBeGreaterThan(0);
     expect(screen.getByText('Piloto')).toBeTruthy();
+    fireEvent.pointerMove(screen.getByText('Piloto'), {
+      pointerType: 'mouse',
+    });
+    expect(
+      await screen.findAllByText(/Cidade em piloto: parte dos dados/i),
+    ).not.toHaveLength(0);
     expect(screen.getByText(/As ofertas aparecem/)).toBeTruthy();
     expect(screen.getByText('Unidade Vila Mariana')).toBeTruthy();
     expect(screen.getByText('Unidade Pinheiros')).toBeTruthy();
