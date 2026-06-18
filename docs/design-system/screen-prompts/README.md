@@ -32,6 +32,10 @@ Ask the design tool for:
 - responsive notes
 - implementation notes that map to the repo
 
+For authentication work, generate `web-public/05-auth-login-register.md` first,
+then `web-public/06-protected-auth-required.md`. The protected-state prompt is
+the source for improving "precisa entrar" screens on lists and receipts.
+
 ## Approved Source Of Truth
 
 Use these docs as the source of truth:
@@ -41,4 +45,3 @@ Use these docs as the source of truth:
 - `docs/design-system/web-public-guidelines.md`
 - `docs/design-system/mobile-guidelines.md`
 - `docs/design-system/admin-dashboard-guidelines.md`
-
