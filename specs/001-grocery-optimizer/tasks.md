@@ -584,7 +584,7 @@ sensitive monetary values across web surfaces.
 - [X] T231 [P] Replace passive admin placeholders with action-oriented states for empty receipt queues, healthy/empty job queues, no failed jobs, no low-trust offers, no user activity, and disabled job actions in `web/src/dashboard/`
 - [X] T232 [P] Add required tooltips for public icon buttons, status badges, trust/freshness/reward copy, receipt terms, location states, and sensitive monetary toggles in `web/src/public/` and `web/src/components/design-system/`
 - [X] T233 [P] Add required tooltips for admin icon buttons, status badges, destructive actions, technical IDs, billing-disabled copy, receipt moderation terms, and queue/job actions in `web/src/dashboard/`
-- [ ] T234 Add Playwright and unit coverage for action placeholders, tooltip presence, and hidden monetary values across public and admin web views in `web/src/` and `web/e2e/`
+- [X] T234 Add Playwright and unit coverage for action placeholders, tooltip presence, and hidden monetary values across public and admin web views in `web/src/` and `web/e2e/`
 
 ### Phase 30: Web Shell, Auth Prompts, and Offer Card Visual QA
 

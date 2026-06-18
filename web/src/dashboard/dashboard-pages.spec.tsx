@@ -7,7 +7,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AdminCatalogPage,
@@ -43,6 +43,9 @@ const deleteAdminProductVariant = vi.fn();
 const fetchAdminUsers = vi.fn();
 const setAdminUserPremium = vi.fn();
 const grantAdminUserTokens = vi.fn();
+const monetaryPrivacyMockState = vi.hoisted(() => ({
+  isMoneyVisible: true,
+}));
 
 vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
@@ -59,7 +62,7 @@ vi.mock('@/app/pricely-context', () => ({
 
 vi.mock('@/app/monetary-privacy-context', () => ({
   useMonetaryPrivacy: () => ({
-    isMoneyVisible: true,
+    isMoneyVisible: monetaryPrivacyMockState.isMoneyVisible,
     setMoneyVisible: vi.fn(),
     toggleMoneyVisibility: vi.fn(),
   }),
@@ -257,6 +260,14 @@ function buildAdminOffer(overrides: Record<string, unknown> = {}) {
 }
 
 describe('Admin dashboard pages', () => {
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  });
+
   beforeEach(() => {
     fetchAdminMetrics.mockReset();
     fetchAdminQueueHealth.mockReset();
@@ -279,6 +290,7 @@ describe('Admin dashboard pages', () => {
     fetchAdminUsers.mockReset();
     setAdminUserPremium.mockReset();
     grantAdminUserTokens.mockReset();
+    monetaryPrivacyMockState.isMoneyVisible = true;
   });
 
   afterEach(() => {
@@ -882,6 +894,18 @@ describe('Admin dashboard pages', () => {
     ).toHaveLength(2);
     expect(screen.getByText('100 pontos + 1 credito pendente')).toBeTruthy();
     expect(screen.getByText('Elegível pendente')).toBeTruthy();
+    fireEvent.pointerMove(screen.getByText('Elegível pendente'), {
+      pointerType: 'mouse',
+    });
+    expect(
+      await screen.findAllByText(/Reward elegível, mas pendente/i),
+    ).not.toHaveLength(0);
+    fireEvent.pointerMove(screen.getAllByText('Aceita')[0], {
+      pointerType: 'mouse',
+    });
+    expect(
+      await screen.findAllByText(/Nota aceita para evidência/i),
+    ).not.toHaveLength(0);
     expect(screen.getByText('Auditar processamento')).toBeTruthy();
     expect(
       screen.getByText('Auditar processamento').closest('a')?.getAttribute('href'),
@@ -904,6 +928,19 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('Preço caiu')).toBeTruthy();
     expect(screen.getAllByText('R$ 16,90').length).toBeGreaterThan(0);
     expect(screen.getByText(/anterior/)).toBeTruthy();
+  });
+
+  it('hides admin receipt money values when monetary privacy is disabled', async () => {
+    monetaryPrivacyMockState.isMoneyVisible = false;
+    fetchAdminReceiptProcessing.mockResolvedValue([buildReceiptAudit()]);
+
+    render(<AdminReceiptsPage />);
+
+    expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
+    fireEvent.click(screen.getByText('Ver conteúdo e matcher'));
+
+    expect(await screen.findAllByText('R$ •••')).not.toHaveLength(0);
+    expect(screen.queryByText('R$ 15,90')).toBeNull();
   });
 
   it('links pending receipts to the dedicated receipt audit before processing exists', async () => {
@@ -1055,6 +1092,13 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('Sao Paulo - SP')).toBeTruthy();
     expect(screen.getByText('2 creditos disponiveis')).toBeTruthy();
     expect(screen.getByText('Billing desativado')).toBeTruthy();
+    fireEvent.pointerMove(
+      screen.getByRole('button', { name: 'Entender billing desativado' }),
+      { pointerType: 'mouse' },
+    );
+    expect(
+      await screen.findAllByText(/Billing está desativado neste MVP/i),
+    ).not.toHaveLength(0);
 
     fireEvent.click(screen.getByText('Ativar premium'));
     await waitFor(() =>

@@ -252,6 +252,12 @@ test('public shell uses fixed sidebar navigation instead of topbar nav', async (
     page.getByRole('button', { name: /Configurar localização/i }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: /Notificacoes/i })).toBeVisible();
+  await page
+    .getByRole('button', { name: /Configurar localização/i })
+    .hover();
+  await expect(
+    page.getByText(/Configure cidade, CEP ou localização precisa/i),
+  ).toBeVisible();
 
   const extraction = await extractShell(page, 'public-home-sidebar');
   expect(extraction.header).not.toBeNull();
@@ -290,6 +296,13 @@ test('dashboard shell keeps sidebar, header, and footer fixed across admin pages
     page.getByText('Dashboard restrito a administradores'),
   ).toBeVisible();
   await expect(page.getByText('Admin Pricely')).toBeVisible();
+  await page
+    .getByRole('button', { name: /Ocultar valores monetários/i })
+    .first()
+    .hover();
+  await expect(
+    page.getByText(/Oculta valores monetários sensíveis em métricas/i),
+  ).toBeVisible();
 
   const extraction = await extractShell(page, 'admin-queue-sidebar');
   expect(extraction.header).not.toBeNull();

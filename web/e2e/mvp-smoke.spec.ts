@@ -582,6 +582,12 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   await expect(
     page.getByRole('button', { name: /Premium indispon/i }),
   ).toBeDisabled();
+  await page
+    .getByRole('button', { name: /Ocultar valores monetários/i })
+    .first()
+    .click();
+  await page.goto('/');
+  await expect(page.getByText('R$ •••').first()).toBeVisible();
 
   await page.goto('/cidades');
   await expect(page.getByText('Cidades suportadas').first()).toBeVisible();
@@ -670,6 +676,8 @@ test('MVP receipt flow covers submission, admin audit release, and reward state'
   await expect(
     page.getByText('Aguardando liberação manual', { exact: true }),
   ).toBeVisible();
+  await page.getByText('Aguardando liberação manual', { exact: true }).hover();
+  await expect(page.getByText(/Status da fila após o envio/i)).toBeVisible();
   await expect(page.getByText(/Reward previsto/i)).toBeVisible();
   await expect(page.getByText('Admin libera no dashboard')).toBeVisible();
 
@@ -721,6 +729,8 @@ test('MVP admin flow covers route protection and queue detail', async ({
   await expect(
     page.getByText(/ID t.cnico: receipt .* receipt-1 .* job job-1/),
   ).toBeVisible();
+  await page.getByText('Em fila', { exact: true }).hover();
+  await expect(page.getByText(/Job aguardando worker/i)).toBeVisible();
   await page.goto('/dashboard/fila/job-1');
 
   await expect(
