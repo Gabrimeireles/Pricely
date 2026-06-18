@@ -580,7 +580,7 @@ sensitive monetary values across web surfaces.
 - [X] T227 [P] Add web context support for persistent hide/show monetary visibility with sidebar/account controls and tests in `web/src/app/`, `web/src/components/design-system/`, and `web/src/public/`
 - [X] T228 [P] Apply monetary masking to public home, offers, offer detail, profile/list summary, checklist, receipt submission, and optimization result values in `web/src/public/`
 - [X] T229 [P] Apply monetary masking to admin overview, catalog/offers, receipt processing, user operations, list operations, and queue detail values in `web/src/dashboard/`
-- [ ] T230 [P] Replace passive public placeholders with action-oriented states for no city, no receipt, no list, no savings, no paid total, no result, no evidence, and no store plan in `web/src/public/`
+- [X] T230 [P] Replace passive public placeholders with action-oriented states for no city, no receipt, no list, no savings, no paid total, no result, no evidence, and no store plan in `web/src/public/`
 - [ ] T231 [P] Replace passive admin placeholders with action-oriented states for empty receipt queues, healthy/empty job queues, no failed jobs, no low-trust offers, no user activity, and disabled job actions in `web/src/dashboard/`
 - [ ] T232 [P] Add required tooltips for public icon buttons, status badges, trust/freshness/reward copy, receipt terms, location states, and sensitive monetary toggles in `web/src/public/` and `web/src/components/design-system/`
 - [ ] T233 [P] Add required tooltips for admin icon buttons, status badges, destructive actions, technical IDs, billing-disabled copy, receipt moderation terms, and queue/job actions in `web/src/dashboard/`
