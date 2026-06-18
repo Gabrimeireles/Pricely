@@ -388,9 +388,13 @@ function ShopperEvidenceModule({
             }`
           : 'Sem loja definida'
       }
-      price={formatCurrency(
-        selection.priceAmount ?? selection.estimatedCost ?? 0,
-      )}
+      price={
+        <MaskedMoney
+          value={formatCurrency(
+            selection.priceAmount ?? selection.estimatedCost ?? 0,
+          )}
+        />
+      }
       sourceLabel={selection.sourceLabel ?? 'Origem operacional'}
       trustScore={selection.trustFactor}
       trustLevel={selection.trustLevel ?? 'unknown'}
@@ -567,18 +571,33 @@ function savingsComparisonLabel(selection: {
   }
 
   if (selection.comparisonPriceAmount !== undefined) {
-    return `${formatCurrency(selection.comparisonPriceAmount)} segundo menor elegivel · ${formatCurrency(
-      savings,
-    )} abaixo`;
+    return (
+      <>
+        <MaskedMoney value={formatCurrency(selection.comparisonPriceAmount)} />{' '}
+        segundo menor elegivel · <MaskedMoney value={formatCurrency(savings)} />{' '}
+        abaixo
+      </>
+    );
   }
 
   if (selection.regionalAveragePriceAmount !== undefined) {
-    return `${formatCurrency(selection.regionalAveragePriceAmount)} media da variante · ${formatCurrency(
-      savings,
-    )} abaixo`;
+    return (
+      <>
+        <MaskedMoney
+          value={formatCurrency(selection.regionalAveragePriceAmount)}
+        />{' '}
+        media da variante · <MaskedMoney value={formatCurrency(savings)} />{' '}
+        abaixo
+      </>
+    );
   }
 
-  return `${formatCurrency(savings)} de economia estimada nas ofertas disponíveis`;
+  return (
+    <>
+      <MaskedMoney value={formatCurrency(savings)} /> de economia estimada nas
+      ofertas disponíveis
+    </>
+  );
 }
 
 type PublicOfferGroup = NonNullable<
@@ -1824,14 +1843,23 @@ export function OfferDetailPage() {
             offer.activeOffer.savingsVsComparison > 0 ? (
               <p className="text-sm font-medium text-[var(--ds-savings)]">
                 Economize{' '}
-                {formatCurrency(offer.activeOffer.savingsVsComparison)} versus o
-                segundo menor preco elegivel para esta variante.
+                <MaskedMoney
+                  value={formatCurrency(
+                    offer.activeOffer.savingsVsComparison,
+                  )}
+                />{' '}
+                versus o segundo menor preco elegivel para esta variante.
               </p>
             ) : null}
             {offer.activeOffer.regionalAveragePriceAmount ? (
               <p className="text-sm text-muted-foreground">
                 Média regional desta variante:{' '}
-                {formatCurrency(offer.activeOffer.regionalAveragePriceAmount)}.
+                <MaskedMoney
+                  value={formatCurrency(
+                    offer.activeOffer.regionalAveragePriceAmount,
+                  )}
+                />
+                .
               </p>
             ) : null}
             <p className="text-sm text-muted-foreground">
@@ -1856,13 +1884,26 @@ export function OfferDetailPage() {
                 key={entry.id}
                 title={entry.storeName}
                 subtitle={entry.neighborhood}
-                price={formatCurrency(
-                  entry.promotionalPriceAmount ?? entry.priceAmount,
-                )}
+                price={
+                  <MaskedMoney
+                    value={formatCurrency(
+                      entry.promotionalPriceAmount ?? entry.priceAmount,
+                    )}
+                  />
+                }
                 comparison={
                   entry.basePriceAmount &&
                   entry.basePriceAmount > entry.priceAmount
-                    ? `${formatCurrency(entry.basePriceAmount - entry.priceAmount)} abaixo do preco base`
+                    ? (
+                        <>
+                          <MaskedMoney
+                            value={formatCurrency(
+                              entry.basePriceAmount - entry.priceAmount,
+                            )}
+                          />{' '}
+                          abaixo do preco base
+                        </>
+                      )
                     : undefined
                 }
                 meta={
@@ -2618,7 +2659,9 @@ export function ListsPage() {
             <CardHeader>
               <CardDescription>Economia estimada acumulada</CardDescription>
               <CardTitle>
-                {formatCurrency(profile.totalEstimatedSavings)}
+                <MaskedMoney
+                  value={formatCurrency(profile.totalEstimatedSavings)}
+                />
               </CardTitle>
               <div className="text-sm text-muted-foreground">
                 Esse é o valor total que você economizou com listas otimizadas
@@ -2705,7 +2748,11 @@ export function ListsPage() {
                           ? `Mais ${list.items.length - 1} itens nesta lista`
                           : 'Item principal da lista'
                       }
-                      price={formatCurrency(list.expectedSavings)}
+                      price={
+                        <MaskedMoney
+                          value={formatCurrency(list.expectedSavings)}
+                        />
+                      }
                       comparison="economia estimada"
                       meta={
                         <>
@@ -2747,7 +2794,9 @@ export function ListsPage() {
                     </div>
                     <div>
                       Economia estimada desta lista:{' '}
-                      {formatCurrency(list.expectedSavings)}
+                      <MaskedMoney
+                        value={formatCurrency(list.expectedSavings)}
+                      />
                     </div>
                   </div>
                 </CardContent>
@@ -3110,7 +3159,10 @@ export function ChecklistPage() {
                             </div>
                             {expectedPrice !== undefined ? (
                               <div className="text-xs text-muted-foreground">
-                                Preço previsto: {formatCurrency(expectedPrice)}
+                                Preço previsto:{' '}
+                                <MaskedMoney
+                                  value={formatCurrency(expectedPrice)}
+                                />
                               </div>
                             ) : null}
                             <div className="mt-2 flex flex-wrap gap-2">
@@ -3138,9 +3190,13 @@ export function ChecklistPage() {
                           </div>
                           <div className="text-sm sm:text-right">
                             <div className="font-semibold">
-                              {expectedPrice !== undefined
-                                ? formatCurrency(expectedPrice)
-                                : 'Sem preço'}
+                              {expectedPrice !== undefined ? (
+                                <MaskedMoney
+                                  value={formatCurrency(expectedPrice)}
+                                />
+                              ) : (
+                                'Sem preço'
+                              )}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               cada
@@ -3268,7 +3324,9 @@ export function ChecklistPage() {
                   Economia estimada
                 </div>
                 <div className="mt-1 text-2xl font-semibold text-[var(--ds-savings)]">
-                  {formatCurrency(list.expectedSavings ?? 0)}
+                  <MaskedMoney
+                    value={formatCurrency(list.expectedSavings ?? 0)}
+                  />
                 </div>
               </div>
               <div>
@@ -3276,7 +3334,7 @@ export function ChecklistPage() {
                   Total esperado
                 </div>
                 <div className="mt-1 text-2xl font-semibold">
-                  {formatCurrency(expectedTotal)}
+                  <MaskedMoney value={formatCurrency(expectedTotal)} />
                 </div>
               </div>
               <div>
@@ -3297,9 +3355,15 @@ export function ChecklistPage() {
               <AlertDescription className="space-y-3">
                 <p>
                   Lista concluída em {formatDateTime(list.completedAt)}
-                  {list.paidTotal !== undefined
-                    ? ` · total pago ${formatCurrency(list.paidTotal)}`
-                    : ''}
+                  {list.paidTotal !== undefined ? (
+                    <>
+                      {' '}
+                      · total pago{' '}
+                      <MaskedMoney value={formatCurrency(list.paidTotal)} />
+                    </>
+                  ) : (
+                    ''
+                  )}
                   . Use a nota fiscal para validar os preços encontrados.
                 </p>
                 <div className="grid gap-2 text-sm sm:grid-cols-3">
@@ -4324,13 +4388,23 @@ export function OptimizationPage() {
                     {[
                       {
                         label: 'Custo estimado total',
-                        value: formatCurrency(result.totalEstimatedCost ?? 0),
+                        value: (
+                          <MaskedMoney
+                            value={formatCurrency(
+                              result.totalEstimatedCost ?? 0,
+                            )}
+                          />
+                        ),
                         detail: undefined,
                         accent: 'text-primary',
                       },
                       {
                         label: 'Economia estimada',
-                        value: formatCurrency(result.estimatedSavings ?? 0),
+                        value: (
+                          <MaskedMoney
+                            value={formatCurrency(result.estimatedSavings ?? 0)}
+                          />
+                        ),
                         detail: 'vs. próximas alternativas elegíveis',
                         accent: 'text-[var(--ds-savings)]',
                       },
@@ -4582,11 +4656,13 @@ export function OptimizationPage() {
                             </div>
                             <div className="grid gap-1 text-sm">
                               <div className="text-lg font-semibold tabular-nums">
-                                {formatCurrency(
-                                  selection.priceAmount ??
-                                    selection.estimatedCost ??
-                                    0,
-                                )}
+                                <MaskedMoney
+                                  value={formatCurrency(
+                                    selection.priceAmount ??
+                                      selection.estimatedCost ??
+                                      0,
+                                  )}
+                                />
                               </div>
                               <div className="text-muted-foreground">cada</div>
                               {selection.savingsVsComparison &&
@@ -4659,7 +4735,13 @@ export function OptimizationPage() {
                             }
                             price={
                               selection.priceAmount !== undefined
-                                ? formatCurrency(selection.priceAmount)
+                                ? (
+                                    <MaskedMoney
+                                      value={formatCurrency(
+                                        selection.priceAmount,
+                                      )}
+                                    />
+                                  )
                                 : 'Sem preço'
                             }
                             meta={
@@ -4833,7 +4915,11 @@ export function OptimizationPage() {
                           <CardHeader>
                             <CardDescription>Custo estimado</CardDescription>
                             <CardTitle className="tabular-nums">
-                              {formatCurrency(result.totalEstimatedCost ?? 0)}
+                              <MaskedMoney
+                                value={formatCurrency(
+                                  result.totalEstimatedCost ?? 0,
+                                )}
+                              />
                             </CardTitle>
                           </CardHeader>
                         </Card>
@@ -4841,7 +4927,11 @@ export function OptimizationPage() {
                           <CardHeader>
                             <CardDescription>Economia estimada</CardDescription>
                             <CardTitle className="tabular-nums text-[var(--ds-savings)]">
-                              {formatCurrency(result.estimatedSavings ?? 0)}
+                              <MaskedMoney
+                                value={formatCurrency(
+                                  result.estimatedSavings ?? 0,
+                                )}
+                              />
                             </CardTitle>
                           </CardHeader>
                         </Card>
@@ -4912,7 +5002,9 @@ export function OptimizationPage() {
                                 <div className="text-sm text-muted-foreground">
                                   Subtotal previsto:{' '}
                                   <span className="font-medium tabular-nums text-foreground">
-                                    {formatCurrency(store.total)}
+                                    <MaskedMoney
+                                      value={formatCurrency(store.total)}
+                                    />
                                   </span>
                                 </div>
                               </div>
@@ -5005,11 +5097,15 @@ export function OptimizationPage() {
                                       ) : null}
                                     </span>
                                   }
-                                  price={formatCurrency(
-                                    selection.priceAmount ??
-                                      selection.estimatedCost ??
-                                      0,
-                                  )}
+                                  price={
+                                    <MaskedMoney
+                                      value={formatCurrency(
+                                        selection.priceAmount ??
+                                          selection.estimatedCost ??
+                                          0,
+                                      )}
+                                    />
+                                  }
                                   comparison={
                                     selection.savingsVsComparison &&
                                     selection.savingsVsComparison > 0
@@ -5090,7 +5186,13 @@ export function OptimizationPage() {
                                 }
                                 price={
                                   selection.priceAmount !== undefined
-                                    ? formatCurrency(selection.priceAmount)
+                                    ? (
+                                        <MaskedMoney
+                                          value={formatCurrency(
+                                            selection.priceAmount,
+                                          )}
+                                        />
+                                      )
                                     : 'Sem preço'
                                 }
                                 meta={

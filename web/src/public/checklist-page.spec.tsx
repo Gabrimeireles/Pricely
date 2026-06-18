@@ -10,6 +10,8 @@ import {
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MonetaryPrivacyProvider } from '@/app/monetary-privacy-context';
+
 import { ChecklistPage } from './public-pages';
 
 const updateListItemPurchaseStatus = vi.fn();
@@ -68,6 +70,18 @@ vi.mock('@/app/pricely-context', () => ({
   }),
 }));
 
+function renderChecklistPage() {
+  return render(
+    <MonetaryPrivacyProvider>
+      <MemoryRouter initialEntries={['/listas/list-1/checklist']}>
+        <Routes>
+          <Route path="/listas/:listId/checklist" element={<ChecklistPage />} />
+        </Routes>
+      </MemoryRouter>
+    </MonetaryPrivacyProvider>,
+  );
+}
+
 describe('ChecklistPage', () => {
   beforeEach(() => {
     checklistMockState.listOverride = null;
@@ -87,13 +101,7 @@ describe('ChecklistPage', () => {
   });
 
   it('renders checklist items and syncs purchased state', async () => {
-    render(
-      <MemoryRouter initialEntries={['/listas/list-1/checklist']}>
-        <Routes>
-          <Route path="/listas/:listId/checklist" element={<ChecklistPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderChecklistPage();
 
     expect(
       screen.getByRole('heading', { name: 'Checklist de compras' }),
@@ -102,7 +110,7 @@ describe('ChecklistPage', () => {
     expect(screen.getByText('Arroz tipo 1 1kg')).toBeTruthy();
     expect(screen.getByText('0 de 1')).toBeTruthy();
     expect(screen.getByText('Arroz Camil 1kg')).toBeTruthy();
-    expect(screen.getByText('Preço previsto: R$ 21,90')).toBeTruthy();
+    expect(document.body.textContent).toMatch(/R\$\s*21,90/);
     expect(screen.getByText('Resumo da compra')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('checkbox'));
@@ -117,13 +125,7 @@ describe('ChecklistPage', () => {
   });
 
   it('submits a price mismatch report from the checklist item', async () => {
-    render(
-      <MemoryRouter initialEntries={['/listas/list-1/checklist']}>
-        <Routes>
-          <Route path="/listas/:listId/checklist" element={<ChecklistPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderChecklistPage();
 
     fireEvent.click(screen.getAllByText('Reportar preço')[0]);
     fireEvent.change(
@@ -168,13 +170,7 @@ describe('ChecklistPage', () => {
       ],
     };
 
-    render(
-      <MemoryRouter initialEntries={['/listas/list-1/checklist']}>
-        <Routes>
-          <Route path="/listas/:listId/checklist" element={<ChecklistPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderChecklistPage();
 
     expect(screen.getByText('Compra concluída')).toBeTruthy();
     expect(screen.getByText('Envio recebido')).toBeTruthy();

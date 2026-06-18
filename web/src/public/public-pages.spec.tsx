@@ -611,7 +611,7 @@ describe('public pages', () => {
     ).toBeTruthy();
     expect(screen.getByText('Preços do produto na cidade')).toBeTruthy();
     expect(screen.getByText('R$ 18,90')).toBeTruthy();
-    expect(screen.getByText(/Economize R\$ 0,50/)).toBeTruthy();
+    expect(document.body.textContent).toMatch(/Economize\s+R\$\s*0,50/);
     expect(screen.getByText('Mercado Sul')).toBeTruthy();
   });
 });
