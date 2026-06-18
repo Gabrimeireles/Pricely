@@ -21,6 +21,7 @@ import {
   ReceiptTextIcon,
   RefreshCwIcon,
   RouteIcon,
+  SearchIcon,
   ShieldAlertIcon,
   ShoppingCartIcon,
   Share2Icon,
@@ -63,6 +64,7 @@ import type {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
+  ActionPlaceholder,
   EvidenceModule,
   InfoTooltip,
   MaskedMoney,
@@ -1295,15 +1297,13 @@ export function LandingPage() {
               ))}
             </div>
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Escolha uma cidade para ver ofertas reais</CardTitle>
-                <CardDescription>
-                  A vitrine depende da cidade selecionada. Depois mostramos
-                  produto, loja, preço observado e confiança da informação.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+            <ActionPlaceholder
+              icon={<MapPinIcon className="size-5" />}
+              title="Escolha uma cidade para ver ofertas reais"
+              description="A vitrine depende da cidade selecionada. Depois mostramos produto, loja, preço observado e confiança da informação."
+              primaryAction={<Link to="/cidades">Selecionar cidade</Link>}
+              secondaryAction={<Link to="/listas/nova">Criar lista</Link>}
+            />
           )}
         </section>
 
@@ -1341,26 +1341,30 @@ export function LandingPage() {
                 action: '',
               },
             ].map((state) => (
-              <div
-                className="rounded-lg border border-dashed border-border/80 bg-card/70 p-4"
+              <ActionPlaceholder
+                className="bg-card/70"
                 key={state.title}
-              >
-                <state.icon className="size-8 text-[var(--ds-location)]" />
-                <div className="mt-3 font-medium">{state.title}</div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {state.text}
-                </div>
-                {state.action ? (
-                  <Button asChild className="mt-3" size="sm" variant="outline">
+                icon={<state.icon className="size-5" />}
+                title={state.title}
+                description={state.text}
+                primaryAction={
+                  state.action ? (
                     <Link to={state.to ?? '/cidades'}>{state.action}</Link>
-                  </Button>
-                ) : (
+                  ) : undefined
+                }
+                secondaryAction={
+                  state.title === 'Carregando dados' ? (
+                    <Link to="/ofertas">Ver ofertas públicas</Link>
+                  ) : undefined
+                }
+              >
+                {!state.action ? (
                   <div className="mt-4 grid gap-2">
                     <div className="h-2 rounded-full bg-muted" />
                     <div className="h-2 w-2/3 rounded-full bg-muted" />
                   </div>
-                )}
-              </div>
+                ) : null}
+              </ActionPlaceholder>
             ))}
           </div>
         </section>
@@ -1571,13 +1575,13 @@ export function OffersPage() {
       </div>
 
       {!cityId ? (
-        <Alert>
-          <MapPinIcon />
-          <AlertTitle>Escolha uma cidade primeiro</AlertTitle>
-          <AlertDescription>
-            A cidade define quais lojas e preços entram na vitrine pública.
-          </AlertDescription>
-        </Alert>
+        <ActionPlaceholder
+          icon={<MapPinIcon className="size-5" />}
+          title="Escolha uma cidade primeiro"
+          description="A cidade define quais lojas e preços entram na vitrine pública. Depois você poderá filtrar estabelecimentos e abrir o detalhe de cada oferta."
+          primaryAction={<Link to="/cidades">Selecionar cidade</Link>}
+          secondaryAction={<Link to="/listas/nova">Criar lista</Link>}
+        />
       ) : null}
 
       {cityId ? (
@@ -1747,15 +1751,21 @@ export function OffersPage() {
         ))}
       </div>
       {cityId && visibleOfferGroups.length === 0 ? (
-        <Alert>
-          <MapPinIcon />
-          <AlertTitle>Nenhuma oferta agrupada disponível</AlertTitle>
-          <AlertDescription>
-            {city?.status === 'pilot'
-              ? 'Esta cidade está em ativação. Vamos exibir ofertas assim que houver validação suficiente.'
-              : 'Troque o filtro de estabelecimento ou escolha outra cidade para comparar preços.'}
-          </AlertDescription>
-        </Alert>
+        <ActionPlaceholder
+          icon={<MapPinIcon className="size-5" />}
+          title={
+            city?.status === 'pilot'
+              ? 'Cidade em ativação'
+              : 'Nenhuma oferta agrupada disponível'
+          }
+          description={
+            city?.status === 'pilot'
+              ? 'Esta cidade ainda precisa de notas fiscais e validações para liberar ofertas confiáveis.'
+              : 'Troque o filtro de estabelecimento ou escolha outra cidade para comparar preços.'
+          }
+          primaryAction={<Link to="/cidades">Escolher outra cidade</Link>}
+          secondaryAction={<Link to="/notas">Enviar nota fiscal</Link>}
+        />
       ) : null}
     </div>
   );
@@ -2709,14 +2719,13 @@ export function ListsPage() {
         </Card>
 
         {lists.length === 0 ? (
-          <Alert>
-            <BadgeCheckIcon />
-            <AlertTitle>Nenhuma lista ainda</AlertTitle>
-            <AlertDescription>
-              Crie sua primeira lista para salvar a compra do mês e reprocessar
-              quando os preços mudarem.
-            </AlertDescription>
-          </Alert>
+          <ActionPlaceholder
+            icon={<BadgeCheckIcon className="size-5" />}
+            title="Crie sua primeira lista"
+            description="Salve a compra do mês, otimize quando os preços mudarem e acompanhe a economia estimada na sua conta."
+            primaryAction={<Link to="/listas/nova">Criar lista</Link>}
+            secondaryAction={<Link to="/ofertas">Explorar ofertas</Link>}
+          />
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             {lists.map((list) => (
@@ -3349,10 +3358,22 @@ export function ChecklistPage() {
           </div>
 
           {list.completedAt ? (
-            <Alert>
-              <UploadIcon />
-              <AlertTitle>Compra concluída</AlertTitle>
-              <AlertDescription className="space-y-3">
+            <ActionPlaceholder
+              icon={<UploadIcon className="size-5" />}
+              title={
+                list.paidTotal === undefined
+                  ? 'Envie a nota desta compra'
+                  : 'Compra concluída'
+              }
+              description={
+                list.paidTotal === undefined
+                  ? 'A lista foi concluída, mas ainda falta uma nota fiscal para validar os preços encontrados e liberar o histórico confiável.'
+                  : 'Use a nota fiscal para validar os preços encontrados e melhorar a cobertura da cidade.'
+              }
+              primaryAction={<Link to="/notas">Enviar nota fiscal</Link>}
+              secondaryAction={<Link to={`/listas/${list.id}`}>Ver lista</Link>}
+            >
+              <div className="space-y-3 text-sm text-muted-foreground">
                 <p>
                   Lista concluída em {formatDateTime(list.completedAt)}
                   {list.paidTotal !== undefined ? (
@@ -3364,7 +3385,6 @@ export function ChecklistPage() {
                   ) : (
                     ''
                   )}
-                  . Use a nota fiscal para validar os preços encontrados.
                 </p>
                 <div className="grid gap-2 text-sm sm:grid-cols-3">
                   <StatusBadge tone="neutral">Envio recebido</StatusBadge>
@@ -3375,11 +3395,8 @@ export function ChecklistPage() {
                     Reward validado após nota confiável
                   </StatusBadge>
                 </div>
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/notas">Enviar nota fiscal</Link>
-                </Button>
-              </AlertDescription>
-            </Alert>
+              </div>
+            </ActionPlaceholder>
           ) : null}
 
           <StickyActionBar id="checklist-actions">
@@ -3744,13 +3761,13 @@ export function ListEditorPage() {
             </div>
 
             {items.length === 0 ? (
-              <Alert>
-                <AlertCircleIcon />
-                <AlertTitle>Lista vazia</AlertTitle>
-                <AlertDescription>
-                  Adicione produtos pelo painel de busca para começar.
-                </AlertDescription>
-              </Alert>
+              <ActionPlaceholder
+                icon={<ListIcon className="size-5" />}
+                title="Adicione o primeiro produto"
+                description="Busque arroz, leite, café ou outro item recorrente. A lista precisa de produtos para liberar comparação de preços e checklist."
+                primaryAction={<a href="#draft-item-name">Buscar produto</a>}
+                secondaryAction={<Link to="/ofertas">Ver ofertas</Link>}
+              />
             ) : (
               <div className="grid gap-3">
                 {items.map((item) => (
@@ -3981,9 +3998,16 @@ export function ListEditorPage() {
               </div>
             ) : null}
             {catalogResults.length === 0 && !isSearchingCatalog ? (
-              <div className="rounded-lg border border-dashed border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-                Nenhum produto comparável encontrado.
-              </div>
+              <ActionPlaceholder
+                className="bg-background/80"
+                icon={<SearchIcon className="size-5" />}
+                title="Nenhum produto comparável encontrado"
+                description="Revise o nome ou solicite o produto para o catálogo antes de adicioná-lo à lista otimizada."
+                primaryAction={
+                  <a href="#draft-item-name">Revisar busca</a>
+                }
+                secondaryAction={<Link to="/notas">Enviar nota com produto</Link>}
+              />
             ) : null}
             {catalogResults.map((product, index) => {
               const isSelected = selectedCatalogProduct?.id === product.id;
@@ -4900,14 +4924,17 @@ export function OptimizationPage() {
                   ) : null}
 
                   {!result ? (
-                    <Alert>
-                      <AlertCircleIcon />
-                      <AlertTitle>Nenhum resultado ainda</AlertTitle>
-                      <AlertDescription>
-                        Rode um dos modos acima para gerar a comparação desta
-                        lista com os preços disponíveis.
-                      </AlertDescription>
-                    </Alert>
+                    <ActionPlaceholder
+                      icon={<AlertCircleIcon className="size-5" />}
+                      title="Nenhum resultado ainda"
+                      description="Escolha um modo e gere a comparação desta lista com os preços disponíveis. Depois você poderá abrir o checklist com lojas, preços e confiança."
+                      primaryAction={
+                        <a href="#optimization-modes">Escolher modo</a>
+                      }
+                      secondaryAction={
+                        <Link to={`/listas/${list.id}`}>Voltar para lista</Link>
+                      }
+                    />
                   ) : isProcessingResult ? null : (
                     <>
                       <div className="grid gap-4 md:grid-cols-4">
@@ -5011,7 +5038,21 @@ export function OptimizationPage() {
                             ))}
                           </CardContent>
                         </Card>
-                      ) : null}
+                      ) : (
+                        <ActionPlaceholder
+                          icon={<RouteIcon className="size-5" />}
+                          title="Sem parada definida"
+                          description="O resultado ainda não tem plano por loja. Use o modo de menor total na cidade ou revise itens sem oferta confirmada para gerar paradas."
+                          primaryAction={
+                            <a href="#optimization-modes">Trocar modo</a>
+                          }
+                          secondaryAction={
+                            <Link to={`/listas/${list.id}/checklist`}>
+                              Abrir checklist
+                            </Link>
+                          }
+                        />
+                      )}
 
                       <Card>
                         <CardHeader>

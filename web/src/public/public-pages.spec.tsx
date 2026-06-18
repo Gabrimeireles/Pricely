@@ -371,12 +371,11 @@ describe('public pages', () => {
     renderPublicPage(<OffersPage />);
 
     expect(await screen.findByText('Ofertas por cidade')).toBeTruthy();
+    expect(screen.getByText('Cidade em ativação')).toBeTruthy();
     expect(
-      screen.getByText('Nenhuma oferta agrupada disponível'),
+      screen.getByText(/precisa de notas fiscais e validações/),
     ).toBeTruthy();
-    expect(
-      screen.getByText(/Esta cidade está em ativação/),
-    ).toBeTruthy();
+    expect(screen.getByText('Enviar nota fiscal')).toBeTruthy();
     expect(
       screen.getByText(
         'Campinas. Ofertas públicas mostram loja, frescor, confiança e detalhe completo do item.',

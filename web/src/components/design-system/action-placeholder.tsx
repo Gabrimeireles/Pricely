@@ -19,6 +19,7 @@ type ActionPlaceholderProps = React.ComponentProps<typeof Card> & {
 };
 
 function ActionPlaceholder({
+  children,
   className,
   description,
   icon,
@@ -59,10 +60,10 @@ function ActionPlaceholder({
           ) : null}
         </CardContent>
       ) : null}
+      {children ? <CardContent className="pt-0">{children}</CardContent> : null}
     </Card>
   );
 }
 
 export { ActionPlaceholder };
 export type { ActionPlaceholderProps };
-
