@@ -64,6 +64,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   EvidenceModule,
+  InfoTooltip,
+  MaskedMoney,
   PriceRow,
   StatusBadge,
   StickyActionBar,
@@ -441,7 +443,7 @@ function PriceDisplay({
     <div className="grid gap-1">
       {hasPromotion ? (
         <div className="text-sm text-muted-foreground line-through">
-          {formatCurrency(basePriceAmount)}
+          <MaskedMoney value={formatCurrency(basePriceAmount)} />
         </div>
       ) : null}
       <div
@@ -449,7 +451,7 @@ function PriceDisplay({
           size === 'lg' ? 'text-4xl font-semibold' : 'text-2xl font-semibold'
         }
       >
-        {formatCurrency(priceAmount)}
+        <MaskedMoney value={formatCurrency(priceAmount)} />
       </div>
     </div>
   );
@@ -1050,13 +1052,17 @@ export function LandingPage() {
                   : 'Escolha uma cidade para começar'}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {activeList
-                ? `Sua lista está pronta para otimização. Última economia estimada: ${formatCurrency(
-                    estimatedSavings,
-                  )}.`
-                : city
-                  ? 'Monte uma lista com produtos comparáveis antes de ir ao mercado.'
-                  : 'A cidade define ofertas, lojas e evidências usadas na comparação.'}
+              {activeList ? (
+                <>
+                  Sua lista está pronta para otimização. Última economia
+                  estimada:{' '}
+                  <MaskedMoney value={formatCurrency(estimatedSavings)} />.
+                </>
+              ) : city ? (
+                'Monte uma lista com produtos comparáveis antes de ir ao mercado.'
+              ) : (
+                'A cidade define ofertas, lojas e evidências usadas na comparação.'
+              )}
             </p>
           </div>
           <div className="grid gap-2 sm:justify-items-end">
@@ -1244,7 +1250,7 @@ export function LandingPage() {
                     <div className="flex items-end justify-between gap-3">
                       <div>
                         <div className="font-heading text-2xl font-semibold text-[var(--ds-location)]">
-                          {formatCurrency(offer.price)}
+                          <MaskedMoney value={formatCurrency(offer.price)} />
                         </div>
                         <div className="text-xs text-muted-foreground">
                           Preço otimizado
@@ -1253,7 +1259,11 @@ export function LandingPage() {
                       <div className="rounded-md bg-[var(--ds-savings-soft)] px-3 py-2 text-right text-sm text-[var(--ds-savings)]">
                         <div>Economize</div>
                         <div className="font-semibold">
-                          {formatCurrency(offer.savingsVsRegionalAverage ?? 0)}
+                          <MaskedMoney
+                            value={formatCurrency(
+                              offer.savingsVsRegionalAverage ?? 0,
+                            )}
+                          />
                         </div>
                       </div>
                     </div>
@@ -1367,9 +1377,14 @@ export function LandingPage() {
                   : 'Acompanhe a validação depois do envio'}
               </div>
               <div className="mt-1 text-sm text-muted-foreground">
-                {hasAccount
-                  ? `Total: ${formatCurrency(lastReceiptTotal)}`
-                  : 'Entre ou crie conta para salvar a nota e receber status.'}
+                {hasAccount ? (
+                  <>
+                    Total:{' '}
+                    <MaskedMoney value={formatCurrency(lastReceiptTotal)} />
+                  </>
+                ) : (
+                  'Entre ou crie conta para salvar a nota e receber status.'
+                )}
               </div>
             </div>
             <div className="rounded-lg border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] p-3 text-sm">
@@ -1389,7 +1404,7 @@ export function LandingPage() {
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <CardTitle>Resumo de economia</CardTitle>
-              <InfoIcon className="size-4 text-muted-foreground" />
+              <InfoTooltip label="Valores monetários podem ser ocultados pelo botão de privacidade no header." />
             </div>
             <CardDescription>Esta semana</CardDescription>
           </CardHeader>
@@ -1397,7 +1412,7 @@ export function LandingPage() {
             <div>
               {hasAccount ? (
                 <div className="font-heading text-4xl font-semibold text-[var(--ds-savings)]">
-                  {formatCurrency(estimatedSavings)}
+                  <MaskedMoney value={formatCurrency(estimatedSavings)} />
                 </div>
               ) : (
                 <div className="font-heading text-2xl font-semibold text-foreground">
@@ -1626,9 +1641,14 @@ export function OffersPage() {
               {(group.savingsVsSecondCheapest ?? 0) > 0 &&
               group.secondCheapestPriceAmount ? (
                 <div className="text-sm font-medium text-[var(--ds-savings)]">
-                  {formatCurrency(group.savingsVsSecondCheapest ?? 0)} abaixo do
-                  próximo menor preço (
-                  {formatCurrency(group.secondCheapestPriceAmount)}).
+                  <MaskedMoney
+                    value={formatCurrency(group.savingsVsSecondCheapest ?? 0)}
+                  />{' '}
+                  abaixo do próximo menor preço (
+                  <MaskedMoney
+                    value={formatCurrency(group.secondCheapestPriceAmount)}
+                  />
+                  ).
                 </div>
               ) : group.establishmentCount > 1 ? (
                 <div className="text-sm text-muted-foreground">
@@ -1638,14 +1658,16 @@ export function OffersPage() {
               {group.averagePriceAmount > 0 ? (
                 <div className="text-sm text-muted-foreground">
                   Média da variante na cidade:{' '}
-                  {formatCurrency(group.averagePriceAmount)}
+                  <MaskedMoney value={formatCurrency(group.averagePriceAmount)} />
                   {group.averagePriceAmount > group.cheapestPriceAmount ? (
                     <>
                       {' '}
                       ·{' '}
-                      {formatCurrency(
-                        group.averagePriceAmount - group.cheapestPriceAmount,
-                      )}{' '}
+                      <MaskedMoney
+                        value={formatCurrency(
+                          group.averagePriceAmount - group.cheapestPriceAmount,
+                        )}
+                      />{' '}
                       acima do menor preço
                     </>
                   ) : null}
@@ -1673,13 +1695,17 @@ export function OffersPage() {
                         </span>
                         <div className="text-right">
                           <div className="font-medium">
-                            {formatCurrency(offer.priceAmount)}
+                            <MaskedMoney
+                              value={formatCurrency(offer.priceAmount)}
+                            />
                           </div>
                           <div className="text-xs text-muted-foreground">
                             +
-                            {formatCurrency(
-                              offer.priceAmount - group.cheapestPriceAmount,
-                            )}
+                            <MaskedMoney
+                              value={formatCurrency(
+                                offer.priceAmount - group.cheapestPriceAmount,
+                              )}
+                            />
                           </div>
                         </div>
                       </div>

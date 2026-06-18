@@ -16,6 +16,7 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MonetaryPrivacyProvider } from '@/app/monetary-privacy-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 import { PublicLayout } from './public-shell';
@@ -174,7 +175,9 @@ function renderPublicLayout() {
   return render(
     <MemoryRouter>
       <TooltipProvider>
-        <PublicLayout />
+        <MonetaryPrivacyProvider>
+          <PublicLayout />
+        </MonetaryPrivacyProvider>
       </TooltipProvider>
     </MemoryRouter>,
   );

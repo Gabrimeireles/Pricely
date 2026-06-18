@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type React from 'react';
 import {
   cleanup,
   fireEvent,
@@ -9,6 +10,9 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { MonetaryPrivacyProvider } from '@/app/monetary-privacy-context';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 import {
   CitiesPage,
@@ -156,6 +160,15 @@ describe('public pages', () => {
     cleanup();
   });
 
+  const renderPublicPage = (ui: React.ReactNode) =>
+    render(
+      <TooltipProvider>
+        <MonetaryPrivacyProvider>
+          <MemoryRouter>{ui}</MemoryRouter>
+        </MonetaryPrivacyProvider>
+      </TooltipProvider>,
+    );
+
   it('uses action placeholders on logged-out home receipt and savings cards', async () => {
     pricelyMockState.isAuthenticated = false;
     fetchRegionOffers.mockResolvedValue({
@@ -170,11 +183,7 @@ describe('public pages', () => {
       offers: [],
     });
 
-    render(
-      <MemoryRouter>
-        <LandingPage />
-      </MemoryRouter>,
-    );
+    renderPublicPage(<LandingPage />);
 
     expect(screen.getByText('Envie sua primeira nota fiscal')).toBeTruthy();
     expect(screen.getByText('Entre para ver sua economia')).toBeTruthy();
@@ -184,11 +193,7 @@ describe('public pages', () => {
   });
 
   it('renders zero-store and collecting-data messaging for supported cities', () => {
-    render(
-      <MemoryRouter>
-        <CitiesPage />
-      </MemoryRouter>,
-    );
+    renderPublicPage(<CitiesPage />);
 
     expect(screen.getByText('Cidades suportadas')).toBeTruthy();
     expect(
@@ -215,11 +220,7 @@ describe('public pages', () => {
       createdAt: '2026-05-10T10:00:00.000Z',
     });
 
-    render(
-      <MemoryRouter>
-        <CitiesPage />
-      </MemoryRouter>,
-    );
+    renderPublicPage(<CitiesPage />);
 
     fireEvent.change(screen.getByLabelText('Cidade'), {
       target: { value: 'Santos' },
@@ -244,11 +245,7 @@ describe('public pages', () => {
   });
 
   it('renders the shopper next action lane on lists', () => {
-    render(
-      <MemoryRouter>
-        <ListsPage />
-      </MemoryRouter>,
-    );
+    renderPublicPage(<ListsPage />);
 
     expect(screen.getByText('Use o checklist no mercado')).toBeTruthy();
     expect(screen.getByText('Lista')).toBeTruthy();
@@ -266,11 +263,7 @@ describe('public pages', () => {
       checkoutEnabled: false,
     };
 
-    render(
-      <MemoryRouter>
-        <ListsPage />
-      </MemoryRouter>,
-    );
+    renderPublicPage(<ListsPage />);
 
     expect(screen.getAllByText('Premium ativo').length).toBeGreaterThan(0);
     expect(screen.getByText('Benefícios Premium')).toBeTruthy();
@@ -292,11 +285,7 @@ describe('public pages', () => {
         'Nota recebida: reward em processamento ate a liberacao e validacao.',
     });
 
-    render(
-      <MemoryRouter>
-        <ReceiptSubmissionPage />
-      </MemoryRouter>,
-    );
+    renderPublicPage(<ReceiptSubmissionPage />);
 
     fireEvent.change(screen.getByLabelText('Estabelecimento'), {
       target: { value: 'Mercado Centro' },
@@ -346,11 +335,7 @@ describe('public pages', () => {
         'Nota validada: voce ganhou 100 pontos e 1 credito de otimizacao.',
     });
 
-    render(
-      <MemoryRouter>
-        <ReceiptSubmissionPage />
-      </MemoryRouter>,
-    );
+    renderPublicPage(<ReceiptSubmissionPage />);
 
     fireEvent.change(screen.getByLabelText('Estabelecimento'), {
       target: { value: 'Mercado Validado' },
@@ -383,11 +368,7 @@ describe('public pages', () => {
       offers: [],
     });
 
-    render(
-      <MemoryRouter>
-        <OffersPage />
-      </MemoryRouter>,
-    );
+    renderPublicPage(<OffersPage />);
 
     expect(await screen.findByText('Ofertas por cidade')).toBeTruthy();
     expect(
@@ -471,11 +452,7 @@ describe('public pages', () => {
       ],
     });
 
-    render(
-      <MemoryRouter>
-        <OffersPage />
-      </MemoryRouter>,
-    );
+    renderPublicPage(<OffersPage />);
 
     expect(await screen.findByText('Arroz Camil tipo 1 5kg')).toBeTruthy();
     expect(screen.getByText('Arroz tipo 1 5kg')).toBeTruthy();
@@ -483,12 +460,9 @@ describe('public pages', () => {
     expect(
       screen.getByText(/Menor preço em Unidade Vila Mariana/),
     ).toBeTruthy();
-    expect(
-      screen.getByText(/R\$ 1,00 abaixo do próximo menor preço/),
-    ).toBeTruthy();
-    expect(
-      screen.getByText(/Média da variante na cidade: R\$ 22,40/),
-    ).toBeTruthy();
+    expect(screen.getAllByText('R$ 1,00').length).toBeGreaterThan(0);
+    expect(screen.getByText(/abaixo/)).toBeTruthy();
+    expect(screen.getByText('R$ 22,40')).toBeTruthy();
     expect(screen.getByText('Ver outros estabelecimentos')).toBeTruthy();
   });
 
@@ -548,11 +522,7 @@ describe('public pages', () => {
       ],
     });
 
-    render(
-      <MemoryRouter>
-        <OffersPage />
-      </MemoryRouter>,
-    );
+    renderPublicPage(<OffersPage />);
 
     expect(
       await screen.findByText('Feijao Carioca Camil 1kg'),
@@ -619,11 +589,15 @@ describe('public pages', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/ofertas/offer-1']}>
-        <Routes>
-          <Route path="/ofertas/:offerId" element={<OfferDetailPage />} />
-        </Routes>
-      </MemoryRouter>,
+      <TooltipProvider>
+        <MonetaryPrivacyProvider>
+          <MemoryRouter initialEntries={['/ofertas/offer-1']}>
+            <Routes>
+              <Route path="/ofertas/:offerId" element={<OfferDetailPage />} />
+            </Routes>
+          </MemoryRouter>
+        </MonetaryPrivacyProvider>
+      </TooltipProvider>,
     );
 
     await waitFor(() => expect(screen.getByText('Cafe torrado')).toBeTruthy());

@@ -1,6 +1,8 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import {
   DatabaseZapIcon,
+  EyeIcon,
+  EyeOffIcon,
   LayoutDashboardIcon,
   ListChecksIcon,
   MapPinnedIcon,
@@ -14,6 +16,7 @@ import {
   WorkflowIcon,
 } from 'lucide-react';
 
+import { useMonetaryPrivacy } from '@/app/monetary-privacy-context';
 import { usePricely } from '@/app/pricely-context';
 import { useTheme } from '@/app/theme-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -86,6 +89,7 @@ const adminNav = [
 
 export function AdminLayout() {
   const { currentUser, isAuthenticated } = usePricely();
+  const { isMoneyVisible, toggleMoneyVisibility } = useMonetaryPrivacy();
   const { theme, toggleTheme } = useTheme();
 
   if (!isAuthenticated || currentUser?.role !== 'admin') {
@@ -168,6 +172,23 @@ export function AdminLayout() {
             <div className="flex gap-2">
               <Button
                 aria-label={
+                  isMoneyVisible
+                    ? 'Ocultar valores monetários'
+                    : 'Mostrar valores monetários'
+                }
+                onClick={toggleMoneyVisibility}
+                size="icon-sm"
+                type="button"
+                variant="outline"
+              >
+                {isMoneyVisible ? (
+                  <EyeIcon className="size-4" />
+                ) : (
+                  <EyeOffIcon className="size-4" />
+                )}
+              </Button>
+              <Button
+                aria-label={
                   theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
                 }
                 onClick={toggleTheme}
@@ -186,6 +207,24 @@ export function AdminLayout() {
               </Button>
             </div>
           </div>
+          <Button
+            aria-label={
+              isMoneyVisible
+                ? 'Ocultar valores monetários'
+                : 'Mostrar valores monetários'
+            }
+            className="hidden group-data-[collapsible=icon]:inline-flex"
+            onClick={toggleMoneyVisibility}
+            size="icon-sm"
+            type="button"
+            variant="outline"
+          >
+            {isMoneyVisible ? (
+              <EyeIcon className="size-4" />
+            ) : (
+              <EyeOffIcon className="size-4" />
+            )}
+          </Button>
           <Button
             aria-label={
               theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'

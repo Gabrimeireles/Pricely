@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ThemeProvider } from '@/app/theme-context';
+import { MonetaryPrivacyProvider } from '@/app/monetary-privacy-context';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 import { dashboardRoute } from './dashboard';
@@ -125,7 +126,9 @@ function renderRoute(initialEntry: string) {
   return render(
     <TooltipProvider>
       <ThemeProvider>
-        <RouterProvider router={router} />
+        <MonetaryPrivacyProvider>
+          <RouterProvider router={router} />
+        </MonetaryPrivacyProvider>
       </ThemeProvider>
     </TooltipProvider>,
   );

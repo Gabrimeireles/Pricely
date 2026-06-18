@@ -57,6 +57,14 @@ vi.mock('@/app/pricely-context', () => ({
   }),
 }));
 
+vi.mock('@/app/monetary-privacy-context', () => ({
+  useMonetaryPrivacy: () => ({
+    isMoneyVisible: true,
+    setMoneyVisible: vi.fn(),
+    toggleMoneyVisibility: vi.fn(),
+  }),
+}));
+
 vi.mock('@/app/api', () => ({
   fetchAdminMetrics: (...args: unknown[]) => fetchAdminMetrics(...args),
   fetchAdminQueueHealth: (...args: unknown[]) => fetchAdminQueueHealth(...args),
@@ -884,7 +892,8 @@ describe('Admin dashboard pages', () => {
     fireEvent.click(screen.getByText('Ver conteúdo e matcher'));
     expect(await screen.findByText('CAFE PILAO 500G')).toBeTruthy();
     expect(screen.getByText('Payload extraído')).toBeTruthy();
-    expect(screen.getByText('1 itens · R$ 15,90')).toBeTruthy();
+    expect(screen.getAllByText(/1 itens/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('R$ 15,90').length).toBeGreaterThan(0);
     expect(
       screen.getByText(/35260500000000000100550010000000011000000011/),
     ).toBeTruthy();
@@ -892,7 +901,8 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('Oferta criada')).toBeTruthy();
     expect(screen.getByText('Ver oferta criada')).toBeTruthy();
     expect(screen.getByText('Preço caiu')).toBeTruthy();
-    expect(screen.getByText(/R\$ 16,90 anterior/)).toBeTruthy();
+    expect(screen.getAllByText('R$ 16,90').length).toBeGreaterThan(0);
+    expect(screen.getByText(/anterior/)).toBeTruthy();
   });
 
   it('links pending receipts to the dedicated receipt audit before processing exists', async () => {
