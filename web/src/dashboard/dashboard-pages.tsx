@@ -69,9 +69,11 @@ import { Button } from '@/components/ui/button';
 import {
   ActionPlaceholder,
   AdminActionQueueItem,
+  InfoTooltip,
   MaskedMoney,
   StatusBadge,
   TechnicalDisclosure,
+  WithTooltip,
 } from '@/components/design-system';
 import {
   Card,
@@ -251,6 +253,23 @@ function jobStatusLabel(status: AdminProcessingJobResponse['status']) {
   return labels[status];
 }
 
+function jobStatusTooltip(status: AdminProcessingJobResponse['status']) {
+  const labels: Record<AdminProcessingJobResponse['status'], string> = {
+    completed:
+      'Job concluído: valide a auditoria de negócio antes de considerar a evidência final.',
+    failed:
+      'Job com falha: revise motivo, tentativas e recurso vinculado antes de reprocessar.',
+    queued:
+      'Job aguardando worker: nenhuma tentativa operacional foi concluída ainda.',
+    retrying:
+      'Job será tentado novamente pela fila; acompanhe antes de intervenção manual.',
+    running:
+      'Job em execução por worker; aguarde conclusão antes de tomar ação manual.',
+  };
+
+  return labels[status];
+}
+
 function jobSeverity(status: AdminProcessingJobResponse['status']) {
   if (status === 'failed') {
     return 'critical' as const;
@@ -370,6 +389,69 @@ function receiptModerationStatus(
   };
 
   return statuses[status];
+}
+
+function receiptModerationTooltip(
+  status: AdminReceiptProcessingResponse['moderationStatus'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['moderationStatus'],
+    string
+  > = {
+    accepted:
+      'Nota aceita para evidência: confira qualidade e reward antes de decisões financeiras.',
+    duplicate:
+      'Nota duplicada: não deve gerar nova evidência nem reward adicional.',
+    pending:
+      'Nota pendente: precisa de liberação manual antes do processamento.',
+    quarantined:
+      'Nota em quarentena: revise risco, payload e origem antes de liberar.',
+    rejected:
+      'Nota rejeitada: bloqueia reward e uso como evidência de preço.',
+  };
+
+  return labels[status];
+}
+
+function receiptTrustTooltip(
+  trustLevel: AdminReceiptProcessingResponse['trustLevel'],
+) {
+  const labels: Record<AdminReceiptProcessingResponse['trustLevel'], string> = {
+    pending_review:
+      'Confiança pendente: a nota ainda precisa de revisão ou processamento.',
+    rejected:
+      'Confiança rejeitada: não use esta nota como evidência operacional.',
+    trusted:
+      'Confiança alta: itens, origem e matcher sustentam uso como evidência.',
+    untrusted:
+      'Baixa confiança: revise matcher, preço e origem antes de aceitar reward.',
+  };
+
+  return labels[trustLevel];
+}
+
+function rewardEligibilityTooltip(
+  status: AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+    string
+  > = {
+    disabled:
+      'Rewards desativados para este contexto; nenhuma concessão automática deve ocorrer.',
+    eligible_pending:
+      'Reward elegível, mas pendente de qualidade, moderação ou processamento.',
+    granted:
+      'Reward concedido após validação da nota e das regras operacionais.',
+    ineligible:
+      'Reward inelegível por regra de qualidade, duplicidade ou moderação.',
+  };
+
+  return labels[status];
+}
+
+function billingDisabledTooltip() {
+  return 'Billing está desativado neste MVP; plano e créditos são controlados manualmente pelo admin.';
 }
 
 function receiptQualityLabel(receipt: AdminReceiptProcessingResponse) {
@@ -3336,11 +3418,17 @@ export function AdminUsersPage() {
                           {user.email}
                         </div>
                         <div className="mt-1 flex items-center gap-2">
-                          <StatusBadge tone="primary">{user.role}</StatusBadge>
+                          <StatusBadge
+                            tone="primary"
+                            tooltip="Papel administrativo usado para liberar ou restringir telas sensíveis."
+                          >
+                            {user.role}
+                          </StatusBadge>
                           <StatusBadge
                             tone={
                               user.status === 'active' ? 'savings' : 'neutral'
                             }
+                            tooltip="Status da conta no backend; contas inativas não devem operar fluxos sensíveis."
                           >
                             {user.status}
                           </StatusBadge>
@@ -3383,68 +3471,86 @@ export function AdminUsersPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                      <div className="flex items-center gap-2">
-                        <UserCogIcon className="size-4 text-muted-foreground" />
-                        <span className="font-medium">
-                          {adminUserPlanLabel(user)}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Origem {user.entitlement.source}; billing desativado
-                      </div>
-                      </TableCell>
-                      <TableCell>
-                      <div className="text-sm">
-                        {user.entitlement.lastPaymentAt ?? 'Sem cobranca ativa'}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {user.entitlement.lastPaymentStatus ===
-                        'billing_disabled'
-                          ? 'Billing desativado'
-                          : user.entitlement.lastPaymentStatus}
-                      </div>
-                      </TableCell>
-                      <TableCell>
-                      <div className="flex flex-col gap-2">
-                        <Button
-                          onClick={() => void handlePremiumToggle(user)}
-                          size="sm"
-                          type="button"
-                          variant={
-                            user.entitlement.plan === 'premium'
-                              ? 'outline'
-                              : 'default'
-                          }
-                        >
-                          {user.entitlement.plan === 'premium'
-                            ? 'Remover premium'
-                            : 'Ativar premium'}
-                        </Button>
                         <div className="flex items-center gap-2">
-                          <Input
-                            aria-label={`Creditos extras para ${user.displayName}`}
-                            className="h-9 w-24"
-                            min="1"
-                            onChange={(event) =>
-                              setTokenAmounts((current) => ({
-                                ...current,
-                                [user.id]: event.target.value,
-                              }))
-                            }
-                            placeholder="+2"
-                            type="number"
-                            value={tokenAmounts[user.id] ?? ''}
+                          <UserCogIcon className="size-4 text-muted-foreground" />
+                          <span className="font-medium">
+                            {adminUserPlanLabel(user)}
+                          </span>
+                          <InfoTooltip
+                            label={billingDisabledTooltip()}
+                            triggerLabel="Como funciona billing desativado"
                           />
-                          <Button
-                            onClick={() => void handleTokenGrant(user)}
-                            size="sm"
-                            type="button"
-                            variant="outline"
-                          >
-                            Adicionar
-                          </Button>
                         </div>
-                      </div>
+                        <div className="text-xs text-muted-foreground">
+                          Origem {user.entitlement.source}; billing desativado
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {user.entitlement.lastPaymentAt ??
+                            'Sem cobranca ativa'}
+                        </div>
+                        <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          {user.entitlement.lastPaymentStatus ===
+                          'billing_disabled'
+                            ? 'Billing desativado'
+                            : user.entitlement.lastPaymentStatus}
+                          {user.entitlement.lastPaymentStatus ===
+                          'billing_disabled' ? (
+                            <InfoTooltip
+                              label={billingDisabledTooltip()}
+                              triggerLabel="Entender billing desativado"
+                            />
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-2">
+                          <WithTooltip label="Ajusta manualmente o plano enquanto billing automático está desativado.">
+                            <Button
+                              onClick={() => void handlePremiumToggle(user)}
+                              size="sm"
+                              type="button"
+                              variant={
+                                user.entitlement.plan === 'premium'
+                                  ? 'outline'
+                                  : 'default'
+                              }
+                            >
+                              {user.entitlement.plan === 'premium'
+                                ? 'Remover premium'
+                                : 'Ativar premium'}
+                            </Button>
+                          </WithTooltip>
+                          <div className="flex items-center gap-2">
+                            <WithTooltip label="Quantidade de créditos manuais para otimizações extras desta conta.">
+                              <Input
+                                aria-label={`Creditos extras para ${user.displayName}`}
+                                className="h-9 w-24"
+                                min="1"
+                                onChange={(event) =>
+                                  setTokenAmounts((current) => ({
+                                    ...current,
+                                    [user.id]: event.target.value,
+                                  }))
+                                }
+                                placeholder="+2"
+                                type="number"
+                                value={tokenAmounts[user.id] ?? ''}
+                              />
+                            </WithTooltip>
+                            <WithTooltip label="Concede créditos extras manualmente; use apenas após conferência da conta.">
+                              <Button
+                                onClick={() => void handleTokenGrant(user)}
+                                size="sm"
+                                type="button"
+                                variant="outline"
+                              >
+                                Adicionar
+                              </Button>
+                            </WithTooltip>
+                          </div>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -3855,6 +3961,9 @@ export function AdminReceiptsPage() {
                         status={receiptModerationStatus(
                           receipt.moderationStatus,
                         )}
+                        tooltip={receiptModerationTooltip(
+                          receipt.moderationStatus,
+                        )}
                       >
                         {receiptModerationLabel(receipt.moderationStatus)}
                       </StatusBadge>
@@ -3865,6 +3974,7 @@ export function AdminReceiptsPage() {
                             ? 'warning'
                             : 'info'
                         }
+                        tooltip="Próxima ação recomendada para triagem administrativa desta nota."
                       >
                         {receiptNextActionLabel(receipt)}
                       </StatusBadge>
@@ -3886,47 +3996,53 @@ export function AdminReceiptsPage() {
                     </Button>
                     {receipt.processingJob ? (
                       <>
-                        <Button
-                          disabled={releasingId === receipt.id}
-                          onClick={() => void reprocessReceipt(receipt.id)}
-                          size="sm"
-                          type="button"
-                          variant="outline"
-                        >
-                          Reprocessar
-                        </Button>
+                        <WithTooltip label="Reenfileira esta nota para uma nova tentativa de leitura/matcher.">
+                          <Button
+                            disabled={releasingId === receipt.id}
+                            onClick={() => void reprocessReceipt(receipt.id)}
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                          >
+                            Reprocessar
+                          </Button>
+                        </WithTooltip>
                       </>
                     ) : (
+                      <WithTooltip label="Libera uma nota pendente para processamento na fila.">
+                        <Button
+                          disabled={releasingId === receipt.id}
+                          onClick={() => void releaseReceipt(receipt.id)}
+                          size="sm"
+                          type="button"
+                        >
+                          Liberar processamento
+                        </Button>
+                      </WithTooltip>
+                    )}
+                    <WithTooltip label="Ação destrutiva: recusar bloqueia reward e remove a nota como evidência de preço.">
                       <Button
-                        disabled={releasingId === receipt.id}
-                        onClick={() => void releaseReceipt(receipt.id)}
+                        className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                        disabled={
+                          releasingId === receipt.id ||
+                          receipt.moderationStatus === 'rejected'
+                        }
+                        onClick={() => {
+                          const confirmed = window.confirm(
+                            'Recusar esta nota fiscal? Esta ação bloqueia reward e evidência desta nota.',
+                          );
+
+                          if (confirmed) {
+                            void rejectReceipt(receipt.id);
+                          }
+                        }}
                         size="sm"
                         type="button"
+                        variant="outline"
                       >
-                        Liberar processamento
+                        Recusar
                       </Button>
-                    )}
-                    <Button
-                      className="border-destructive/40 text-destructive hover:bg-destructive/10"
-                      disabled={
-                        releasingId === receipt.id ||
-                        receipt.moderationStatus === 'rejected'
-                      }
-                      onClick={() => {
-                        const confirmed = window.confirm(
-                          'Recusar esta nota fiscal? Esta ação bloqueia reward e evidência desta nota.',
-                        );
-
-                        if (confirmed) {
-                          void rejectReceipt(receipt.id);
-                        }
-                      }}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      Recusar
-                    </Button>
+                    </WithTooltip>
                   </div>
                 </div>
 
@@ -3969,6 +4085,7 @@ export function AdminReceiptsPage() {
                       <StatusBadge
                         family="trust"
                         status={receiptTrustStatus(receipt.trustLevel)}
+                        tooltip={receiptTrustTooltip(receipt.trustLevel)}
                       >
                         {receiptTrustLabel(receipt.trustLevel)}
                       </StatusBadge>
@@ -3983,6 +4100,9 @@ export function AdminReceiptsPage() {
                       <StatusBadge
                         family="reward"
                         status={rewardStatus(receipt.rewardEligibilityStatus)}
+                        tooltip={rewardEligibilityTooltip(
+                          receipt.rewardEligibilityStatus,
+                        )}
                       >
                         {rewardEligibilityLabel(
                           receipt.rewardEligibilityStatus,
@@ -4301,6 +4421,9 @@ export function AdminReceiptsPage() {
                 status={receiptModerationStatus(
                   selectedReceipt.moderationStatus,
                 )}
+                tooltip={receiptModerationTooltip(
+                  selectedReceipt.moderationStatus,
+                )}
               >
                 {receiptModerationLabel(selectedReceipt.moderationStatus)}
               </StatusBadge>
@@ -4373,43 +4496,49 @@ export function AdminReceiptsPage() {
 
             <div className="grid gap-2">
               {!selectedReceipt.processingJob ? (
-                <Button
-                  disabled={releasingId === selectedReceipt.id}
-                  onClick={() => void releaseReceipt(selectedReceipt.id)}
-                  type="button"
-                >
-                  Liberar nota selecionada
-                </Button>
+                <WithTooltip label="Libera a nota selecionada para processamento na fila.">
+                  <Button
+                    disabled={releasingId === selectedReceipt.id}
+                    onClick={() => void releaseReceipt(selectedReceipt.id)}
+                    type="button"
+                  >
+                    Liberar nota selecionada
+                  </Button>
+                </WithTooltip>
               ) : (
+                <WithTooltip label="Reprocessa extração e matcher da nota selecionada.">
+                  <Button
+                    disabled={releasingId === selectedReceipt.id}
+                    onClick={() => void reprocessReceipt(selectedReceipt.id)}
+                    type="button"
+                    variant="outline"
+                  >
+                    Reprocessar extração
+                  </Button>
+                </WithTooltip>
+              )}
+              <WithTooltip label="Ação destrutiva: rejeitar bloqueia reward e evidência desta nota.">
                 <Button
-                  disabled={releasingId === selectedReceipt.id}
-                  onClick={() => void reprocessReceipt(selectedReceipt.id)}
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  disabled={
+                    releasingId === selectedReceipt.id ||
+                    selectedReceipt.moderationStatus === 'rejected'
+                  }
+                  onClick={() => {
+                    const confirmed = window.confirm(
+                      'Recusar esta nota fiscal? Esta ação bloqueia reward e evidência desta nota.',
+                    );
+
+                    if (confirmed) {
+                      void rejectReceipt(selectedReceipt.id);
+                    }
+                  }}
                   type="button"
                   variant="outline"
                 >
-                  Reprocessar extração
+                  Rejeitar nota fiscal
                 </Button>
-              )}
-              <Button
-                className="border-destructive/40 text-destructive hover:bg-destructive/10"
-                disabled={
-                  releasingId === selectedReceipt.id ||
-                  selectedReceipt.moderationStatus === 'rejected'
-                }
-                onClick={() => {
-                  const confirmed = window.confirm(
-                    'Recusar esta nota fiscal? Esta ação bloqueia reward e evidência desta nota.',
-                  );
-
-                  if (confirmed) {
-                    void rejectReceipt(selectedReceipt.id);
-                  }
-                }}
-                type="button"
-                variant="outline"
-              >
-                Rejeitar nota fiscal
-              </Button>
+              </WithTooltip>
               <Button asChild variant="ghost">
                 <a href={`/dashboard/nota/${selectedReceipt.id}`}>
                   Abrir auditoria completa
@@ -4417,7 +4546,10 @@ export function AdminReceiptsPage() {
               </Button>
             </div>
 
-            <TechnicalDisclosure title="Dados técnicos">
+            <TechnicalDisclosure
+              title="Dados técnicos"
+              tooltip="Identificadores usados para auditoria, correlação com NFC-e e diagnóstico de processamento."
+            >
               <div className="grid gap-2">
                 <span>ID técnico: {selectedReceipt.id}</span>
                 <span>
@@ -4502,57 +4634,65 @@ export function AdminReceiptAuditPage() {
             <div className="flex flex-wrap gap-2">
               {receipt.processingJob ? (
                 <>
-                  <Button asChild size="sm" variant="outline">
-                    <a href={`/dashboard/fila/${receipt.processingJob.id}`}>
-                      Ver execução
-                      <ExternalLinkIcon className="size-4" />
-                    </a>
-                  </Button>
+                  <WithTooltip label="Abre o job que processou ou está processando esta nota.">
+                    <Button asChild size="sm" variant="outline">
+                      <a href={`/dashboard/fila/${receipt.processingJob.id}`}>
+                        Ver execução
+                        <ExternalLinkIcon className="size-4" />
+                      </a>
+                    </Button>
+                  </WithTooltip>
+                  <WithTooltip label="Reenfileira a nota para nova leitura, matcher e validação operacional.">
+                    <Button
+                      disabled={acting}
+                      onClick={() =>
+                        void runReceiptAction(
+                          reprocessAdminReceiptProcessing,
+                          'Nota fiscal reenfileirada para processamento.',
+                        )
+                      }
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      Reprocessar
+                    </Button>
+                  </WithTooltip>
+                </>
+              ) : (
+                <WithTooltip label="Libera manualmente esta nota para entrar na fila de processamento.">
                   <Button
                     disabled={acting}
                     onClick={() =>
                       void runReceiptAction(
-                        reprocessAdminReceiptProcessing,
-                        'Nota fiscal reenfileirada para processamento.',
+                        releaseAdminReceiptProcessing,
+                        'Nota fiscal liberada para processamento.',
                       )
                     }
                     size="sm"
                     type="button"
-                    variant="outline"
                   >
-                    Reprocessar
+                    Liberar processamento
                   </Button>
-                </>
-              ) : (
+                </WithTooltip>
+              )}
+              <WithTooltip label="Ação destrutiva: recusar bloqueia reward e remove a nota como evidência.">
                 <Button
-                  disabled={acting}
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  disabled={acting || receipt.moderationStatus === 'rejected'}
                   onClick={() =>
                     void runReceiptAction(
-                      releaseAdminReceiptProcessing,
-                      'Nota fiscal liberada para processamento.',
+                      rejectAdminReceiptProcessing,
+                      'Nota fiscal recusada.',
                     )
                   }
                   size="sm"
                   type="button"
+                  variant="outline"
                 >
-                  Liberar processamento
+                  Recusar
                 </Button>
-              )}
-              <Button
-                className="border-destructive/40 text-destructive hover:bg-destructive/10"
-                disabled={acting || receipt.moderationStatus === 'rejected'}
-                onClick={() =>
-                  void runReceiptAction(
-                    rejectAdminReceiptProcessing,
-                    'Nota fiscal recusada.',
-                  )
-                }
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                Recusar
-              </Button>
+              </WithTooltip>
             </div>
           </div>
         </CardHeader>
@@ -4584,6 +4724,7 @@ export function AdminReceiptAuditPage() {
                 <StatusBadge
                   family="trust"
                   status={receiptTrustStatus(receipt.trustLevel)}
+                  tooltip={receiptTrustTooltip(receipt.trustLevel)}
                 >
                   {receiptTrustLabel(receipt.trustLevel)}
                 </StatusBadge>
@@ -4596,6 +4737,9 @@ export function AdminReceiptAuditPage() {
                 <StatusBadge
                   family="reward"
                   status={rewardStatus(receipt.rewardEligibilityStatus)}
+                  tooltip={rewardEligibilityTooltip(
+                    receipt.rewardEligibilityStatus,
+                  )}
                 >
                   {rewardEligibilityLabel(receipt.rewardEligibilityStatus)}
                 </StatusBadge>
@@ -4841,6 +4985,7 @@ export function AdminQueuePage() {
             <AdminActionQueueItem
               key={job.id}
               severity={jobSeverity(job.status)}
+              severityTooltip={jobStatusTooltip(job.status)}
               title={
                 <span className="inline-flex min-w-0 items-center gap-2">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground">
@@ -4877,19 +5022,25 @@ export function AdminQueuePage() {
               }
               action={
                 <div className="flex items-center gap-2">
-                  <StatusBadge family="queue" status={job.status}>
+                  <StatusBadge
+                    family="queue"
+                    status={job.status}
+                    tooltip={jobStatusTooltip(job.status)}
+                  >
                     {jobStatusLabel(job.status)}
                   </StatusBadge>
-                  <Button asChild size="icon" variant="outline">
-                    <a
-                      aria-label={`Abrir detalhe do job ${job.id}`}
-                      href={`/dashboard/fila/${job.id}`}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLinkIcon className="size-4" />
-                    </a>
-                  </Button>
+                  <WithTooltip label="Abre o diagnóstico técnico deste job em uma nova aba.">
+                    <Button asChild size="icon" variant="outline">
+                      <a
+                        aria-label={`Abrir detalhe do job ${job.id}`}
+                        href={`/dashboard/fila/${job.id}`}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        <ExternalLinkIcon className="size-4" />
+                      </a>
+                    </Button>
+                  </WithTooltip>
                 </div>
               }
             />
@@ -4970,13 +5121,21 @@ export function AdminQueueDetailPage() {
             <span>/</span>
             <span>Jobs</span>
             <span>/</span>
-            <span>{job.id}</span>
+            <WithTooltip label="ID técnico do job usado para correlação com Redis, logs e backend.">
+              <span className="rounded-sm font-mono" tabIndex={0}>
+                {job.id}
+              </span>
+            </WithTooltip>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-3xl font-semibold tracking-tight">
               {jobResourceTitle(job)}
             </h1>
-            <StatusBadge family="queue" status={job.status}>
+            <StatusBadge
+              family="queue"
+              status={job.status}
+              tooltip={jobStatusTooltip(job.status)}
+            >
               {jobStatusLabel(job.status)}
             </StatusBadge>
           </div>
@@ -5230,6 +5389,9 @@ export function AdminQueueDetailPage() {
                     status={receiptModerationStatus(
                       job.receiptRecord.moderationStatus,
                     )}
+                    tooltip={receiptModerationTooltip(
+                      job.receiptRecord.moderationStatus,
+                    )}
                   >
                     {receiptModerationLabel(job.receiptRecord.moderationStatus)}
                   </StatusBadge>
@@ -5273,6 +5435,9 @@ export function AdminQueueDetailPage() {
                     status={receiptModerationStatus(
                       job.receiptRecord.moderationStatus,
                     )}
+                    tooltip={receiptModerationTooltip(
+                      job.receiptRecord.moderationStatus,
+                    )}
                   >
                     {receiptModerationLabel(job.receiptRecord.moderationStatus)}
                   </StatusBadge>
@@ -5297,9 +5462,11 @@ export function AdminQueueDetailPage() {
               <CardTitle>Ações</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-2">
-              <Button type="button" disabled={job.status !== 'failed'}>
-                Tentar novamente
-              </Button>
+              <WithTooltip label="Disponível apenas para jobs com falha, após revisão do motivo e do recurso vinculado.">
+                <Button type="button" disabled={job.status !== 'failed'}>
+                  Tentar novamente
+                </Button>
+              </WithTooltip>
               {job.status !== 'failed' ? (
                 <ActionPlaceholder
                   className="bg-background/80"
@@ -5322,17 +5489,22 @@ export function AdminQueueDetailPage() {
               <Button type="button" variant="outline">
                 Marcar como revisado
               </Button>
-              <Button
-                className="border-destructive/40 text-destructive hover:bg-destructive/10"
-                type="button"
-                variant="outline"
-              >
-                Cancelar job
-              </Button>
+              <WithTooltip label="Ação destrutiva planejada: cancelar interromperia o job e exigiria auditoria posterior.">
+                <Button
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  type="button"
+                  variant="outline"
+                >
+                  Cancelar job
+                </Button>
+              </WithTooltip>
             </CardContent>
           </Card>
 
-          <TechnicalDisclosure title="IDs e correlação">
+          <TechnicalDisclosure
+            title="IDs e correlação"
+            tooltip="Correlação técnica entre job, recurso de negócio, fila e tipo de processamento."
+          >
             <div className="grid gap-2 text-sm">
               <span>ID técnico: {job.resourceType} · {job.resourceId} · job {job.id}</span>
               <span>Fila: {job.queueName}</span>

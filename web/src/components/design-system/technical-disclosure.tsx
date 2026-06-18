@@ -1,12 +1,14 @@
 import * as React from 'react';
 import { ChevronDownIcon } from 'lucide-react';
 
+import { WithTooltip } from '@/components/design-system/with-tooltip';
 import { cn } from '@/lib/utils';
 
 type TechnicalDisclosureProps = React.ComponentProps<'details'> & {
   title?: React.ReactNode;
   description?: React.ReactNode;
   children: React.ReactNode;
+  tooltip?: React.ReactNode;
 };
 
 function TechnicalDisclosure({
@@ -14,6 +16,7 @@ function TechnicalDisclosure({
   className,
   description,
   title = 'Detalhes tecnicos',
+  tooltip = 'IDs técnicos, payloads e correlações são usados para depuração e auditoria interna.',
   ...props
 }: TechnicalDisclosureProps) {
   return (
@@ -27,7 +30,11 @@ function TechnicalDisclosure({
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-3 font-medium marker:hidden">
         <span>
-          {title}
+          <WithTooltip label={tooltip}>
+            <span className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" tabIndex={0}>
+              {title}
+            </span>
+          </WithTooltip>
           {description ? (
             <span className="ml-2 font-normal text-muted-foreground">
               {description}

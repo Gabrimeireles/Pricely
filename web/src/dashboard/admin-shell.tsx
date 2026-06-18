@@ -22,7 +22,7 @@ import { useTheme } from '@/app/theme-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/design-system';
+import { StatusBadge, WithTooltip } from '@/components/design-system';
 import {
   Sidebar,
   SidebarContent,
@@ -170,77 +170,99 @@ export function AdminLayout() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button
-                aria-label={
+              <WithTooltip
+                label={
                   isMoneyVisible
-                    ? 'Ocultar valores monetários'
-                    : 'Mostrar valores monetários'
+                    ? 'Oculta valores monetários sensíveis em métricas, usuários, ofertas e notas.'
+                    : 'Mostra novamente valores monetários administrativos.'
                 }
-                onClick={toggleMoneyVisibility}
-                size="icon-sm"
-                type="button"
-                variant="outline"
               >
-                {isMoneyVisible ? (
-                  <EyeIcon className="size-4" />
-                ) : (
-                  <EyeOffIcon className="size-4" />
-                )}
-              </Button>
-              <Button
-                aria-label={
-                  theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
-                }
-                onClick={toggleTheme}
-                size="icon-sm"
-                type="button"
-                variant="outline"
-              >
-                {theme === 'dark' ? (
-                  <SunMediumIcon className="size-4" />
-                ) : (
-                  <MoonStarIcon className="size-4" />
-                )}
-              </Button>
+                <Button
+                  aria-label={
+                    isMoneyVisible
+                      ? 'Ocultar valores monetários'
+                      : 'Mostrar valores monetários'
+                  }
+                  onClick={toggleMoneyVisibility}
+                  size="icon-sm"
+                  type="button"
+                  variant="outline"
+                >
+                  {isMoneyVisible ? (
+                    <EyeIcon className="size-4" />
+                  ) : (
+                    <EyeOffIcon className="size-4" />
+                  )}
+                </Button>
+              </WithTooltip>
+              <WithTooltip label="Alterna entre tema claro e escuro no dashboard.">
+                <Button
+                  aria-label={
+                    theme === 'dark'
+                      ? 'Ativar modo claro'
+                      : 'Ativar modo escuro'
+                  }
+                  onClick={toggleTheme}
+                  size="icon-sm"
+                  type="button"
+                  variant="outline"
+                >
+                  {theme === 'dark' ? (
+                    <SunMediumIcon className="size-4" />
+                  ) : (
+                    <MoonStarIcon className="size-4" />
+                  )}
+                </Button>
+              </WithTooltip>
               <Button asChild className="flex-1" size="sm" variant="outline">
                 <Link to="/">Publico</Link>
               </Button>
             </div>
           </div>
-          <Button
-            aria-label={
+          <WithTooltip
+            label={
               isMoneyVisible
-                ? 'Ocultar valores monetários'
-                : 'Mostrar valores monetários'
+                ? 'Oculta valores monetários sensíveis em métricas, usuários, ofertas e notas.'
+                : 'Mostra novamente valores monetários administrativos.'
             }
-            className="hidden group-data-[collapsible=icon]:inline-flex"
-            onClick={toggleMoneyVisibility}
-            size="icon-sm"
-            type="button"
-            variant="outline"
           >
-            {isMoneyVisible ? (
-              <EyeIcon className="size-4" />
-            ) : (
-              <EyeOffIcon className="size-4" />
-            )}
-          </Button>
-          <Button
-            aria-label={
-              theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
-            }
-            className="hidden group-data-[collapsible=icon]:inline-flex"
-            onClick={toggleTheme}
-            size="icon-sm"
-            type="button"
-            variant="outline"
-          >
-            {theme === 'dark' ? (
-              <SunMediumIcon className="size-4" />
-            ) : (
-              <MoonStarIcon className="size-4" />
-            )}
-          </Button>
+            <Button
+              aria-label={
+                isMoneyVisible
+                  ? 'Ocultar valores monetários'
+                  : 'Mostrar valores monetários'
+              }
+              className="hidden group-data-[collapsible=icon]:inline-flex"
+              onClick={toggleMoneyVisibility}
+              size="icon-sm"
+              type="button"
+              variant="outline"
+            >
+              {isMoneyVisible ? (
+                <EyeIcon className="size-4" />
+              ) : (
+                <EyeOffIcon className="size-4" />
+              )}
+            </Button>
+          </WithTooltip>
+          <WithTooltip label="Alterna entre tema claro e escuro no dashboard.">
+            <Button
+              aria-label={
+                theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
+              }
+              className="hidden group-data-[collapsible=icon]:inline-flex"
+              onClick={toggleTheme}
+              size="icon-sm"
+              type="button"
+              variant="outline"
+            >
+              {theme === 'dark' ? (
+                <SunMediumIcon className="size-4" />
+              ) : (
+                <MoonStarIcon className="size-4" />
+              )}
+            </Button>
+          </WithTooltip>
         </SidebarFooter>
       </Sidebar>
 
@@ -256,7 +278,11 @@ export function AdminLayout() {
                 Metricas rastreaveis, filas, catalogo e operacao da base
               </p>
             </div>
-            <StatusBadge icon={ShieldCheckIcon} tone="primary">
+            <StatusBadge
+              icon={ShieldCheckIcon}
+              tone="primary"
+              tooltip="Área restrita: ações alteram catálogo, notas, fila e usuários."
+            >
               Acesso admin
             </StatusBadge>
           </div>
