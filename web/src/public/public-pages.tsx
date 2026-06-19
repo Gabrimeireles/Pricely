@@ -100,6 +100,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
 type EditableListItem = {
@@ -124,6 +132,62 @@ type OptimizationResultTab =
   | 'stores'
   | 'savings';
 type OptimizationItemFilter = 'all' | 'selected' | 'review';
+
+function CitySelectionDialog({
+  cityId,
+  cities,
+  onOpenChange,
+  onSelectCity,
+  open,
+}: {
+  cityId: string | null;
+  cities: SupportedCity[];
+  onOpenChange: (open: boolean) => void;
+  onSelectCity: (cityId: string) => unknown;
+  open: boolean;
+}) {
+  return (
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogContent className="bg-background">
+        <DialogHeader>
+          <DialogTitle>Selecionar cidade</DialogTitle>
+          <DialogDescription>
+            Escolha a cidade aqui para atualizar ofertas, listas e lojas no
+            header. A tela de cidades continua sendo apenas o catálogo de
+            cobertura.
+          </DialogDescription>
+        </DialogHeader>
+        <Select
+          onValueChange={(value) => {
+            void onSelectCity(value);
+            onOpenChange(false);
+          }}
+          value={cityId ?? ''}
+        >
+          <SelectTrigger>
+            <MapPinIcon />
+            <SelectValue placeholder="Selecione uma cidade disponível" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {cities.map((city) => (
+                <SelectItem key={city.id} value={city.id}>
+                  {city.name} - {city.activeStoreCount} estabelecimentos
+                  ativos
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <DialogFooter>
+          <Button asChild variant="outline">
+            <Link to="/cidades">Ver cidades e lojas</Link>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function getCatalogProductPreviewImage(product: CatalogProductSearchResponse) {
   return (
@@ -788,7 +852,9 @@ function RequireAuthentication({
   title: string;
   description: string;
 }) {
-  const { isAuthenticated, isBootstrapping } = usePricely();
+  const { cityId, cities, isAuthenticated, isBootstrapping, setCityId } =
+    usePricely();
+  const [isCitySelectionOpen, setIsCitySelectionOpen] = useState(false);
 
   if (isBootstrapping) {
     return (
@@ -816,8 +882,14 @@ function RequireAuthentication({
               Voce pode escolher sua cidade para ver ofertas e lojas
               disponiveis.
             </span>
-            <Button asChild className="w-fit" size="sm" variant="outline">
-              <Link to="/cidades">Ver cidades e lojas</Link>
+            <Button
+              className="w-fit"
+              onClick={() => setIsCitySelectionOpen(true)}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Selecionar cidade
             </Button>
           </AlertDescription>
         </Alert>
@@ -920,11 +992,14 @@ function RequireAuthentication({
                   Ver ofertas da cidade
                 </Link>
               </Button>
-              <Button asChild className="w-full justify-center gap-2" variant="outline">
-                <Link to="/cidades">
-                  <MapPinIcon data-icon="inline-start" />
-                  Ver cidades e lojas
-                </Link>
+              <Button
+                className="w-full justify-center gap-2"
+                onClick={() => setIsCitySelectionOpen(true)}
+                type="button"
+                variant="outline"
+              >
+                <MapPinIcon data-icon="inline-start" />
+                Selecionar cidade
               </Button>
               <div className="mt-6 grid gap-1 text-sm">
                 <div className="flex items-center gap-2 font-medium text-primary">
@@ -1006,6 +1081,13 @@ function RequireAuthentication({
             dinheiro. Junte-se a eles!
           </AlertDescription>
         </Alert>
+        <CitySelectionDialog
+          cityId={cityId}
+          cities={cities}
+          onOpenChange={setIsCitySelectionOpen}
+          onSelectCity={setCityId}
+          open={isCitySelectionOpen}
+        />
       </section>
     );
   }
@@ -1277,7 +1359,7 @@ function AuthCard({
 }
 
 export function LandingPage() {
-  const { cityId, cities, currentUser, lists } = usePricely();
+  const { cityId, cities, currentUser, lists, setCityId } = usePricely();
   const city = cityId
     ? (cities.find((entry) => entry.id === cityId) ?? getCityById(cityId))
     : null;
@@ -1308,6 +1390,7 @@ export function LandingPage() {
   >([]);
   const [isReceiptInfoOpen, setIsReceiptInfoOpen] = useState(false);
   const [isLocationHelpOpen, setIsLocationHelpOpen] = useState(false);
+  const [isCitySelectionOpen, setIsCitySelectionOpen] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -1639,6 +1722,14 @@ export function LandingPage() {
               icon={<MapPinIcon className="size-5" />}
               title="Escolha uma cidade no header para ver ofertas reais"
               description="A vitrine depende da cidade selecionada no header. Depois mostramos produto, loja, preço observado e confiança da informação."
+              primaryAction={
+                <button
+                  onClick={() => setIsCitySelectionOpen(true)}
+                  type="button"
+                >
+                  Selecionar cidade
+                </button>
+              }
               secondaryAction={<Link to="/cidades">Ver cidades e lojas</Link>}
             />
           )}
@@ -1981,12 +2072,19 @@ export function LandingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <CitySelectionDialog
+        cityId={cityId}
+        cities={cities}
+        onOpenChange={setIsCitySelectionOpen}
+        onSelectCity={setCityId}
+        open={isCitySelectionOpen}
+      />
     </div>
   );
 }
 
 export function OffersPage() {
-  const { cityId, cities } = usePricely();
+  const { cityId, cities, setCityId } = usePricely();
   const city = cityId
     ? (cities.find((entry) => entry.id === cityId) ?? getCityById(cityId))
     : null;
@@ -1994,6 +2092,7 @@ export function OffersPage() {
     NonNullable<RegionOffersApiResponse['groupedOffers']>
   >([]);
   const [storeFilter, setStoreFilter] = useState('all');
+  const [isCitySelectionOpen, setIsCitySelectionOpen] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -2065,6 +2164,11 @@ export function OffersPage() {
           icon={<MapPinIcon className="size-5" />}
           title="Escolha uma cidade no header primeiro"
           description="A cidade selecionada no header define quais lojas e preços entram na vitrine pública. Você também pode consultar as cidades e lojas suportadas."
+          primaryAction={
+            <button onClick={() => setIsCitySelectionOpen(true)} type="button">
+              Selecionar cidade
+            </button>
+          }
           secondaryAction={<Link to="/cidades">Ver cidades e lojas</Link>}
         />
       ) : null}
@@ -2252,6 +2356,13 @@ export function OffersPage() {
           secondaryAction={<Link to="/notas">Enviar nota fiscal</Link>}
         />
       ) : null}
+      <CitySelectionDialog
+        cityId={cityId}
+        cities={cities}
+        onOpenChange={setIsCitySelectionOpen}
+        onSelectCity={setCityId}
+        open={isCitySelectionOpen}
+      />
     </div>
   );
 }
