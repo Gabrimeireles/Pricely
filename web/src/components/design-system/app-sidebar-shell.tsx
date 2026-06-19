@@ -86,7 +86,11 @@ function SidebarLogo() {
         className="hidden size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground group-data-[collapsible=icon]:flex"
         to="/"
       >
-        <img alt="" className="size-6 object-contain" src={pricelyIcon} />
+        <img
+          alt=""
+          className="size-7 scale-[2.05] object-contain"
+          src={pricelyIcon}
+        />
       </Link>
     </div>
   );
@@ -602,6 +606,44 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
               fiscais e privacidade monetária.
             </DialogDescription>
           </DialogHeader>
+          <div className="grid gap-3 rounded-xl border border-[var(--ds-info-border)] bg-[var(--ds-info-soft)] p-4">
+            <div className="flex items-center gap-3">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-[var(--ds-info-border)] bg-background">
+                <img
+                  alt=""
+                  className="size-8 scale-[2.05] object-contain"
+                  src={pricelyIcon}
+                />
+              </span>
+              <div>
+                <div className="font-medium">Roadmap da nota fiscal</div>
+                <p className="text-sm text-muted-foreground">
+                  A nota enviada vira evidência validada antes de liberar
+                  histórico e melhorar ofertas.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-4">
+              {[
+                'Enviar',
+                'Revisar',
+                'Liberar',
+                'Recomendar',
+              ].map((label, index) => (
+                <div className="grid gap-1" key={label}>
+                  <div className="flex items-center gap-2">
+                    <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                      {index + 1}
+                    </span>
+                    {index < 3 ? (
+                      <span className="hidden h-px flex-1 bg-border sm:block" />
+                    ) : null}
+                  </div>
+                  <div className="text-xs font-medium">{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
           <div className="grid gap-3 text-sm">
             {[
               {
