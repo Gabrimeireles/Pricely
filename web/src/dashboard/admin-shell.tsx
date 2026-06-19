@@ -187,6 +187,7 @@ export function AdminLayout() {
                   size="icon-sm"
                   type="button"
                   variant="outline"
+                  className="border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
                   {isMoneyVisible ? (
                     <EyeIcon className="size-4" />
@@ -206,6 +207,7 @@ export function AdminLayout() {
                   size="icon-sm"
                   type="button"
                   variant="outline"
+                  className="border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
                   {theme === 'dark' ? (
                     <SunMediumIcon className="size-4" />
@@ -214,7 +216,12 @@ export function AdminLayout() {
                   )}
                 </Button>
               </WithTooltip>
-              <Button asChild className="flex-1" size="sm" variant="outline">
+              <Button
+                asChild
+                className="flex-1 border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                size="sm"
+                variant="outline"
+              >
                 <Link to="/">Publico</Link>
               </Button>
             </div>
@@ -232,7 +239,7 @@ export function AdminLayout() {
                   ? 'Ocultar valores monetários'
                   : 'Mostrar valores monetários'
               }
-              className="hidden group-data-[collapsible=icon]:inline-flex"
+              className="hidden border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:inline-flex"
               onClick={toggleMoneyVisibility}
               size="icon-sm"
               type="button"
@@ -250,7 +257,7 @@ export function AdminLayout() {
               aria-label={
                 theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
               }
-              className="hidden group-data-[collapsible=icon]:inline-flex"
+              className="hidden border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:inline-flex"
               onClick={toggleTheme}
               size="icon-sm"
               type="button"

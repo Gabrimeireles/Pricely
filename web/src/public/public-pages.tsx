@@ -1354,7 +1354,7 @@ export function LandingPage() {
           <h2 className="font-heading text-lg font-semibold">
             Outros estados importantes
           </h2>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
             {[
               {
                 icon: MapPinIcon,
@@ -1385,7 +1385,7 @@ export function LandingPage() {
               },
             ].map((state) => (
               <ActionPlaceholder
-                className="bg-card/70"
+                className="min-w-0 bg-card/70"
                 key={state.title}
                 icon={<state.icon className="size-5" />}
                 title={state.title}
