@@ -380,7 +380,7 @@ model ShoppingList {
   name                 String
   preferredRegionId    String?               @db.Uuid
   status               ShoppingListStatus    @default(draft)
-  shareToken           String?               @unique
+  shareToken           String?
   sharedAt             DateTime?
   shareRevokedAt       DateTime?
   completedAt          DateTime?
