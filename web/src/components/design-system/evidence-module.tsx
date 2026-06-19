@@ -1,7 +1,5 @@
 import * as React from 'react';
-import { GaugeIcon, ReceiptTextIcon, StoreIcon, UploadIcon } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
+import { GaugeIcon, ReceiptTextIcon, StoreIcon } from 'lucide-react';
 import { StatusBadge } from '@/components/design-system/status-badge';
 import { cn } from '@/lib/utils';
 
@@ -123,12 +121,7 @@ function EvidenceModule({
       {reportAction || uploadAction ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {reportAction}
-          {uploadAction ?? (
-            <Button size="sm" variant="ghost">
-              <UploadIcon />
-              Enviar nota
-            </Button>
-          )}
+          {uploadAction}
         </div>
       ) : null}
     </section>

@@ -109,6 +109,12 @@ type EditableListItem = {
 
 type OptimizationSelectionView =
   OptimizationResultApiResponse['selections'][number];
+type OptimizationResultTab =
+  | 'optimized'
+  | 'unavailable'
+  | 'stores'
+  | 'savings';
+type OptimizationItemFilter = 'all' | 'selected' | 'review';
 
 function getCatalogProductPreviewImage(product: CatalogProductSearchResponse) {
   return (
@@ -4248,6 +4254,13 @@ export function OptimizationPage() {
   const [latestLoadAttemptedFor, setLatestLoadAttemptedFor] = useState<
     string | null
   >(null);
+  const [activeResultTab, setActiveResultTab] =
+    useState<OptimizationResultTab>('optimized');
+  const [itemFilter, setItemFilter] =
+    useState<OptimizationItemFilter>('all');
+  const [expandedEvidenceIds, setExpandedEvidenceIds] = useState<
+    Record<string, boolean>
+  >({});
   const list = lists.find((entry) => entry.id === listId);
   const result = optimizationResults[listId];
   const activeMode = result?.mode ?? list?.lastMode ?? preferredMode;
@@ -4322,6 +4335,57 @@ export function OptimizationPage() {
   const city = list ? getCityById(list.cityId) : undefined;
   const optimizedItemCount = selectedSelections.length;
   const totalItemCount = result?.selections.length ?? list?.items.length ?? 0;
+  const visibleResultSelections =
+    result?.selections.filter((selection) => {
+      if (activeResultTab === 'optimized') {
+        if (itemFilter === 'selected') {
+          return selection.selectionStatus === 'selected';
+        }
+
+        if (itemFilter === 'review') {
+          return selection.selectionStatus !== 'selected';
+        }
+
+        return true;
+      }
+
+      if (activeResultTab === 'unavailable') {
+        return selection.selectionStatus !== 'selected';
+      }
+
+      return true;
+    }) ?? [];
+  const resultTabs: Array<{
+    id: OptimizationResultTab;
+    label: string;
+    count?: number;
+  }> = [
+    {
+      id: 'optimized',
+      label: 'Itens da lista',
+      count: totalItemCount,
+    },
+    {
+      id: 'unavailable',
+      label: 'Indisponíveis',
+      count: reviewSelections.length,
+    },
+    {
+      id: 'stores',
+      label: 'Resumo por loja',
+      count: storePlan.length,
+    },
+    {
+      id: 'savings',
+      label: 'Análise de economia',
+    },
+  ];
+  const filterLabel =
+    itemFilter === 'selected'
+      ? 'Selecionados'
+      : itemFilter === 'review'
+        ? 'Revisar'
+        : 'Todos os itens';
   const firstSelectedSelection = selectedSelections[0];
   const routeDistanceKm = selectedSelections.reduce(
     (total, selection) => total + (selection.distanceKm ?? 0),
@@ -4591,32 +4655,126 @@ export function OptimizationPage() {
 
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70">
                     <div className="flex gap-4 overflow-x-auto text-sm">
-                      {[
-                        `Itens otimizados (${optimizedItemCount})`,
-                        `Indisponíveis (${reviewSelections.length})`,
-                        'Resumo por loja',
-                        'Análise de economia',
-                      ].map((tab, index) => (
+                      {resultTabs.map((tab) => (
                         <button
                           className={`whitespace-nowrap border-b-2 px-2 py-3 font-medium ${
-                            index === 0
+                            activeResultTab === tab.id
                               ? 'border-primary text-primary'
                               : 'border-transparent text-muted-foreground'
                           }`}
-                          key={tab}
+                          key={tab.id}
+                          onClick={() => setActiveResultTab(tab.id)}
                           type="button"
                         >
-                          {tab}
+                          {tab.count === undefined
+                            ? tab.label
+                            : `${tab.label} (${tab.count})`}
                         </button>
                       ))}
                     </div>
-                    <Button size="sm" variant="outline">
-                      Exibir: Todos os itens
-                      <ChevronDownIcon className="size-4" />
-                    </Button>
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                      Exibir:
+                      <select
+                        className="h-8 rounded-lg border border-border bg-background px-2 text-sm text-foreground"
+                        onChange={(event) =>
+                          setItemFilter(
+                            event.target.value as OptimizationItemFilter,
+                          )
+                        }
+                        value={itemFilter}
+                      >
+                        <option value="all">Todos os itens</option>
+                        <option value="selected">Selecionados</option>
+                        <option value="review">Revisar</option>
+                      </select>
+                      <span className="sr-only">{filterLabel}</span>
+                    </label>
                   </div>
 
-                  <div className="hidden grid-cols-[1.1fr_1fr_0.55fr_1fr] gap-4 px-4 text-xs text-muted-foreground md:grid">
+                  {activeResultTab === 'stores' ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Resumo por loja</CardTitle>
+                        <CardDescription>
+                          Paradas sugeridas, quantidade de itens e subtotal
+                          previsto por estabelecimento.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid gap-3 md:grid-cols-2">
+                        {storePlan.map((store) => (
+                          <div
+                            className="grid gap-2 rounded-lg border border-border/70 bg-background/80 p-3"
+                            key={store.name}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="font-medium">{store.name}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {store.neighborhood ?? 'Bairro não informado'}
+                                </div>
+                              </div>
+                              <StatusBadge tone="location">
+                                {store.items}{' '}
+                                {store.items === 1 ? 'item' : 'itens'}
+                              </StatusBadge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Subtotal previsto:{' '}
+                              <span className="font-medium tabular-nums text-foreground">
+                                <MaskedMoney
+                                  value={formatCurrency(store.total)}
+                                />
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  ) : activeResultTab === 'savings' ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Análise de economia</CardTitle>
+                        <CardDescription>
+                          Economia estimada contra alternativas elegíveis e
+                          cobertura atual da lista.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid gap-3 md:grid-cols-3">
+                        <PriceRow
+                          title="Economia estimada"
+                          subtitle="Comparada com próximas alternativas elegíveis"
+                          price={
+                            <MaskedMoney
+                              value={formatCurrency(
+                                result.estimatedSavings ?? 0,
+                              )}
+                            />
+                          }
+                        />
+                        <PriceRow
+                          title="Custo estimado"
+                          subtitle={coverageStatusLabel(result.coverageStatus)}
+                          price={
+                            <MaskedMoney
+                              value={formatCurrency(
+                                result.totalEstimatedCost ?? 0,
+                              )}
+                            />
+                          }
+                        />
+                        <PriceRow
+                          title="Itens com oferta"
+                          subtitle={`${reviewSelections.length} para revisar`}
+                          price={`${optimizedItemCount} de ${Math.max(
+                            totalItemCount,
+                            optimizedItemCount,
+                          )}`}
+                        />
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      <div className="hidden grid-cols-[1.1fr_1fr_0.55fr_1fr] gap-4 px-4 text-xs text-muted-foreground md:grid">
                     <span>
                       Item solicitado
                       <br />
@@ -4637,13 +4795,16 @@ export function OptimizationPage() {
                       <br />
                       Fonte e validade
                     </span>
-                  </div>
+                      </div>
 
-                  <div className="grid gap-0 overflow-hidden rounded-lg border border-border/70 bg-card">
-                    {result.selections.map((selection, index) => {
+                      <div className="grid gap-0 overflow-hidden rounded-lg border border-border/70 bg-card">
+                        {visibleResultSelections.map((selection, index) => {
                       const listItem = listItemsById.get(
                         selection.shoppingListItemId,
                       );
+                      const evidenceKey = `${selection.shoppingListItemId}-${selection.id ?? selection.shoppingListItemName}`;
+                      const isEvidenceExpanded =
+                        expandedEvidenceIds[evidenceKey] ?? index === 0;
                       const imageUrl =
                         selection.selectedVariantImageUrl ?? listItem?.imageUrl;
                       const selectedVariantLabel = selection.selectedVariantName
@@ -4662,11 +4823,11 @@ export function OptimizationPage() {
                       return (
                         <div
                           className={`grid gap-4 border-b border-border/70 p-4 last:border-b-0 ${
-                            index === 0
+                            index === 0 && activeResultTab === 'optimized'
                               ? 'border-primary/70 bg-primary/5 ring-1 ring-primary/40'
                               : 'bg-card'
                           }`}
-                          key={`${selection.shoppingListItemId}-${selection.id ?? selection.shoppingListItemName}`}
+                          key={evidenceKey}
                         >
                           <div className="grid gap-4 md:grid-cols-[1.1fr_1fr_0.55fr_1fr]">
                             <div className="flex gap-3">
@@ -4783,12 +4944,24 @@ export function OptimizationPage() {
                                   </div>
                                 ) : null}
                               </div>
-                              <Button size="sm" variant="outline">
-                                Ver evidência
+                              <Button
+                                onClick={() =>
+                                  setExpandedEvidenceIds((current) => ({
+                                    ...current,
+                                    [evidenceKey]: !isEvidenceExpanded,
+                                  }))
+                                }
+                                size="sm"
+                                type="button"
+                                variant="outline"
+                              >
+                                {isEvidenceExpanded
+                                  ? 'Ocultar evidência'
+                                  : 'Ver evidência'}
                               </Button>
                             </div>
                           </div>
-                          {index === 0 ? (
+                          {isEvidenceExpanded ? (
                             <div className="rounded-md border border-border/70 bg-background p-3">
                               <ShopperEvidenceModule
                                 listId={list.id}
@@ -4799,9 +4972,13 @@ export function OptimizationPage() {
                         </div>
                       );
                     })}
-                  </div>
+                      </div>
+                    </>
+                  )}
 
-                  {reviewSelections.length > 0 ? (
+                  {reviewSelections.length > 0 &&
+                  activeResultTab === 'unavailable' &&
+                  visibleResultSelections.length === 0 ? (
                     <Card className="border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)]/40">
                       <CardHeader>
                         <CardTitle>Itens sem confirmação completa</CardTitle>

@@ -395,7 +395,7 @@ for (const viewport of [
       await expectNoHorizontalOverflow(page);
 
       await page.goto('/otimizacao/list-1');
-      await expect(page.getByText(/Itens otimizados/)).toBeVisible();
+      await expect(page.getByText(/Itens da lista/)).toBeVisible();
       await expect(
         page.getByText(/Selecionado: Cafe Pilao 500g/),
       ).toBeVisible();

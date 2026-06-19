@@ -1,7 +1,4 @@
 import * as React from 'react';
-import { ArrowRightIcon } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/design-system/status-badge';
 import { cn } from '@/lib/utils';
 
@@ -64,14 +61,7 @@ function AdminActionQueueItem({
           </div>
         ) : null}
       </div>
-      <div className="flex shrink-0 justify-end">
-        {action ?? (
-          <Button size="sm" variant="outline">
-            Ver detalhe
-            <ArrowRightIcon />
-          </Button>
-        )}
-      </div>
+      {action ? <div className="flex shrink-0 justify-end">{action}</div> : null}
     </article>
   );
 }

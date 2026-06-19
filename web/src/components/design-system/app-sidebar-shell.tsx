@@ -525,6 +525,8 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
             <DialogDescription>
               {locationRadiusDisplay}. Modos locais so calculam distancia com
               coordenadas salvas; CEP e modo cidade nao prometem proximidade.
+              Se o navegador bloquear a permissao, libere localizacao nas
+              configuracoes do site e tente novamente.
             </DialogDescription>
           </DialogHeader>
           <div className="min-w-0">
@@ -618,11 +620,10 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
               </SelectGroup>
             </SelectContent>
           </Select>
-          <DialogFooter>
-            <Button disabled={!cityId} onClick={() => undefined} type="button">
-              Confirmado
-            </Button>
-          </DialogFooter>
+          <p className="text-sm text-muted-foreground">
+            A selecao salva automaticamente e libera as telas com contexto da
+            cidade.
+          </p>
         </DialogContent>
       </Dialog>
     </SidebarProvider>
