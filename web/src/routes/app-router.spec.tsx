@@ -39,6 +39,8 @@ vi.mock('@/app/pricely-context', () => ({
       billingEnabled: false,
       checkoutEnabled: false,
     },
+    signIn: vi.fn(),
+    signUp: vi.fn(),
   }),
 }));
 
@@ -150,8 +152,9 @@ describe('application routes', () => {
   it('renders the public sign-in page inside the shared public shell', () => {
     renderRoute('/entrar');
 
-    expect(screen.getByText('Entrar no Pricely')).toBeTruthy();
-    expect(screen.getByText('economia com contexto real')).toBeTruthy();
+    expect(screen.getAllByText('Sua conta para comprar melhor').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeTruthy();
+    expect(screen.getAllByLabelText('Pricely').length).toBeGreaterThan(0);
   });
 
   it('blocks the admin overview route for a non-admin session', () => {
