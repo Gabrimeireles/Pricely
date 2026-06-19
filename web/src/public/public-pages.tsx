@@ -48,6 +48,8 @@ import {
   fetchCatalogProductVariants,
   fetchOfferDetail,
   fetchRegionOffers,
+  fetchSharedShoppingList,
+  mapShoppingList,
   requestCityInclusion,
   searchCatalogProducts,
   submitReceipt,
@@ -2902,6 +2904,154 @@ export function ListsPage() {
   );
 }
 
+export function SharedListPage() {
+  const { shareToken = '' } = useParams();
+  const [list, setList] = useState<ShoppingList | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const loadSharedList = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetchSharedShoppingList(shareToken);
+        if (!disposed) {
+          setList(mapShoppingList(response));
+        }
+      } catch {
+        if (!disposed) {
+          setList(null);
+          setError('Esta lista não está mais disponível.');
+        }
+      } finally {
+        if (!disposed) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadSharedList();
+
+    return () => {
+      disposed = true;
+    };
+  }, [shareToken]);
+
+  const city = list ? getCityById(list.cityId) : undefined;
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Carregando lista compartilhada</CardTitle>
+          <CardDescription>
+            Validando o link público e preparando os itens.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (error || !list) {
+    return (
+      <ActionPlaceholder
+        description="Peça um novo link para quem compartilhou ou crie sua própria lista para otimizar preços."
+        primaryAction={<Link to="/listas/nova">Criar lista</Link>}
+        title="Link de lista indisponível"
+      />
+    );
+  }
+
+  return (
+    <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>{list.name}</CardTitle>
+            <CardDescription>
+              Lista pública somente leitura
+              {city ? ` · ${city.name} - ${city.stateCode}` : ''}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {list.items.map((item) => (
+              <div
+                className="grid gap-2 rounded-lg border border-border/70 bg-card p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+                key={item.id}
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{item.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {item.quantity} {item.unitLabel}
+                    {item.note ? ` · ${item.note}` : ''}
+                  </div>
+                </div>
+                <StatusBadge
+                  label={
+                    item.status === 'resolved'
+                      ? 'Catálogo encontrado'
+                      : item.status === 'partial'
+                        ? 'Revisar variante'
+                        : 'Produto pendente'
+                  }
+                  tone={item.status === 'resolved' ? 'primary' : 'warning'}
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <aside className="grid content-start gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Use no Pricely</CardTitle>
+            <CardDescription>
+              Entre para salvar esta compra, ajustar marcas e rodar uma otimização
+              com preços da sua cidade.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            <Button asChild>
+              <Link to="/criar-conta">Criar conta</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/listas/nova">Montar minha lista</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Resumo</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Itens</span>
+              <span className="font-medium">{list.items.length}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Economia estimada</span>
+              <MaskedMoney
+                className="font-medium"
+                value={formatCurrency(list.expectedSavings)}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Atualizada</span>
+              <span className="font-medium">{formatDateTime(list.updatedAt)}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </aside>
+    </section>
+  );
+}
+
 export function ChecklistPage() {
   const { listId = '' } = useParams();
   const {
@@ -3521,7 +3671,8 @@ function buildEditableItems(source?: ShoppingList): EditableListItem[] {
 export function ListEditorPage() {
   const navigate = useNavigate();
   const { listId = 'nova' } = useParams();
-  const { cityId, cities, lists, preferredMode, saveList } = usePricely();
+  const { cityId, cities, lists, preferredMode, saveList, shareList } =
+    usePricely();
   const editingList =
     listId === 'nova' ? undefined : lists.find((entry) => entry.id === listId);
   const [name, setName] = useState(editingList?.name ?? '');
@@ -3553,6 +3704,8 @@ export function ListEditorPage() {
   const [isBrandDialogOpen, setIsBrandDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
   const selectedVariant = selectedVariants.find(
     (variant) => variant.id === selectedVariantId,
@@ -3611,6 +3764,38 @@ export function ListEditorPage() {
       );
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleShare = async () => {
+    setError(null);
+    setShareMessage(null);
+
+    if (!editingList) {
+      setError('Salve a lista antes de gerar um link compartilhável.');
+      return;
+    }
+
+    setIsSharing(true);
+
+    try {
+      const sharedList = await shareList(editingList.id);
+      if (sharedList.shareUrl && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(sharedList.shareUrl);
+        setShareMessage('Link copiado.');
+      } else if (sharedList.shareUrl) {
+        setShareMessage(sharedList.shareUrl);
+      } else {
+        setShareMessage('Link público gerado para esta lista.');
+      }
+    } catch (shareError) {
+      setError(
+        shareError instanceof Error
+          ? shareError.message
+          : 'Não foi possível compartilhar a lista.',
+      );
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -3750,15 +3935,25 @@ export function ListEditorPage() {
               <span className="text-sm font-medium text-primary">
                 {items.length} {items.length === 1 ? 'item' : 'itens'}
               </span>
-              <WithTooltip label="Compartilhar lista quando o link público estiver disponível.">
-                <Button
-                  aria-label="Compartilhar lista"
-                  size="icon"
-                  type="button"
-                  variant="outline"
-                >
-                  <ArrowRightIcon className="size-4 rotate-[-35deg]" />
-                </Button>
+              <WithTooltip
+                label={
+                  editingList
+                    ? 'Gera um link público somente leitura e copia para a área de transferência.'
+                    : 'Salve a lista antes de gerar um link público.'
+                }
+              >
+                <span className="inline-flex">
+                  <Button
+                    aria-label="Compartilhar lista"
+                    disabled={!editingList || isSharing}
+                    onClick={handleShare}
+                    size="icon"
+                    type="button"
+                    variant="outline"
+                  >
+                    <ArrowRightIcon className="size-4 rotate-[-35deg]" />
+                  </Button>
+                </span>
               </WithTooltip>
               <WithTooltip label="Remove todos os itens desta lista antes de salvar.">
                 <span className="inline-flex">
@@ -3776,6 +3971,14 @@ export function ListEditorPage() {
               </WithTooltip>
             </div>
           </div>
+
+          {shareMessage ? (
+            <Alert>
+              <Share2Icon className="size-4" />
+              <AlertTitle>Lista compartilhável</AlertTitle>
+              <AlertDescription>{shareMessage}</AlertDescription>
+            </Alert>
+          ) : null}
 
           <Field>
             <FieldLabel htmlFor="list-name">Título da lista</FieldLabel>
@@ -4245,12 +4448,14 @@ export function OptimizationPage() {
     preferredMode,
     runOptimization,
     setPreferredMode,
+    shareList,
   } = usePricely();
   const [error, setError] = useState<{
     title: string;
     description: string;
   } | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isSharingResult, setIsSharingResult] = useState(false);
   const [latestLoadAttemptedFor, setLatestLoadAttemptedFor] = useState<
     string | null
   >(null);
@@ -4330,6 +4535,32 @@ export function OptimizationPage() {
       setError(toOptimizationError(runError));
     } finally {
       setIsRunning(false);
+    }
+  };
+
+  const handleShareResult = async () => {
+    if (!list) {
+      return;
+    }
+
+    setError(null);
+    setIsSharingResult(true);
+
+    try {
+      const sharedList = await shareList(list.id);
+      if (sharedList.shareUrl && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(sharedList.shareUrl);
+      }
+    } catch (shareError) {
+      setError({
+        title: 'Não foi possível compartilhar',
+        description:
+          shareError instanceof Error
+            ? shareError.message
+            : 'Tente novamente em instantes.',
+      });
+    } finally {
+      setIsSharingResult(false);
     }
   };
   const city = list ? getCityById(list.cityId) : undefined;
@@ -5623,17 +5854,20 @@ export function OptimizationPage() {
                     {
                       icon: Share2Icon,
                       title: 'Compartilhar resultado',
-                      description: 'Enviar plano por link ou WhatsApp',
-                      to: `/listas/${list.id}/checklist`,
+                      description: 'Copiar link público somente leitura',
+                      onClick: handleShareResult,
                     },
                   ].map((action) => (
                     <Button
-                      asChild
                       className="h-auto justify-start gap-3 rounded-md bg-muted/70 p-3 text-left"
+                      disabled={'onClick' in action && isSharingResult}
                       key={action.title}
+                      onClick={'onClick' in action ? action.onClick : undefined}
+                      asChild={'to' in action}
                       variant="ghost"
                     >
-                      <Link to={action.to}>
+                      {'to' in action ? (
+                      <Link to={action.to!}>
                         <action.icon className="size-4 shrink-0" />
                         <span className="grid gap-0.5">
                           <span className="font-medium">{action.title}</span>
@@ -5642,6 +5876,17 @@ export function OptimizationPage() {
                           </span>
                         </span>
                       </Link>
+                      ) : (
+                        <>
+                          <action.icon className="size-4 shrink-0" />
+                          <span className="grid gap-0.5">
+                            <span className="font-medium">{action.title}</span>
+                            <span className="text-xs font-normal text-muted-foreground">
+                              {action.description}
+                            </span>
+                          </span>
+                        </>
+                      )}
                     </Button>
                   ))}
                 </CardContent>

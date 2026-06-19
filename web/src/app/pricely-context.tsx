@@ -23,6 +23,7 @@ import {
   reportShoppingListItemPriceMismatch,
   runOptimization as runOptimizationRequest,
   refreshSession,
+  shareShoppingList as shareShoppingListRequest,
   signIn as signInRequest,
   signOutSession,
   signUp as signUpRequest,
@@ -81,6 +82,7 @@ interface PricelyContextValue {
       note?: string;
     }>;
   }) => Promise<ShoppingList>;
+  shareList: (listId: string) => Promise<ShoppingList>;
   optimizationResults: Record<
     string,
     OptimizationResultApiResponse | undefined
@@ -464,6 +466,18 @@ export function PricelyProvider({ children }: PropsWithChildren) {
           return [mapped, ...current];
         });
         setSelectedListId(mapped.id);
+        return mapped;
+      },
+      shareList: async (listId) => {
+        if (!token) {
+          throw new Error('Voce precisa entrar para compartilhar uma lista.');
+        }
+
+        const updated = await shareShoppingListRequest(token, listId);
+        const mapped = mapShoppingList(updated);
+        setLists((current) =>
+          current.map((entry) => (entry.id === mapped.id ? mapped : entry)),
+        );
         return mapped;
       },
       optimizationResults,

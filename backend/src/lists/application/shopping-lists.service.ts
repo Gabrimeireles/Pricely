@@ -131,6 +131,42 @@ export class ShoppingListsService {
     return list;
   }
 
+  async getByShareToken(shareToken: string): Promise<ShoppingListEntity> {
+    const list = await this.shoppingListRepository.findByShareToken(shareToken);
+
+    if (!list) {
+      throw new NotFoundException('Shared shopping list not found');
+    }
+
+    return list;
+  }
+
+  async share(userId: string, id: string): Promise<ShoppingListEntity> {
+    const list = await this.shoppingListRepository.findByIdForUser(id, userId);
+
+    if (!list) {
+      throw new NotFoundException(`Shopping list ${id} not found`);
+    }
+
+    if (list.items.length === 0) {
+      throw new BadRequestException(
+        'Add at least one item before sharing a shopping list',
+      );
+    }
+
+    const updated = await this.shoppingListRepository.share(
+      id,
+      userId,
+      list.shareToken ?? this.generateShareToken(),
+    );
+
+    if (!updated) {
+      throw new NotFoundException(`Shopping list ${id} not found`);
+    }
+
+    return updated;
+  }
+
   async updateItemPurchaseStatus(
     userId: string,
     shoppingListId: string,
@@ -315,5 +351,9 @@ export class ShoppingListsService {
     });
 
     return slugMatch?.id;
+  }
+
+  private generateShareToken(): string {
+    return crypto.randomUUID().replaceAll('-', '');
   }
 }

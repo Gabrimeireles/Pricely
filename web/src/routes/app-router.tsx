@@ -67,6 +67,13 @@ const publicChildren: RouteObject[] = [
     },
   },
   {
+    path: 'compartilhar/listas/:shareToken',
+    lazy: async () => {
+      const { SharedListPage } = await import('@/public/public-pages');
+      return { Component: SharedListPage };
+    },
+  },
+  {
     path: 'listas/:listId/checklist',
     lazy: async () => {
       const { ChecklistPage } = await import('@/public/public-pages');

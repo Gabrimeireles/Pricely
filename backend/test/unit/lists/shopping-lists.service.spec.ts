@@ -48,6 +48,69 @@ describe('ShoppingListsService', () => {
     );
   });
 
+  it('rejects sharing an empty shopping list', async () => {
+    const repository = {
+      findByIdForUser: jest.fn().mockResolvedValue({
+        id: 'list-1',
+        items: [],
+      }),
+    };
+    const service = new ShoppingListsService(
+      repository as never,
+      productNormalizerService as never,
+      prisma as never,
+    );
+
+    await expect(service.share('user-1', 'list-1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('publishes an owned shopping list behind an opaque share token', async () => {
+    const shared = {
+      id: 'list-1',
+      shareToken: 'token-1',
+      items: [{ id: 'item-1', purchaseStatus: 'pending' }],
+    };
+    const repository = {
+      findByIdForUser: jest.fn().mockResolvedValue({
+        id: 'list-1',
+        items: [{ id: 'item-1', purchaseStatus: 'pending' }],
+      }),
+      share: jest.fn().mockResolvedValue(shared),
+    };
+    const service = new ShoppingListsService(
+      repository as never,
+      productNormalizerService as never,
+      prisma as never,
+    );
+
+    await expect(service.share('user-1', 'list-1')).resolves.toBe(shared);
+    expect(repository.share).toHaveBeenCalledWith(
+      'list-1',
+      'user-1',
+      expect.any(String),
+    );
+  });
+
+  it('returns a public shared shopping list by token', async () => {
+    const shared = {
+      id: 'list-1',
+      shareToken: 'token-1',
+      items: [{ id: 'item-1', purchaseStatus: 'pending' }],
+    };
+    const repository = {
+      findByShareToken: jest.fn().mockResolvedValue(shared),
+    };
+    const service = new ShoppingListsService(
+      repository as never,
+      productNormalizerService as never,
+      prisma as never,
+    );
+
+    await expect(service.getByShareToken('token-1')).resolves.toBe(shared);
+  });
+
   it('rejects checkout completion while items are still pending', async () => {
     const repository = {
       findByIdForUser: jest.fn().mockResolvedValue({

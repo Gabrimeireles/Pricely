@@ -37,6 +37,8 @@ export interface ShoppingListEntity {
   latestEstimatedSavings: number;
   latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
   latestOptimizedAt?: string;
+  shareToken?: string;
+  sharedAt?: string;
   completedAt?: string;
   paidTotal?: number;
   items: ShoppingListItemEntity[];

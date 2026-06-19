@@ -233,6 +233,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ShoppingList'
+  /shopping-lists/{shoppingListId}/share:
+    post:
+      summary: Publish a shopper-owned shopping list behind an opaque share token
+      parameters:
+        - $ref: '#/components/parameters/ShoppingListId'
+      responses:
+        '200':
+          description: Shopping list share link state returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingList'
+        '400':
+          description: List has no items to share
+        '404':
+          description: Shopping list not found for authenticated owner
+  /shopping-lists/shared/{shareToken}:
+    get:
+      security: []
+      summary: Fetch a read-only shopping list through a public share token
+      parameters:
+        - $ref: '#/components/parameters/ShareToken'
+      responses:
+        '200':
+          description: Shared shopping list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingList'
+        '404':
+          description: Shared shopping list not found or no longer public
   /shopping-lists/{shoppingListId}/items:
     post:
       summary: Add items to a shopping list
@@ -567,6 +598,12 @@ components:
         type: string
     ShoppingListId:
       name: shoppingListId
+      in: path
+      required: true
+      schema:
+        type: string
+    ShareToken:
+      name: shareToken
       in: path
       required: true
       schema:
@@ -981,6 +1018,12 @@ components:
         status:
           type: string
           enum: [draft, ready, archived]
+        shareToken:
+          type: string
+          description: Opaque public token exposed only after the owner publishes the list.
+        sharedAt:
+          type: string
+          format: date-time
         items:
           type: array
           items:

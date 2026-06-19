@@ -86,6 +86,47 @@ export class ShoppingListRepository {
     return list ? this.toEntity(list) : null;
   }
 
+  async findByShareToken(shareToken: string): Promise<ShoppingListEntity | null> {
+    const list = await this.prisma.shoppingList.findFirst({
+      where: {
+        shareToken,
+        sharedAt: {
+          not: null,
+        },
+        shareRevokedAt: null,
+      },
+      include: shoppingListInclude,
+    });
+
+    return list ? this.toEntity(list) : null;
+  }
+
+  async share(
+    id: string,
+    userId: string,
+    shareToken: string,
+  ): Promise<ShoppingListEntity | null> {
+    const existing = await this.findByIdForUser(id, userId);
+
+    if (!existing) {
+      return null;
+    }
+
+    const updated = await this.prisma.shoppingList.update({
+      where: {
+        id,
+      },
+      data: {
+        shareToken,
+        sharedAt: new Date(),
+        shareRevokedAt: null,
+      },
+      include: shoppingListInclude,
+    });
+
+    return this.toEntity(updated, existing.lastMode);
+  }
+
   async appendItems(
     id: string,
     userId: string,
@@ -308,6 +349,11 @@ export class ShoppingListRepository {
           : 0,
       latestOptimizationStatus: latestRun?.status,
       latestOptimizedAt: latestRun?.completedAt?.toISOString(),
+      shareToken: record.shareRevokedAt ? undefined : record.shareToken ?? undefined,
+      sharedAt:
+        !record.shareRevokedAt && record.sharedAt
+          ? record.sharedAt.toISOString()
+          : undefined,
       completedAt: record.completedAt?.toISOString(),
       paidTotal:
         record.paidTotal !== null && record.paidTotal !== undefined

@@ -9,6 +9,7 @@ import {
   OffersPage,
   OptimizationPage,
   ReceiptSubmissionPage,
+  SharedListPage,
   SignInPage,
   SignUpPage,
 } from '@/public/public-pages';
@@ -54,6 +55,10 @@ export const publicRoute = {
     {
       path: 'listas/:listId',
       element: <ListEditorPage />,
+    },
+    {
+      path: 'compartilhar/listas/:shareToken',
+      element: <SharedListPage />,
     },
     {
       path: 'listas/:listId/checklist',

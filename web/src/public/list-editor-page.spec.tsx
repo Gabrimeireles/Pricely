@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ListEditorPage } from './public-pages';
 
 const saveList = vi.fn();
+const shareList = vi.fn();
 
 const mockPricelyState = {
   cityId: 'sao-paulo-sp',
@@ -26,6 +27,7 @@ const mockPricelyState = {
   lists: [] as Array<Record<string, unknown>>,
   preferredMode: 'global_multi',
   saveList,
+  shareList,
   isAuthenticated: true,
   isBootstrapping: false,
 };
@@ -67,12 +69,31 @@ vi.mock('@/app/api', () => ({
       isActive: true,
     },
   ]),
+  fetchSharedShoppingList: vi.fn(),
+  mapShoppingList: vi.fn((list) => ({
+    id: list.id,
+    name: list.name,
+    cityId: list.preferredRegionId ?? '',
+    lastMode: list.lastMode,
+    updatedAt: list.updatedAt,
+    expectedSavings: list.latestEstimatedSavings ?? 0,
+    shareToken: list.shareToken,
+    shareUrl: list.shareToken
+      ? `http://localhost:3000/compartilhar/listas/${list.shareToken}`
+      : undefined,
+    items: [],
+  })),
 }));
 
 describe('ListEditorPage', () => {
   beforeEach(() => {
     saveList.mockReset();
+    shareList.mockReset();
     saveList.mockResolvedValue({ id: 'list-1' });
+    shareList.mockResolvedValue({
+      id: 'list-1',
+      shareUrl: 'http://localhost:3000/compartilhar/listas/token-1',
+    });
     mockPricelyState.lists = [];
   });
 
@@ -202,5 +223,46 @@ describe('ListEditorPage', () => {
 
     expect(await screen.findByText('Camil · Arroz Tipo 1 1kg')).toBeTruthy();
     expect(await screen.findByText('Variante exata: Camil · Arroz Tipo 1 1kg')).toBeTruthy();
+  });
+  it('copies a public share link for an existing list', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    mockPricelyState.lists = [
+      {
+        id: 'list-1',
+        name: 'Compra mensal',
+        cityId: 'sao-paulo-sp',
+        lastMode: 'global_multi',
+        items: [
+          {
+            id: 'item-1',
+            name: 'Arroz tipo 1 1kg',
+            quantity: 1,
+            unitLabel: 'un',
+            purchaseStatus: 'pending',
+          },
+        ],
+      },
+    ];
+
+    render(
+      <MemoryRouter initialEntries={['/listas/list-1']}>
+        <Routes>
+          <Route path="/listas/:listId" element={<ListEditorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Compartilhar lista' }));
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        'http://localhost:3000/compartilhar/listas/token-1',
+      ),
+    );
+    expect(await screen.findByText('Link copiado.')).toBeTruthy();
   });
 });

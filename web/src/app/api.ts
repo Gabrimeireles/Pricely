@@ -43,6 +43,8 @@ type ShoppingListApiResponse = {
   latestEstimatedSavings: number;
   latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
   latestOptimizedAt?: string;
+  shareToken?: string;
+  sharedAt?: string;
   completedAt?: string;
   paidTotal?: number;
   items: Array<{
@@ -925,6 +927,12 @@ export async function fetchShoppingList(token: string, listId: string) {
   );
 }
 
+export async function fetchSharedShoppingList(shareToken: string) {
+  return apiFetch<ShoppingListApiResponse>(
+    `/shopping-lists/shared/${encodeURIComponent(shareToken)}`,
+  );
+}
+
 export async function createShoppingList(
   token: string,
   input: {
@@ -968,6 +976,16 @@ export async function replaceShoppingList(
     {
       method: 'PATCH',
       body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function shareShoppingList(token: string, listId: string) {
+  return apiFetch<ShoppingListApiResponse>(
+    `/shopping-lists/${listId}/share`,
+    {
+      method: 'POST',
     },
     token,
   );
@@ -1501,6 +1519,11 @@ export function mapProfile(user: AuthSessionResponse['user']): ProfileSnapshot {
 export function mapShoppingList(
   apiList: ShoppingListApiResponse,
 ): ShoppingList {
+  const shareUrl =
+    apiList.shareToken && typeof window !== 'undefined'
+      ? `${window.location.origin}/compartilhar/listas/${apiList.shareToken}`
+      : undefined;
+
   return {
     id: apiList.id,
     name: apiList.name,
@@ -1508,6 +1531,9 @@ export function mapShoppingList(
     lastMode: apiList.lastMode,
     updatedAt: apiList.updatedAt,
     expectedSavings: apiList.latestEstimatedSavings ?? 0,
+    shareToken: apiList.shareToken,
+    sharedAt: apiList.sharedAt,
+    shareUrl,
     completedAt: apiList.completedAt,
     paidTotal: apiList.paidTotal,
     items: apiList.items.map((item) => ({
