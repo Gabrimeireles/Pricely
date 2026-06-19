@@ -5,6 +5,7 @@ import {
   Building2Icon,
   EyeIcon,
   EyeOffIcon,
+  LifeBuoyIcon,
   HistoryIcon,
   HomeIcon,
   LayoutDashboardIcon,
@@ -24,6 +25,7 @@ import {
 import { useMonetaryPrivacy } from '@/app/monetary-privacy-context';
 import { usePricely } from '@/app/pricely-context';
 import { useTheme } from '@/app/theme-context';
+import pricelyIcon from '@/assets/pricely-icon.png';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -84,7 +86,7 @@ function SidebarLogo() {
         className="hidden size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground group-data-[collapsible=icon]:flex"
         to="/"
       >
-        <ShoppingCartIcon className="size-5" />
+        <img alt="" className="size-6 object-contain" src={pricelyIcon} />
       </Link>
     </div>
   );
@@ -118,6 +120,7 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
   const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
   const [locationPreview, setLocationPreview] = useState<string | null>(null);
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
+  const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
 
   const activeCity = cityId
     ? (cities.find((city) => city.id === cityId) ?? null)
@@ -297,16 +300,6 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
 
         <SidebarFooter className="shrink-0">
           <div className="grid gap-2 rounded-lg border border-sidebar-border p-2 group-data-[collapsible=icon]:hidden">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">
-                {activeCity ? activeCity.name : 'Cidade pendente'}
-              </p>
-              <p className="truncate text-xs text-sidebar-foreground/70">
-                {activeCity
-                  ? `${activeCity.activeStoreCount} lojas ativas`
-                  : 'Escolha no header'}
-              </p>
-            </div>
             <div className="flex gap-2">
               <WithTooltip
                 label={
@@ -363,6 +356,21 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
               >
                 <LocateFixedIcon data-icon="inline-start" />
                 Local
+              </Button>
+            </div>
+            <div className="rounded-md border border-sidebar-border bg-sidebar-accent/20 p-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <LifeBuoyIcon className="size-4" />
+                Precisa de ajuda?
+              </div>
+              <Button
+                className="mt-1 h-auto justify-start p-0 text-sidebar-foreground hover:text-sidebar-accent-foreground"
+                onClick={() => setIsHelpDialogOpen(true)}
+                size="sm"
+                type="button"
+                variant="link"
+              >
+                Central de ajuda
               </Button>
             </div>
           </div>
@@ -512,7 +520,7 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
         onOpenChange={setIsLocationDialogOpen}
         open={isLocationDialogOpen}
       >
-        <DialogContent>
+        <DialogContent className="bg-background">
           <DialogHeader>
             <DialogTitle>Localizacao para otimizacao local</DialogTitle>
             <DialogDescription>
@@ -581,6 +589,47 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
                 Salvar CEP
               </Button>
             </form>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog onOpenChange={setIsHelpDialogOpen} open={isHelpDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Central de ajuda</DialogTitle>
+            <DialogDescription>
+              Encontre orientação rápida para cidade, listas, ofertas, notas
+              fiscais e privacidade monetária.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 text-sm">
+            {[
+              {
+                title: 'Cidade e localização',
+                copy: 'A cidade fica no header. A localização precisa só é usada quando você autoriza ou salva um CEP.',
+              },
+              {
+                title: 'Listas e ofertas',
+                copy: 'Monte uma lista para comparar produtos equivalentes e ver a melhor estratégia por loja.',
+              },
+              {
+                title: 'Notas fiscais',
+                copy: 'Envie a nota para validar preços reais, aumentar confiança dos dados e liberar histórico na conta.',
+              },
+            ].map((item) => (
+              <div
+                className="rounded-lg border border-border/70 bg-card p-3"
+                key={item.title}
+              >
+                <div className="font-medium">{item.title}</div>
+                <p className="mt-1 text-muted-foreground">{item.copy}</p>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsHelpDialogOpen(false)} type="button">
+              Entendi
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

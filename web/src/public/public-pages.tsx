@@ -822,13 +822,13 @@ function RequireAuthentication({
         </Alert>
 
         <Card className="overflow-hidden border-border/70 bg-card/95 shadow-sm">
-          <div className="grid lg:grid-cols-[1.05fr_0.8fr_1.05fr]">
-            <CardContent className="grid gap-5 p-6 lg:p-8">
-              <span className="flex size-24 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <LockIcon className="size-11" />
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.75fr)_minmax(0,0.95fr)]">
+            <CardContent className="grid gap-4 p-5 lg:p-6">
+              <span className="flex size-18 items-center justify-center rounded-full bg-primary/10 text-primary sm:size-20">
+                <LockIcon className="size-9" />
               </span>
               <div className="grid gap-3">
-                <h1 className="font-heading text-4xl font-semibold tracking-normal text-foreground">
+                <h1 className="font-heading text-3xl font-semibold tracking-normal text-foreground">
                   {isReceiptRoute
                     ? 'Entre para enviar sua nota fiscal'
                     : 'Entre para salvar suas listas'}
@@ -884,7 +884,7 @@ function RequireAuthentication({
               </Alert>
             </CardContent>
 
-            <CardContent className="grid content-center gap-4 border-y border-border/70 p-6 lg:border-x lg:border-y-0 lg:p-8">
+              <CardContent className="grid content-center gap-3 border-y border-border/70 p-5 lg:border-x lg:border-y-0 lg:p-6">
               <div className="grid gap-2">
                 <StatusBadge
                   icon={ShieldCheckIcon}
@@ -943,7 +943,7 @@ function RequireAuthentication({
               </div>
             </CardContent>
 
-            <CardContent className="grid gap-4 p-6 lg:p-8">
+              <CardContent className="grid gap-3 p-5 lg:p-6">
               <div>
                 <h2 className="text-xl font-semibold">Depois que voce entrar</h2>
                 <p className="text-sm text-muted-foreground">
@@ -1305,6 +1305,8 @@ export function LandingPage() {
       savingsVsRegionalAverage?: number;
     }>
   >([]);
+  const [isReceiptInfoOpen, setIsReceiptInfoOpen] = useState(false);
+  const [isLocationHelpOpen, setIsLocationHelpOpen] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -1651,16 +1653,14 @@ export function LandingPage() {
               {
                 icon: MapPinIcon,
                 title: 'Sem cidade selecionada',
-                text: 'Escolha uma cidade para ver ofertas',
-                action: 'Selecionar cidade',
-                to: '/cidades',
+                text: 'Escolha a cidade no header para carregar ofertas, lojas e evidências da região.',
               },
               {
                 icon: LockIcon,
                 title: 'Permissão de localização negada',
-                text: 'Ative a permissão para ver lojas perto de você',
-                action: 'Escolher cidade',
-                to: '/cidades',
+                text: 'Ative a permissão no navegador ou use CEP quando quiser calcular lojas próximas.',
+                action: 'Como ativar',
+                onAction: () => setIsLocationHelpOpen(true),
               },
               {
                 icon: StoreIcon,
@@ -1684,7 +1684,13 @@ export function LandingPage() {
                 description={state.text}
                 primaryAction={
                   state.action ? (
-                    <Link to={state.to ?? '/cidades'}>{state.action}</Link>
+                    state.onAction ? (
+                      <button onClick={state.onAction} type="button">
+                        {state.action}
+                      </button>
+                    ) : (
+                      <Link to={state.to ?? '/cidades'}>{state.action}</Link>
+                    )
                   ) : undefined
                 }
                 secondaryAction={
@@ -1748,13 +1754,22 @@ export function LandingPage() {
             <div className="rounded-lg border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] p-3 text-sm">
               {hasAccount
                 ? 'Nossa equipe vai revisar sua nota fiscal. Você será avisado quando for liberada.'
-                : 'Saiba como funciona: a nota entra em validação e só depois libera histórico e status na conta.'}
+                : 'Envie a nota para validar preços reais, melhorar a confiança das ofertas e liberar histórico de compra na sua conta.'}
             </div>
-            <Button asChild variant="outline">
-              <Link to={hasAccount ? '/notas' : '/entrar'}>
-                {hasAccount ? 'Ver detalhes' : 'Enviar primeira nota fiscal'}
-              </Link>
-            </Button>
+            <div className="grid gap-2">
+              <Button asChild variant="outline">
+                <Link to={hasAccount ? '/notas' : '/entrar'}>
+                  {hasAccount ? 'Ver detalhes' : 'Enviar primeira nota fiscal'}
+                </Link>
+              </Button>
+              <Button
+                onClick={() => setIsReceiptInfoOpen(true)}
+                type="button"
+                variant="ghost"
+              >
+                Saiba como funciona
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -1830,6 +1845,99 @@ export function LandingPage() {
           <StatusBadge tone="savings">Ativo</StatusBadge>
         </div>
       </aside>
+
+      <Dialog
+        onOpenChange={setIsReceiptInfoOpen}
+        open={isReceiptInfoOpen}
+      >
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto bg-background sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Como a nota fiscal melhora sua compra</DialogTitle>
+            <DialogDescription>
+              A nota fiscal transforma uma compra real em evidência útil para
+              você e para a qualidade das ofertas da plataforma.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            {[
+              {
+                title: '1. Envie a nota depois da compra',
+                copy: 'A plataforma registra loja, data, produtos e valores sem depender de preenchimento manual.',
+              },
+              {
+                title: '2. A validação confirma os preços reais',
+                copy: 'O envio passa por revisão antes de liberar histórico, status e dados derivados na sua conta.',
+              },
+              {
+                title: '3. Você ganha histórico e comparações melhores',
+                copy: 'Com notas validadas, fica mais fácil acompanhar gastos, reutilizar listas e comparar ofertas com evidência real.',
+              },
+              {
+                title: '4. A comunidade recebe ofertas mais confiáveis',
+                copy: 'Os preços observados ajudam a indicar confiança, frescor e variação por estabelecimento.',
+              },
+            ].map((step) => (
+              <div
+                className="rounded-lg border border-border/70 bg-card p-3"
+                key={step.title}
+              >
+                <div className="font-medium">{step.title}</div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {step.copy}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-lg border border-[var(--ds-info-border)] bg-[var(--ds-info-soft)] p-3 text-sm text-muted-foreground">
+            Valores monetários podem ser ocultados pelo botão de privacidade no
+            header e no sidebar.
+          </div>
+          <DialogFooter>
+            <Button asChild>
+              <Link to={hasAccount ? '/notas' : '/entrar'}>
+                {hasAccount ? 'Abrir notas fiscais' : 'Entrar para enviar'}
+              </Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        onOpenChange={setIsLocationHelpOpen}
+        open={isLocationHelpOpen}
+      >
+        <DialogContent className="bg-background">
+          <DialogHeader>
+            <DialogTitle>Permissão de localização</DialogTitle>
+            <DialogDescription>
+              A cidade no header mostra ofertas da região. A permissão de
+              localização só é necessária para calcular lojas realmente
+              próximas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 text-sm">
+            <div className="rounded-lg border border-border/70 bg-card p-3">
+              <div className="font-medium">No navegador</div>
+              <p className="mt-1 text-muted-foreground">
+                Abra as permissões do site, libere localização e tente usar o
+                botão de localização novamente.
+              </p>
+            </div>
+            <div className="rounded-lg border border-border/70 bg-card p-3">
+              <div className="font-medium">Sem localização precisa</div>
+              <p className="mt-1 text-muted-foreground">
+                Você ainda pode usar a cidade selecionada; o Pricely só não
+                promete distância até lojas específicas.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsLocationHelpOpen(false)} type="button">
+              Entendi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -2607,7 +2715,7 @@ export function ReceiptSubmissionPage() {
 
   return (
     <RequireAuthentication
-      description="Entre para contribuir com notas fiscais e acompanhar rewards depois da validação."
+      description="Entre para contribuir com notas fiscais e acompanhar histórico, status e benefícios depois da validação."
       title="Envio de nota fiscal precisa da sua conta"
     >
       <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">

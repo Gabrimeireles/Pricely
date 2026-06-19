@@ -209,6 +209,9 @@ describe('PublicLayout', () => {
 
     expect(screen.getByText('Navegacao')).toBeTruthy();
     expect(screen.getByRole('link', { name: /Minha lista/i })).toBeTruthy();
+    expect(screen.getByText('Precisa de ajuda?')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Central de ajuda/i })).toBeTruthy();
+    expect(screen.queryByText('Cidade pendente')).toBeNull();
     expect(document.body.textContent).toMatch(/Localiza/);
     expect(screen.getByText(/raio de 5 km/i)).toBeTruthy();
     expect(
@@ -230,6 +233,16 @@ describe('PublicLayout', () => {
     );
 
     await waitFor(() => expect(setCityId).toHaveBeenCalledWith('sao-paulo-sp'));
+  });
+
+  it('opens the sidebar help dialog without requiring a missing help route', async () => {
+    renderPublicLayout();
+
+    fireEvent.click(screen.getByRole('button', { name: /Central de ajuda/i }));
+
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+    expect(screen.getAllByText('Notas fiscais').length).toBeGreaterThan(1);
+    expect(screen.getByText(/validar preços reais/i)).toBeTruthy();
   });
 
   it('keeps browser location as an explicit preview state', () => {

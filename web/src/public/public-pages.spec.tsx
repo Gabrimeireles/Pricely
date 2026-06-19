@@ -197,9 +197,8 @@ describe('public pages', () => {
     expect(screen.getByText('Entre para ver sua economia')).toBeTruthy();
     expect(screen.getAllByText('Aguardando lista').length).toBeGreaterThan(0);
     expect(screen.queryByText('R$ 7,69')).toBeNull();
-    fireEvent.pointerMove(
+    fireEvent.click(
       screen.getAllByRole('button', { name: 'Saiba como funciona' })[0],
-      { pointerType: 'mouse' },
     );
     expect(
       await screen.findAllByText(/Valores monetários podem ser ocultados/i),
