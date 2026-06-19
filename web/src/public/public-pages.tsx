@@ -817,7 +817,7 @@ function RequireAuthentication({
               disponiveis.
             </span>
             <Button asChild className="w-fit" size="sm" variant="outline">
-              <Link to="/cidades">Escolher cidade</Link>
+              <Link to="/cidades">Ver cidades e lojas</Link>
             </Button>
           </AlertDescription>
         </Alert>
@@ -923,7 +923,7 @@ function RequireAuthentication({
               <Button asChild className="w-full justify-center gap-2" variant="outline">
                 <Link to="/cidades">
                   <MapPinIcon data-icon="inline-start" />
-                  Escolher cidade
+                  Ver cidades e lojas
                 </Link>
               </Button>
               <div className="mt-6 grid gap-1 text-sm">
@@ -1637,10 +1637,9 @@ export function LandingPage() {
           ) : (
             <ActionPlaceholder
               icon={<MapPinIcon className="size-5" />}
-              title="Escolha uma cidade para ver ofertas reais"
-              description="A vitrine depende da cidade selecionada. Depois mostramos produto, loja, preço observado e confiança da informação."
-              primaryAction={<Link to="/cidades">Selecionar cidade</Link>}
-              secondaryAction={<Link to="/listas/nova">Criar lista</Link>}
+              title="Escolha uma cidade no header para ver ofertas reais"
+              description="A vitrine depende da cidade selecionada no header. Depois mostramos produto, loja, preço observado e confiança da informação."
+              secondaryAction={<Link to="/cidades">Ver cidades e lojas</Link>}
             />
           )}
         </section>
@@ -1667,7 +1666,7 @@ export function LandingPage() {
                 icon: StoreIcon,
                 title: 'Nenhuma loja no raio',
                 text: 'Não encontramos lojas ativas a 5 km de você',
-                action: 'Ver lojas',
+                action: 'Ver cidades e lojas',
                 to: '/cidades',
               },
               {
@@ -2064,10 +2063,9 @@ export function OffersPage() {
       {!cityId ? (
         <ActionPlaceholder
           icon={<MapPinIcon className="size-5" />}
-          title="Escolha uma cidade primeiro"
-          description="A cidade define quais lojas e preços entram na vitrine pública. Depois você poderá filtrar estabelecimentos e abrir o detalhe de cada oferta."
-          primaryAction={<Link to="/cidades">Selecionar cidade</Link>}
-          secondaryAction={<Link to="/listas/nova">Criar lista</Link>}
+          title="Escolha uma cidade no header primeiro"
+          description="A cidade selecionada no header define quais lojas e preços entram na vitrine pública. Você também pode consultar as cidades e lojas suportadas."
+          secondaryAction={<Link to="/cidades">Ver cidades e lojas</Link>}
         />
       ) : null}
 
@@ -2248,9 +2246,9 @@ export function OffersPage() {
           description={
             city?.status === 'pilot'
               ? 'Esta cidade ainda precisa de notas fiscais e validações para liberar ofertas confiáveis.'
-              : 'Troque o filtro de estabelecimento ou escolha outra cidade para comparar preços.'
+              : 'Troque o filtro de estabelecimento ou consulte as cidades e lojas suportadas para comparar preços.'
           }
-          primaryAction={<Link to="/cidades">Escolher outra cidade</Link>}
+          primaryAction={<Link to="/cidades">Ver cidades e lojas</Link>}
           secondaryAction={<Link to="/notas">Enviar nota fiscal</Link>}
         />
       ) : null}
