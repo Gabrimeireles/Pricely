@@ -22,7 +22,9 @@ Issue: #372
 ### Public Web
 
 - Home contextual states in `web/src/public/public-pages.tsx`
-  - No city selected: offer "Selecionar cidade" and explain city-scoped pricing.
+  - No city selected: offer "Selecionar cidade" through the shared selector
+    dialog/header select and explain city-scoped pricing. Use "Ver cidades e
+    lojas" for `/cidades`, because that route is only coverage browsing.
   - Location denied: show "Saiba como ativar" and keep manual city/CEP fallback.
   - No stores in radius: offer "Ampliar raio" once radius editing exists; until then
     route to city/global mode guidance.

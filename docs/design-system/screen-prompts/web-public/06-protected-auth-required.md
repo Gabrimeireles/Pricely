@@ -32,7 +32,10 @@ Required content:
 - Secondary CTA: "Criar conta".
 - Tertiary text/button to continue public browsing:
   - "Ver ofertas da cidade"
-  - "Escolher cidade"
+  - "Selecionar cidade" opens the shared city selector; do not link this CTA
+    to `/cidades`.
+  - "Ver cidades e lojas" may link to `/cidades` only when the intent is to
+    browse supported coverage.
 - Action-oriented placeholders:
   - If no lists: "Crie sua primeira lista para comparar precos por loja."
   - If no receipts: "Envie sua primeira nota fiscal para acompanhar a validacao."
@@ -63,4 +66,3 @@ Map likely components to:
 - web/src/components/design-system/
 - web/src/components/ui/*
 ```
-
