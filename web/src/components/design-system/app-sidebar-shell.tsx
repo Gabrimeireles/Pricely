@@ -332,6 +332,7 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
                   size="icon-sm"
                   type="button"
                   variant="outline"
+                  className="border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
                   {isMoneyVisible ? (
                     <EyeIcon className="size-4" />
@@ -351,6 +352,7 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
                   size="icon-sm"
                   type="button"
                   variant="outline"
+                  className="border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
                   {theme === 'dark' ? (
                     <SunMediumIcon className="size-4" />
@@ -360,7 +362,7 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
                 </Button>
               </WithTooltip>
               <Button
-                className="flex-1"
+                className="flex-1 border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 onClick={() => setIsLocationDialogOpen(true)}
                 size="sm"
                 type="button"
@@ -384,11 +386,11 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
                   ? 'Ocultar valores monetários'
                   : 'Mostrar valores monetários'
               }
-              className="hidden group-data-[collapsible=icon]:inline-flex"
               onClick={toggleMoneyVisibility}
               size="icon-sm"
               type="button"
               variant="outline"
+              className="hidden border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:inline-flex"
             >
               {isMoneyVisible ? (
                 <EyeIcon className="size-4" />
@@ -402,7 +404,7 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
               aria-label={
                 theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
               }
-              className="hidden group-data-[collapsible=icon]:inline-flex"
+              className="hidden border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:inline-flex"
               onClick={toggleTheme}
               size="icon-sm"
               type="button"
