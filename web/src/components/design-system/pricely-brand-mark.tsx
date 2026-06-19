@@ -27,8 +27,8 @@ function PricelyBrandMark({
       <img
         alt=""
         className={cn(
-          'size-9 object-contain',
-          compact && 'size-7',
+          'mt-0.5 size-10 scale-[2.15] object-contain',
+          compact && 'size-8 scale-[2.1]',
         )}
         src={pricelyIcon}
       />
@@ -39,7 +39,7 @@ function PricelyBrandMark({
     return (
       <div
         aria-label="Pricely"
-        className={cn('inline-flex items-center gap-2', className)}
+        className={cn('inline-flex items-center gap-2.5', className)}
       >
         {content}
       </div>
@@ -49,7 +49,7 @@ function PricelyBrandMark({
   return (
     <Link
       aria-label="Pricely"
-      className={cn('inline-flex items-center gap-2 rounded-md', className)}
+      className={cn('inline-flex items-center gap-2.5 rounded-md', className)}
       to={to}
     >
       {content}

@@ -40,6 +40,7 @@ import {
 } from '@/app/format';
 import { resolveProductImage } from '@/app/media';
 import { getCityById, optimizationModes } from '@/app/mock-data';
+import pricelyIcon from '@/assets/pricely-icon.png';
 import {
   type CatalogProductSearchResponse,
   type OfferDetailApiResponse,
@@ -1858,6 +1859,49 @@ export function LandingPage() {
               você e para a qualidade das ofertas da plataforma.
             </DialogDescription>
           </DialogHeader>
+          <div className="grid gap-4 rounded-xl border border-[var(--ds-info-border)] bg-[var(--ds-info-soft)] p-4 sm:grid-cols-[auto_1fr] sm:items-center">
+            <div className="relative flex size-24 items-center justify-center rounded-xl border border-[var(--ds-info-border)] bg-background">
+              <img
+                alt=""
+                className="size-14 scale-[2.05] object-contain"
+                src={pricelyIcon}
+              />
+              <ReceiptTextIcon className="absolute -right-2 -top-2 size-9 rounded-full border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] p-2 text-orange-700 dark:text-orange-200" />
+              <BadgeCheckIcon className="absolute -bottom-2 -left-2 size-9 rounded-full border border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)] p-2 text-[var(--ds-savings)]" />
+            </div>
+            <div>
+              <div className="text-sm font-medium text-foreground">
+                Roadmap da nota fiscal
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Enviar a nota cria evidência, valida preços e melhora as
+                próximas recomendações de compra.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-2 rounded-xl border border-border/70 bg-card p-3 sm:grid-cols-4">
+            {[
+              { label: 'Enviar', detail: 'nota da compra' },
+              { label: 'Validar', detail: 'preços reais' },
+              { label: 'Liberar', detail: 'histórico' },
+              { label: 'Melhorar', detail: 'ofertas' },
+            ].map((step, index) => (
+              <div className="relative grid gap-1" key={step.label}>
+                <div className="flex items-center gap-2">
+                  <span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                    {index + 1}
+                  </span>
+                  {index < 3 ? (
+                    <span className="hidden h-px flex-1 bg-border sm:block" />
+                  ) : null}
+                </div>
+                <div className="text-sm font-medium">{step.label}</div>
+                <div className="text-xs text-muted-foreground">
+                  {step.detail}
+                </div>
+              </div>
+            ))}
+          </div>
           <div className="grid gap-3">
             {[
               {
