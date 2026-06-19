@@ -1,7 +1,4 @@
 import * as React from 'react';
-import { ArrowRightIcon } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type NextActionStripProps = React.ComponentProps<'section'> & {
@@ -55,15 +52,12 @@ function NextActionStrip({
             ) : null}
           </div>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {secondaryAction}
-          {primaryAction ?? (
-            <Button>
-              Continuar
-              <ArrowRightIcon />
-            </Button>
-          )}
-        </div>
+        {primaryAction || secondaryAction ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {secondaryAction}
+            {primaryAction}
+          </div>
+        ) : null}
       </div>
     </section>
   );

@@ -610,7 +610,7 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   await expect(
     page.getByRole('heading', { name: 'Resultado da otimização' }),
   ).toBeVisible();
-  await expect(page.getByText(/Itens otimizados/)).toBeVisible();
+  await expect(page.getByText(/Itens da lista/)).toBeVisible();
   await expect(page.getByText(/Plano de compras/)).toBeVisible();
   await expect(page.getByText('Oferta confirmada selecionada')).toBeVisible();
   await expect(page.getByText('Confiança alta', { exact: true })).toBeVisible();

@@ -163,6 +163,20 @@ describe('OptimizationPage', () => {
             decisionReason: 'selected_confirmed_offer',
             distanceKm: 1.4,
           },
+          {
+            id: 'selection-2',
+            shoppingListItemId: 'item-2',
+            shoppingListItemName: 'Feijao Carioca 1kg',
+            estimatedCost: 0,
+            sourceLabel: 'sem oferta confirmada',
+            trustFactor: 30,
+            trustLevel: 'low',
+            trustEvidenceCount: 0,
+            trustFreshnessDays: 12,
+            selectionStatus: 'review',
+            decisionReason: 'missing_trusted_offer',
+            rejectedReason: 'unavailable_offer',
+          },
         ],
       },
     };
@@ -179,11 +193,35 @@ describe('OptimizationPage', () => {
       screen.getByText('Selecionado: Cafe Pilao 500g'),
     ).toBeTruthy();
     expect(document.body.textContent).toMatch(/Confian[cç]a alta/);
+    expect(screen.getByText('Feijao Carioca 1kg')).toBeTruthy();
     expect(screen.getByText('78/100')).toBeTruthy();
     expect(screen.getByText('1.4 km do local salvo')).toBeTruthy();
     expect(screen.getByText(/segundo menor elegivel/)).toBeTruthy();
     expect(screen.getByText('Reportar preço')).toBeTruthy();
     expect(screen.getAllByText('Enviar nota').length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText(/Exibir/i), {
+      target: { value: 'selected' },
+    });
+    expect(screen.queryByText('Feijao Carioca 1kg')).toBeNull();
+
+    fireEvent.change(screen.getByLabelText(/Exibir/i), {
+      target: { value: 'review' },
+    });
+    expect(screen.getAllByText('Feijao Carioca 1kg').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Selecionado: Cafe Pilao 500g')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Indisponíveis/i }));
+    expect(screen.getAllByText('Feijao Carioca 1kg').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /Itens da lista/i }));
+    fireEvent.change(screen.getByLabelText(/Exibir/i), {
+      target: { value: 'selected' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Ocultar evidência/i }));
+    expect(screen.queryByText('Confiança da oferta')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Ver evidência/i }));
+    expect(screen.getByText('Confiança da oferta')).toBeTruthy();
+
     expect(screen.queryByText(/selected_confirmed_offer/i)).toBeNull();
     expect(screen.queryByText(/selected/i)).toBeNull();
   });
