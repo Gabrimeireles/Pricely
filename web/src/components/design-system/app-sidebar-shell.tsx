@@ -24,7 +24,6 @@ import {
 import { useMonetaryPrivacy } from '@/app/monetary-privacy-context';
 import { usePricely } from '@/app/pricely-context';
 import { useTheme } from '@/app/theme-context';
-import pricelyIcon from '@/assets/pricely-icon.png';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -58,6 +57,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
+import { PricelyBrandMark } from '@/components/design-system/pricely-brand-mark';
 import { WithTooltip } from '@/components/design-system/with-tooltip';
 
 const publicNavItems = [
@@ -77,23 +77,16 @@ const publicNavItems = [
 
 function SidebarLogo() {
   return (
-    <Link className="flex items-center gap-2.5 rounded-lg px-2 py-2" to="/">
-      <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-        <img
-          alt=""
-          className="size-7 rounded-md object-cover"
-          src={pricelyIcon}
-        />
-      </div>
-      <div className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
-        <span className="font-heading text-base font-semibold tracking-tight">
-          pricely
-        </span>
-        <span className="text-xs text-sidebar-foreground/70">
-          economia com contexto real
-        </span>
-      </div>
-    </Link>
+    <div className="rounded-lg px-2 py-3">
+      <PricelyBrandMark className="group-data-[collapsible=icon]:hidden" />
+      <Link
+        aria-label="Pricely"
+        className="hidden size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground group-data-[collapsible=icon]:flex"
+        to="/"
+      >
+        <ShoppingCartIcon className="size-5" />
+      </Link>
+    </div>
   );
 }
 

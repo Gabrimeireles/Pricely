@@ -12,6 +12,8 @@ export { NextActionStrip } from './next-action-strip';
 export type { NextActionStripProps } from './next-action-strip';
 export { PriceRow } from './price-row';
 export type { PriceRowProps } from './price-row';
+export { PricelyBrandMark } from './pricely-brand-mark';
+export type { PricelyBrandMarkProps } from './pricely-brand-mark';
 export { PublicSidebarShell } from './app-sidebar-shell';
 export {
   StatusBadge,

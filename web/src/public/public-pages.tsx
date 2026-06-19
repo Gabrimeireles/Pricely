@@ -11,22 +11,25 @@ import {
   ClipboardListIcon,
   Clock3Icon,
   ExternalLinkIcon,
+  EyeIcon,
   FlagIcon,
   InfoIcon,
   ListChecksIcon,
   ListIcon,
   LockIcon,
-  LogInIcon,
   MapPinIcon,
   ReceiptTextIcon,
   RefreshCwIcon,
   RouteIcon,
   SearchIcon,
   ShieldAlertIcon,
+  ShieldCheckIcon,
   ShoppingCartIcon,
+  SmartphoneIcon,
   Share2Icon,
   SlidersHorizontalIcon,
   StoreIcon,
+  TagsIcon,
   UploadIcon,
 } from 'lucide-react';
 
@@ -71,6 +74,7 @@ import {
   InfoTooltip,
   MaskedMoney,
   PriceRow,
+  PricelyBrandMark,
   StatusBadge,
   StickyActionBar,
   WithTooltip,
@@ -85,6 +89,8 @@ import {
 } from '@/components/ui/card';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -800,78 +806,205 @@ function RequireAuthentication({
     const isReceiptRoute = title.toLowerCase().includes('nota');
 
     return (
-      <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Card className="border-border/70 bg-card/95 shadow-sm">
-          <CardHeader>
-            <div className="flex items-start gap-3">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--ds-location-soft)] text-[var(--ds-location)]">
-                <LogInIcon className="size-5" />
-              </span>
-              <div className="min-w-0">
-                <CardTitle className="font-heading text-2xl">
-                  {isReceiptRoute
-                    ? 'Entre para acompanhar suas notas fiscais'
-                    : 'Entre para salvar suas listas'}
-                </CardTitle>
-                <CardDescription className="mt-1 text-base">
-                  {description}
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                isReceiptRoute
-                  ? 'Envie sua primeira nota fiscal'
-                  : 'Crie sua primeira lista',
-                'Continue no celular',
-                'Preserve cidade e preferencias',
-              ].map((item) => (
-                <div
-                  className="rounded-lg border border-border/70 bg-background/80 p-3 text-sm"
-                  key={item}
-                >
-                  {item}
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild>
-                <Link to="/entrar">Entrar agora</Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link to="/criar-conta">Criar conta</Link>
-              </Button>
-              <Button asChild variant="ghost">
-                <Link to="/ofertas">Ver ofertas da cidade</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/70 bg-card/90 shadow-sm">
-          <CardHeader>
-            <CardTitle>
-              {isReceiptRoute
-                ? 'Depois do envio'
-                : 'Depois da primeira lista'}
-            </CardTitle>
-            <CardDescription>
-              Preview sem dados pessoais ate voce entrar.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 text-sm">
-            <div className="rounded-lg border border-dashed border-border/80 p-3">
-              {isReceiptRoute
-                ? 'Status da nota, validacao e historico aparecem aqui.'
-                : 'Itens, marcas preferidas e otimizacao aparecem aqui.'}
-            </div>
-            <Button asChild variant="secondary">
+      <section className="grid gap-5">
+        <Alert className="border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)]">
+          <MapPinIcon className="size-4" />
+          <AlertTitle>Selecione uma cidade para continuar</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              Voce pode escolher sua cidade para ver ofertas e lojas
+              disponiveis.
+            </span>
+            <Button asChild className="w-fit" size="sm" variant="outline">
               <Link to="/cidades">Escolher cidade</Link>
             </Button>
-          </CardContent>
+          </AlertDescription>
+        </Alert>
+
+        <Card className="overflow-hidden border-border/70 bg-card/95 shadow-sm">
+          <div className="grid lg:grid-cols-[1.05fr_0.8fr_1.05fr]">
+            <CardContent className="grid gap-5 p-6 lg:p-8">
+              <span className="flex size-24 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <LockIcon className="size-11" />
+              </span>
+              <div className="grid gap-3">
+                <h1 className="font-heading text-4xl font-semibold tracking-normal text-foreground">
+                  {isReceiptRoute
+                    ? 'Entre para enviar sua nota fiscal'
+                    : 'Entre para salvar suas listas'}
+                </h1>
+                <p className="max-w-xl text-base text-muted-foreground">
+                  {description}
+                </p>
+              </div>
+              <div className="grid gap-4">
+                {[
+                  {
+                    icon: ListChecksIcon,
+                    title: isReceiptRoute
+                      ? 'Acompanhe suas notas'
+                      : 'Salve e organize suas listas',
+                    copy: isReceiptRoute
+                      ? 'Veja status, revisao e liberacao em tempo real.'
+                      : 'Acesse suas listas quando quiser.',
+                  },
+                  {
+                    icon: SmartphoneIcon,
+                    title: 'Continue no celular',
+                    copy: 'Suas listas e preferencias ficam sincronizadas no app.',
+                  },
+                  {
+                    icon: MapPinIcon,
+                    title: 'Compare preços por loja',
+                    copy: 'Receba sugestoes das melhores lojas perto de voce.',
+                  },
+                ].map((item) => (
+                  <div className="flex gap-3" key={item.title}>
+                    <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <item.icon className="size-5" />
+                    </span>
+                    <div className="grid gap-1">
+                      <div className="font-medium text-primary">
+                        {item.title}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {item.copy}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Alert className="border-primary/25 bg-primary/10">
+                <InfoIcon className="size-4" />
+                <AlertTitle>Dica</AlertTitle>
+                <AlertDescription>
+                  Sem uma conta, voce pode ver ofertas da cidade, mas nao
+                  consegue salvar suas listas.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+
+            <CardContent className="grid content-center gap-4 border-y border-border/70 p-6 lg:border-x lg:border-y-0 lg:p-8">
+              <div className="grid gap-2">
+                <StatusBadge
+                  icon={ShieldCheckIcon}
+                  label="Acesso necessário"
+                  tone="neutral"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Esta area e exclusiva para usuarios cadastrados. Escolha uma
+                  opcao para continuar.
+                </p>
+              </div>
+              <Button asChild className="w-full justify-between">
+                <Link to="/entrar">
+                  Entrar agora
+                  <ChevronRightIcon data-icon="inline-end" />
+                </Link>
+              </Button>
+              <Button asChild className="w-full justify-between" variant="outline">
+                <Link to="/criar-conta">
+                  Criar conta
+                  <ChevronRightIcon data-icon="inline-end" />
+                </Link>
+              </Button>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <Separator className="flex-1" />
+                ou
+                <Separator className="flex-1" />
+              </div>
+              <Button asChild className="w-full justify-center gap-2" variant="outline">
+                <Link to="/ofertas">
+                  <MapPinIcon data-icon="inline-start" />
+                  Ver ofertas da cidade
+                </Link>
+              </Button>
+              <Button asChild className="w-full justify-center gap-2" variant="outline">
+                <Link to="/cidades">
+                  <MapPinIcon data-icon="inline-start" />
+                  Escolher cidade
+                </Link>
+              </Button>
+              <div className="mt-6 grid gap-1 text-sm">
+                <div className="flex items-center gap-2 font-medium text-primary">
+                  <InfoIcon className="size-4" />
+                  Saiba como funciona
+                </div>
+                <p className="text-muted-foreground">
+                  Entenda como salvar listas e otimizar suas compras com o
+                  Pricely.
+                </p>
+                <Button asChild className="w-fit px-0" size="sm" variant="link">
+                  <Link to="/">
+                    Saiba mais
+                    <ArrowRightIcon data-icon="inline-end" />
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+
+            <CardContent className="grid gap-4 p-6 lg:p-8">
+              <div>
+                <h2 className="text-xl font-semibold">Depois que voce entrar</h2>
+                <p className="text-sm text-muted-foreground">
+                  Voce podera ver e gerenciar:
+                </p>
+              </div>
+              {[
+                {
+                  icon: ListChecksIcon,
+                  title: 'Minhas listas',
+                  status: null,
+                },
+                {
+                  icon: ReceiptTextIcon,
+                  title: 'Notas fiscais',
+                  status: 'Aguardando revisao',
+                },
+                {
+                  icon: TagsIcon,
+                  title: 'Ofertas personalizadas',
+                  status: null,
+                },
+              ].map((preview) => (
+                <div
+                  className="grid gap-3 rounded-lg border border-border/70 bg-background/80 p-4 shadow-sm"
+                  key={preview.title}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <preview.icon className="size-4" />
+                    </span>
+                    <div className="font-medium">{preview.title}</div>
+                  </div>
+                  <div className="grid gap-2">
+                    <div className="h-3 w-28 rounded-full bg-muted" />
+                    <div className="h-3 w-40 rounded-full bg-muted" />
+                    <div className="h-3 w-24 rounded-full bg-muted" />
+                  </div>
+                  {preview.status ? (
+                    <StatusBadge label={preview.status} tone="savings" />
+                  ) : null}
+                </div>
+              ))}
+              <Alert className="border-[var(--ds-info-border)] bg-[var(--ds-info-soft)]">
+                <ShieldCheckIcon className="size-4" />
+                <AlertTitle>Seus dados estao seguros</AlertTitle>
+                <AlertDescription>
+                  Usamos tecnologia para proteger suas informacoes e sua
+                  privacidade.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </div>
         </Card>
+
+        <Alert className="justify-center border-primary/25 bg-primary/10 text-center">
+          <AlertDescription className="font-medium text-primary">
+            Milhoes de brasileiros ja usam o Pricely para economizar tempo e
+            dinheiro. Junte-se a eles!
+          </AlertDescription>
+        </Alert>
       </section>
     );
   }
@@ -880,18 +1013,14 @@ function RequireAuthentication({
 }
 
 function AuthCard({
-  title,
-  description,
-  ctaLabel,
-  onSubmit,
-  includeDisplayName = false,
+  initialMode,
+  onSignIn,
+  onSignUp,
 }: {
-  title: string;
-  description: string;
-  ctaLabel: string;
-  includeDisplayName?: boolean;
-  onSubmit: (values: {
-    displayName?: string;
+  initialMode: 'sign-in' | 'sign-up';
+  onSignIn: (values: { email: string; password: string }) => Promise<void>;
+  onSignUp: (values: {
+    displayName: string;
     email: string;
     password: string;
   }) => Promise<void>;
@@ -900,8 +1029,11 @@ function AuthCard({
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSignUp = initialMode === 'sign-up';
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -909,7 +1041,15 @@ function AuthCard({
     setError(null);
 
     try {
-      await onSubmit({ displayName, email, password });
+      if (isSignUp) {
+        await onSignUp({
+          displayName: displayName.trim() || 'Cliente Pricely',
+          email,
+          password,
+        });
+      } else {
+        await onSignIn({ email, password });
+      }
       navigate('/listas');
     } catch (submitError) {
       setError(
@@ -923,69 +1063,213 @@ function AuthCard({
   };
 
   return (
-    <div className="mx-auto w-full max-w-lg">
-      <Card>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4" onSubmit={handleSubmit}>
-            <FieldGroup>
-              {includeDisplayName ? (
+    <div className="mx-auto w-full max-w-[1120px]">
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-sm">
+        <div className="grid lg:grid-cols-[0.82fr_1fr]">
+          <CardContent className="grid content-start gap-6 border-b border-border/70 bg-[radial-gradient(circle_at_25%_10%,rgba(15,118,110,0.08),transparent_38%)] p-8 lg:border-b-0 lg:border-r lg:p-12">
+            <PricelyBrandMark className="justify-center lg:justify-start" to="/" />
+            <div className="grid gap-3">
+              <h1 className="font-heading text-4xl font-semibold tracking-normal text-foreground">
+                Sua conta para comprar melhor
+              </h1>
+              <p className="max-w-md text-base text-muted-foreground">
+                Crie sua conta e aproveite tudo que o Pricely oferece para
+                economizar tempo e dinheiro nas suas compras.
+              </p>
+            </div>
+            <div className="grid gap-5">
+              {[
+                {
+                  icon: ListChecksIcon,
+                  title: 'Salvar listas',
+                  copy: 'Crie listas, otimize e encontre os melhores preços sempre que quiser.',
+                },
+                {
+                  icon: SmartphoneIcon,
+                  title: 'Continuar no celular',
+                  copy: 'Acesse suas listas e recibos pelo app, onde estiver.',
+                },
+                {
+                  icon: ReceiptTextIcon,
+                  title: 'Receber status de nota fiscal',
+                  copy: 'Acompanhe a analise da sua nota fiscal em tempo real.',
+                },
+                {
+                  icon: MapPinIcon,
+                  title: 'Preservar cidade e localização',
+                  copy: 'Mantenha suas preferencias para resultados mais precisos.',
+                },
+              ].map((benefit) => (
+                <div className="flex gap-4" key={benefit.title}>
+                  <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <benefit.icon className="size-5" />
+                  </span>
+                  <div className="grid gap-1">
+                    <div className="font-medium text-primary">
+                      {benefit.title}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {benefit.copy}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-auto flex gap-3 text-sm text-muted-foreground">
+              <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+              <span>
+                Seus dados estao seguros. Usamos tecnologia para proteger suas
+                informacoes e sua privacidade.
+              </span>
+            </div>
+          </CardContent>
+
+          <CardContent className="grid content-start gap-7 p-8 lg:p-12">
+            <Tabs
+              onValueChange={(value) =>
+                navigate(value === 'sign-up' ? '/criar-conta' : '/entrar')
+              }
+              value={initialMode}
+            >
+              <TabsList className="h-12 w-full rounded-none bg-transparent p-0" variant="line">
+                <TabsTrigger className="text-base" value="sign-in">
+                  Entrar
+                </TabsTrigger>
+                <TabsTrigger className="text-base" value="sign-up">
+                  Criar conta
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <form className="grid gap-5" onSubmit={handleSubmit}>
+              <FieldGroup>
+                {isSignUp ? (
+                  <Field>
+                    <FieldLabel htmlFor="displayName">Nome</FieldLabel>
+                    <Input
+                      autoComplete="name"
+                      id="displayName"
+                      onChange={(event) => setDisplayName(event.target.value)}
+                      placeholder="Como você quer aparecer no Pricely"
+                      required
+                      value={displayName}
+                    />
+                  </Field>
+                ) : null}
                 <Field>
-                  <FieldLabel htmlFor="displayName">Nome</FieldLabel>
+                  <FieldLabel htmlFor="email">E-mail</FieldLabel>
                   <Input
-                    autoComplete="name"
-                    id="displayName"
-                    onChange={(event) => setDisplayName(event.target.value)}
-                    placeholder="Como você quer aparecer no Pricely"
+                    autoComplete="email"
+                    id="email"
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="seu@email.com"
                     required
-                    value={displayName}
+                    type="email"
+                    value={email}
                   />
                 </Field>
+                <Field>
+                  <FieldLabel htmlFor="password">Senha</FieldLabel>
+                  <div className="relative">
+                    <Input
+                      autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                      className="pr-11"
+                      id="password"
+                      minLength={6}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Digite sua senha"
+                      required
+                      type={isPasswordVisible ? 'text' : 'password'}
+                      value={password}
+                    />
+                    <Button
+                      aria-label={
+                        isPasswordVisible
+                          ? 'Ocultar palavra secreta'
+                          : 'Mostrar palavra secreta'
+                      }
+                      className="absolute right-1 top-1 h-8 w-8"
+                      onClick={() => setIsPasswordVisible((current) => !current)}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <EyeIcon className="size-4" />
+                    </Button>
+                  </div>
+                </Field>
+              </FieldGroup>
+
+              {!isSignUp ? (
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <label className="flex items-center gap-2 text-muted-foreground">
+                    <input
+                      checked={rememberMe}
+                      className="size-4 rounded border-border"
+                      onChange={(event) => setRememberMe(event.target.checked)}
+                      type="checkbox"
+                    />
+                    Lembrar de mim
+                  </label>
+                  <Button className="px-0" size="sm" type="button" variant="link">
+                    Esqueci minha senha
+                  </Button>
+                </div>
               ) : null}
-              <Field>
-                <FieldLabel htmlFor="email">E-mail</FieldLabel>
-                <Input
-                  autoComplete="email"
-                  id="email"
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="voce@exemplo.com"
-                  required
-                  type="email"
-                  value={email}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="password">Senha</FieldLabel>
-                <Input
-                  autoComplete={
-                    includeDisplayName ? 'new-password' : 'current-password'
-                  }
-                  id="password"
-                  minLength={6}
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  type="password"
-                  value={password}
-                />
-              </Field>
-            </FieldGroup>
 
-            {error ? (
-              <Alert variant="destructive">
-                <AlertCircleIcon />
-                <AlertTitle>Falha no acesso</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : null}
+              {error ? (
+                <Alert variant="destructive">
+                  <AlertCircleIcon />
+                  <AlertTitle>Falha no acesso</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : null}
 
-            <Button disabled={isSubmitting} type="submit">
-              {isSubmitting ? 'Enviando...' : ctaLabel}
+              <Button className="h-12" disabled={isSubmitting} type="submit">
+                {isSubmitting
+                  ? 'Enviando...'
+                  : isSignUp
+                    ? 'Criar conta'
+                    : 'Entrar'}
+              </Button>
+            </form>
+
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <Separator className="flex-1" />
+              ou
+              <Separator className="flex-1" />
+            </div>
+
+            <Button className="h-12 gap-3" type="button" variant="outline">
+              <span className="font-semibold text-blue-600">G</span>
+              Continuar com Google
             </Button>
-          </form>
-        </CardContent>
+
+            <p className="text-center text-sm text-muted-foreground">
+              {isSignUp ? 'Já tem conta?' : 'Ainda não tem conta?'}{' '}
+              <Link
+                className="font-medium text-primary underline-offset-4 hover:underline"
+                to={isSignUp ? '/entrar' : '/criar-conta'}
+              >
+                {isSignUp ? 'Entrar' : 'Criar conta'}
+              </Link>
+            </p>
+
+            <Separator />
+
+            <p className="text-center text-xs text-muted-foreground">
+              Ao continuar, voce concorda com nossos{' '}
+              <Link className="text-primary" to="/">
+                Termos de Uso
+              </Link>{' '}
+              e{' '}
+              <Link className="text-primary" to="/">
+                Politica de Privacidade
+              </Link>
+              .
+            </p>
+          </CardContent>
+        </div>
       </Card>
     </div>
   );
@@ -2205,30 +2489,29 @@ export function CitiesPage() {
 }
 
 export function SignInPage() {
-  const { signIn } = usePricely();
+  const { signIn, signUp } = usePricely();
 
   return (
     <AuthCard
-      ctaLabel="Entrar"
-      description="Entre para salvar sua cidade, reaproveitar listas e continuar a compra no celular."
-      onSubmit={({ email, password }) => signIn(email, password)}
-      title="Entrar no Pricely"
+      initialMode="sign-in"
+      onSignIn={({ email, password }) => signIn(email, password)}
+      onSignUp={({ displayName, email, password }) =>
+        signUp(email, password, displayName)
+      }
     />
   );
 }
 
 export function SignUpPage() {
-  const { signUp } = usePricely();
+  const { signIn, signUp } = usePricely();
 
   return (
     <AuthCard
-      ctaLabel="Criar conta"
-      description="Crie uma conta para salvar sua cidade, sincronizar listas e usar checklist no mercado."
-      includeDisplayName
-      onSubmit={({ displayName, email, password }) =>
-        signUp(email, password, displayName ?? 'Cliente Pricely')
+      initialMode="sign-up"
+      onSignIn={({ email, password }) => signIn(email, password)}
+      onSignUp={({ displayName, email, password }) =>
+        signUp(email, password, displayName)
       }
-      title="Criar conta"
     />
   );
 }

@@ -570,7 +570,7 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   page,
 }) => {
   await page.goto('/entrar');
-  await expect(page.getByText('Entrar no Pricely').first()).toBeVisible();
+  await expect(page.getByText('Sua conta para comprar melhor').first()).toBeVisible();
   await page.getByLabel('E-mail').fill(customerUser.email);
   await page.getByLabel('Senha').fill('password');
   await page.getByRole('button', { name: 'Entrar' }).click();
