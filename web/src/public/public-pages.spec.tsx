@@ -420,6 +420,7 @@ describe('public pages', () => {
           catalogProductId: 'product-1',
           productVariantId: 'variant-1',
           productName: 'Arroz tipo 1 5kg',
+          category: 'Mercearia',
           variantName: 'Arroz Camil tipo 1 5kg',
           imageUrl: 'https://example.com/arroz.png',
           packageLabel: '5 kg',
@@ -428,6 +429,7 @@ describe('public pages', () => {
             catalogProductId: 'product-1',
             productVariantId: 'variant-1',
             productName: 'Arroz tipo 1 5kg',
+            category: 'Mercearia',
             variantName: 'Arroz Camil tipo 1 5kg',
             imageUrl: 'https://example.com/arroz.png',
             displayName: 'Arroz Camil tipo 1 5kg',
@@ -446,6 +448,7 @@ describe('public pages', () => {
               catalogProductId: 'product-1',
               productVariantId: 'variant-1',
               productName: 'Arroz tipo 1 5kg',
+              category: 'Mercearia',
               variantName: 'Arroz Camil tipo 1 5kg',
               imageUrl: 'https://example.com/arroz.png',
               displayName: 'Arroz Camil tipo 1 5kg',
@@ -468,21 +471,68 @@ describe('public pages', () => {
           averagePriceAmount: 22.4,
           highestPriceAmount: 22.9,
         },
+        {
+          id: 'variant-2',
+          catalogProductId: 'product-2',
+          productVariantId: 'variant-2',
+          productName: 'Acucar refinado 1kg',
+          category: 'Mercearia',
+          variantName: 'Acucar Uniao 1kg',
+          imageUrl: 'https://example.com/acucar.png',
+          packageLabel: '1 kg',
+          bestOffer: {
+            id: 'offer-3',
+            catalogProductId: 'product-2',
+            productVariantId: 'variant-2',
+            productName: 'Acucar refinado 1kg',
+            category: 'Mercearia',
+            variantName: 'Acucar Uniao 1kg',
+            imageUrl: 'https://example.com/acucar.png',
+            displayName: 'Acucar Uniao 1kg',
+            packageLabel: '1 kg',
+            priceAmount: 4.19,
+            basePriceAmount: 4.79,
+            observedAt: '2026-05-10T00:00:00.000Z',
+            sourceLabel: 'Seed',
+            storeName: 'Unidade Vila Mariana',
+            neighborhood: 'Vila Mariana',
+            confidenceLevel: 'high',
+          },
+          alternativeOffers: [],
+          offers: [],
+          establishmentCount: 1,
+          cheapestPriceAmount: 4.19,
+          averagePriceAmount: 4.19,
+          highestPriceAmount: 4.19,
+        },
       ],
     });
 
     renderPublicPage(<OffersPage />);
 
     expect(await screen.findByText('Arroz Camil tipo 1 5kg')).toBeTruthy();
+    expect(screen.getByText('Acucar Uniao 1kg')).toBeTruthy();
     expect(screen.getByText('Arroz tipo 1 5kg')).toBeTruthy();
-    expect(screen.getByText('2 estabelecimentos')).toBeTruthy();
+    expect(screen.getByText(/2\s+de\s+2 produtos agrupados/)).toBeTruthy();
+    expect(screen.getByText('2 mercados')).toBeTruthy();
     expect(
-      screen.getByText(/Menor preço em Unidade Vila Mariana/),
-    ).toBeTruthy();
+      screen.getAllByText(/Menor preço em Unidade Vila Mariana/).length,
+    ).toBeGreaterThan(0);
     expect(screen.getAllByText('R$ 1,00').length).toBeGreaterThan(0);
     expect(screen.getByText(/abaixo/)).toBeTruthy();
     expect(screen.getByText('R$ 22,40')).toBeTruthy();
-    expect(screen.getByText('Ver outros estabelecimentos')).toBeTruthy();
+    expect(screen.getByText('Outros mercados')).toBeTruthy();
+
+    fireEvent.change(
+      screen.getByPlaceholderText('Nome, produto, mercado, bairro...'),
+      {
+        target: { value: 'acucar' },
+      },
+    );
+
+    expect(screen.getByText(/1\s+de\s+2 produtos agrupados/)).toBeTruthy();
+    expect(screen.queryByText('Arroz Camil tipo 1 5kg')).toBeNull();
+    expect(screen.getByText('Acucar Uniao 1kg')).toBeTruthy();
   });
 
   it('deduplicates regional offers by variant when the API only returns flat offers', async () => {
@@ -547,11 +597,11 @@ describe('public pages', () => {
       await screen.findByText('Feijao Carioca Camil 1kg'),
     ).toBeTruthy();
     expect(screen.getAllByText('Feijao Carioca Camil 1kg')).toHaveLength(1);
-    expect(screen.getByText('2 estabelecimentos')).toBeTruthy();
+    expect(screen.getByText('2 mercados')).toBeTruthy();
     expect(
       screen.getByText(/Menor preço em Unidade Santo Amaro/),
     ).toBeTruthy();
-    expect(screen.getByText('Ver outros estabelecimentos')).toBeTruthy();
+    expect(screen.getByText('Outros mercados')).toBeTruthy();
     expect(screen.getAllByText(/Unidade Pinheiros/).length).toBeGreaterThan(0);
   });
 

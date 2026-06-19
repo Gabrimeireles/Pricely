@@ -598,6 +598,7 @@ sensitive monetary values across web surfaces.
 - [X] T242 Resize shared brand cart asset alignment and add visual receipt-flow roadmap modules to public explanatory modals in `web/src/public/` and `web/src/components/design-system/`
 - [X] T243 Replace misleading public city-selection CTAs with header-selection guidance or explicit cities-and-stores browsing copy in `web/src/public/`
 - [X] T244 Make public city-selection CTAs open a real shared city selector instead of routing to `/cidades` in `web/src/public/`
+- [X] T245 Compact public offer cards and add scalable offer search/filter controls in `web/src/public/`
 
 **Homolog validation note (2026-06-15)**: Web/admin/backend MVP smoke passed on
 `https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.
