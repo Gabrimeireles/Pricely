@@ -86,6 +86,30 @@ class InMemoryShoppingListRepository {
     return value ? structuredClone(value) : null;
   }
 
+  async findByShareToken(shareToken: string) {
+    const value = Array.from(this.lists.values()).find(
+      (entry) =>
+        entry.shareToken === shareToken &&
+        entry.sharedAt &&
+        !entry.shareRevokedAt,
+    );
+    return value ? structuredClone(value) : null;
+  }
+
+  async share(id: string, userId: string, shareToken: string) {
+    const existing = this.lists.get(id);
+    if (!existing || existing.userId !== userId) {
+      return null;
+    }
+
+    existing.shareToken = shareToken;
+    existing.sharedAt = new Date().toISOString();
+    existing.shareRevokedAt = undefined;
+    existing.updatedAt = new Date().toISOString();
+    this.lists.set(id, existing);
+    return structuredClone(existing);
+  }
+
   async appendItems(id: string, userId: string, items: any[], status: string) {
     const existing = this.lists.get(id);
     if (!existing || existing.userId !== userId) {

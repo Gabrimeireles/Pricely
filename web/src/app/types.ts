@@ -79,6 +79,9 @@ export interface ShoppingList {
   updatedAt: string;
   expectedSavings: number;
   latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
+  shareToken?: string;
+  sharedAt?: string;
+  shareUrl?: string;
   completedAt?: string;
   paidTotal?: number;
   items: ShoppingListItem[];

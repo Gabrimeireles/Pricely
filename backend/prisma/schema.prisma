@@ -380,6 +380,9 @@ model ShoppingList {
   name                 String
   preferredRegionId    String?               @db.Uuid
   status               ShoppingListStatus    @default(draft)
+  shareToken           String?               @unique
+  sharedAt             DateTime?
+  shareRevokedAt       DateTime?
   completedAt          DateTime?
   paidTotal            Decimal?              @db.Decimal(10, 2)
   createdAt            DateTime              @default(now())
@@ -391,6 +394,7 @@ model ShoppingList {
   user                 UserAccount           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, updatedAt])
+  @@index([shareToken, sharedAt])
 }
 
 model ShoppingListItem {

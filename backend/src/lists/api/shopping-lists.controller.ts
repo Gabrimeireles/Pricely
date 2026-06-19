@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 
 import { type JwtUserPayload } from '../../auth/auth.types';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
@@ -35,6 +44,15 @@ export class ShoppingListsController {
     @Param('shoppingListId') shoppingListId: string,
   ) {
     return this.shoppingListsService.getById(user.sub, shoppingListId);
+  }
+
+  @Post(':shoppingListId/share')
+  @HttpCode(200)
+  async share(
+    @CurrentUser() user: JwtUserPayload,
+    @Param('shoppingListId') shoppingListId: string,
+  ) {
+    return this.shoppingListsService.share(user.sub, shoppingListId);
   }
 
   @Patch(':shoppingListId')
@@ -105,5 +123,15 @@ export class ShoppingListsController {
         reason: body.reason,
       },
     );
+  }
+}
+
+@Controller('shopping-lists/shared')
+export class SharedShoppingListsController {
+  constructor(private readonly shoppingListsService: ShoppingListsService) {}
+
+  @Get(':shareToken')
+  async getByShareToken(@Param('shareToken') shareToken: string) {
+    return this.shoppingListsService.getByShareToken(shareToken);
   }
 }

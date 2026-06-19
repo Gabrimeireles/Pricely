@@ -53,6 +53,32 @@ describe('Grocery optimizer API contract', () => {
         }),
       );
 
+      const shareResponse = await request(app.getHttpServer())
+        .post(`/shopping-lists/${shoppingListId}/share`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .expect(200);
+
+      expect(shareResponse.body).toEqual(
+        expect.objectContaining({
+          id: shoppingListId,
+          shareToken: expect.any(String),
+          sharedAt: expect.any(String),
+        }),
+      );
+
+      const sharedListResponse = await request(app.getHttpServer())
+        .get(`/shopping-lists/shared/${shareResponse.body.shareToken}`)
+        .expect(200);
+
+      expect(sharedListResponse.body).toEqual(
+        expect.objectContaining({
+          id: shoppingListId,
+          name: 'Contract list',
+          shareToken: shareResponse.body.shareToken,
+          items: expect.any(Array),
+        }),
+      );
+
       const optimizationResponse = await request(app.getHttpServer())
         .post(`/shopping-lists/${shoppingListId}/optimize`)
         .set('Authorization', `Bearer ${session.accessToken}`)
