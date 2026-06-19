@@ -594,6 +594,7 @@ sensitive monetary values across web surfaces.
 - [X] T238 Extend smoke screenshot extraction to validate logged-out/logged-in shell state, protected auth-required state, offer-card alignment, and home placeholder copy against generated artifacts in `.tmp/smoke-screens-*` and `web/e2e/`
 - [X] T239 Fix smoke-found sidebar footer contrast and public placeholder card wrapping in `web/src/components/design-system/`, `web/src/dashboard/`, and `web/src/public/`
 - [X] T240 Align public login/register, protected auth-required, and brand mark surfaces with `docs/design-system/reference-screens/web-public/web_login_and_register.png`, `docs/design-system/reference-screens/web-public/web_protected_auth_required.png`, and shared public web brand references in `web/src/public/` and `web/src/components/design-system/`
+- [X] T241 Polish public brand asset, sidebar help footer, receipt education modal, home location status cards, and protected auth-required sizing in `web/src/public/` and `web/src/components/design-system/`
 
 **Homolog validation note (2026-06-15)**: Web/admin/backend MVP smoke passed on
 `https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ShoppingCartIcon } from 'lucide-react';
 
+import pricelyIcon from '@/assets/pricely-icon.png';
 import { cn } from '@/lib/utils';
 
 type PricelyBrandMarkProps = {
@@ -22,14 +22,15 @@ function PricelyBrandMark({
           compact && 'text-[1.65rem]',
         )}
       >
-        pricely
+        Pricely
       </span>
-      <ShoppingCartIcon
-        aria-hidden="true"
+      <img
+        alt=""
         className={cn(
-          'size-9 stroke-[2.4] text-primary',
+          'size-9 object-contain',
           compact && 'size-7',
         )}
+        src={pricelyIcon}
       />
     </>
   );
