@@ -168,6 +168,7 @@ type RegionalOfferApiResponse = {
   catalogProductId: string;
   productVariantId: string;
   productName: string;
+  category?: string;
   variantName?: string;
   imageUrl?: string;
   displayName: string;
@@ -191,6 +192,7 @@ type RegionalOfferGroupApiResponse = {
   catalogProductId: string;
   productVariantId: string;
   productName: string;
+  category?: string;
   variantName?: string;
   imageUrl?: string;
   packageLabel: string;

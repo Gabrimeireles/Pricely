@@ -133,6 +133,14 @@ type OptimizationResultTab =
   | 'savings';
 type OptimizationItemFilter = 'all' | 'selected' | 'review';
 
+function normalizeSearchText(value: string | null | undefined) {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function CitySelectionDialog({
   cityId,
   cities,
@@ -2092,6 +2100,9 @@ export function OffersPage() {
     NonNullable<RegionOffersApiResponse['groupedOffers']>
   >([]);
   const [storeFilter, setStoreFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [confidenceFilter, setConfidenceFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isCitySelectionOpen, setIsCitySelectionOpen] = useState(false);
 
   useEffect(() => {
@@ -2131,7 +2142,22 @@ export function OffersPage() {
       ),
     ),
   ).sort((left, right) => left.localeCompare(right));
-  const visibleOfferGroups =
+
+  const categoryOptions = Array.from(
+    new Set(
+      offerGroups
+        .map((group) => group.category ?? group.bestOffer.category)
+        .filter((category): category is string => Boolean(category)),
+    ),
+  ).sort((left, right) => left.localeCompare(right));
+
+  const hasActiveOfferFilters =
+    searchQuery.trim() !== '' ||
+    storeFilter !== 'all' ||
+    categoryFilter !== 'all' ||
+    confidenceFilter !== 'all';
+
+  const storeScopedOfferGroups =
     storeFilter === 'all'
       ? offerGroups
       : offerGroups
@@ -2145,6 +2171,54 @@ export function OffersPage() {
           .filter((group): group is NonNullable<typeof group> =>
             Boolean(group),
           );
+  const normalizedSearchQuery = normalizeSearchText(searchQuery);
+  const visibleOfferGroups = storeScopedOfferGroups.filter((group) => {
+    const groupCategory = group.category ?? group.bestOffer.category ?? '';
+    const comparableOffers = getComparableOffers(group);
+
+    if (categoryFilter !== 'all' && groupCategory !== categoryFilter) {
+      return false;
+    }
+
+    if (
+      confidenceFilter !== 'all' &&
+      group.bestOffer.confidenceLevel !== confidenceFilter
+    ) {
+      return false;
+    }
+
+    if (!normalizedSearchQuery) {
+      return true;
+    }
+
+    const searchableText = normalizeSearchText(
+      [
+        group.productName,
+        group.variantName,
+        group.packageLabel,
+        groupCategory,
+        group.bestOffer.displayName,
+        ...comparableOffers.flatMap((offer) => [
+          offer.productName,
+          offer.variantName,
+          offer.displayName,
+          offer.packageLabel,
+          offer.storeName,
+          offer.neighborhood,
+          offer.sourceLabel,
+        ]),
+      ].join(' '),
+    );
+
+    return searchableText.includes(normalizedSearchQuery);
+  });
+
+  const clearOfferFilters = () => {
+    setSearchQuery('');
+    setStoreFilter('all');
+    setCategoryFilter('all');
+    setConfidenceFilter('all');
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -2174,71 +2248,145 @@ export function OffersPage() {
       ) : null}
 
       {cityId ? (
-        <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card/90 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="font-medium">Filtro por estabelecimento</div>
-            <div className="text-sm text-muted-foreground">
-              Cada produto aparece uma vez, com o menor preço primeiro e outras
-              lojas abertas no detalhe.
-              {storeFilter === 'all'
-                ? ` ${storeOptions.length} estabelecimentos disponíveis neste recorte.`
-                : ` Recorte atual: ${storeFilter}.`}
+        <div className="grid gap-4 rounded-lg border border-border/70 bg-card/90 p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 font-medium">
+                <SlidersHorizontalIcon className="size-4" />
+                Buscar e filtrar ofertas
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {visibleOfferGroups.length} de {offerGroups.length} produtos
+                agrupados. Cada produto aparece uma vez, com o menor preço
+                primeiro.
+              </div>
             </div>
+            {hasActiveOfferFilters ? (
+              <Button onClick={clearOfferFilters} size="sm" variant="outline">
+                Limpar filtros
+              </Button>
+            ) : null}
           </div>
-          <select
-            className="h-9 rounded-md border border-border bg-background px-3 text-sm"
-            onChange={(event) => setStoreFilter(event.target.value)}
-            value={storeFilter}
-          >
-            <option value="all">Todos os estabelecimentos</option>
-            {storeOptions.map((storeName) => (
-              <option key={storeName} value={storeName}>
-                {storeName}
-              </option>
-            ))}
-          </select>
+          <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_repeat(3,minmax(160px,220px))]">
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium">Pesquisar</span>
+              <div className="relative">
+                <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Nome, produto, mercado, bairro..."
+                  value={searchQuery}
+                />
+              </div>
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium">Mercado</span>
+              <Select onValueChange={setStoreFilter} value={storeFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Todos os mercados" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="all">Todos os mercados</SelectItem>
+                    {storeOptions.map((storeName) => (
+                      <SelectItem key={storeName} value={storeName}>
+                        {storeName}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium">Categoria</span>
+              <Select
+                disabled={categoryOptions.length === 0}
+                onValueChange={setCategoryFilter}
+                value={categoryFilter}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue
+                    placeholder={
+                      categoryOptions.length > 0
+                        ? 'Todas as categorias'
+                        : 'Aguardando categorias'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="all">Todas as categorias</SelectItem>
+                    {categoryOptions.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium">Confiança</span>
+              <Select
+                onValueChange={setConfidenceFilter}
+                value={confidenceFilter}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="high">Alta</SelectItem>
+                    <SelectItem value="medium">Média</SelectItem>
+                    <SelectItem value="low">Baixa</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </label>
+          </div>
         </div>
       ) : null}
 
-      <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {visibleOfferGroups.map((group) => (
           <Card
             key={group.id}
-            className="flex h-full min-h-[520px] flex-col overflow-hidden"
+            className="flex h-full min-h-[360px] flex-col overflow-hidden"
           >
-            <div className="h-44 shrink-0 overflow-hidden">
+            <div className="h-28 shrink-0 overflow-hidden bg-muted">
               <img
                 alt={group.variantName}
                 className="h-full w-full object-cover"
                 src={resolveProductImage(group.imageUrl)}
               />
             </div>
-            <CardHeader className="shrink-0">
-              <CardTitle className="line-clamp-2 min-h-[2.5rem]">
+            <CardHeader className="shrink-0 p-4 pb-2">
+              <CardTitle className="line-clamp-2 min-h-10 text-base">
                 {group.variantName}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="line-clamp-1 text-xs">
                 {formatVariantWithPackage(
                   group.productName,
                   group.packageLabel,
                 )}
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-3">
+            <CardContent className="flex flex-1 flex-col gap-2 p-4 pt-0">
               <div className="flex flex-wrap gap-2">
-                {freshnessBadge('fresh')}
                 {confidenceBadge(
                   group.bestOffer.confidenceLevel === 'high'
                     ? 'alta'
                     : group.bestOffer.confidenceLevel === 'medium'
                       ? 'media'
-                      : 'baixa',
+                    : 'baixa',
                 )}
-                <StatusBadge tone="location">
+                <StatusBadge tone="location" className="text-[0.7rem]">
                   {group.establishmentCount}{' '}
                   {group.establishmentCount === 1
-                    ? 'estabelecimento'
-                    : 'estabelecimentos'}
+                    ? 'mercado'
+                    : 'mercados'}
                 </StatusBadge>
               </div>
               <PriceDisplay
@@ -2246,55 +2394,42 @@ export function OffersPage() {
                 priceAmount={group.bestOffer.priceAmount}
                 promotionalPriceAmount={group.bestOffer.promotionalPriceAmount}
               />
-              <div className="text-sm text-muted-foreground">
+              <div className="line-clamp-2 text-sm text-muted-foreground">
                 Menor preço em {group.bestOffer.storeName} ·{' '}
                 {group.bestOffer.neighborhood}
               </div>
               {(group.savingsVsSecondCheapest ?? 0) > 0 &&
               group.secondCheapestPriceAmount ? (
-                <div className="text-sm font-medium text-[var(--ds-savings)]">
+                <div className="line-clamp-2 text-sm font-medium text-[var(--ds-savings)]">
                   <MaskedMoney
                     value={formatCurrency(group.savingsVsSecondCheapest ?? 0)}
                   />{' '}
-                  abaixo do próximo menor preço (
-                  <MaskedMoney
-                    value={formatCurrency(group.secondCheapestPriceAmount)}
-                  />
-                  ).
+                  abaixo do próximo menor preço.
                 </div>
               ) : group.establishmentCount > 1 ? (
                 <div className="text-sm text-muted-foreground">
-                  Menor preço empatado entre estabelecimentos elegíveis.
+                  Menor preço empatado.
                 </div>
               ) : null}
               {group.averagePriceAmount > 0 ? (
-                <div className="text-sm text-muted-foreground">
-                  Média da variante na cidade:{' '}
+                <div className="text-xs text-muted-foreground">
+                  Média na cidade:{' '}
                   <MaskedMoney value={formatCurrency(group.averagePriceAmount)} />
                   {group.averagePriceAmount > group.cheapestPriceAmount ? (
-                    <>
-                      {' '}
-                      ·{' '}
-                      <MaskedMoney
-                        value={formatCurrency(
-                          group.averagePriceAmount - group.cheapestPriceAmount,
-                        )}
-                      />{' '}
-                      acima do menor preço
-                    </>
+                    <> · acima do menor</>
                   ) : null}
                 </div>
               ) : null}
               {group.bestOffer.sourceLabel ? (
-                <div className="text-sm text-muted-foreground">
+                <div className="line-clamp-1 text-xs text-muted-foreground">
                   Origem: {group.bestOffer.sourceLabel} ·{' '}
                   {formatDateTime(group.bestOffer.observedAt)}
                 </div>
               ) : null}
               {group.alternativeOffers.length > 0 ? (
-                <details className="mt-auto rounded-lg border border-border/70 p-3 text-sm">
+                <details className="mt-auto rounded-lg border border-border/70 p-2 text-xs">
                   <summary className="cursor-pointer font-medium">
-                    Ver outros estabelecimentos
+                    Outros mercados
                   </summary>
                   <div className="mt-3 grid gap-2">
                     {group.alternativeOffers.map((offer) => (
@@ -2325,10 +2460,10 @@ export function OffersPage() {
                   </div>
                 </details>
               ) : (
-                <div className="mt-auto min-h-12" />
+                <div className="mt-auto min-h-8" />
               )}
             </CardContent>
-            <CardFooter className="mt-auto shrink-0 justify-end border-t border-border/70">
+            <CardFooter className="mt-auto shrink-0 justify-end border-t border-border/70 p-3">
               <Button asChild size="sm" variant="outline">
                 <Link to={`/ofertas/${group.bestOffer.id}`}>
                   Detalhe
@@ -2343,16 +2478,28 @@ export function OffersPage() {
         <ActionPlaceholder
           icon={<MapPinIcon className="size-5" />}
           title={
-            city?.status === 'pilot'
+            hasActiveOfferFilters
+              ? 'Nenhuma oferta encontrada'
+              : city?.status === 'pilot'
               ? 'Cidade em ativação'
               : 'Nenhuma oferta agrupada disponível'
           }
           description={
-            city?.status === 'pilot'
+            hasActiveOfferFilters
+              ? 'Revise busca, mercado, categoria ou confiança para ampliar o resultado.'
+              : city?.status === 'pilot'
               ? 'Esta cidade ainda precisa de notas fiscais e validações para liberar ofertas confiáveis.'
               : 'Troque o filtro de estabelecimento ou consulte as cidades e lojas suportadas para comparar preços.'
           }
-          primaryAction={<Link to="/cidades">Ver cidades e lojas</Link>}
+          primaryAction={
+            hasActiveOfferFilters ? (
+              <button onClick={clearOfferFilters} type="button">
+                Limpar filtros
+              </button>
+            ) : (
+              <Link to="/cidades">Ver cidades e lojas</Link>
+            )
+          }
           secondaryAction={<Link to="/notas">Enviar nota fiscal</Link>}
         />
       ) : null}
