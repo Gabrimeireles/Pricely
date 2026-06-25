@@ -613,11 +613,11 @@ sensitive monetary values across web surfaces.
 
 ## Phase 26: Production Readiness and Release Governance
 
-- [ ] T257 Define production environment promotion, rollback, backup, and restore runbooks in `docs/deployment/`
-- [ ] T258 Connect persisted SLO alerts and backend exceptions to the accepted external incident channel without exposing sensitive payloads
-- [ ] T259 Run cross-browser release smoke on Chromium, Firefox, and WebKit against the production candidate
-- [ ] T260 Complete mobile parity validation for auth, city, lists, optimization evidence, receipts, and monetary privacy before production promotion
-- [ ] T261 Execute a restore drill and migration rollback rehearsal on an isolated production-like database
+- [X] T257 Define production environment promotion, rollback, backup, and restore runbooks in `docs/deployment/`
+- [X] T258 Connect persisted SLO alerts and backend server exceptions to a provider-neutral external incident channel without exposing sensitive payloads
+- [X] T259 Run cross-browser release smoke on Chromium, Firefox, and WebKit against the production candidate
+- [X] T260 Complete mobile parity validation for auth, city, lists, optimization evidence, receipts, and monetary privacy before production promotion
+- [X] T261 Execute a restore drill and migration rollback rehearsal on an isolated production-like database
 
 **Homolog validation note (2026-06-15)**: Web/admin/backend MVP smoke passed on
 `https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.

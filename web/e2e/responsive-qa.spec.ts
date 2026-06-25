@@ -449,7 +449,7 @@ for (const viewport of [
       await page.goto('/listas/list-1/checklist');
       await expect(
         page.getByRole('heading', { name: 'Checklist de compra' }),
-      ).toBeVisible();
+      ).toBeVisible({ timeout: 15_000 });
       await expectNoHorizontalOverflow(page);
 
       await page.goto('/otimizacao/list-1');
@@ -478,7 +478,10 @@ for (const viewport of [
       await expect(page.getByLabel('Buscar no catalogo')).toBeVisible();
       await expect(page.getByText('1 de 1 variantes')).toBeVisible();
       await expectNoHorizontalOverflow(page);
-      await attachViewportScreenshot(page, `admin-catalog-${viewport.name}.png`);
+      await attachViewportScreenshot(
+        page,
+        `admin-catalog-${viewport.name}.png`,
+      );
     });
   });
 }

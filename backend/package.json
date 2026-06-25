@@ -13,6 +13,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:deploy:safe": "node prisma/migrate-deploy.js",
     "db:migrate:reset": "prisma migrate reset --force --skip-seed",
+    "db:migrate:policy": "node prisma/migration-policy-check.js",
+    "db:restore:drill": "node prisma/database-restore-drill.js",
     "db:seed": "node prisma/seed.js",
     "db:studio": "prisma studio",
     "lint": "eslint \"src/**/*.ts\"",

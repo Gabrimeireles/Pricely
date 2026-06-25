@@ -37,3 +37,15 @@ bundle. CI should provide it from the commit SHA until tagged releases exist.
 2. Enable in staging with low sample rates.
 3. Verify redaction with synthetic auth, receipt, and billing failures.
 4. Enable production after incident triage ownership is documented.
+
+## Current webhook bridge
+
+Until a Sentry provider is accepted, backend SLO incidents and HTTP server
+errors can be delivered to a provider-neutral `INCIDENT_WEBHOOK_URL`. The
+payload includes only event name, severity, environment, release, aggregate
+metrics or normalized route/status/request ID, and timestamp. It includes both
+`text` and `content` fields for common webhook receivers.
+
+Search terms, users, tokens, receipts, addresses, and billing identifiers are
+not sent. Delivery failures are logged locally and never fail the public search
+request.

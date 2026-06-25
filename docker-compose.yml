@@ -61,6 +61,8 @@ services:
       PORT: 3000
       APP_HOST: 0.0.0.0
       NODE_ENV: development
+      APP_ENVIRONMENT: local
+      APP_RELEASE: local
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pricely
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -70,7 +72,7 @@ services:
       [
         "sh",
         "-lc",
-        "npm run db:generate && npm run db:migrate:deploy:safe && npm run db:seed && npm run start:dev"
+        "npm run db:generate && npm run db:migrate:deploy:safe && npm run db:seed && npm run start:dev",
       ]
     ports:
       - "3000:3000"

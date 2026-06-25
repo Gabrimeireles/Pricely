@@ -649,7 +649,11 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   ).toBeVisible();
   await page.getByRole('button', { name: 'Adicionar', exact: true }).click();
   await expect(page.getByText('Arroz tipo 1 1kg').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Salvar rascunho' }).click();
+  const saveDraftButton = page.getByRole('button', {
+    name: 'Salvar rascunho',
+  });
+  await expect(saveDraftButton).toBeEnabled({ timeout: 15_000 });
+  await saveDraftButton.click();
   await expect(
     page.getByRole('heading', { name: 'Minhas listas' }),
   ).toBeVisible();

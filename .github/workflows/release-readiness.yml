@@ -1,0 +1,101 @@
+name: Release Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_android_build:
+        description: Build the Android release candidate APK.
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-readiness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cross-browser:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Install release browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Run cross-browser release smoke
+        run: npm run e2e
+      - name: Upload browser traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-browser-traces
+          path: web/test-results
+          retention-days: 7
+
+  database-restore:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pricely_release
+          POSTGRES_USER: pricely
+          POSTGRES_PASSWORD: pricely
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pricely -d pricely_release"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://pricely:pricely@localhost:5432/pricely_release
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run db:migrate:policy
+      - run: npm run db:migrate:deploy:safe
+      - run: npm run db:restore:drill
+
+  mobile-release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - name: Build Android release candidate
+        if: inputs.run_android_build
+        run: flutter build apk --release
+      - name: Upload Android release candidate
+        if: inputs.run_android_build
+        uses: actions/upload-artifact@v6
+        with:
+          name: pricely-android-release-candidate
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7

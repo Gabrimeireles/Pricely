@@ -1,9 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
-import {
-  LOG_REDACTION_PATHS,
-  resolveRequestId,
-} from './logging.config';
+import { LOG_REDACTION_PATHS, resolveRequestId } from './logging.config';
+import { IncidentNotifierService } from './incident-notifier.service';
 
 @Global()
 @Module({
@@ -29,6 +27,7 @@ import {
       },
     }),
   ],
-  exports: [LoggerModule],
+  providers: [IncidentNotifierService],
+  exports: [LoggerModule, IncidentNotifierService],
 })
 export class LoggingModule {}
