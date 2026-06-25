@@ -13,7 +13,16 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
@@ -406,7 +415,7 @@ export class AdminDashboardController {
   }
 
   @Get('metrics/public-search')
-  publicSearchMetricsSnapshot() {
+  async publicSearchMetricsSnapshot() {
     return this.publicSearchMetrics.getSnapshot();
   }
 
@@ -466,11 +475,7 @@ export class AdminDashboardController {
     @Body() body: UpdateUserPremiumDto,
     @Req() request: AuthenticatedAdminRequest,
   ) {
-    return this.adminDashboardService.setUserPremium(
-      id,
-      body,
-      request.user.id,
-    );
+    return this.adminDashboardService.setUserPremium(id, body, request.user.id);
   }
 
   @Post('users/:id/tokens')

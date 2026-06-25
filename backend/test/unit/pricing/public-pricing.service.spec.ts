@@ -383,7 +383,7 @@ describe('PublicPricingService', () => {
       },
     };
     const searchMetrics = {
-      record: jest.fn().mockReturnValue({
+      record: jest.fn().mockResolvedValue({
         p95Ms: 120,
         p95TargetMs: 750,
         pgTrgmEvaluation: { recommended: false },
@@ -442,6 +442,13 @@ describe('PublicPricingService', () => {
       expect.objectContaining({
         strategy: 'candidate',
         resultCount: 3,
+        regionSlug: 'sao-paulo-sp',
+        candidateCounts: {
+          offers: 1,
+          products: 1,
+          variants: 1,
+          establishments: 1,
+        },
       }),
     );
   });

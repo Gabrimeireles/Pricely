@@ -92,6 +92,15 @@ class AdminPrismaMock {
     count: async () => 2,
   };
 
+  readonly publicSearchMetric = {
+    findMany: async () => [],
+    count: async () => 0,
+  };
+
+  readonly publicSearchSloAlert = {
+    findFirst: async () => null,
+  };
+
   readonly userEntitlement = {
     findFirst: jest.fn().mockResolvedValue(null),
   };

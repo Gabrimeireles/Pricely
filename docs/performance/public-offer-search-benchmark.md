@@ -57,8 +57,9 @@ repeat this benchmark with production-like cardinality before enabling them.
 ## Runtime evaluation
 
 Authenticated administrators can inspect `GET /admin/metrics/public-search`.
-The backend keeps a rolling window of search samples and reports p50, p95,
-fallback rate, and strategy counts.
+The backend persists anonymous search samples for 30 days by default and reports
+p50, p95, fallback rate, strategy counts, 24-hour/7-day volume, and a 24-hour
+timeline. Search text is not stored.
 
 The response recommends reevaluating `pg_trgm` only when both conditions hold:
 
@@ -67,4 +68,6 @@ The response recommends reevaluating `pg_trgm` only when both conditions hold:
 
 Defaults are 100 samples and 750 ms over a 500-sample window. A recommendation
 is an investigation trigger, not permission to create indexes automatically.
-The benchmark must be repeated before adding the extension migration.
+An active alert is persisted and emits a structured warning at most once per
+configured cooldown. The benchmark must be repeated before adding the extension
+migration.

@@ -4,14 +4,17 @@ import { useParams } from 'react-router-dom';
 
 import {
   AlertTriangleIcon,
+  BellRingIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   ExternalLinkIcon,
+  GaugeIcon,
   ImageUpIcon,
   InfoIcon,
   ListChecksIcon,
   ReceiptTextIcon,
   RefreshCwIcon,
+  SearchIcon,
   SparklesIcon,
   UserCogIcon,
 } from 'lucide-react';
@@ -20,6 +23,7 @@ import {
   type AdminEstablishmentResponse,
   type AdminMetricsResponse,
   type AdminOfferResponse,
+  type AdminPublicSearchMetricsResponse,
   type AdminProcessingJobDetailResponse,
   type AdminProcessingJobResponse,
   type AdminProductResponse,
@@ -41,6 +45,7 @@ import {
   fetchAdminOffers,
   fetchAdminProcessingJobDetail,
   fetchAdminProcessingJobs,
+  fetchAdminPublicSearchMetrics,
   fetchAdminProducts,
   fetchAdminProductVariants,
   fetchAdminQueueHealth,
@@ -406,8 +411,7 @@ function receiptModerationTooltip(
       'Nota pendente: precisa de liberação manual antes do processamento.',
     quarantined:
       'Nota em quarentena: revise risco, payload e origem antes de liberar.',
-    rejected:
-      'Nota rejeitada: bloqueia reward e uso como evidência de preço.',
+    rejected: 'Nota rejeitada: bloqueia reward e uso como evidência de preço.',
   };
 
   return labels[status];
@@ -644,6 +648,11 @@ export function AdminOverviewPage() {
     fetchAdminQueueHealth,
     null,
   );
+  const { data: publicSearchMetrics, error: publicSearchMetricsError } =
+    useAdminData<AdminPublicSearchMetricsResponse | null>(
+      fetchAdminPublicSearchMetrics,
+      null,
+    );
 
   if (error) {
     return (
@@ -871,6 +880,10 @@ export function AdminOverviewPage() {
       tone: failedJobs > 0 ? ('critical' as const) : ('savings' as const),
     },
   ];
+  const searchTimelineMax = Math.max(
+    publicSearchMetrics?.p95TargetMs ?? 1,
+    ...(publicSearchMetrics?.timeline.map((bucket) => bucket.p95Ms ?? 0) ?? []),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -947,6 +960,192 @@ export function AdminOverviewPage() {
           </div>
         ))}
       </div>
+
+      <section
+        aria-labelledby="public-search-observability-title"
+        className="grid gap-5 border-y border-border/70 py-5"
+      >
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <SearchIcon className="size-5 text-[var(--ds-primary)]" />
+              <h2
+                className="text-lg font-semibold"
+                id="public-search-observability-title"
+              >
+                Busca pública
+              </h2>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Latência persistida, volume e decisão operacional sobre índices.
+            </p>
+          </div>
+          {publicSearchMetrics ? (
+            <StatusBadge
+              family="severity"
+              icon={
+                publicSearchMetrics.alert.status === 'active'
+                  ? BellRingIcon
+                  : GaugeIcon
+              }
+              status={
+                publicSearchMetrics.alert.status === 'active'
+                  ? 'critical'
+                  : publicSearchMetrics.sampleCount <
+                      publicSearchMetrics.pgTrgmEvaluation.minimumSamples
+                    ? 'warning'
+                    : 'healthy'
+              }
+              tooltip={`SLO p95 de ${publicSearchMetrics.p95TargetMs} ms, avaliado sobre as ${publicSearchMetrics.sampleCount} amostras mais recentes.`}
+            >
+              {publicSearchMetrics.alert.status === 'active'
+                ? 'SLO excedido'
+                : publicSearchMetrics.sampleCount <
+                    publicSearchMetrics.pgTrgmEvaluation.minimumSamples
+                  ? 'Coletando amostras'
+                  : 'SLO saudável'}
+            </StatusBadge>
+          ) : null}
+        </div>
+
+        {publicSearchMetricsError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Falha ao carregar métricas de busca</AlertTitle>
+            <AlertDescription>{publicSearchMetricsError}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {publicSearchMetrics ? (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {[
+                {
+                  label: 'p50',
+                  value:
+                    publicSearchMetrics.p50Ms === null
+                      ? 'Sem dados'
+                      : `${Math.round(publicSearchMetrics.p50Ms)} ms`,
+                  detail: 'latência mediana',
+                },
+                {
+                  label: 'p95',
+                  value:
+                    publicSearchMetrics.p95Ms === null
+                      ? 'Sem dados'
+                      : `${Math.round(publicSearchMetrics.p95Ms)} ms`,
+                  detail: `meta ${publicSearchMetrics.p95TargetMs} ms`,
+                },
+                {
+                  label: 'Últimas 24h',
+                  value: String(publicSearchMetrics.volume.last24Hours),
+                  detail: `${publicSearchMetrics.volume.last7Days} em 7 dias`,
+                },
+                {
+                  label: 'Fallback amplo',
+                  value: `${(publicSearchMetrics.fallbackRate * 100).toFixed(1)}%`,
+                  detail: `${publicSearchMetrics.strategyCounts.broadFallback} ocorrências`,
+                },
+                {
+                  label: 'Retenção',
+                  value: `${publicSearchMetrics.retentionDays} dias`,
+                  detail: `${publicSearchMetrics.sampleCount}/${publicSearchMetrics.windowSize} na janela`,
+                },
+              ].map((metric) => (
+                <div
+                  className="grid min-h-28 content-between gap-2 border-l-2 border-border/80 bg-muted/25 p-3"
+                  key={metric.label}
+                >
+                  <span className="text-xs font-medium uppercase text-muted-foreground">
+                    {metric.label}
+                  </span>
+                  <span className="text-2xl font-semibold tabular-nums">
+                    {metric.value}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {metric.detail}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="grid gap-3">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium">p95 nas últimas 24 horas</span>
+                  <span className="text-muted-foreground">
+                    blocos de 2 horas
+                  </span>
+                </div>
+                <div
+                  aria-label="Histórico de latência p95 da busca pública"
+                  className="grid h-40 grid-cols-12 items-end gap-1 border-b border-border/70 px-1 pt-3"
+                  role="img"
+                >
+                  {publicSearchMetrics.timeline.map((bucket) => {
+                    const height = bucket.p95Ms
+                      ? Math.max(
+                          6,
+                          Math.round((bucket.p95Ms / searchTimelineMax) * 100),
+                        )
+                      : 2;
+                    const isAboveTarget =
+                      (bucket.p95Ms ?? 0) > publicSearchMetrics.p95TargetMs;
+
+                    return (
+                      <WithTooltip
+                        key={bucket.startsAt}
+                        label={`${new Date(bucket.startsAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}: ${bucket.sampleCount} buscas, p95 ${bucket.p95Ms === null ? 'sem dados' : `${Math.round(bucket.p95Ms)} ms`}.`}
+                      >
+                        <div className="flex h-full items-end">
+                          <div
+                            className={
+                              isAboveTarget
+                                ? 'w-full bg-[var(--ds-critical)]'
+                                : bucket.sampleCount > 0
+                                  ? 'w-full bg-[var(--ds-primary)]'
+                                  : 'w-full bg-muted'
+                            }
+                            style={{ height: `${height}%` }}
+                          />
+                        </div>
+                      </WithTooltip>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid content-start gap-3 border-l border-border/70 pl-4">
+                <div className="flex items-center gap-2">
+                  <BellRingIcon className="size-4" />
+                  <span className="font-medium">Critério de alerta</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  O alerta abre quando a janela tem pelo menos{' '}
+                  {publicSearchMetrics.pgTrgmEvaluation.minimumSamples} amostras
+                  e p95 acima de {publicSearchMetrics.p95TargetMs} ms.
+                </p>
+                <StatusBadge
+                  tone={
+                    publicSearchMetrics.pgTrgmEvaluation.recommended
+                      ? 'critical'
+                      : 'savings'
+                  }
+                >
+                  {publicSearchMetrics.pgTrgmEvaluation.recommended
+                    ? 'Reavaliar pg_trgm'
+                    : 'Sem ação de índice'}
+                </StatusBadge>
+                <p className="text-xs text-muted-foreground">
+                  O texto pesquisado não é armazenado. Apenas duração,
+                  estratégia, contagens e região entram na telemetria.
+                </p>
+              </div>
+            </div>
+          </>
+        ) : publicSearchMetricsError ? null : (
+          <div className="h-36 animate-pulse bg-muted/40" />
+        )}
+      </section>
 
       <div className="grid gap-4 xl:grid-cols-4">
         <Card className="border-border/70 bg-card/90 shadow-sm">
@@ -1826,22 +2025,27 @@ export function AdminCatalogPage() {
     selectedCatalogProductVariants[0] ??
     null;
   const selectedVariantOffers = selectedCatalogVariant
-    ? offers.filter((offer) => offer.productVariant.id === selectedCatalogVariant.id)
+    ? offers.filter(
+        (offer) => offer.productVariant.id === selectedCatalogVariant.id,
+      )
     : selectedCatalogProduct
-      ? offers.filter((offer) => offer.catalogProduct.id === selectedCatalogProduct.id)
+      ? offers.filter(
+          (offer) => offer.catalogProduct.id === selectedCatalogProduct.id,
+        )
       : [];
   const selectedBestOffer = selectedVariantOffers
     .filter((offer) => offer.isActive)
     .sort(
-      (first, second) =>
-        Number(first.priceAmount) - Number(second.priceAmount),
+      (first, second) => Number(first.priceAmount) - Number(second.priceAmount),
     )[0];
   const productsMissingImages = products.filter((product) => {
     const productVariants = variants.filter(
       (variant) => variant.catalogProductId === product.id,
     );
 
-    return !product.imageUrl && !productVariants.some((variant) => variant.imageUrl);
+    return (
+      !product.imageUrl && !productVariants.some((variant) => variant.imageUrl)
+    );
   }).length;
   const staleOffersCount = offers.filter(
     (offer) => adminOfferFreshnessTone(offer.observedAt) !== 'savings',
@@ -2238,9 +2442,7 @@ export function AdminCatalogPage() {
               value={catalogQuery}
               onChange={(event) => setCatalogQuery(event.target.value)}
             />
-            <StatusBadge tone="neutral">
-              Categoria: Todas
-            </StatusBadge>
+            <StatusBadge tone="neutral">Categoria: Todas</StatusBadge>
             <StatusBadge tone="neutral">Marca: Todas</StatusBadge>
             <StatusBadge tone="neutral">
               {visibleProducts.length} de {products.length} produtos
@@ -2389,9 +2591,13 @@ export function AdminCatalogPage() {
                               if (!accessToken) {
                                 return;
                               }
-                              await updateAdminProduct(accessToken, product.id, {
-                                isActive: !product.isActive,
-                              });
+                              await updateAdminProduct(
+                                accessToken,
+                                product.id,
+                                {
+                                  isActive: !product.isActive,
+                                },
+                              );
                               await reload();
                             }}
                           >
@@ -2457,7 +2663,9 @@ export function AdminCatalogPage() {
                                     <img
                                       alt={variant.displayName}
                                       className="size-12 rounded-lg border border-border/70 object-cover"
-                                      src={resolveProductImage(variant.imageUrl)}
+                                      src={resolveProductImage(
+                                        variant.imageUrl,
+                                      )}
                                     />
                                     <div className="min-w-0">
                                       <div className="truncate text-sm font-medium">
@@ -2547,8 +2755,7 @@ export function AdminCatalogPage() {
                           slug: selectedCatalogProduct.slug,
                           name: selectedCatalogProduct.name,
                           category: selectedCatalogProduct.category,
-                          defaultUnit:
-                            selectedCatalogProduct.defaultUnit ?? '',
+                          defaultUnit: selectedCatalogProduct.defaultUnit ?? '',
                         });
                       }}
                     >
@@ -2579,31 +2786,35 @@ export function AdminCatalogPage() {
                           Sem variantes para este produto.
                         </div>
                       ) : null}
-                      {selectedCatalogProductVariants.slice(0, 8).map((variant) => (
-                        <button
-                          className={
-                            selectedCatalogVariant?.id === variant.id
-                              ? 'rounded-lg border border-primary bg-primary/10 p-2 text-left'
-                              : 'rounded-lg border border-border/70 bg-background/80 p-2 text-left transition hover:bg-muted/30'
-                          }
-                          key={variant.id}
-                          type="button"
-                          onClick={() => setSelectedCatalogVariantId(variant.id)}
-                        >
-                          <img
-                            alt={variant.displayName}
-                            className="mb-2 h-20 w-full rounded-md border border-border/70 object-cover"
-                            src={resolveProductImage(variant.imageUrl)}
-                          />
-                          <div className="truncate text-sm font-medium">
-                            Variante: {variant.displayName}
-                          </div>
-                          <div className="truncate text-xs text-muted-foreground">
-                            {variant.packageLabel ??
-                              'Apresentação não informada'}
-                          </div>
-                        </button>
-                      ))}
+                      {selectedCatalogProductVariants
+                        .slice(0, 8)
+                        .map((variant) => (
+                          <button
+                            className={
+                              selectedCatalogVariant?.id === variant.id
+                                ? 'rounded-lg border border-primary bg-primary/10 p-2 text-left'
+                                : 'rounded-lg border border-border/70 bg-background/80 p-2 text-left transition hover:bg-muted/30'
+                            }
+                            key={variant.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedCatalogVariantId(variant.id)
+                            }
+                          >
+                            <img
+                              alt={variant.displayName}
+                              className="mb-2 h-20 w-full rounded-md border border-border/70 object-cover"
+                              src={resolveProductImage(variant.imageUrl)}
+                            />
+                            <div className="truncate text-sm font-medium">
+                              Variante: {variant.displayName}
+                            </div>
+                            <div className="truncate text-xs text-muted-foreground">
+                              {variant.packageLabel ??
+                                'Apresentação não informada'}
+                            </div>
+                          </button>
+                        ))}
                     </div>
                   </div>
 
@@ -2618,10 +2829,11 @@ export function AdminCatalogPage() {
                           )}
                         />
                         <div className="min-w-0">
-                          <div className="font-medium">Variante selecionada</div>
+                          <div className="font-medium">
+                            Variante selecionada
+                          </div>
                           <div className="text-sm text-muted-foreground">
-                            {selectedCatalogVariant.brandName ??
-                              'Marca livre'}{' '}
+                            {selectedCatalogVariant.brandName ?? 'Marca livre'}{' '}
                             ·{' '}
                             {selectedCatalogVariant.packageLabel ??
                               'sem embalagem'}
@@ -2682,9 +2894,7 @@ export function AdminCatalogPage() {
                           </div>
                         </div>
                         <div>
-                          <div className="text-muted-foreground">
-                            Confiança
-                          </div>
+                          <div className="text-muted-foreground">Confiança</div>
                           <div className="font-medium">
                             {selectedVariantOffers.length > 0
                               ? adminOfferConfidenceLabel(
@@ -2706,8 +2916,7 @@ export function AdminCatalogPage() {
                                 selectedCatalogVariant.catalogProductId,
                               slug: selectedCatalogVariant.slug ?? '',
                               displayName: selectedCatalogVariant.displayName,
-                              brandName:
-                                selectedCatalogVariant.brandName ?? '',
+                              brandName: selectedCatalogVariant.brandName ?? '',
                               variantLabel:
                                 selectedCatalogVariant.variantLabel ?? '',
                               packageLabel:
@@ -3466,7 +3675,9 @@ export function AdminUsersPage() {
                             primaryAction={
                               <a href={`/dashboard/usuarios`}>Auditar conta</a>
                             }
-                            secondaryAction={<a href="/dashboard/notas">Ver notas</a>}
+                            secondaryAction={
+                              <a href="/dashboard/notas">Ver notas</a>
+                            }
                           />
                         )}
                       </TableCell>
@@ -4215,9 +4426,7 @@ export function AdminReceiptsPage() {
                             Auditar nota
                           </a>
                         }
-                        secondaryAction={
-                          <a href="/dashboard/fila">Ver jobs</a>
-                        }
+                        secondaryAction={<a href="/dashboard/fila">Ver jobs</a>}
                       />
                     ) : null}
                     {receipt.lineItems.map((item) => (
@@ -4809,7 +5018,9 @@ export function AdminReceiptAuditPage() {
                 icon={<ReceiptTextIcon className="size-5" />}
                 title="Aguardando extração"
                 description="Esta nota ainda não possui itens extraídos. Reprocesse a leitura ou acompanhe o job antes de liberar qualquer decisão operacional."
-                primaryAction={<a href={`/dashboard/nota/${receipt.id}`}>Revisar nota</a>}
+                primaryAction={
+                  <a href={`/dashboard/nota/${receipt.id}`}>Revisar nota</a>
+                }
                 secondaryAction={<a href="/dashboard/fila">Ver jobs</a>}
               />
             ) : null}
@@ -4853,7 +5064,8 @@ export function AdminReceiptAuditPage() {
                       <MaskedMoney value={formatCurrency(item.unitPrice)} />
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      total <MaskedMoney value={formatCurrency(item.lineTotal)} />
+                      total{' '}
+                      <MaskedMoney value={formatCurrency(item.lineTotal)} />
                     </div>
                   </div>
                   <div className="rounded-md border border-border/70 p-3">
@@ -5219,7 +5431,9 @@ export function AdminQueueDetailPage() {
               <CardContent className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-lg border border-border/70 bg-background/80 p-4">
                   <div className="text-sm text-muted-foreground">Recurso</div>
-                  <div className="mt-2 font-medium">{jobResourceTitle(job)}</div>
+                  <div className="mt-2 font-medium">
+                    {jobResourceTitle(job)}
+                  </div>
                   <div className="mt-1 text-sm text-muted-foreground">
                     {job.receiptRecord?.storeName ??
                       job.shoppingList?.name ??
@@ -5245,9 +5459,7 @@ export function AdminQueueDetailPage() {
             <Card className="border-border/70 bg-card/90 shadow-sm">
               <CardHeader>
                 <CardTitle>
-                  {job.failureReason
-                    ? 'Motivo da falha'
-                    : 'Ação recomendada'}
+                  {job.failureReason ? 'Motivo da falha' : 'Ação recomendada'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3">
@@ -5401,7 +5613,9 @@ export function AdminQueueDetailPage() {
                 <div className="text-sm font-medium">Recibo contribuído</div>
                 <div className="rounded-lg border border-border/70 bg-background/80 p-3 text-sm">
                   <div className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">Itens extraídos</span>
+                    <span className="text-muted-foreground">
+                      Itens extraídos
+                    </span>
                     <span className="font-medium">
                       {job.receiptRecord.lineItems?.length ?? 0}
                     </span>
@@ -5478,7 +5692,9 @@ export function AdminQueueDetailPage() {
                       <a href={auditTarget.href}>{auditTarget.label}</a>
                     ) : undefined
                   }
-                  secondaryAction={<a href="/dashboard/fila">Voltar para fila</a>}
+                  secondaryAction={
+                    <a href="/dashboard/fila">Voltar para fila</a>
+                  }
                 />
               ) : null}
               {auditTarget ? (
@@ -5506,7 +5722,9 @@ export function AdminQueueDetailPage() {
             tooltip="Correlação técnica entre job, recurso de negócio, fila e tipo de processamento."
           >
             <div className="grid gap-2 text-sm">
-              <span>ID técnico: {job.resourceType} · {job.resourceId} · job {job.id}</span>
+              <span>
+                ID técnico: {job.resourceType} · {job.resourceId} · job {job.id}
+              </span>
               <span>Fila: {job.queueName}</span>
               <span>Tipo: {job.jobType}</span>
             </div>

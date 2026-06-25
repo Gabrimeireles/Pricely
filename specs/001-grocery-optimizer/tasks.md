@@ -606,6 +606,18 @@ sensitive monetary values across web surfaces.
 - [X] T250 Update GitHub Actions to Node 24-compatible releases and pin the reusable Docker build workflow in `.github/workflows/`
 - [X] T251 Add a safe Prisma migration baseline and replace deployment `db push` usage with versioned migrations in `backend/prisma/`, Docker Compose, and homolog workflows
 - [X] T252 Instrument public offer search p50/p95, fallback rate, and an admin-visible `pg_trgm` reevaluation trigger in `backend/src/pricing/` and `backend/src/admin/`
+- [X] T253 Persist anonymous public-search samples and SLO alert transitions with retention and notification cooldown in `backend/prisma/` and `backend/src/pricing/`
+- [X] T254 Add responsive admin search observability with p50/p95, 24h/7d volume, fallback, timeline, and alert status in `web/src/dashboard/`
+- [X] T255 Extend Chromium smoke coverage for logged-out protection, authenticated admin observability, desktop/mobile overflow, accessible controls, and console health in `web/e2e/`
+- [X] T256 Validate the new migration against fresh, upgraded, and drifted PostgreSQL schemas and close Phase 25 with homolog screenshots and runtime checks
+
+## Phase 26: Production Readiness and Release Governance
+
+- [ ] T257 Define production environment promotion, rollback, backup, and restore runbooks in `docs/deployment/`
+- [ ] T258 Connect persisted SLO alerts and backend exceptions to the accepted external incident channel without exposing sensitive payloads
+- [ ] T259 Run cross-browser release smoke on Chromium, Firefox, and WebKit against the production candidate
+- [ ] T260 Complete mobile parity validation for auth, city, lists, optimization evidence, receipts, and monetary privacy before production promotion
+- [ ] T261 Execute a restore drill and migration rollback rehearsal on an isolated production-like database
 
 **Homolog validation note (2026-06-15)**: Web/admin/backend MVP smoke passed on
 `https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.

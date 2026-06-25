@@ -7,7 +7,15 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import {
   AdminCatalogPage,
@@ -23,6 +31,7 @@ import {
 } from './dashboard-pages';
 
 const fetchAdminMetrics = vi.fn();
+const fetchAdminPublicSearchMetrics = vi.fn();
 const fetchAdminQueueHealth = vi.fn();
 const fetchAdminProcessingJobs = vi.fn();
 const fetchAdminProcessingJobDetail = vi.fn();
@@ -70,6 +79,8 @@ vi.mock('@/app/monetary-privacy-context', () => ({
 
 vi.mock('@/app/api', () => ({
   fetchAdminMetrics: (...args: unknown[]) => fetchAdminMetrics(...args),
+  fetchAdminPublicSearchMetrics: (...args: unknown[]) =>
+    fetchAdminPublicSearchMetrics(...args),
   fetchAdminQueueHealth: (...args: unknown[]) => fetchAdminQueueHealth(...args),
   fetchAdminProcessingJobs: (...args: unknown[]) =>
     fetchAdminProcessingJobs(...args),
@@ -270,6 +281,7 @@ describe('Admin dashboard pages', () => {
 
   beforeEach(() => {
     fetchAdminMetrics.mockReset();
+    fetchAdminPublicSearchMetrics.mockReset();
     fetchAdminQueueHealth.mockReset();
     fetchAdminProcessingJobs.mockReset();
     fetchAdminProcessingJobDetail.mockReset();
@@ -291,6 +303,39 @@ describe('Admin dashboard pages', () => {
     setAdminUserPremium.mockReset();
     grantAdminUserTokens.mockReset();
     monetaryPrivacyMockState.isMoneyVisible = true;
+    fetchAdminPublicSearchMetrics.mockResolvedValue({
+      windowSize: 500,
+      retentionDays: 30,
+      sampleCount: 120,
+      volume: { last24Hours: 38, last7Days: 120 },
+      p50Ms: 28,
+      p95Ms: 72,
+      maxMs: 110,
+      p95TargetMs: 750,
+      strategyCounts: { candidate: 118, broadFallback: 2 },
+      fallbackRate: 0.0167,
+      timeline: Array.from({ length: 12 }, (_, index) => ({
+        startsAt: new Date(
+          Date.now() - (12 - index) * 2 * 60 * 60 * 1000,
+        ).toISOString(),
+        sampleCount: index + 1,
+        p95Ms: 40 + index,
+      })),
+      pgTrgmEvaluation: {
+        minimumSamples: 100,
+        recommended: false,
+        reason: 'p95_within_target',
+      },
+      alert: {
+        status: 'healthy',
+        observedP95Ms: 72,
+        targetP95Ms: 750,
+        sampleCount: 120,
+        triggeredAt: null,
+        lastNotifiedAt: null,
+      },
+      lastRecordedAt: new Date().toISOString(),
+    });
   });
 
   afterEach(() => {
@@ -329,6 +374,9 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('Confiança das ofertas')).toBeTruthy();
     expect(screen.getByText('Cobertura por cidade')).toBeTruthy();
     expect(screen.getByText('Ações rápidas')).toBeTruthy();
+    expect(screen.getByText('Busca pública')).toBeTruthy();
+    expect(screen.getByText('72 ms')).toBeTruthy();
+    expect(screen.getByText('Sem ação de índice')).toBeTruthy();
   });
 
   it('shows an empty-state message when all overview metrics are zero', async () => {
@@ -498,9 +546,9 @@ describe('Admin dashboard pages', () => {
     ).toBeGreaterThan(0);
     expect(screen.getAllByText('Concluido').length).toBeGreaterThan(0);
     expect(screen.getByText('Dados técnicos')).toBeTruthy();
-    expect(screen.getAllByText('Abrir auditoria de listas').length).toBeGreaterThan(
-      0,
-    );
+    expect(
+      screen.getAllByText('Abrir auditoria de listas').length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText('Linha do tempo')).toBeTruthy();
     expect(screen.getByText(/Worker execut/)).toBeTruthy();
     expect(screen.getByText(/Verificar a auditoria/)).toBeTruthy();
@@ -908,7 +956,10 @@ describe('Admin dashboard pages', () => {
     ).not.toHaveLength(0);
     expect(screen.getByText('Auditar processamento')).toBeTruthy();
     expect(
-      screen.getByText('Auditar processamento').closest('a')?.getAttribute('href'),
+      screen
+        .getByText('Auditar processamento')
+        .closest('a')
+        ?.getAttribute('href'),
     ).toBe('/dashboard/nota/receipt-1');
     expect(
       screen.getByText('1 itens extraídos · 1 com oferta gerada'),
@@ -957,7 +1008,10 @@ describe('Admin dashboard pages', () => {
 
     expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
     expect(
-      screen.getByText('Auditar nota fiscal').closest('a')?.getAttribute('href'),
+      screen
+        .getByText('Auditar nota fiscal')
+        .closest('a')
+        ?.getAttribute('href'),
     ).toBe('/dashboard/nota/receipt-1');
     expect(screen.getByText('Liberar processamento')).toBeTruthy();
   });

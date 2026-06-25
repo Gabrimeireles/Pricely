@@ -338,7 +338,7 @@ paths:
                 $ref: '#/components/schemas/AdminOverview'
   /admin/metrics/public-search:
     get:
-      summary: Return in-process public offer search latency metrics
+      summary: Return persisted public offer search latency and SLO metrics
       responses:
         '200':
           description: Sliding-window public search metrics returned
@@ -1172,12 +1172,22 @@ components:
           type: integer
     PublicSearchMetrics:
       type: object
-      required: [windowSize, sampleCount, p95TargetMs, strategyCounts, fallbackRate, pgTrgmEvaluation]
+      required: [windowSize, retentionDays, sampleCount, volume, p95TargetMs, strategyCounts, fallbackRate, timeline, pgTrgmEvaluation, alert]
       properties:
         windowSize:
           type: integer
+        retentionDays:
+          type: integer
         sampleCount:
           type: integer
+        volume:
+          type: object
+          required: [last24Hours, last7Days]
+          properties:
+            last24Hours:
+              type: integer
+            last7Days:
+              type: integer
         p50Ms:
           type: number
           nullable: true
@@ -1198,6 +1208,20 @@ components:
               type: integer
         fallbackRate:
           type: number
+        timeline:
+          type: array
+          items:
+            type: object
+            required: [startsAt, sampleCount]
+            properties:
+              startsAt:
+                type: string
+                format: date-time
+              sampleCount:
+                type: integer
+              p95Ms:
+                type: number
+                nullable: true
         pgTrgmEvaluation:
           type: object
           properties:
@@ -1208,6 +1232,28 @@ components:
             reason:
               type: string
               enum: [insufficient_samples, p95_within_target, p95_above_target]
+        alert:
+          type: object
+          required: [status, targetP95Ms, sampleCount]
+          properties:
+            status:
+              type: string
+              enum: [healthy, active]
+            observedP95Ms:
+              type: number
+              nullable: true
+            targetP95Ms:
+              type: integer
+            sampleCount:
+              type: integer
+            triggeredAt:
+              type: string
+              format: date-time
+              nullable: true
+            lastNotifiedAt:
+              type: string
+              format: date-time
+              nullable: true
         lastRecordedAt:
           type: string
           format: date-time
