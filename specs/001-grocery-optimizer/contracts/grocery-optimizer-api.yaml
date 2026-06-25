@@ -336,6 +336,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminOverview'
+  /admin/metrics/public-search:
+    get:
+      summary: Return in-process public offer search latency metrics
+      responses:
+        '200':
+          description: Sliding-window public search metrics returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicSearchMetrics'
   /admin/regions:
     get:
       summary: List all regions for admin management
@@ -1160,6 +1170,48 @@ components:
           type: integer
         activeOffers:
           type: integer
+    PublicSearchMetrics:
+      type: object
+      required: [windowSize, sampleCount, p95TargetMs, strategyCounts, fallbackRate, pgTrgmEvaluation]
+      properties:
+        windowSize:
+          type: integer
+        sampleCount:
+          type: integer
+        p50Ms:
+          type: number
+          nullable: true
+        p95Ms:
+          type: number
+          nullable: true
+        maxMs:
+          type: number
+          nullable: true
+        p95TargetMs:
+          type: integer
+        strategyCounts:
+          type: object
+          properties:
+            candidate:
+              type: integer
+            broadFallback:
+              type: integer
+        fallbackRate:
+          type: number
+        pgTrgmEvaluation:
+          type: object
+          properties:
+            minimumSamples:
+              type: integer
+            recommended:
+              type: boolean
+            reason:
+              type: string
+              enum: [insufficient_samples, p95_within_target, p95_above_target]
+        lastRecordedAt:
+          type: string
+          format: date-time
+          nullable: true
     CreateRegionRequest:
       type: object
       required: [name, stateCode, implantationStatus]

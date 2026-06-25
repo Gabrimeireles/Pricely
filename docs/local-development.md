@@ -66,8 +66,10 @@ docker compose down -v
 
 Observacoes:
 
-- O container do backend executa `prisma generate`, `prisma db push --force-reset` e
+- O container do backend executa `prisma generate`, o bootstrap seguro de migrations e
   `prisma db seed` antes de iniciar a API em modo de desenvolvimento.
+- Para descartar o banco explicitamente, use `docker compose down -v`; subir a stack
+  novamente nao executa mais reset implicito.
 - A stack de compose e orientada a desenvolvimento local, com volumes montados e banco
   descartavel quando necessario.
 - O PgAdmin local usa `admin@pricely.local` / `admin` e ja importa o servidor
@@ -123,6 +125,9 @@ flutter run --dart-define=PRICELY_API_BASE_URL=http://192.168.0.10:3000
 - Observabilidade local usa logs Pino estruturados no backend. Ajuste `LOG_LEVEL`
   quando precisar de mais detalhe, mas nao registre payloads brutos de recibos,
   senhas, tokens, CPF, nome ou endereco.
+- A janela de latencia da busca publica pode ser consultada por admins em
+  `GET /admin/metrics/public-search`. A recomendacao de reavaliar `pg_trgm` so fica
+  ativa depois da amostra minima e quando o p95 ultrapassa o alvo configurado.
 - Planos de operacao e deploy estao em:
   - [Pino logging](observability/pino-logging-plan.md)
   - [Sentry](observability/sentry-plan.md)

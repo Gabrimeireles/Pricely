@@ -382,7 +382,17 @@ describe('PublicPricingService', () => {
         findMany,
       },
     };
-    const service = new PublicPricingService(prisma as never);
+    const searchMetrics = {
+      record: jest.fn().mockReturnValue({
+        p95Ms: 120,
+        p95TargetMs: 750,
+        pgTrgmEvaluation: { recommended: false },
+      }),
+    };
+    const service = new PublicPricingService(
+      prisma as never,
+      searchMetrics as never,
+    );
 
     const result = await service.listRegionOffers('sao-paulo-sp', {
       query: 'a',
@@ -426,6 +436,12 @@ describe('PublicPricingService', () => {
             }),
           }),
         }),
+      }),
+    );
+    expect(searchMetrics.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        strategy: 'candidate',
+        resultCount: 3,
       }),
     );
   });

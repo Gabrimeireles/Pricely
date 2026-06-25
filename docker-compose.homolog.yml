@@ -76,7 +76,7 @@ services:
       [
         "sh",
         "-lc",
-        "npm run db:generate && npm run db:push && npm run start",
+        "npm run db:generate && npm run start",
       ]
     ports:
       - "${BACKEND_PORT:-3000}:3000"

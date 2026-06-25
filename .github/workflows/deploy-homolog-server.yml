@@ -12,7 +12,7 @@ on:
         type: boolean
         default: false
       run_seeders:
-        description: "Run backend seeders after db push/reset."
+        description: "Run backend seeders after migration/reset."
         required: true
         type: boolean
         default: true
@@ -213,11 +213,11 @@ jobs:
           if [ "$RESET_DATABASE" = "true" ]; then
             echo "Running destructive database reset..."
             docker compose --env-file .env run --rm -T backend sh -lc \
-              "npm run db:generate && npx prisma db push --force-reset" </dev/null
+              "npm run db:generate && npm run db:migrate:reset" </dev/null
           else
-            echo "Applying database schema without destructive reset..."
+            echo "Applying versioned database migrations..."
             docker compose --env-file .env run --rm -T backend sh -lc \
-              "npm run db:generate && npm run db:push" </dev/null
+              "npm run db:generate && npm run db:migrate:deploy:safe" </dev/null
           fi
 
           if [ "$RUN_SEEDERS" = "true" ]; then

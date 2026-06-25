@@ -1,7 +1,16 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../persistence/prisma.service';
+import {
+  PublicSearchMetricsService,
+  type PublicSearchStrategy,
+} from './public-search-metrics.service';
 
 type PublicOfferSort =
   | 'name'
@@ -25,7 +34,11 @@ export class PublicPricingService {
   private static readonly searchCandidateLimit = 5_000;
   private readonly logger = new Logger(PublicPricingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly searchMetrics?: PublicSearchMetricsService,
+  ) {}
 
   async listRegionOffers(regionSlug: string, query: PublicOfferQuery = {}) {
     const region = await this.prisma.region.findUnique({
@@ -53,9 +66,10 @@ export class PublicPricingService {
       48,
     );
     const sort = this.parseOfferSort(query.sort);
-    const textSearchWhere = normalizedQuery
+    const searchStartedAt = normalizedQuery ? performance.now() : undefined;
+    const textSearch = normalizedQuery
       ? await this.buildTextSearchWhere(normalizedQuery, region.id)
-      : {};
+      : undefined;
 
     const offers = await this.prisma.productOffer.findMany({
       where: {
@@ -85,7 +99,7 @@ export class PublicPricingService {
               }
             : {}),
         },
-        ...textSearchWhere,
+        ...(textSearch?.where ?? {}),
       },
       include: {
         catalogProduct: true,
@@ -167,13 +181,47 @@ export class PublicPricingService {
       );
     }
 
+    if (searchStartedAt !== undefined && textSearch) {
+      const durationMs = performance.now() - searchStartedAt;
+      const snapshot = this.searchMetrics?.record({
+        durationMs,
+        strategy: textSearch.strategy,
+        resultCount: totalItems,
+      });
+      const searchLog = {
+        event: 'public_offer_search',
+        regionSlug,
+        strategy: textSearch.strategy,
+        durationMs: Math.round(durationMs * 100) / 100,
+        resultCount: totalItems,
+        candidateCounts: textSearch.candidateCounts,
+        p95Ms: snapshot?.p95Ms,
+        p95TargetMs: snapshot?.p95TargetMs,
+      };
+
+      if (snapshot?.pgTrgmEvaluation.recommended) {
+        this.logger.warn(searchLog);
+      } else {
+        this.logger.log(searchLog);
+      }
+    }
+
     return response;
   }
 
   private async buildTextSearchWhere(
     query: string,
     regionId: string,
-  ): Promise<Prisma.ProductOfferWhereInput> {
+  ): Promise<{
+    where: Prisma.ProductOfferWhereInput;
+    strategy: PublicSearchStrategy;
+    candidateCounts: {
+      offers: number;
+      products: number;
+      variants: number;
+      establishments: number;
+    };
+  }> {
     const take = PublicPricingService.searchCandidateLimit + 1;
     const insensitiveContains = {
       contains: query,
@@ -226,13 +274,24 @@ export class PublicPricingService {
       }),
     ]);
 
+    const candidateCounts = {
+      offers: offers.length,
+      products: products.length,
+      variants: variants.length,
+      establishments: establishments.length,
+    };
+
     if (
       [offers, products, variants, establishments].some(
         (candidates) =>
           candidates.length > PublicPricingService.searchCandidateLimit,
       )
     ) {
-      return this.buildBroadTextSearchWhere(query);
+      return {
+        where: this.buildBroadTextSearchWhere(query),
+        strategy: 'broad-fallback',
+        candidateCounts,
+      };
     }
 
     const candidates: Prisma.ProductOfferWhereInput[] = [];
@@ -255,7 +314,11 @@ export class PublicPricingService {
       });
     }
 
-    return candidates.length > 0 ? { OR: candidates } : { id: { in: [] } };
+    return {
+      where: candidates.length > 0 ? { OR: candidates } : { id: { in: [] } },
+      strategy: 'candidate',
+      candidateCounts,
+    };
   }
 
   private buildBroadTextSearchWhere(

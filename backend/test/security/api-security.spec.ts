@@ -8,6 +8,9 @@ describe('API security hardening', () => {
 
     try {
       await request(app.getHttpServer()).get('/admin/metrics').expect(401);
+      await request(app.getHttpServer())
+        .get('/admin/metrics/public-search')
+        .expect(401);
 
       const session = await auth.registerCustomer(
         'security-user@pricely.local',
