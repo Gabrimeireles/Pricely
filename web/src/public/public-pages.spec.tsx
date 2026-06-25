@@ -533,6 +533,19 @@ describe('public pages', () => {
     expect(screen.getByText(/1\s+de\s+2 produtos agrupados/)).toBeTruthy();
     expect(screen.queryByText('Arroz Camil tipo 1 5kg')).toBeNull();
     expect(screen.getByText('Acucar Uniao 1kg')).toBeTruthy();
+
+    fireEvent.change(
+      screen.getByPlaceholderText('Nome, produto, mercado, bairro...'),
+      {
+        target: { value: '' },
+      },
+    );
+
+    expect(
+      screen
+        .getAllByRole('img')
+        .map((image) => image.getAttribute('alt')),
+    ).toEqual(['Acucar Uniao 1kg', 'Arroz Camil tipo 1 5kg']);
   });
 
   it('deduplicates regional offers by variant when the API only returns flat offers', async () => {

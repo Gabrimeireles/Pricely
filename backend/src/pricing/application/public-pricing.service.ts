@@ -257,6 +257,7 @@ export class PublicPricingService {
       confidenceLevel: 'high' | 'medium' | 'low';
       catalogProduct: {
         name: string;
+        category: string;
         imageUrl: string | null;
       };
       productVariant: {
@@ -284,6 +285,7 @@ export class PublicPricingService {
       catalogProductId: offer.catalogProductId,
       productVariantId: offer.productVariantId,
       productName: offer.catalogProduct.name,
+      category: offer.catalogProduct.category,
       variantName: offer.productVariant.displayName,
       imageUrl: offer.productVariant.imageUrl ?? undefined,
       displayName: offer.displayName,
@@ -353,6 +355,7 @@ export class PublicPricingService {
           catalogProductId: bestOffer.catalogProductId,
           productVariantId: bestOffer.productVariantId,
           productName: bestOffer.productName,
+          category: bestOffer.category,
           variantName: bestOffer.variantName,
           imageUrl: bestOffer.imageUrl,
           packageLabel: bestOffer.packageLabel,

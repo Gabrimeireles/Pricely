@@ -132,6 +132,12 @@ type OptimizationResultTab =
   | 'stores'
   | 'savings';
 type OptimizationItemFilter = 'all' | 'selected' | 'review';
+type OfferSort =
+  | 'name'
+  | 'lowest-price'
+  | 'highest-savings'
+  | 'highest-confidence'
+  | 'most-recent';
 
 function normalizeSearchText(value: string | null | undefined) {
   return (value ?? '')
@@ -2103,6 +2109,7 @@ export function OffersPage() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [confidenceFilter, setConfidenceFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [offerSort, setOfferSort] = useState<OfferSort>('name');
   const [isCitySelectionOpen, setIsCitySelectionOpen] = useState(false);
 
   useEffect(() => {
@@ -2172,46 +2179,87 @@ export function OffersPage() {
             Boolean(group),
           );
   const normalizedSearchQuery = normalizeSearchText(searchQuery);
-  const visibleOfferGroups = storeScopedOfferGroups.filter((group) => {
-    const groupCategory = group.category ?? group.bestOffer.category ?? '';
-    const comparableOffers = getComparableOffers(group);
+  const visibleOfferGroups = storeScopedOfferGroups
+    .filter((group) => {
+      const groupCategory = group.category ?? group.bestOffer.category ?? '';
+      const comparableOffers = getComparableOffers(group);
 
-    if (categoryFilter !== 'all' && groupCategory !== categoryFilter) {
-      return false;
-    }
+      if (categoryFilter !== 'all' && groupCategory !== categoryFilter) {
+        return false;
+      }
 
-    if (
-      confidenceFilter !== 'all' &&
-      group.bestOffer.confidenceLevel !== confidenceFilter
-    ) {
-      return false;
-    }
+      if (
+        confidenceFilter !== 'all' &&
+        group.bestOffer.confidenceLevel !== confidenceFilter
+      ) {
+        return false;
+      }
 
-    if (!normalizedSearchQuery) {
-      return true;
-    }
+      if (!normalizedSearchQuery) {
+        return true;
+      }
 
-    const searchableText = normalizeSearchText(
-      [
-        group.productName,
-        group.variantName,
-        group.packageLabel,
-        groupCategory,
-        group.bestOffer.displayName,
-        ...comparableOffers.flatMap((offer) => [
-          offer.productName,
-          offer.variantName,
-          offer.displayName,
-          offer.packageLabel,
-          offer.storeName,
-          offer.neighborhood,
-          offer.sourceLabel,
-        ]),
-      ].join(' '),
-    );
+      const searchableText = normalizeSearchText(
+        [
+          group.productName,
+          group.variantName,
+          group.packageLabel,
+          groupCategory,
+          group.bestOffer.displayName,
+          ...comparableOffers.flatMap((offer) => [
+            offer.productName,
+            offer.variantName,
+            offer.displayName,
+            offer.packageLabel,
+            offer.storeName,
+            offer.neighborhood,
+            offer.sourceLabel,
+          ]),
+        ].join(' '),
+      );
 
-    return searchableText.includes(normalizedSearchQuery);
-  });
+      return searchableText.includes(normalizedSearchQuery);
+    })
+    .sort((left, right) => {
+      if (offerSort === 'lowest-price') {
+        return left.cheapestPriceAmount - right.cheapestPriceAmount;
+      }
+
+      if (offerSort === 'highest-savings') {
+        const leftSavings = Math.max(
+          left.savingsVsSecondCheapest ?? 0,
+          left.bestOffer.savingsVsRegionalAverage ?? 0,
+          left.bestOffer.savingsVsComparison ?? 0,
+        );
+        const rightSavings = Math.max(
+          right.savingsVsSecondCheapest ?? 0,
+          right.bestOffer.savingsVsRegionalAverage ?? 0,
+          right.bestOffer.savingsVsComparison ?? 0,
+        );
+
+        return rightSavings - leftSavings;
+      }
+
+      if (offerSort === 'highest-confidence') {
+        const confidenceRank = { high: 3, medium: 2, low: 1 };
+        return (
+          confidenceRank[right.bestOffer.confidenceLevel] -
+          confidenceRank[left.bestOffer.confidenceLevel]
+        );
+      }
+
+      if (offerSort === 'most-recent') {
+        return (
+          new Date(right.bestOffer.observedAt).getTime() -
+          new Date(left.bestOffer.observedAt).getTime()
+        );
+      }
+
+      return (left.variantName ?? left.productName).localeCompare(
+        right.variantName ?? right.productName,
+        'pt-BR',
+      );
+    });
 
   const clearOfferFilters = () => {
     setSearchQuery('');
@@ -2267,8 +2315,8 @@ export function OffersPage() {
               </Button>
             ) : null}
           </div>
-          <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_repeat(3,minmax(160px,220px))]">
-            <label className="grid gap-1 text-sm">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+            <label className="grid gap-1 text-sm xl:col-span-2">
               <span className="font-medium">Pesquisar</span>
               <div className="relative">
                 <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -2341,6 +2389,32 @@ export function OffersPage() {
                     <SelectItem value="high">Alta</SelectItem>
                     <SelectItem value="medium">Média</SelectItem>
                     <SelectItem value="low">Baixa</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium">Ordenar por</span>
+              <Select
+                onValueChange={(value) => setOfferSort(value as OfferSort)}
+                value={offerSort}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Nome" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="name">Nome (A-Z)</SelectItem>
+                    <SelectItem value="lowest-price">Menor preço</SelectItem>
+                    <SelectItem value="highest-savings">
+                      Maior economia
+                    </SelectItem>
+                    <SelectItem value="highest-confidence">
+                      Maior confiança
+                    </SelectItem>
+                    <SelectItem value="most-recent">
+                      Atualizado recentemente
+                    </SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>

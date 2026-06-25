@@ -37,6 +37,7 @@ describe('PublicPricingService', () => {
               confidenceLevel: 'high',
               catalogProduct: {
                 name: 'Cafe torrado',
+                category: 'mercearia',
                 imageUrl: null,
               },
               productVariant: {
@@ -124,6 +125,7 @@ describe('PublicPricingService', () => {
         expect.objectContaining({
           id: 'offer-1',
           productName: 'Cafe torrado',
+          category: 'mercearia',
           variantName: 'Cafe 500g',
           imageUrl: 'https://example.com/cafe.png',
           storeName: 'Mercado Centro',
@@ -137,6 +139,7 @@ describe('PublicPricingService', () => {
           id: 'variant-1',
           productVariantId: 'variant-1',
           productName: 'Cafe torrado',
+          category: 'mercearia',
           variantName: 'Cafe 500g',
           establishmentCount: 1,
           cheapestPriceAmount: 15.9,
@@ -144,6 +147,7 @@ describe('PublicPricingService', () => {
           highestPriceAmount: 15.9,
           bestOffer: expect.objectContaining({
             id: 'offer-1',
+            category: 'mercearia',
             storeName: 'Mercado Centro',
           }),
           alternativeOffers: [],
