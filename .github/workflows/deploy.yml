@@ -14,6 +14,6 @@ jobs:
   terraform-plan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Placeholder deploy step
         run: echo "Terraform deployment workflow will be expanded in later tasks."

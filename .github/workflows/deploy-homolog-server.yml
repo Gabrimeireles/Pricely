@@ -33,7 +33,7 @@ concurrency:
 jobs:
   build-backend:
     name: Build backend image
-    uses: Gabrimeireles/reusable-workflows/.github/workflows/docker-build.yml@master
+    uses: Gabrimeireles/reusable-workflows/.github/workflows/docker-build.yml@dd91057fc0ac8afcebbc7ae6ee1d1bdb65792e5a
     with:
       image_name: pricely-backend
       dockerfile: ./backend/Dockerfile
@@ -41,7 +41,7 @@ jobs:
 
   build-web:
     name: Build web image
-    uses: Gabrimeireles/reusable-workflows/.github/workflows/docker-build.yml@master
+    uses: Gabrimeireles/reusable-workflows/.github/workflows/docker-build.yml@dd91057fc0ac8afcebbc7ae6ee1d1bdb65792e5a
     with:
       image_name: pricely-web
       dockerfile: ./web/Dockerfile
@@ -78,7 +78,7 @@ jobs:
       NODE_ENV: ${{ vars.NODE_ENV || 'production' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
