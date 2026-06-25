@@ -20,10 +20,12 @@ class ReceiptFlowController extends ChangeNotifier {
   ReceiptSubmissionState _state = ReceiptSubmissionState.idle;
   ReceiptSubmissionSummary? _lastSubmission;
   String? _errorMessage;
+  bool _isRefreshing = false;
 
   ReceiptSubmissionState get state => _state;
   ReceiptSubmissionSummary? get lastSubmission => _lastSubmission;
   String? get errorMessage => _errorMessage;
+  bool get isRefreshing => _isRefreshing;
 
   Future<void> submitReceipt({
     required String storeName,
@@ -58,5 +60,32 @@ class ReceiptFlowController extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  Future<void> refreshLastSubmission() async {
+    final submission = _lastSubmission;
+    final accessToken = _authController?.accessToken;
+    if (submission == null ||
+        _backendGateway == null ||
+        accessToken == null ||
+        accessToken.isEmpty) {
+      return;
+    }
+
+    _isRefreshing = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      _lastSubmission = await _backendGateway!.fetchReceipt(
+        accessToken: accessToken,
+        receiptId: submission.id,
+        fallbackQrCodeUrl: submission.qrCodeUrl,
+      );
+    } catch (_) {
+      _errorMessage = 'Nao foi possivel atualizar o andamento da nota.';
+    } finally {
+      _isRefreshing = false;
+      notifyListeners();
+    }
   }
 }

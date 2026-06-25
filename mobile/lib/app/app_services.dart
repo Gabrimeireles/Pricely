@@ -12,6 +12,7 @@ import '../features/privacy/application/monetary_privacy_controller.dart';
 import '../features/receipts/application/receipt_flow_controller.dart';
 import '../features/shared/data/pricely_backend_gateway.dart';
 import '../features/shopping_lists/application/shopping_list_controller.dart';
+import '../features/theme/application/theme_controller.dart';
 
 class AppServices {
   AppServices._({
@@ -20,7 +21,8 @@ class AppServices {
     required this.workflowGateway,
   })  : localCacheService = LocalCacheService(keyValueStore),
         backendGateway = PricelyBackendGateway(apiClient),
-        monetaryPrivacyController = MonetaryPrivacyController(keyValueStore) {
+        monetaryPrivacyController = MonetaryPrivacyController(keyValueStore),
+        themeController = ThemeController(keyValueStore) {
     authController = AuthController(
       cacheService: localCacheService,
       backendGateway: backendGateway,
@@ -57,6 +59,7 @@ class AppServices {
   final PricelyBackendGateway backendGateway;
   final DemoGroceryWorkflowGateway workflowGateway;
   final MonetaryPrivacyController monetaryPrivacyController;
+  final ThemeController themeController;
 
   late final AuthController authController;
   late final MarketDiscoveryController marketDiscoveryController;
@@ -89,6 +92,7 @@ class AppServices {
   }
 
   Future<void> initialize() async {
+    await themeController.initialize();
     await monetaryPrivacyController.initialize();
     await authController.bootstrap();
     await marketDiscoveryController.loadInitialData();

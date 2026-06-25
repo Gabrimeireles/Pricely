@@ -852,6 +852,19 @@ class _CoverageHomeCard extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: authController.isAuthenticated &&
+                      region != null &&
+                      !controller.isRequesting
+                  ? () => _showManualLocationDialog(context)
+                  : null,
+              icon: const Icon(Icons.edit_location_alt_outlined),
+              label: const Text('Usar CEP manualmente'),
+            ),
+          ),
         ],
       ),
     );
@@ -892,6 +905,60 @@ class _CoverageHomeCard extends StatelessWidget {
       case MobileLocationStatus.manual:
         return const Color(0xFF003EA8);
     }
+  }
+
+  Future<void> _showManualLocationDialog(BuildContext context) async {
+    final postalCodeController = TextEditingController();
+    var radius = 5.0;
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Configurar localizacao manual'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text(
+                'O CEP fornece somente cobertura aproximada. Distancias reais exigem permissao de localizacao.',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: postalCodeController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'CEP'),
+              ),
+              const SizedBox(height: 12),
+              Text('Raio de cobertura: ${radius.toStringAsFixed(0)} km'),
+              Slider(
+                value: radius,
+                min: 1,
+                max: 25,
+                divisions: 24,
+                onChanged: (value) => setState(() => radius = value),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Salvar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (submitted == true) {
+      await controller.saveManualPostalCode(
+        postalCode: postalCodeController.text,
+        coverageRadiusKm: radius,
+      );
+    }
+    postalCodeController.dispose();
   }
 }
 
@@ -974,7 +1041,7 @@ class _HomeSectionCard extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         boxShadow: const <BoxShadow>[
@@ -1015,7 +1082,7 @@ class _MetricHomeCard extends StatelessWidget {
       child: Ink(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.colorScheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: theme.colorScheme.outlineVariant),
         ),
@@ -1272,7 +1339,7 @@ class _ShoppingListTabState extends State<_ShoppingListTab> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: theme.colorScheme.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(18),
             ),
             child: Column(
@@ -1371,7 +1438,7 @@ class _ShoppingListTabState extends State<_ShoppingListTab> {
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: theme.colorScheme.surfaceContainerLowest,
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Row(
@@ -1464,7 +1531,7 @@ class _OptimizationTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.colorScheme.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(18),
           ),
           child: Column(
@@ -1583,7 +1650,7 @@ class _OptimizationTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.colorScheme.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(18),
               ),
               child: Column(
@@ -1735,6 +1802,7 @@ class _ProfileTab extends StatelessWidget {
     final user = authController.currentUser;
     final privacyController =
         AppScope.maybeOf(context)?.monetaryPrivacyController;
+    final themeController = AppScope.maybeOf(context)?.themeController;
 
     if (user == null) {
       return ListView(
@@ -1762,7 +1830,7 @@ class _ProfileTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.colorScheme.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
@@ -1805,7 +1873,7 @@ class _ProfileTab extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: theme.colorScheme.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -1830,6 +1898,46 @@ class _ProfileTab extends StatelessWidget {
                 Switch(
                   value: privacyController.isVisible,
                   onChanged: (_) => privacyController.toggle(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+        if (themeController != null) ...<Widget>[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('Aparencia', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 10),
+                SegmentedButton<ThemeMode>(
+                  segments: const <ButtonSegment<ThemeMode>>[
+                    ButtonSegment<ThemeMode>(
+                      value: ThemeMode.system,
+                      icon: Icon(Icons.settings_brightness),
+                      label: Text('Sistema'),
+                    ),
+                    ButtonSegment<ThemeMode>(
+                      value: ThemeMode.light,
+                      icon: Icon(Icons.light_mode_outlined),
+                      label: Text('Claro'),
+                    ),
+                    ButtonSegment<ThemeMode>(
+                      value: ThemeMode.dark,
+                      icon: Icon(Icons.dark_mode_outlined),
+                      label: Text('Escuro'),
+                    ),
+                  ],
+                  selected: <ThemeMode>{themeController.themeMode},
+                  onSelectionChanged: (selection) {
+                    themeController.setThemeMode(selection.first);
+                  },
                 ),
               ],
             ),
@@ -1908,7 +2016,7 @@ class _OfferCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.colorScheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -2176,7 +2284,7 @@ class _StorePlanCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
@@ -2258,7 +2366,7 @@ class _ReceiptSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(

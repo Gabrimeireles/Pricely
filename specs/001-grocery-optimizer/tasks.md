@@ -495,15 +495,15 @@ rules into implementation tasks against the real product.
 
 - [X] T178 [P] Audit implemented web/mobile/admin flows against the current product and document product, IA, visual-system, trust-evidence, receipt, and interaction gaps in `docs/product/stitch-ui-ux-alignment.md`
 - [X] T179 [P] Map design-system rules into implementation-ready tokens and component rules for web and mobile, including teal/lime/amber/coral status roles, tonal surfaces, 8px radius, action badges, and tabular price typography in `docs/product/stitch-ui-ux-alignment.md`
-- [~] T180 Split the broad Phase 24 refactor into issue-sized shopper lanes for `create list -> optimize -> shop -> contribute receipt`, including next-best-action strips, compact persistent city context, richer list item cards, sticky mobile actions, checklist completion, optional paid-total capture, price-mismatch reports, and checklist-to-receipt handoff in `web/src/public/` and `mobile/lib/features/`
-- [~] T181 Render persisted optimization explanations as shopper evidence modules with trust factor, source type, receipt/observation count, freshness decay, confidence notice, selected variant, true comparison math, and report/upload actions in `web/src/public/` and `mobile/lib/features/optimization/`
-- [~] T182 Render admin decision evidence modules with selected offers, rejected alternatives, trust decay, receipt provenance, moderation status, and source labels in `web/src/dashboard/`
-- [~] T183 Refactor receipt contribution surfaces so accepted, pending-review, duplicate, rejected, and low-confidence outcomes are visual and actionable without promising token rewards before T162 in `web/src/public/`, `web/src/dashboard/`, and `mobile/lib/features/receipts/`
-- [~] T184 Add Phase 23-ready location widgets as explicit city/location/radius preview states, keeping proximity claims disabled until T170-T177 add persisted coordinates and distance-aware optimization in `web/src/public/` and `mobile/lib/features/`
-- [~] T185 Refactor admin overview into an action-first operations surface that elevates stale offers, low-trust offers, failed jobs, quarantined receipts, catalog image gaps, and city coverage issues in `web/src/dashboard/`
+- [X] T180 Split the broad Phase 24 refactor into issue-sized shopper lanes for `create list -> optimize -> shop -> contribute receipt`, including next-best-action strips, compact persistent city context, richer list item cards, sticky mobile actions, checklist completion, optional paid-total capture, price-mismatch reports, and checklist-to-receipt handoff in `web/src/public/` and `mobile/lib/features/`
+- [X] T181 Render persisted optimization explanations as shopper evidence modules with trust factor, source type, receipt/observation count, freshness decay, confidence notice, selected variant, true comparison math, and report/upload actions in `web/src/public/` and `mobile/lib/features/optimization/`
+- [X] T182 Render admin decision evidence modules with selected offers, rejected alternatives, trust decay, receipt provenance, moderation status, and source labels in `web/src/dashboard/`
+- [X] T183 Refactor receipt contribution surfaces so accepted, pending-review, duplicate, rejected, and low-confidence outcomes are visual and actionable without promising token rewards before T162 in `web/src/public/`, `web/src/dashboard/`, and `mobile/lib/features/receipts/`
+- [X] T184 Add Phase 23-ready location widgets as explicit city/location/radius preview states, keeping proximity claims disabled until T170-T177 add persisted coordinates and distance-aware optimization in `web/src/public/` and `mobile/lib/features/`
+- [X] T185 Refactor admin overview into an action-first operations surface that elevates stale offers, low-trust offers, failed jobs, quarantined receipts, catalog image gaps, and city coverage issues in `web/src/dashboard/`
 - [X] T186 Refactor public city and offer surfaces so activating cities have explicit placeholders, supported-establishment sections show active stores or activation states, offers are grouped by product/variant with cheapest eligible establishment first, and establishment filters/comparison panels replace duplicate offer cards in `web/src/public/` and `web/src/app/`
-- [~] T187 Refactor public web surfaces toward the audited direction for landing, city selection, offers explorer, offer detail, lists, list editor, optimization result, receipt states, location widgets, premium/free entitlement copy, and disabled billing gate in `web/src/public/`
-- [~] T188 Refactor mobile surfaces toward the audited direction for onboarding/home, list, location widgets, optimization results by mode, receipt contribution, profile/value, error states, and dark-mode parity in `mobile/lib/features/`
+- [X] T187 Refactor public web surfaces toward the audited direction for landing, city selection, offers explorer, offer detail, lists, list editor, optimization result, receipt states, location widgets, premium/free entitlement copy, and disabled billing gate in `web/src/public/`
+- [X] T188 Refactor mobile surfaces toward the audited direction for onboarding/home, list, location widgets, optimization results by mode, receipt contribution, profile/value, error states, and dark-mode parity in `mobile/lib/features/`
 - [X] T189 Refactor admin catalog and offer operations so variants are managed through a dedicated detail route/tab, long variant lists are searchable/collapsible, variant images appear in price/offer rows, and raw IDs move behind detail affordances in `web/src/dashboard/`
 - [X] T190 Refactor admin list operations and queue health cards so they show human-readable owner, list, mode, elapsed time, status, and icon actions before technical job/resource IDs in `web/src/dashboard/`
 - [X] T191 Add visual regression/screenshot validation for key aligned web flows with Playwright and keep existing MVP E2E coverage green in `web/e2e/`
@@ -551,9 +551,9 @@ Premium access and extra optimization credits are support/admin operations for n
 - [X] T212 Change receipt ingestion to manual processing by default, keeping an `RECEIPT_PROCESSING_MODE=automatic` escape hatch for future automatic queueing in `backend/src/receipts/` and `backend/src/jobs/`
 - [X] T213 Add admin release action so received receipts can be manually sent to the receipt-processing queue, with pending/released states in `backend/src/admin/` and `web/src/dashboard/`
 - [X] T214 Expand admin receipt detail with extracted payload, product matcher result, missing-product maker actions, and price up/down comparison against current offers in `backend/src/admin/` and `web/src/dashboard/`
-- [~] T215 Add mobile QR-code receipt submission flow that posts the scanned NFC-e URL to backend and shows submitted -> waiting release -> processing -> reward validated states in `mobile/lib/features/receipts/`
+- [X] T215 Add mobile QR-code receipt submission flow that posts the scanned NFC-e URL to backend and shows submitted -> waiting release -> processing -> reward validated states in `mobile/lib/features/receipts/`
 - [X] T216 Adopt `web/src/assets/pricely-icon.png` as the official brand icon in web shell/header and plan reuse for favicon/mobile app assets.
-- [~] T217 Continue location web/mobile UX refactors with explicit location/radius preview, manual fallback, denied-permission states, and no-proximity claims until distance-aware optimization is fully active.
+- [X] T217 Continue location web/mobile UX refactors with explicit location/radius preview, manual fallback, denied-permission states, and no-proximity claims until distance-aware optimization is fully active.
 
 ### Phase 28: Web Button Integration Audit and Action Gaps
 
@@ -623,8 +623,8 @@ sensitive monetary values across web surfaces.
 `https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.
 Validated public bundle load, customer login, receipt submission with
 `waiting_manual_release`, admin dashboard, admin queue, receipt audit, manual
-processing release, and backend coverage-preview API. `T183`, `T187`, and
-`T217` remain partial because their mobile surfaces are still pending.
+processing release, and backend coverage-preview API. Mobile receipt scanning,
+manual-location fallback, and dark-mode parity were completed in Phase 32.
 
 ---
 

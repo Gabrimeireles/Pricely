@@ -146,6 +146,87 @@ void main() {
     expect(controller.activePreference, isNull);
     expect(controller.message, contains('Permissao negada'));
   });
+
+  test('saves a CEP fallback without claiming precise distance', () async {
+    final cacheService = LocalCacheService(InMemoryKeyValueStore());
+    await cacheService.saveAuthToken('token-123');
+    Map<String, dynamic>? locationPayload;
+    final backendGateway = PricelyBackendGateway(
+      HttpApiClient(
+        client: MockClient((request) async {
+          if (request.url.path == '/auth/me') {
+            return http.Response(jsonEncode(_profilePayload()), 200);
+          }
+          if (request.url.path == '/regions') {
+            return http.Response(jsonEncode(_regionsPayload()), 200);
+          }
+          if (request.url.path == '/regions/sao-paulo-sp/offers') {
+            return http.Response(
+              jsonEncode(<String, dynamic>{'offers': <dynamic>[]}),
+              200,
+            );
+          }
+          if (request.url.path == '/locations/coverage-preview') {
+            return http.Response(
+              jsonEncode(<String, dynamic>{
+                'regionId': 'region-1',
+                'coverageRadiusKm': 8,
+                'activeEstablishmentCount': 6,
+                'fallbackUsed': true,
+                'fallbackReason': 'postal_code_only',
+                'establishments': <dynamic>[],
+              }),
+              200,
+            );
+          }
+          if (request.url.path == '/locations') {
+            locationPayload =
+                jsonDecode(request.body) as Map<String, dynamic>;
+            return http.Response(
+              jsonEncode(<String, dynamic>{
+                'id': 'location-postal',
+                'regionId': 'region-1',
+                'regionSlug': 'sao-paulo-sp',
+                'label': 'CEP 01310100',
+                'postalCode': '01310100',
+                'coverageRadiusKm': 8,
+                'activeEstablishmentCount': 6,
+                'isDefault': true,
+                'locationSource': 'postal_code_fallback',
+              }),
+              201,
+            );
+          }
+          return http.Response('{}', 404);
+        }),
+      ),
+    );
+    final authController = AuthController(
+      cacheService: cacheService,
+      backendGateway: backendGateway,
+    );
+    await authController.bootstrap();
+    final discoveryController = MarketDiscoveryController(backendGateway);
+    await discoveryController.loadInitialData();
+    await discoveryController.selectRegion('sao-paulo-sp');
+    final controller = MobileLocationController(
+      authController: authController,
+      discoveryController: discoveryController,
+      backendGateway: backendGateway,
+      locationService: const _DeniedLocationService(),
+    );
+
+    await controller.saveManualPostalCode(
+      postalCode: '01310-100',
+      coverageRadiusKm: 8,
+    );
+
+    expect(controller.status, MobileLocationStatus.manual);
+    expect(controller.coveragePreview?.activeEstablishmentCount, 6);
+    expect(controller.message, contains('nao representa distancia real'));
+    expect(locationPayload?['postalCode'], '01310100');
+    expect(locationPayload?.containsKey('latitude'), isFalse);
+  });
 }
 
 Map<String, dynamic> _profilePayload() {
