@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -16,7 +18,9 @@ import { ReceiptIngestionDto } from './dto/receipt-ingestion.dto';
 @Controller('receipts')
 @UseGuards(JwtAuthGuard)
 export class ReceiptsController {
-  constructor(private readonly receiptIngestionService: ReceiptIngestionService) {}
+  constructor(
+    private readonly receiptIngestionService: ReceiptIngestionService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.ACCEPTED)
@@ -25,5 +29,13 @@ export class ReceiptsController {
     @Body() body: ReceiptIngestionDto,
   ) {
     return this.receiptIngestionService.ingest(user.sub, body);
+  }
+
+  @Get(':receiptId')
+  async detail(
+    @CurrentUser() user: JwtUserPayload,
+    @Param('receiptId') receiptId: string,
+  ) {
+    return this.receiptIngestionService.findForUser(user.sub, receiptId);
   }
 }

@@ -326,6 +326,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessingJob'
+  /receipts:
+    post:
+      summary: Submit a receipt contribution from manual items or an NFC-e QR URL
+      responses:
+        '202':
+          description: Receipt accepted for manual release or processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptSubmission'
+  /receipts/{receiptId}:
+    get:
+      summary: Fetch the authenticated shopper receipt processing and reward state
+      parameters:
+        - name: receiptId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Receipt state returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptSubmission'
+        '404':
+          description: Receipt does not exist or belongs to another account
   /admin/metrics/overview:
     get:
       summary: Return overview metrics for the admin dashboard
@@ -1127,6 +1155,40 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OptimizationSelection'
+    ReceiptSubmission:
+      type: object
+      required:
+        - id
+        - processingStatus
+        - moderationStatus
+        - rewardEligibilityStatus
+      properties:
+        id:
+          type: string
+        storeName:
+          type: string
+          nullable: true
+        processingStatus:
+          type: string
+          enum:
+            - waiting_manual_release
+            - queued
+            - running
+            - completed
+            - failed
+            - retrying
+        moderationStatus:
+          type: string
+          enum: [pending, accepted, quarantined, duplicate, rejected]
+        rewardEligibilityStatus:
+          type: string
+          enum: [disabled, ineligible, eligible_pending, granted]
+        rewardPoints:
+          type: integer
+        rewardOptimizationTokens:
+          type: integer
+        rewardMessage:
+          type: string
     ProcessingJob:
       type: object
       required: [id, queueName, jobType, status, attemptCount, createdAt, updatedAt]

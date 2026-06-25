@@ -209,6 +209,14 @@ export class ReceiptIngestionService {
     };
   }
 
+  async findForUser(userId: string, receiptRecordId: string) {
+    const record = await this.receiptRecordRepository.findById(receiptRecordId);
+    if (!record || record.userId !== userId) {
+      throw new NotFoundException(`Receipt ${receiptRecordId} was not found`);
+    }
+    return this.projectReceiptRecord(record);
+  }
+
   async reprocess(receiptRecordId: string): Promise<ReceiptRecord> {
     const record = await this.receiptRecordRepository.findById(receiptRecordId);
     if (!record) {
@@ -450,7 +458,9 @@ export class ReceiptIngestionService {
       }
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'unknown SEFAZ extraction error';
+        error instanceof Error
+          ? error.message
+          : 'unknown SEFAZ extraction error';
       this.logger.warn(`SEFAZ receipt extraction failed: ${message}`);
       return {};
     }
@@ -467,17 +477,33 @@ export class ReceiptIngestionService {
         .trim(),
     );
     const storeName =
-      this.matchText(text, /Nota Fiscal de Consumidor Eletrônica \(NFC-e\)\s+(.+?)\s+CNPJ:/i) ??
-      this.matchText(text, /Emitente\s+Nome \/ Razão Social\s+CNPJ\s+Inscrição Estadual\s+UF\s+(.+?)\s+\d{14}/i);
+      this.matchText(
+        text,
+        /Nota Fiscal de Consumidor Eletrônica \(NFC-e\)\s+(.+?)\s+CNPJ:/i,
+      ) ??
+      this.matchText(
+        text,
+        /Emitente\s+Nome \/ Razão Social\s+CNPJ\s+Inscrição Estadual\s+UF\s+(.+?)\s+\d{14}/i,
+      );
     const storeCnpj = this.matchText(text, /CNPJ:\s*(\d{14})/i);
     const storeAddress = this.parseStoreAddress(text);
     const purchaseDate = this.parseBrazilianDate(
-      this.matchText(text, /Data Emissão\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})/i),
+      this.matchText(
+        text,
+        /Data Emissão\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})/i,
+      ),
     );
-    const items = [...decodedHtml.matchAll(/<tr>\s*<td><h7>([\s\S]*?)<\/h7>\s*\(Código:\s*([^)]+)\)<\/td>\s*<td>Qtde total de ítens:\s*([\d.,]+)<\/td>\s*<td>UN:\s*([^<]+)<\/td>\s*<td>Valor total R\$:\s*R\$\s*([\d.,]+)<\/td>\s*<\/tr>/gi)]
+    const items = [
+      ...decodedHtml.matchAll(
+        /<tr>\s*<td><h7>([\s\S]*?)<\/h7>\s*\(Código:\s*([^)]+)\)<\/td>\s*<td>Qtde total de ítens:\s*([\d.,]+)<\/td>\s*<td>UN:\s*([^<]+)<\/td>\s*<td>Valor total R\$:\s*R\$\s*([\d.,]+)<\/td>\s*<\/tr>/gi,
+      ),
+    ]
       .map((match) => {
         const rawProductName = this.decodeHtml(
-          match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+          match[1]
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim(),
         );
         const quantity = this.parseBrazilianQuantity(match[3]);
         const lineTotal = this.parseBrazilianNumber(match[5]);
@@ -579,7 +605,9 @@ export class ReceiptIngestionService {
   }
 
   private inferPackageSize(rawProductName: string): string | undefined {
-    const match = rawProductName.match(/\b(\d+(?:[,.]\d+)?)\s*(kg|g|ml|l|un)\b/i);
+    const match = rawProductName.match(
+      /\b(\d+(?:[,.]\d+)?)\s*(kg|g|ml|l|un)\b/i,
+    );
     if (!match) {
       return undefined;
     }

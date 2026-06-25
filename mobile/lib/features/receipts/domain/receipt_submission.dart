@@ -56,7 +56,7 @@ class ReceiptSubmissionSummary {
       rewardOptimizationTokens:
           (json['rewardOptimizationTokens'] as num? ?? 0).toInt(),
       rewardMessage: json['rewardMessage'] as String? ??
-          'Reward em processamento até a nota ser validada.',
+          'Recompensa em processamento ate a nota ser validada.',
       qrCodeUrl: json['qrCodeUrl'] as String? ?? fallbackQrCodeUrl,
     );
   }

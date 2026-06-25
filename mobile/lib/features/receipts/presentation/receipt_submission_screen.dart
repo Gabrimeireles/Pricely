@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/router.dart';
 import '../application/receipt_flow_controller.dart';
 import '../domain/receipt_submission.dart';
+import 'receipt_qr_scanner_screen.dart';
 
 class ReceiptSubmissionScreen extends StatefulWidget {
   const ReceiptSubmissionScreen({
@@ -25,7 +26,7 @@ class _ReceiptSubmissionScreenState extends State<ReceiptSubmissionScreen> {
   @override
   void initState() {
     super.initState();
-    _storeController = TextEditingController(text: 'Mercado Azul');
+    _storeController = TextEditingController();
     _qrCodeController = TextEditingController();
     _receiptController = TextEditingController();
   }
@@ -41,19 +42,16 @@ class _ReceiptSubmissionScreenState extends State<ReceiptSubmissionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Enviar nota fiscal'),
-      ),
+      appBar: AppBar(title: const Text('Enviar nota fiscal')),
       body: AnimatedBuilder(
         animation: widget.controller,
         builder: (context, _) {
           final submission = widget.controller.lastSubmission;
-
           return ListView(
             padding: const EdgeInsets.all(16),
             children: <Widget>[
               Text(
-                'Leia ou cole a URL do QR Code da NFC-e. A nota fica em fila aguardando liberação manual do admin antes do processamento automático.',
+                'Leia ou cole a URL do QR Code da NFC-e. A nota aguarda liberacao administrativa antes de atualizar precos e validar recompensas.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -61,7 +59,6 @@ class _ReceiptSubmissionScreenState extends State<ReceiptSubmissionScreen> {
                 controller: _storeController,
                 decoration: const InputDecoration(
                   labelText: 'Nome da loja (opcional)',
-                  border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
@@ -70,23 +67,23 @@ class _ReceiptSubmissionScreenState extends State<ReceiptSubmissionScreen> {
                 decoration: const InputDecoration(
                   labelText: 'URL do QR Code da NFC-e',
                   hintText: 'https://www.fazenda.../qrcode?p=...',
-                  border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.url,
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Leitor de câmera será ativado no app nativo; por enquanto cole a URL lida do QR Code.',
-                      ),
+                onPressed: () async {
+                  final scannedUrl = await Navigator.of(context).push<String>(
+                    MaterialPageRoute<String>(
+                      builder: (_) => const ReceiptQrScannerScreen(),
                     ),
                   );
+                  if (scannedUrl != null) {
+                    _qrCodeController.text = scannedUrl;
+                  }
                 },
                 icon: const Icon(Icons.qr_code_scanner),
-                label: const Text('Ler QR Code com a câmera'),
+                label: const Text('Ler QR Code com a camera'),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -96,40 +93,28 @@ class _ReceiptSubmissionScreenState extends State<ReceiptSubmissionScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Itens manuais opcionais',
                   hintText: 'Arroz 22.90\nFeijao 9.40',
-                  border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: widget.controller.state ==
-                        ReceiptSubmissionState.submitting
-                    ? null
-                    : () async {
-                        await widget.controller.submitReceipt(
-                          storeName: _storeController.text.trim(),
-                          rawReceipt: _receiptController.text,
-                          qrCodeUrl: _qrCodeController.text.trim(),
-                        );
-                        if (!context.mounted) {
-                          return;
-                        }
-                        if (widget.controller.state ==
-                            ReceiptSubmissionState.success) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Nota enviada para a fila de liberação manual.',
-                              ),
-                            ),
-                          );
-                        }
-                      },
+                onPressed:
+                    widget.controller.state == ReceiptSubmissionState.submitting
+                        ? null
+                        : () => _submit(context),
                 icon: const Icon(Icons.receipt_long),
-                label: const Text('Enviar nota para fila'),
+                label: Text(
+                  widget.controller.state == ReceiptSubmissionState.submitting
+                      ? 'Enviando...'
+                      : 'Enviar nota para fila',
+                ),
               ),
               const SizedBox(height: 16),
               if (submission != null)
-                _SubmissionSummaryCard(summary: submission),
+                _SubmissionSummaryCard(
+                  summary: submission,
+                  isRefreshing: widget.controller.isRefreshing,
+                  onRefresh: widget.controller.refreshLastSubmission,
+                ),
               if (widget.controller.errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
@@ -152,14 +137,43 @@ class _ReceiptSubmissionScreenState extends State<ReceiptSubmissionScreen> {
       ),
     );
   }
+
+  Future<void> _submit(BuildContext context) async {
+    final qrCodeUrl = _qrCodeController.text.trim();
+    if (qrCodeUrl.isNotEmpty && !isValidReceiptQrUrl(qrCodeUrl)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Informe uma URL valida de NFC-e.')),
+      );
+      return;
+    }
+
+    await widget.controller.submitReceipt(
+      storeName: _storeController.text.trim(),
+      rawReceipt: _receiptController.text,
+      qrCodeUrl: qrCodeUrl,
+    );
+    if (!context.mounted ||
+        widget.controller.state != ReceiptSubmissionState.success) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Nota enviada e aguardando liberacao.'),
+      ),
+    );
+  }
 }
 
 class _SubmissionSummaryCard extends StatelessWidget {
   const _SubmissionSummaryCard({
     required this.summary,
+    required this.isRefreshing,
+    required this.onRefresh,
   });
 
   final ReceiptSubmissionSummary summary;
+  final bool isRefreshing;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -175,19 +189,18 @@ class _SubmissionSummaryCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text('Protocolo: ${summary.id}'),
-            if (summary.qrCodeUrl != null && summary.qrCodeUrl!.isNotEmpty)
+            if (summary.qrCodeUrl?.isNotEmpty ?? false)
               const Text('Origem: QR Code NFC-e'),
-            Text('${summary.ingestedItems} itens ingeridos'),
+            Text('${summary.ingestedItems} itens recebidos'),
             const SizedBox(height: 8),
             Text('Fila: ${_processingLabel(summary.processingStatus)}'),
-            Text('Moderação: ${summary.moderationStatus}'),
-            Text('Reward: ${_rewardLabel(summary.rewardEligibilityStatus)}'),
+            Text('Moderacao: ${summary.moderationStatus}'),
+            Text('Recompensa: ${_rewardLabel(summary.rewardEligibilityStatus)}'),
             if (summary.rewardPoints > 0 ||
                 summary.rewardOptimizationTokens > 0)
               Text(
-                '${summary.rewardPoints} pontos · ${summary.rewardOptimizationTokens} tokens',
+                '${summary.rewardPoints} pontos, ${summary.rewardOptimizationTokens} creditos',
               ),
-            Text('Motivo: ${summary.reviewReason}'),
             Text(summary.rewardMessage),
             if (summary.lowConfidenceItems.isNotEmpty) ...<Widget>[
               const SizedBox(height: 8),
@@ -195,6 +208,18 @@ class _SubmissionSummaryCard extends StatelessWidget {
                 'Baixa confianca: ${summary.lowConfidenceItems.join(', ')}',
               ),
             ],
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: isRefreshing ? null : onRefresh,
+              icon: isRefreshing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh),
+              label: const Text('Atualizar andamento'),
+            ),
           ],
         ),
       ),
@@ -202,36 +227,24 @@ class _SubmissionSummaryCard extends StatelessWidget {
   }
 
   String _processingLabel(String status) {
-    switch (status) {
-      case 'waiting_manual_release':
-        return 'aguardando liberação manual';
-      case 'queued':
-        return 'liberada para processamento';
-      case 'running':
-        return 'processando';
-      case 'completed':
-        return 'processada';
-      case 'failed':
-        return 'falhou';
-      case 'retrying':
-        return 'tentando novamente';
-      default:
-        return status;
-    }
+    return switch (status) {
+      'waiting_manual_release' => 'aguardando liberacao manual',
+      'queued' => 'liberada para processamento',
+      'running' => 'processando',
+      'completed' => 'processada',
+      'failed' => 'falhou',
+      'retrying' => 'tentando novamente',
+      _ => status,
+    };
   }
 
   String _rewardLabel(String status) {
-    switch (status) {
-      case 'granted':
-        return 'validado';
-      case 'eligible_pending':
-        return 'em processamento';
-      case 'ineligible':
-        return 'não elegível';
-      case 'disabled':
-        return 'desativado';
-      default:
-        return status;
-    }
+    return switch (status) {
+      'granted' => 'validada',
+      'eligible_pending' => 'em validacao',
+      'ineligible' => 'nao elegivel',
+      'disabled' => 'desativada',
+      _ => status,
+    };
   }
 }

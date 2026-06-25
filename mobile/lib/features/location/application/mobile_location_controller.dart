@@ -139,6 +139,56 @@ class MobileLocationController extends ChangeNotifier {
     }
   }
 
+  Future<void> saveManualPostalCode({
+    required String postalCode,
+    double coverageRadiusKm = 5,
+  }) async {
+    final accessToken = _authController.accessToken;
+    final region = _discoveryController.selectedRegion;
+    final normalizedPostalCode = postalCode.replaceAll(RegExp(r'\D'), '');
+    if (accessToken == null || region == null) {
+      _status = MobileLocationStatus.error;
+      _message = 'Entre na conta e escolha uma cidade antes de salvar o CEP.';
+      notifyListeners();
+      return;
+    }
+    if (normalizedPostalCode.length != 8) {
+      _status = MobileLocationStatus.error;
+      _message = 'Informe um CEP com 8 digitos.';
+      notifyListeners();
+      return;
+    }
+
+    _status = MobileLocationStatus.requesting;
+    _message = 'Calculando cobertura aproximada pelo CEP.';
+    notifyListeners();
+    try {
+      _coveragePreview = await _backendGateway.previewLocationCoverage(
+        accessToken: accessToken,
+        regionId: region.id,
+        postalCode: normalizedPostalCode,
+        coverageRadiusKm: coverageRadiusKm,
+      );
+      _activePreference = await _backendGateway.upsertLocationPreference(
+        accessToken: accessToken,
+        regionId: region.id,
+        label: 'CEP $normalizedPostalCode',
+        postalCode: normalizedPostalCode,
+        coverageRadiusKm: coverageRadiusKm,
+        isDefault: true,
+        locationSource: 'postal_code_fallback',
+      );
+      _status = MobileLocationStatus.manual;
+      _message =
+          'CEP salvo. A cobertura e aproximada e nao representa distancia real ate as lojas.';
+    } catch (_) {
+      _status = MobileLocationStatus.error;
+      _message = 'Nao foi possivel salvar o CEP agora.';
+    } finally {
+      notifyListeners();
+    }
+  }
+
   String _messageForStatus(MobileLocationStatus status) {
     switch (status) {
       case MobileLocationStatus.denied:

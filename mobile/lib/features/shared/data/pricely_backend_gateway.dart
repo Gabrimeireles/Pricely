@@ -63,11 +63,12 @@ class PricelyBackendGateway {
     required String accessToken,
     required String regionId,
     required String label,
-    required double latitude,
-    required double longitude,
     required double coverageRadiusKm,
     required bool isDefault,
     required String locationSource,
+    double? latitude,
+    double? longitude,
+    String? postalCode,
   }) async {
     final response = await _apiClient.post<Map<String, dynamic>>(
       '/locations',
@@ -75,8 +76,10 @@ class PricelyBackendGateway {
       body: <String, dynamic>{
         'regionId': regionId,
         'label': label,
-        'latitude': latitude,
-        'longitude': longitude,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (postalCode != null && postalCode.trim().isNotEmpty)
+          'postalCode': postalCode.trim(),
         'coverageRadiusKm': coverageRadiusKm,
         'isDefault': isDefault,
         'locationSource': locationSource,
@@ -214,6 +217,21 @@ class PricelyBackendGateway {
     return ReceiptSubmissionSummary.fromJson(
       response,
       fallbackQrCodeUrl: qrCodeUrl,
+    );
+  }
+
+  Future<ReceiptSubmissionSummary> fetchReceipt({
+    required String accessToken,
+    required String receiptId,
+    String? fallbackQrCodeUrl,
+  }) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      '/receipts/$receiptId',
+      accessToken: accessToken,
+    );
+    return ReceiptSubmissionSummary.fromJson(
+      response,
+      fallbackQrCodeUrl: fallbackQrCodeUrl,
     );
   }
 
