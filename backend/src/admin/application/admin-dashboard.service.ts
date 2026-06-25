@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 
 import { CatalogProductsService } from '../../catalog/application/catalog-products.service';
 import { CatalogMediaService } from '../../catalog/application/catalog-media.service';
@@ -8,6 +13,7 @@ import { OfferManagementService } from '../../pricing/application/offer-manageme
 import { ReceiptIngestionService } from '../../receipts/application/receipt-ingestion.service';
 import { RegionsAdminService } from '../../regions/application/regions-admin.service';
 import { EntitlementsService } from '../../users/entitlements.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 @Injectable()
 export class AdminDashboardService {
@@ -22,6 +28,8 @@ export class AdminDashboardService {
     private readonly offerManagementService: OfferManagementService,
     private readonly entitlementsService: EntitlementsService,
     private readonly receiptIngestionService: ReceiptIngestionService,
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
   ) {}
 
   async getMetrics() {
@@ -1402,7 +1410,44 @@ export class AdminDashboardService {
       isActive: boolean;
     }>,
   ) {
+    const productOfferDelegate = (
+      this.prisma as unknown as {
+        productOffer?: {
+          findUnique?: (input: {
+            where: { id: string };
+            select: {
+              catalogProductId: true;
+              displayName: true;
+              priceAmount: true;
+            };
+          }) => Promise<{
+            catalogProductId: string;
+            displayName: string;
+            priceAmount: { toString(): string } | number;
+          } | null>;
+        };
+      }
+    ).productOffer;
+    const previous = productOfferDelegate?.findUnique
+      ? await productOfferDelegate.findUnique({
+          where: { id },
+          select: {
+            catalogProductId: true,
+            displayName: true,
+            priceAmount: true,
+          },
+        })
+      : null;
     const updated = await this.offerManagementService.update(id, input);
+    if (previous && input.priceAmount !== undefined) {
+      await this.notificationsService?.notifyPriceDropForProduct({
+        catalogProductId: previous.catalogProductId,
+        productName: previous.displayName,
+        previousPrice: Number(previous.priceAmount),
+        currentPrice: Number(updated.priceAmount),
+        offerId: id,
+      });
+    }
 
     this.logger.log(`Admin updated product offer ${id}`);
 

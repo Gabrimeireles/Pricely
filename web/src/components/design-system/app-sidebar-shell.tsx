@@ -1,4 +1,9 @@
-import { useState, type FormEvent, type PropsWithChildren } from 'react';
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+  type PropsWithChildren,
+} from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import {
   BellIcon,
@@ -25,6 +30,15 @@ import {
 import { useMonetaryPrivacy } from '@/app/monetary-privacy-context';
 import { usePricely } from '@/app/pricely-context';
 import { useTheme } from '@/app/theme-context';
+import {
+  fetchNotificationPreferences,
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  updateNotificationPreferences,
+  type NotificationPreferencesResponse,
+  type UserNotificationResponse,
+} from '@/app/api';
 import pricelyIcon from '@/assets/pricely-icon.png';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,6 +50,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -69,7 +84,11 @@ const publicNavItems = [
   { label: 'Lojas', to: '/cidades', icon: Building2Icon },
   { label: 'Cupons', icon: TagsIcon, disabledReason: 'Cupons em breve' },
   { label: 'Notas fiscais', to: '/notas', icon: ReceiptTextIcon },
-  { label: 'Historico', icon: HistoryIcon, disabledReason: 'Historico em breve' },
+  {
+    label: 'Historico',
+    icon: HistoryIcon,
+    disabledReason: 'Historico em breve',
+  },
   {
     label: 'Configuracoes',
     icon: SettingsIcon,
@@ -99,6 +118,7 @@ function SidebarLogo() {
 export function PublicSidebarShell({ children }: PropsWithChildren) {
   const {
     cityId,
+    accessToken,
     cities,
     currentUser,
     isAuthenticated,
@@ -125,6 +145,28 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
   const [locationPreview, setLocationPreview] = useState<string | null>(null);
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
+  const [isNotificationsDialogOpen, setIsNotificationsDialogOpen] =
+    useState(false);
+  const [notifications, setNotifications] = useState<
+    UserNotificationResponse[]
+  >([]);
+  const [notificationPreferences, setNotificationPreferences] =
+    useState<NotificationPreferencesResponse | null>(null);
+  const unreadNotifications = notifications.filter(
+    (notification) => !notification.readAt,
+  ).length;
+
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+    void fetchNotifications(accessToken).then(setNotifications);
+    if (isNotificationsDialogOpen) {
+      void fetchNotificationPreferences(accessToken).then(
+        setNotificationPreferences,
+      );
+    }
+  }, [accessToken, isNotificationsDialogOpen]);
 
   const activeCity = cityId
     ? (cities.find((city) => city.id === cityId) ?? null)
@@ -475,11 +517,18 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
             <WithTooltip label="Notificações de preço, cobertura e revisão aparecerão aqui quando habilitadas.">
               <Button
                 aria-label="Notificacoes"
+                className="relative"
+                onClick={() => setIsNotificationsDialogOpen(true)}
                 size="icon-sm"
                 type="button"
                 variant="outline"
               >
                 <BellIcon className="size-4" />
+                {unreadNotifications > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
+                    {Math.min(unreadNotifications, 9)}
+                  </span>
+                ) : null}
               </Button>
             </WithTooltip>
             {isAuthenticated ? (
@@ -529,8 +578,8 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
             <DialogTitle>Localizacao para otimizacao local</DialogTitle>
             <DialogDescription>
               {locationRadiusDisplay}. Modos locais so calculam distancia com
-              coordenadas salvas; CEP e modo cidade nao prometem proximidade.
-              Se o navegador bloquear a permissao, libere localizacao nas
+              coordenadas salvas; CEP e modo cidade nao prometem proximidade. Se
+              o navegador bloquear a permissao, libere localizacao nas
               configuracoes do site e tente novamente.
             </DialogDescription>
           </DialogHeader>
@@ -597,6 +646,131 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        onOpenChange={setIsNotificationsDialogOpen}
+        open={isNotificationsDialogOpen}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Notificacoes</DialogTitle>
+            <DialogDescription>
+              Alertas in-app sobre precos, notas fiscais e otimizacoes.
+            </DialogDescription>
+          </DialogHeader>
+          {!isAuthenticated ? (
+            <div className="rounded-lg border border-border/70 bg-card p-4 text-sm">
+              Entre na conta para acessar suas notificacoes.
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-2">
+                {notifications.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
+                    Nenhuma notificacao por enquanto.
+                  </div>
+                ) : (
+                  notifications.map((notification) => (
+                    <button
+                      className={`grid gap-1 rounded-lg border p-3 text-left ${
+                        notification.readAt
+                          ? 'border-border/60 bg-card/60'
+                          : 'border-primary/30 bg-primary/5'
+                      }`}
+                      key={notification.id}
+                      onClick={async () => {
+                        if (!accessToken || notification.readAt) return;
+                        const updated = await markNotificationRead(
+                          accessToken,
+                          notification.id,
+                        );
+                        setNotifications((current) =>
+                          current.map((item) =>
+                            item.id === updated.id ? updated : item,
+                          ),
+                        );
+                      }}
+                      type="button"
+                    >
+                      <span className="font-medium">{notification.title}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {notification.message}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(notification.createdAt).toLocaleString(
+                          'pt-BR',
+                        )}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+              {notificationPreferences ? (
+                <div className="grid gap-3 rounded-lg border border-border/70 p-4">
+                  <div className="font-medium">Preferencias</div>
+                  {[
+                    ['inAppEnabled', 'Central in-app'],
+                    ['priceDropsEnabled', 'Quedas de preco'],
+                    ['receiptOutcomesEnabled', 'Resultado de notas'],
+                    ['optimizationReadyEnabled', 'Otimizacoes prontas'],
+                  ].map(([key, label]) => (
+                    <label
+                      className="flex items-center justify-between gap-3 text-sm"
+                      key={key}
+                    >
+                      <span>{label}</span>
+                      <Switch
+                        checked={Boolean(
+                          notificationPreferences[
+                            key as keyof NotificationPreferencesResponse
+                          ],
+                        )}
+                        onCheckedChange={async (checked) => {
+                          if (!accessToken) return;
+                          const updated = await updateNotificationPreferences(
+                            accessToken,
+                            { [key]: checked },
+                          );
+                          setNotificationPreferences(updated);
+                        }}
+                      />
+                    </label>
+                  ))}
+                  <div className="text-xs text-muted-foreground">
+                    E-mail e push serao adicionados depois; permanecem
+                    desativados nesta fase.
+                  </div>
+                </div>
+              ) : null}
+            </>
+          )}
+          <DialogFooter>
+            {unreadNotifications > 0 && accessToken ? (
+              <Button
+                onClick={async () => {
+                  await markAllNotificationsRead(accessToken);
+                  setNotifications((current) =>
+                    current.map((item) => ({
+                      ...item,
+                      readAt: item.readAt ?? new Date().toISOString(),
+                    })),
+                  );
+                }}
+                type="button"
+                variant="outline"
+              >
+                Marcar todas como lidas
+              </Button>
+            ) : null}
+            <Button
+              onClick={() => setIsNotificationsDialogOpen(false)}
+              type="button"
+            >
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog onOpenChange={setIsHelpDialogOpen} open={isHelpDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -624,24 +798,21 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
               </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-4">
-              {[
-                'Enviar',
-                'Revisar',
-                'Liberar',
-                'Recomendar',
-              ].map((label, index) => (
-                <div className="grid gap-1" key={label}>
-                  <div className="flex items-center gap-2">
-                    <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                      {index + 1}
-                    </span>
-                    {index < 3 ? (
-                      <span className="hidden h-px flex-1 bg-border sm:block" />
-                    ) : null}
+              {['Enviar', 'Revisar', 'Liberar', 'Recomendar'].map(
+                (label, index) => (
+                  <div className="grid gap-1" key={label}>
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                        {index + 1}
+                      </span>
+                      {index < 3 ? (
+                        <span className="hidden h-px flex-1 bg-border sm:block" />
+                      ) : null}
+                    </div>
+                    <div className="text-xs font-medium">{label}</div>
                   </div>
-                  <div className="text-xs font-medium">{label}</div>
-                </div>
-              ))}
+                ),
+              )}
             </div>
           </div>
           <div className="grid gap-3 text-sm">

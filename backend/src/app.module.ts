@@ -10,6 +10,7 @@ import { LocationsModule } from './locations/locations.module';
 import { LoggingModule } from './common/logging/logging.module';
 import { QueueModule } from './common/queue/queue.module';
 import { OptimizationModule } from './optimization/optimization.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './persistence/prisma.module';
 import { PricingModule } from './pricing/pricing.module';
 import { ReceiptsModule } from './receipts/receipts.module';
@@ -32,6 +33,7 @@ import { StoresModule } from './stores/stores.module';
     StoresModule,
     PricingModule,
     OptimizationModule,
+    NotificationsModule,
     AdminModule,
     JobsModule,
   ],
