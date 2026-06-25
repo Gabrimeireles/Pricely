@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { PublicSearchStrategy as PrismaPublicSearchStrategy } from '@prisma/client';
 
+import { IncidentNotifierService } from '../../common/logging/incident-notifier.service';
 import { PrismaService } from '../../persistence/prisma.service';
 
 export type PublicSearchStrategy = 'candidate' | 'broad-fallback';
@@ -57,7 +58,11 @@ export class PublicSearchMetricsService {
   );
   private lastRetentionCleanupAt = 0;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly incidentNotifier?: IncidentNotifierService,
+  ) {}
 
   async record(sample: SearchSampleInput) {
     await this.prisma.publicSearchMetric.create({
@@ -217,6 +222,17 @@ export class PublicSearchMetricsService {
         targetP95Ms: snapshot.p95TargetMs,
         sampleCount: snapshot.sampleCount,
       });
+      await this.deliverIncident({
+        event: 'public_search_slo_recovered',
+        severity: 'resolved',
+        summary: 'Public search latency recovered below the configured SLO.',
+        details: {
+          observedP95Ms: snapshot.p95Ms,
+          targetP95Ms: snapshot.p95TargetMs,
+          sampleCount: snapshot.sampleCount,
+          fallbackRate: snapshot.fallbackRate,
+        },
+      });
       return;
     }
 
@@ -234,6 +250,7 @@ export class PublicSearchMetricsService {
         },
       });
       this.logAlert(snapshot);
+      await this.deliverSearchAlert(snapshot);
       return;
     }
 
@@ -252,6 +269,7 @@ export class PublicSearchMetricsService {
         },
       });
       this.logAlert(snapshot);
+      await this.deliverSearchAlert(snapshot);
     }
   }
 
@@ -273,6 +291,41 @@ export class PublicSearchMetricsService {
       fallbackRate: snapshot.fallbackRate,
       action: 'reevaluate_pg_trgm_benchmark',
     });
+  }
+
+  private deliverSearchAlert(
+    snapshot: Awaited<ReturnType<PublicSearchMetricsService['getSnapshot']>>,
+  ) {
+    return this.deliverIncident({
+      event: 'public_search_slo_alert',
+      severity: 'critical',
+      summary: 'Public search p95 exceeded the configured latency SLO.',
+      details: {
+        observedP95Ms: snapshot.p95Ms,
+        targetP95Ms: snapshot.p95TargetMs,
+        sampleCount: snapshot.sampleCount,
+        fallbackRate: snapshot.fallbackRate,
+        recommendedAction: 'reevaluate_pg_trgm_benchmark',
+      },
+    });
+  }
+
+  private async deliverIncident(
+    notification: Parameters<IncidentNotifierService['notify']>[0],
+  ) {
+    if (!this.incidentNotifier) {
+      return;
+    }
+
+    try {
+      await this.incidentNotifier.notify(notification);
+    } catch (error) {
+      this.logger.error({
+        event: 'incident_notification_failed',
+        incidentEvent: notification.event,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   private async cleanupExpiredSamples() {

@@ -1,4 +1,8 @@
-import { ArgumentsHost, BadRequestException } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 
 import { DomainError } from '../../../src/common/errors/domain-error';
 import { HttpExceptionFilter } from '../../../src/common/errors/http-exception.filter';
@@ -72,6 +76,58 @@ describe('HttpExceptionFilter', () => {
         message: 'List limit reached',
         requestId: 'req-domain-1',
       }),
+    );
+  });
+
+  it('notifies server errors without transmitting request payloads', async () => {
+    const json = jest.fn();
+    const status = jest.fn().mockReturnValue({ json });
+    const incidentNotifier = {
+      notify: jest.fn().mockResolvedValue({ delivered: true }),
+    };
+    const request = {
+      url: '/admin/users/user-sensitive?token=secret',
+      path: '/admin/users/user-sensitive',
+      route: { path: '/admin/users/:id' },
+      method: 'PATCH',
+      id: 'req-server-1',
+      headers: {},
+      body: {
+        password: 'not-for-webhook',
+      },
+    };
+    const host = {
+      switchToHttp: () => ({
+        getRequest: () => request,
+        getResponse: () => ({
+          status,
+          setHeader: jest.fn(),
+        }),
+      }),
+    } as ArgumentsHost;
+
+    new HttpExceptionFilter(incidentNotifier as never).catch(
+      new InternalServerErrorException(),
+      host,
+    );
+    await Promise.resolve();
+
+    expect(incidentNotifier.notify).toHaveBeenCalledWith({
+      event: 'backend_http_server_error',
+      severity: 'critical',
+      summary: 'Backend request failed with a server error.',
+      details: {
+        method: 'PATCH',
+        route: '/admin/users/:id',
+        statusCode: 500,
+        requestId: 'req-server-1',
+      },
+    });
+    expect(JSON.stringify(incidentNotifier.notify.mock.calls)).not.toContain(
+      'not-for-webhook',
+    );
+    expect(JSON.stringify(incidentNotifier.notify.mock.calls)).not.toContain(
+      'secret',
     );
   });
 });

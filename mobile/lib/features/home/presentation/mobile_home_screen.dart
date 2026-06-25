@@ -1,11 +1,13 @@
 ﻿import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
+import '../../../app/app_scope.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../discovery/application/market_discovery_controller.dart';
 import '../../location/application/mobile_location_controller.dart';
 import '../../optimization/application/optimization_controller.dart';
 import '../../optimization/domain/optimization_result.dart';
+import '../../privacy/presentation/sensitive_currency.dart';
 import '../../receipts/application/receipt_flow_controller.dart';
 import '../../receipts/domain/receipt_submission.dart';
 import '../../shared/data/pricely_backend_gateway.dart';
@@ -47,6 +49,8 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final privacyController =
+        AppScope.maybeOf(context)?.monetaryPrivacyController;
     return AnimatedBuilder(
       animation: Listenable.merge(<Listenable>[
         widget.authController,
@@ -55,6 +59,7 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
         widget.optimizationController,
         widget.receiptFlowController,
         widget.locationController,
+        if (privacyController != null) privacyController,
       ]),
       builder: (context, _) {
         final user = widget.authController.currentUser;
@@ -456,8 +461,14 @@ class _HomeTab extends StatelessWidget {
                     child: _MetricHomeCard(
                       label: 'Ultima economia',
                       value: result == null
-                          ? _formatCurrency(user?.totalEstimatedSavings ?? 0)
-                          : _formatCurrency(result.estimatedSavings),
+                          ? formatSensitiveCurrency(
+                              context,
+                              user?.totalEstimatedSavings ?? 0,
+                            )
+                          : formatSensitiveCurrency(
+                              context,
+                              result.estimatedSavings,
+                            ),
                       detail: result == null
                           ? '${user?.completedOptimizationRuns ?? 0} otimizacoes'
                           : result.shoppingListTitle,
@@ -1722,6 +1733,8 @@ class _ProfileTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final user = authController.currentUser;
+    final privacyController =
+        AppScope.maybeOf(context)?.monetaryPrivacyController;
 
     if (user == null) {
       return ListView(
@@ -1765,7 +1778,10 @@ class _ProfileTab extends StatelessWidget {
                 children: <Widget>[
                   _MetricTile(
                       label: 'Economia estimada',
-                      value: _formatCurrency(user.totalEstimatedSavings)),
+                      value: formatSensitiveCurrency(
+                        context,
+                        user.totalEstimatedSavings,
+                      )),
                   _MetricTile(
                       label: 'Listas', value: '${user.shoppingListsCount}'),
                   _MetricTile(
@@ -1785,6 +1801,41 @@ class _ProfileTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
+        if (privacyController != null) ...<Widget>[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: <Widget>[
+                Icon(
+                  privacyController.isVisible
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text('Privacidade de valores'),
+                      Text(
+                        'Oculte preços, economia e totais sensíveis em todas as telas.',
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: privacyController.isVisible,
+                  onChanged: (_) => privacyController.toggle(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
@@ -1903,7 +1954,10 @@ class _OfferCard extends StatelessWidget {
                           offer.basePriceAmount! >
                               offer.promotionalPriceAmount!) ...<Widget>[
                         Text(
-                          _formatCurrency(offer.basePriceAmount!),
+                          formatSensitiveCurrency(
+                            context,
+                            offer.basePriceAmount!,
+                          ),
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: const Color(0xFFE5E7EB),
                             decoration: TextDecoration.lineThrough,
@@ -1911,7 +1965,7 @@ class _OfferCard extends StatelessWidget {
                         ),
                       ],
                       Text(
-                        _formatCurrency(offer.priceAmount),
+                        formatSensitiveCurrency(context, offer.priceAmount),
                         style: theme.textTheme.labelLarge
                             ?.copyWith(color: const Color(0xFFB5FF56)),
                       ),
@@ -1983,17 +2037,17 @@ class _OfferDetailRow extends StatelessWidget {
               offer.basePriceAmount != null &&
               offer.basePriceAmount! > offer.promotionalPriceAmount!) ...<Widget>[
             Text(
-              _formatCurrency(offer.basePriceAmount!),
+              formatSensitiveCurrency(context, offer.basePriceAmount!),
               style: const TextStyle(decoration: TextDecoration.lineThrough),
             ),
             const SizedBox(height: 2),
           ],
-          Text(_formatCurrency(offer.priceAmount)),
+          Text(formatSensitiveCurrency(context, offer.priceAmount)),
           if (offer.savingsVsComparison != null &&
               offer.savingsVsComparison! > 0) ...<Widget>[
             const SizedBox(height: 4),
             Text(
-              'Economia de ${_formatCurrency(offer.savingsVsComparison!)} versus outra loja',
+              'Economia de ${formatSensitiveCurrency(context, offer.savingsVsComparison!)} versus outra loja',
             ),
           ],
         ],
@@ -2089,7 +2143,7 @@ class _ResultSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            _formatCurrency(result.totalCost),
+            formatSensitiveCurrency(context, result.totalCost),
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -2097,7 +2151,7 @@ class _ResultSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Economia estimada ${_formatCurrency(result.estimatedSavings)}',
+            'Economia estimada ${formatSensitiveCurrency(context, result.estimatedSavings)}',
             style: Theme.of(context)
                 .textTheme
                 .bodyLarge
@@ -2134,7 +2188,7 @@ class _StorePlanCard extends StatelessWidget {
                   child:
                       Text(plan.storeName, style: theme.textTheme.titleLarge),
                 ),
-                Text(_formatCurrency(plan.subtotal)),
+                Text(formatSensitiveCurrency(context, plan.subtotal)),
               ],
             ),
             const SizedBox(height: 12),
@@ -2159,7 +2213,9 @@ class _StorePlanCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Text(_formatCurrency(selection.subtotal)),
+                    Text(
+                      formatSensitiveCurrency(context, selection.subtotal),
+                    ),
                   ],
                 ),
               ),
@@ -2305,8 +2361,4 @@ class _ReceiptSummaryCard extends StatelessWidget {
         return status;
     }
   }
-}
-
-String _formatCurrency(double value) {
-  return 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
 }

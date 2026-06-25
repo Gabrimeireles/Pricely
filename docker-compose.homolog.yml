@@ -67,17 +67,14 @@ services:
       PORT: 3000
       APP_HOST: 0.0.0.0
       NODE_ENV: ${NODE_ENV:-production}
+      APP_ENVIRONMENT: homolog
+      APP_RELEASE: ${IMAGE_TAG}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-pricely}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       WEB_APP_URL: ${WEB_APP_URL:-https://pricely.grmeireles.dev}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://pricely.grmeireles.dev}
-    command:
-      [
-        "sh",
-        "-lc",
-        "npm run db:generate && npm run start",
-      ]
+    command: ["sh", "-lc", "npm run db:generate && npm run start"]
     ports:
       - "${BACKEND_PORT:-3000}:3000"
 
@@ -96,10 +93,7 @@ services:
       VITE_ALLOW_ALL_HOSTS: ${VITE_ALLOW_ALL_HOSTS:-true}
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "wget -qO- http://127.0.0.1:5173 >/dev/null || exit 1",
-        ]
+        ["CMD-SHELL", "wget -qO- http://127.0.0.1:5173 >/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 18

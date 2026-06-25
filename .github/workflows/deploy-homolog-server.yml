@@ -188,7 +188,7 @@ jobs:
           fi
 
           ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-            "GHCR_AUTH_TOKEN='$GHCR_AUTH_TOKEN' GITHUB_REPOSITORY_OWNER='${{ github.repository_owner }}' RESET_DATABASE='${{ inputs.reset_database || false }}' RUN_SEEDERS='${{ inputs.run_seeders || false }}' DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'ENDSSH'
+            "GHCR_AUTH_TOKEN='$GHCR_AUTH_TOKEN' GITHUB_REPOSITORY_OWNER='${{ github.repository_owner }}' IMAGE_TAG='$IMAGE_TAG' RESET_DATABASE='${{ inputs.reset_database || false }}' RUN_SEEDERS='${{ inputs.run_seeders || false }}' DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'ENDSSH'
           set -euo pipefail
 
           cd "$DEPLOY_PATH"
@@ -209,6 +209,18 @@ jobs:
             fi
             sleep 2
           done
+
+          mkdir -p backups
+          chmod 700 backups
+          BACKUP_FILE="backups/pre-deploy-${IMAGE_TAG}-$(date -u +%Y%m%dT%H%M%SZ).dump"
+          echo "Creating verified pre-deploy database backup at $BACKUP_FILE..."
+          docker compose --env-file .env exec -T postgres sh -lc \
+            'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner' \
+            > "$BACKUP_FILE"
+          chmod 600 "$BACKUP_FILE"
+          docker compose --env-file .env exec -T postgres sh -lc \
+            'pg_restore --list' < "$BACKUP_FILE" >/dev/null
+          find backups -type f -name 'pre-deploy-*.dump' -mtime +14 -delete
 
           if [ "$RESET_DATABASE" = "true" ]; then
             echo "Running destructive database reset..."

@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 
 import { HttpExceptionFilter } from './common/errors/http-exception.filter';
+import { IncidentNotifierService } from './common/logging/incident-notifier.service';
 import { AppValidationPipe } from './common/validation/validation.pipe';
 import { AppModule } from './app.module';
 
@@ -60,7 +61,9 @@ async function bootstrap(): Promise<void> {
 
   app.useLogger(app.get(Logger));
   app.useGlobalPipes(new AppValidationPipe());
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(
+    new HttpExceptionFilter(app.get(IncidentNotifierService)),
+  );
 
   await app.listen(
     Number(process.env.PORT || 3000),

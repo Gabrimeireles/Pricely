@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/app_scope.dart';
 import '../../shopping_lists/application/shopping_list_controller.dart';
 import '../../shopping_lists/domain/shopping_list_draft.dart';
+import '../../privacy/presentation/sensitive_currency.dart';
 import '../application/optimization_controller.dart';
 import '../domain/optimization_result.dart';
 
@@ -17,12 +19,17 @@ class MultiMarketResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final privacyController =
+        AppScope.maybeOf(context)?.monetaryPrivacyController;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Resultado da otimização'),
       ),
       body: AnimatedBuilder(
-        animation: controller,
+        animation: Listenable.merge(<Listenable>[
+          controller,
+          if (privacyController != null) privacyController,
+        ]),
         builder: (context, _) {
           final result = controller.result;
 
@@ -115,9 +122,11 @@ class MultiMarketResultView extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 8),
-                Text('Total otimizado: ${_formatCurrency(result.totalCost)}'),
                 Text(
-                  'Economia estimada: ${_formatCurrency(result.estimatedSavings)}',
+                  'Total otimizado: ${formatSensitiveCurrency(context, result.totalCost)}',
+                ),
+                Text(
+                  'Economia estimada: ${formatSensitiveCurrency(context, result.estimatedSavings)}',
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -161,7 +170,9 @@ class MultiMarketResultView extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
-                  Text('Subtotal: ${_formatCurrency(plan.subtotal)}'),
+                  Text(
+                    'Subtotal: ${formatSensitiveCurrency(context, plan.subtotal)}',
+                  ),
                   const SizedBox(height: 12),
                   for (final selection in plan.selections)
                     Builder(
@@ -196,7 +207,12 @@ class MultiMarketResultView extends StatelessWidget {
                                 Text(_confidenceNoticeLabel(selection)),
                             ],
                           ),
-                          trailing: Text(_formatCurrency(selection.subtotal)),
+                          trailing: Text(
+                            formatSensitiveCurrency(
+                              context,
+                              selection.subtotal,
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -225,10 +241,6 @@ class MultiMarketResultView extends StatelessWidget {
           ),
       ],
     );
-  }
-
-  String _formatCurrency(double value) {
-    return 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
   }
 
   ShoppingListItemDraft? _findDraftItem(String itemName) {

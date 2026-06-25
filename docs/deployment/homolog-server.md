@@ -50,6 +50,10 @@ QUEUE_WORKERS_ENABLED=true
 PUBLIC_SEARCH_METRICS_WINDOW_SIZE=500
 PUBLIC_SEARCH_P95_TARGET_MS=750
 PUBLIC_SEARCH_PG_TRGM_MIN_SAMPLES=100
+PUBLIC_SEARCH_METRICS_RETENTION_DAYS=30
+PUBLIC_SEARCH_ALERT_COOLDOWN_MINUTES=60
+INCIDENT_WEBHOOK_URL=https://<accepted-incident-provider>/...
+INCIDENT_WEBHOOK_TIMEOUT_MS=5000
 ```
 
 Do not put CPF, receipt personal data, or local developer-only secrets in this file.
@@ -140,3 +144,7 @@ Use `reset_database=true` only when the homolog server data can be discarded.
 
 The backend container does not mutate the schema on ordinary startup. Schema changes
 are applied by the deploy workflow before the backend/web containers are recreated.
+
+Before any migration or destructive reset, the workflow creates and verifies a
+custom-format PostgreSQL dump under `backups/`. Files are retained for 14 days.
+See [Database Backup and Restore](database-backup-restore.md).

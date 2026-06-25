@@ -8,6 +8,7 @@ import '../features/location/application/mobile_location_controller.dart';
 import '../features/location/data/geolocator_mobile_location_service.dart';
 import '../features/optimization/application/optimization_controller.dart';
 import '../features/optimization/data/demo_grocery_workflow_gateway.dart';
+import '../features/privacy/application/monetary_privacy_controller.dart';
 import '../features/receipts/application/receipt_flow_controller.dart';
 import '../features/shared/data/pricely_backend_gateway.dart';
 import '../features/shopping_lists/application/shopping_list_controller.dart';
@@ -18,7 +19,8 @@ class AppServices {
     required this.apiClient,
     required this.workflowGateway,
   })  : localCacheService = LocalCacheService(keyValueStore),
-        backendGateway = PricelyBackendGateway(apiClient) {
+        backendGateway = PricelyBackendGateway(apiClient),
+        monetaryPrivacyController = MonetaryPrivacyController(keyValueStore) {
     authController = AuthController(
       cacheService: localCacheService,
       backendGateway: backendGateway,
@@ -54,6 +56,7 @@ class AppServices {
   final HttpApiClient apiClient;
   final PricelyBackendGateway backendGateway;
   final DemoGroceryWorkflowGateway workflowGateway;
+  final MonetaryPrivacyController monetaryPrivacyController;
 
   late final AuthController authController;
   late final MarketDiscoveryController marketDiscoveryController;
@@ -86,6 +89,7 @@ class AppServices {
   }
 
   Future<void> initialize() async {
+    await monetaryPrivacyController.initialize();
     await authController.bootstrap();
     await marketDiscoveryController.loadInitialData();
     await shoppingListController.loadDraft();

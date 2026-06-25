@@ -135,7 +135,13 @@ describe('PublicSearchMetricsService', () => {
         update: jest.fn(),
       },
     };
-    const service = new PublicSearchMetricsService(prisma as never);
+    const incidentNotifier = {
+      notify: jest.fn().mockResolvedValue({ delivered: true }),
+    };
+    const service = new PublicSearchMetricsService(
+      prisma as never,
+      incidentNotifier as never,
+    );
 
     await service.record({
       durationMs: 500,
@@ -166,6 +172,12 @@ describe('PublicSearchMetricsService', () => {
         reason: 'p95_above_target',
       }),
     });
+    expect(incidentNotifier.notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'public_search_slo_alert',
+        severity: 'critical',
+      }),
+    );
   });
 
   it('resolves an active alert after the rolling p95 recovers', async () => {
@@ -215,7 +227,13 @@ describe('PublicSearchMetricsService', () => {
         }),
       },
     };
-    const service = new PublicSearchMetricsService(prisma as never);
+    const incidentNotifier = {
+      notify: jest.fn().mockResolvedValue({ delivered: true }),
+    };
+    const service = new PublicSearchMetricsService(
+      prisma as never,
+      incidentNotifier as never,
+    );
 
     await service.record({
       durationMs: 200,
@@ -237,5 +255,11 @@ describe('PublicSearchMetricsService', () => {
         resolvedAt: expect.any(Date),
       },
     });
+    expect(incidentNotifier.notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'public_search_slo_recovered',
+        severity: 'resolved',
+      }),
+    );
   });
 });
