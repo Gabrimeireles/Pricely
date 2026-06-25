@@ -351,6 +351,27 @@ describe('Admin dashboard integration', () => {
       }),
     );
 
+    const publicSearchMetrics = await request(app.getHttpServer())
+      .get('/admin/metrics/public-search')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(publicSearchMetrics.body).toEqual(
+      expect.objectContaining({
+        sampleCount: 0,
+        p50Ms: null,
+        p95Ms: null,
+        strategyCounts: {
+          candidate: 0,
+          broadFallback: 0,
+        },
+        pgTrgmEvaluation: expect.objectContaining({
+          recommended: false,
+          reason: 'insufficient_samples',
+        }),
+      }),
+    );
+
     const adminShoppingLists = await request(app.getHttpServer())
       .get('/admin/shopping-lists')
       .set('Authorization', `Bearer ${token}`)

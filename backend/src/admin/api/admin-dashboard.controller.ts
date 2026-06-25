@@ -18,6 +18,7 @@ import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min 
 import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
 import { RolesGuard } from '../../common/auth/roles.guard';
+import { PublicSearchMetricsService } from '../../pricing/application/public-search-metrics.service';
 import { AdminDashboardService } from '../application/admin-dashboard.service';
 
 type UploadedMediaFile = {
@@ -394,11 +395,19 @@ class RejectReceiptDto {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 export class AdminDashboardController {
-  constructor(private readonly adminDashboardService: AdminDashboardService) {}
+  constructor(
+    private readonly adminDashboardService: AdminDashboardService,
+    private readonly publicSearchMetrics: PublicSearchMetricsService,
+  ) {}
 
   @Get('metrics')
   async metrics() {
     return this.adminDashboardService.getMetrics();
+  }
+
+  @Get('metrics/public-search')
+  publicSearchMetricsSnapshot() {
+    return this.publicSearchMetrics.getSnapshot();
   }
 
   @Get('processing-jobs')
