@@ -260,6 +260,55 @@ async function mockApi(page: Page) {
         : null,
     });
 
+    if (method === 'GET' && path === '/notifications') {
+      return json([]);
+    }
+
+    if (method === 'GET' && path === '/notification-preferences') {
+      return json({
+        inAppEnabled: true,
+        priceDropsEnabled: true,
+        receiptOutcomesEnabled: true,
+        optimizationReadyEnabled: true,
+        emailEnabled: false,
+        pushEnabled: false,
+      });
+    }
+
+    if (method === 'PATCH' && path === '/notification-preferences') {
+      const body = JSON.parse(request.postData() ?? '{}') as Record<
+        string,
+        boolean
+      >;
+      return json({
+        inAppEnabled: true,
+        priceDropsEnabled: true,
+        receiptOutcomesEnabled: true,
+        optimizationReadyEnabled: true,
+        emailEnabled: false,
+        pushEnabled: false,
+        ...body,
+      });
+    }
+
+    if (method === 'POST' && path === '/notifications/read-all') {
+      return json({ updatedCount: 0 });
+    }
+
+    if (method === 'PATCH' && /^\/notifications\/[^/]+\/read$/.test(path)) {
+      return json({
+        id: path.split('/')[2],
+        type: 'price_drop',
+        title: 'Oferta atualizada',
+        message: 'O preco de um item da sua lista diminuiu.',
+        resourceType: 'product_offer',
+        resourceId: 'offer-1',
+        metadata: null,
+        readAt: '2026-06-25T12:00:00.000Z',
+        createdAt: '2026-06-25T11:00:00.000Z',
+      });
+    }
+
     if (method === 'POST' && path === '/auth/login') {
       const body = JSON.parse(request.postData() ?? '{}') as { email?: string };
       sessionToken =
