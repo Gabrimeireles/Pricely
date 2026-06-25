@@ -601,6 +601,7 @@ sensitive monetary values across web surfaces.
 - [X] T245 Compact public offer cards and add scalable offer search/filter controls in `web/src/public/`
 - [X] T246 Preserve offer categories in regional pricing responses and add scalable public offer sorting in `backend/src/pricing/` and `web/src/public/`
 - [X] T247 Add server-side public offer querying and pagination with URL-persisted web catalog state in `backend/src/pricing/` and `web/src/public/`
+- [X] T248 Debounce public offer search, add query-aligned Prisma indexes, and render compact numbered pagination in `backend/prisma/` and `web/src/public/`
 
 **Homolog validation note (2026-06-15)**: Web/admin/backend MVP smoke passed on
 `https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.

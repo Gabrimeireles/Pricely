@@ -263,6 +263,7 @@ model Establishment {
   preferredRuns  OptimizationRun[] @relation("PreferredEstablishment")
 
   @@index([regionId, isActive])
+  @@index([regionId, isActive, unitName])
 }
 
 model UserLocationPreference {
@@ -303,6 +304,7 @@ model CatalogProduct {
   shoppingListItems ShoppingListItem[]
 
   @@unique([name, category, defaultUnit])
+  @@index([category, isActive])
 }
 
 model CatalogProductAlias {
@@ -370,6 +372,7 @@ model ProductOffer {
   @@index([productVariantId, isActive, observedAt])
   @@index([establishmentId, isActive])
   @@index([productVariantId, establishmentId, isActive])
+  @@index([isActive, availabilityStatus, confidenceLevel, establishmentId])
   @@index([receiptRecordId])
   @@index([moderationStatus])
 }

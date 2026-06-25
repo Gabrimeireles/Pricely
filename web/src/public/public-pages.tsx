@@ -139,6 +139,34 @@ type OptimizationResultTab =
   | 'savings';
 type OptimizationItemFilter = 'all' | 'selected' | 'review';
 
+function getPaginationItems(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages = new Set([
+    1,
+    totalPages,
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+  ]);
+  const visiblePages = [...pages]
+    .filter((page) => page > 0 && page <= totalPages)
+    .sort((left, right) => left - right);
+  const items: Array<number | 'ellipsis'> = [];
+
+  for (const page of visiblePages) {
+    const previous = items[items.length - 1];
+    if (typeof previous === 'number' && page - previous > 1) {
+      items.push('ellipsis');
+    }
+    items.push(page);
+  }
+
+  return items;
+}
+
 function CitySelectionDialog({
   cityId,
   cities,
@@ -2068,6 +2096,7 @@ export function OffersPage() {
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [isCitySelectionOpen, setIsCitySelectionOpen] = useState(false);
   const searchQuery = searchParams.get('q') ?? '';
+  const [searchInput, setSearchInput] = useState(searchQuery);
   const storeFilter = searchParams.get('store') ?? 'all';
   const categoryFilter = searchParams.get('category') ?? 'all';
   const confidenceFilter = searchParams.get('confidence') ?? 'all';
@@ -2076,6 +2105,29 @@ export function OffersPage() {
     1,
     Number.parseInt(searchParams.get('page') ?? '1', 10) || 1,
   );
+
+  useEffect(() => {
+    setSearchInput(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (searchInput === searchQuery) {
+      return;
+    }
+
+    const timeout = globalThis.setTimeout(() => {
+      const next = new URLSearchParams(searchParams);
+      if (searchInput.trim()) {
+        next.set('q', searchInput.trim());
+      } else {
+        next.delete('q');
+      }
+      next.delete('page');
+      setSearchParams(next, { replace: true });
+    }, 300);
+
+    return () => globalThis.clearTimeout(timeout);
+  }, [searchInput, searchParams, searchQuery, setSearchParams]);
 
   useEffect(() => {
     let disposed = false;
@@ -2215,6 +2267,7 @@ export function OffersPage() {
   };
 
   const clearOfferFilters = () => {
+    setSearchInput('');
     const next = new URLSearchParams(searchParams);
     next.delete('q');
     next.delete('store');
@@ -2279,11 +2332,9 @@ export function OffersPage() {
                 <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   className="pl-9"
-                  onChange={(event) =>
-                    updateOfferSearchParams('q', event.target.value)
-                  }
+                  onChange={(event) => setSearchInput(event.target.value)}
                   placeholder="Nome, produto, mercado, bairro..."
-                  value={searchQuery}
+                  value={searchInput}
                 />
               </div>
             </label>
@@ -2544,6 +2595,41 @@ export function OffersPage() {
               <ChevronLeftIcon data-icon="inline-start" />
               Anterior
             </Button>
+            <div className="hidden items-center gap-1 sm:flex">
+              {getPaginationItems(
+                offerPagination.page,
+                offerPagination.totalPages,
+              ).map((item, index) =>
+                item === 'ellipsis' ? (
+                  <span
+                    aria-hidden="true"
+                    className="flex size-8 items-center justify-center text-muted-foreground"
+                    key={`ellipsis-${index}`}
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <Button
+                    aria-current={
+                      item === offerPagination.page ? 'page' : undefined
+                    }
+                    aria-label={`Ir para página ${item}`}
+                    className="size-8 p-0"
+                    key={item}
+                    onClick={() =>
+                      updateOfferSearchParams('page', String(item), false)
+                    }
+                    size="sm"
+                    type="button"
+                    variant={
+                      item === offerPagination.page ? 'default' : 'outline'
+                    }
+                  >
+                    {item}
+                  </Button>
+                ),
+              )}
+            </div>
             <Button
               disabled={!offerPagination.hasNextPage}
               onClick={() =>
