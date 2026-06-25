@@ -1,6 +1,9 @@
 name: Release Readiness
 
 on:
+  push:
+    branches:
+      - homolog
   workflow_dispatch:
     inputs:
       run_android_build:
@@ -101,10 +104,10 @@ jobs:
       - run: flutter analyze
       - run: flutter test
       - name: Build Android release candidate
-        if: inputs.run_android_build
+        if: github.event_name == 'push' || inputs.run_android_build
         run: flutter build apk --release
       - name: Upload Android release candidate
-        if: inputs.run_android_build
+        if: github.event_name == 'push' || inputs.run_android_build
         uses: actions/upload-artifact@v6
         with:
           name: pricely-android-release-candidate
