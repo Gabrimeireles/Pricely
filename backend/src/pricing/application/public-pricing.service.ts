@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../persistence/prisma.service';
 
@@ -21,6 +22,7 @@ type PublicOfferQuery = {
 
 @Injectable()
 export class PublicPricingService {
+  private static readonly searchCandidateLimit = 5_000;
   private readonly logger = new Logger(PublicPricingService.name);
 
   constructor(private readonly prisma: PrismaService) {}
@@ -51,6 +53,9 @@ export class PublicPricingService {
       48,
     );
     const sort = this.parseOfferSort(query.sort);
+    const textSearchWhere = normalizedQuery
+      ? await this.buildTextSearchWhere(normalizedQuery, region.id)
+      : {};
 
     const offers = await this.prisma.productOffer.findMany({
       where: {
@@ -80,56 +85,7 @@ export class PublicPricingService {
               }
             : {}),
         },
-        ...(normalizedQuery
-          ? {
-              OR: [
-                {
-                  displayName: {
-                    contains: normalizedQuery,
-                    mode: 'insensitive' as const,
-                  },
-                },
-                {
-                  packageLabel: {
-                    contains: normalizedQuery,
-                    mode: 'insensitive' as const,
-                  },
-                },
-                {
-                  catalogProduct: {
-                    name: {
-                      contains: normalizedQuery,
-                      mode: 'insensitive' as const,
-                    },
-                  },
-                },
-                {
-                  productVariant: {
-                    displayName: {
-                      contains: normalizedQuery,
-                      mode: 'insensitive' as const,
-                    },
-                  },
-                },
-                {
-                  establishment: {
-                    unitName: {
-                      contains: normalizedQuery,
-                      mode: 'insensitive' as const,
-                    },
-                  },
-                },
-                {
-                  establishment: {
-                    neighborhood: {
-                      contains: normalizedQuery,
-                      mode: 'insensitive' as const,
-                    },
-                  },
-                },
-              ],
-            }
-          : {}),
+        ...textSearchWhere,
       },
       include: {
         catalogProduct: true,
@@ -212,6 +168,114 @@ export class PublicPricingService {
     }
 
     return response;
+  }
+
+  private async buildTextSearchWhere(
+    query: string,
+    regionId: string,
+  ): Promise<Prisma.ProductOfferWhereInput> {
+    const take = PublicPricingService.searchCandidateLimit + 1;
+    const insensitiveContains = {
+      contains: query,
+      mode: 'insensitive' as const,
+    };
+    const [offers, products, variants, establishments] = await Promise.all([
+      this.prisma.productOffer.findMany({
+        where: {
+          isActive: true,
+          availabilityStatus: 'available',
+          OR: [
+            { displayName: insensitiveContains },
+            { packageLabel: insensitiveContains },
+          ],
+          establishment: {
+            isActive: true,
+            regionId,
+          },
+        },
+        select: { id: true },
+        take,
+      }),
+      this.prisma.catalogProduct.findMany({
+        where: {
+          isActive: true,
+          name: insensitiveContains,
+        },
+        select: { id: true },
+        take,
+      }),
+      this.prisma.productVariant.findMany({
+        where: {
+          isActive: true,
+          displayName: insensitiveContains,
+        },
+        select: { id: true },
+        take,
+      }),
+      this.prisma.establishment.findMany({
+        where: {
+          isActive: true,
+          regionId,
+          OR: [
+            { unitName: insensitiveContains },
+            { neighborhood: insensitiveContains },
+          ],
+        },
+        select: { id: true },
+        take,
+      }),
+    ]);
+
+    if (
+      [offers, products, variants, establishments].some(
+        (candidates) =>
+          candidates.length > PublicPricingService.searchCandidateLimit,
+      )
+    ) {
+      return this.buildBroadTextSearchWhere(query);
+    }
+
+    const candidates: Prisma.ProductOfferWhereInput[] = [];
+    if (offers.length > 0) {
+      candidates.push({ id: { in: offers.map(({ id }) => id) } });
+    }
+    if (products.length > 0) {
+      candidates.push({
+        catalogProductId: { in: products.map(({ id }) => id) },
+      });
+    }
+    if (variants.length > 0) {
+      candidates.push({
+        productVariantId: { in: variants.map(({ id }) => id) },
+      });
+    }
+    if (establishments.length > 0) {
+      candidates.push({
+        establishmentId: { in: establishments.map(({ id }) => id) },
+      });
+    }
+
+    return candidates.length > 0 ? { OR: candidates } : { id: { in: [] } };
+  }
+
+  private buildBroadTextSearchWhere(
+    query: string,
+  ): Prisma.ProductOfferWhereInput {
+    const insensitiveContains = {
+      contains: query,
+      mode: 'insensitive' as const,
+    };
+
+    return {
+      OR: [
+        { displayName: insensitiveContains },
+        { packageLabel: insensitiveContains },
+        { catalogProduct: { name: insensitiveContains } },
+        { productVariant: { displayName: insensitiveContains } },
+        { establishment: { unitName: insensitiveContains } },
+        { establishment: { neighborhood: insensitiveContains } },
+      ],
+    };
   }
 
   async getOfferDetail(offerId: string) {

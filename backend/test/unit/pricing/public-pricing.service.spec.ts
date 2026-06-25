@@ -350,11 +350,14 @@ describe('PublicPricingService', () => {
         neighborhood: 'Centro',
       },
     });
-    const findMany = jest.fn().mockResolvedValue([
-      makeOffer('cafe', 'Cafe 500g', 16.9, 'mercearia'),
-      makeOffer('acucar', 'Acucar 1kg', 4.19, 'mercearia'),
-      makeOffer('arroz', 'Arroz 5kg', 20.9, 'mercearia'),
-    ]);
+    const findMany = jest
+      .fn()
+      .mockResolvedValueOnce([{ id: 'offer-cafe' }])
+      .mockResolvedValueOnce([
+        makeOffer('cafe', 'Cafe 500g', 16.9, 'mercearia'),
+        makeOffer('acucar', 'Acucar 1kg', 4.19, 'mercearia'),
+        makeOffer('arroz', 'Arroz 5kg', 20.9, 'mercearia'),
+      ]);
     const prisma = {
       region: {
         findUnique: jest.fn().mockResolvedValue({
@@ -367,6 +370,13 @@ describe('PublicPricingService', () => {
       },
       establishment: {
         count: jest.fn().mockResolvedValue(1),
+        findMany: jest.fn().mockResolvedValue([{ id: 'store-1' }]),
+      },
+      catalogProduct: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'product-cafe' }]),
+      },
+      productVariant: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'variant-cafe' }]),
       },
       productOffer: {
         findMany,
@@ -399,7 +409,12 @@ describe('PublicPricingService', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           confidenceLevel: 'high',
-          OR: expect.any(Array),
+          OR: [
+            { id: { in: ['offer-cafe'] } },
+            { catalogProductId: { in: ['product-cafe'] } },
+            { productVariantId: { in: ['variant-cafe'] } },
+            { establishmentId: { in: ['store-1'] } },
+          ],
           catalogProduct: expect.objectContaining({
             category: expect.objectContaining({
               equals: 'mercearia',
@@ -410,6 +425,71 @@ describe('PublicPricingService', () => {
               equals: 'Mercado Centro',
             }),
           }),
+        }),
+      }),
+    );
+  });
+
+  it('falls back to the broad relational search for high-cardinality terms', async () => {
+    jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    const candidateLimit = 5_001;
+    const broadCandidates = Array.from(
+      { length: candidateLimit },
+      (_, index) => ({
+        id: `offer-${index}`,
+      }),
+    );
+    const finalFindMany = jest.fn().mockResolvedValue([]);
+    const prisma = {
+      region: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'region-1',
+          slug: 'sao-paulo-sp',
+          name: 'Sao Paulo',
+          stateCode: 'SP',
+          implantationStatus: 'active',
+        }),
+      },
+      establishment: {
+        count: jest.fn().mockResolvedValue(1),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      catalogProduct: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      productVariant: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      productOffer: {
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce(broadCandidates)
+          .mockImplementationOnce(finalFindMany),
+      },
+    };
+    const service = new PublicPricingService(prisma as never);
+
+    await service.listRegionOffers('sao-paulo-sp', { query: 'produto' });
+
+    expect(finalFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            {
+              displayName: {
+                contains: 'produto',
+                mode: 'insensitive',
+              },
+            },
+            {
+              catalogProduct: {
+                name: {
+                  contains: 'produto',
+                  mode: 'insensitive',
+                },
+              },
+            },
+          ]),
         }),
       }),
     );
