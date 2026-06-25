@@ -51,6 +51,7 @@ export interface RegionalOffersContract {
     catalogProductId: string;
     productVariantId: string;
     productName: string;
+    category: string;
     variantName?: string;
     imageUrl?: string | null;
     displayName: string;
@@ -73,6 +74,7 @@ export interface RegionalOffersContract {
     catalogProductId: string;
     productVariantId: string;
     productName: string;
+    category: string;
     variantName?: string;
     imageUrl?: string | null;
     packageLabel: string;

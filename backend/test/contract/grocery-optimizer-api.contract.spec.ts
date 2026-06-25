@@ -181,8 +181,10 @@ describe('Grocery optimizer API contract', () => {
         expect(regionalOffersResponse.body.groupedOffers[0]).toEqual(
           expect.objectContaining({
             productName: expect.any(String),
+            category: expect.any(String),
             bestOffer: expect.objectContaining({
               id: expect.any(String),
+              category: expect.any(String),
               priceAmount: expect.any(Number),
               storeName: expect.any(String),
             }),

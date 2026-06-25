@@ -381,6 +381,7 @@ for (const viewport of [
 
       await page.goto('/ofertas');
       await expect(page.getByText('Buscar e filtrar ofertas')).toBeVisible();
+      await expect(page.getByText('Ordenar por')).toBeVisible();
       await expect(page.getByText('Cafe Pilao 500g').first()).toBeVisible();
       await expectNoHorizontalOverflow(page);
 
