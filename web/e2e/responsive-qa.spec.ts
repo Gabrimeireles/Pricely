@@ -139,10 +139,10 @@ async function mockResponsiveApi(
         pagination: {
           page: currentPage,
           pageSize: 24,
-          totalItems: 50,
-          totalPages: 3,
+          totalItems: 240,
+          totalPages: 10,
           hasPreviousPage: currentPage > 1,
-          hasNextPage: currentPage < 3,
+          hasNextPage: currentPage < 10,
         },
         filters: {
           stores: ['Mercado Centro'],
@@ -377,6 +377,16 @@ for (const viewport of [
     test('keeps public shopper surfaces usable without horizontal overflow', async ({
       page,
     }) => {
+      const debouncedSearchRequests: string[] = [];
+      page.on('request', (request) => {
+        const url = new URL(request.url());
+        if (
+          url.pathname === '/regions/sao-paulo-sp/offers' &&
+          url.searchParams.has('q')
+        ) {
+          debouncedSearchRequests.push(request.url());
+        }
+      });
       await mockResponsiveApi(page, 'customer-token');
 
       await page.goto('/');
@@ -399,18 +409,38 @@ for (const viewport of [
       await expect(page.getByText('Ordenar por')).toBeVisible();
       await expect(page.getByText('Cafe Pilao 500g').first()).toBeVisible();
       await expectNoHorizontalOverflow(page);
-      await page
-        .getByPlaceholder('Nome, produto, mercado, bairro...')
-        .fill('cafe');
+      const searchInput = page.getByPlaceholder(
+        'Nome, produto, mercado, bairro...',
+      );
+      await searchInput.pressSequentially('cafe', { delay: 40 });
+      await expect(page).not.toHaveURL(/q=cafe/, { timeout: 150 });
       await expect(page).toHaveURL(/q=cafe/);
-      await page
-        .getByPlaceholder('Nome, produto, mercado, bairro...')
-        .fill('');
+      await expect.poll(() => debouncedSearchRequests.length).toBe(1);
+      await searchInput.fill('');
       await expect(page).not.toHaveURL(/q=/);
       await page.getByRole('button', { name: 'Próxima' }).click();
       await expect(page).toHaveURL(/page=2/);
-      await expect(page.getByText('Página 2 de 3')).toBeVisible();
+      await expect(page.getByText('Página 2 de 10')).toBeVisible();
+      if (viewport.name === 'desktop') {
+        await expect(
+          page.getByRole('button', { name: 'Ir para página 2' }),
+        ).toHaveAttribute('aria-current', 'page');
+        await expect(
+          page.getByRole('button', { name: 'Ir para página 10' }),
+        ).toBeVisible();
+        await page.getByRole('button', { name: 'Ir para página 3' }).click();
+        await expect(page).toHaveURL(/page=3/);
+        await page.goto('/ofertas?page=5');
+        await expect(page).toHaveURL(/page=5/);
+        await expect(
+          page.getByRole('button', { name: 'Ir para página 5' }),
+        ).toHaveAttribute('aria-current', 'page');
+      }
       await expectNoHorizontalOverflow(page);
+      await attachViewportScreenshot(
+        page,
+        `public-offers-pagination-${viewport.name}.png`,
+      );
 
       await page.goto('/listas');
       await expect(page.getByText('Compra responsiva')).toBeVisible();
