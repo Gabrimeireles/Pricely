@@ -42,6 +42,7 @@ const offer = {
   catalogProductId: 'catalog-1',
   productVariantId: 'variant-1',
   productName: 'Cafe torrado',
+  category: 'mercearia',
   variantName: 'Cafe Pilao 500g',
   displayName: 'Cafe Pilao 500g',
   imageUrl: '/uploads/cafe.png',
@@ -129,17 +130,31 @@ async function mockResponsiveApi(
     }
 
     if (path === '/regions/sao-paulo-sp/offers') {
+      const currentPage = Number(url.searchParams.get('page') ?? '1');
       return json({
         region,
         activeEstablishmentCount: 2,
         offerCoverageStatus: 'live',
         offers: [offer],
+        pagination: {
+          page: currentPage,
+          pageSize: 24,
+          totalItems: 50,
+          totalPages: 3,
+          hasPreviousPage: currentPage > 1,
+          hasNextPage: currentPage < 3,
+        },
+        filters: {
+          stores: ['Mercado Centro'],
+          categories: ['mercearia'],
+        },
         groupedOffers: [
           {
             id: 'variant-1',
             catalogProductId: 'catalog-1',
             productVariantId: 'variant-1',
             productName: 'Cafe torrado',
+            category: 'mercearia',
             variantName: 'Cafe Pilao 500g',
             imageUrl: '/uploads/cafe.png',
             packageLabel: '500 g',
@@ -383,6 +398,18 @@ for (const viewport of [
       await expect(page.getByText('Buscar e filtrar ofertas')).toBeVisible();
       await expect(page.getByText('Ordenar por')).toBeVisible();
       await expect(page.getByText('Cafe Pilao 500g').first()).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+      await page
+        .getByPlaceholder('Nome, produto, mercado, bairro...')
+        .fill('cafe');
+      await expect(page).toHaveURL(/q=cafe/);
+      await page
+        .getByPlaceholder('Nome, produto, mercado, bairro...')
+        .fill('');
+      await expect(page).not.toHaveURL(/q=/);
+      await page.getByRole('button', { name: 'Próxima' }).click();
+      await expect(page).toHaveURL(/page=2/);
+      await expect(page.getByText('Página 2 de 3')).toBeVisible();
       await expectNoHorizontalOverflow(page);
 
       await page.goto('/listas');

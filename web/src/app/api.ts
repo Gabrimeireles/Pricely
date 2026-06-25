@@ -161,6 +161,18 @@ type RegionOffersApiResponse = {
   offerCoverageStatus: 'live' | 'collecting_data';
   offers: RegionalOfferApiResponse[];
   groupedOffers?: RegionalOfferGroupApiResponse[];
+  pagination?: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+  };
+  filters?: {
+    stores: string[];
+    categories: string[];
+  };
 };
 
 type RegionalOfferApiResponse = {
@@ -897,8 +909,30 @@ export async function submitReceipt(
   );
 }
 
-export async function fetchRegionOffers(regionSlug: string) {
-  return apiFetch<RegionOffersApiResponse>(`/regions/${regionSlug}/offers`);
+export async function fetchRegionOffers(
+  regionSlug: string,
+  query?: {
+    q?: string;
+    store?: string;
+    category?: string;
+    confidence?: string;
+    sort?: string;
+    page?: number;
+    pageSize?: number;
+  },
+) {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(query ?? {})) {
+    if (value !== undefined && value !== '' && value !== 'all') {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  const suffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
+  return apiFetch<RegionOffersApiResponse>(
+    `/regions/${regionSlug}/offers${suffix}`,
+  );
 }
 
 export async function fetchOfferDetail(offerId: string) {

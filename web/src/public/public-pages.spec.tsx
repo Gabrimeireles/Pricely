@@ -414,6 +414,18 @@ describe('public pages', () => {
       activeEstablishmentCount: 2,
       offerCoverageStatus: 'live',
       offers: [],
+      pagination: {
+        page: 1,
+        pageSize: 24,
+        totalItems: 2,
+        totalPages: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
+      filters: {
+        stores: ['Unidade Pinheiros', 'Unidade Vila Mariana'],
+        categories: ['Mercearia'],
+      },
       groupedOffers: [
         {
           id: 'variant-1',
@@ -513,7 +525,9 @@ describe('public pages', () => {
     expect(await screen.findByText('Arroz Camil tipo 1 5kg')).toBeTruthy();
     expect(screen.getByText('Acucar Uniao 1kg')).toBeTruthy();
     expect(screen.getByText('Arroz tipo 1 5kg')).toBeTruthy();
-    expect(screen.getByText(/2\s+de\s+2 produtos agrupados/)).toBeTruthy();
+    expect(
+      screen.getByText(/2 produtos nesta página de 2 produtos encontrados/),
+    ).toBeTruthy();
     expect(screen.getByText('2 mercados')).toBeTruthy();
     expect(
       screen.getAllByText(/Menor preço em Unidade Vila Mariana/).length,
@@ -530,9 +544,16 @@ describe('public pages', () => {
       },
     );
 
-    expect(screen.getByText(/1\s+de\s+2 produtos agrupados/)).toBeTruthy();
-    expect(screen.queryByText('Arroz Camil tipo 1 5kg')).toBeNull();
-    expect(screen.getByText('Acucar Uniao 1kg')).toBeTruthy();
+    await waitFor(() =>
+      expect(fetchRegionOffers).toHaveBeenLastCalledWith(
+        'campinas-sp',
+        expect.objectContaining({
+          q: 'acucar',
+          page: 1,
+          pageSize: 24,
+        }),
+      ),
+    );
 
     fireEvent.change(
       screen.getByPlaceholderText('Nome, produto, mercado, bairro...'),
@@ -540,12 +561,12 @@ describe('public pages', () => {
         target: { value: '' },
       },
     );
-
-    expect(
-      screen
-        .getAllByRole('img')
-        .map((image) => image.getAttribute('alt')),
-    ).toEqual(['Acucar Uniao 1kg', 'Arroz Camil tipo 1 5kg']);
+    await waitFor(() =>
+      expect(fetchRegionOffers).toHaveBeenLastCalledWith(
+        'campinas-sp',
+        expect.objectContaining({ q: '' }),
+      ),
+    );
   });
 
   it('deduplicates regional offers by variant when the API only returns flat offers', async () => {

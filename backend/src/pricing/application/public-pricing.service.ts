@@ -2,13 +2,30 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../persistence/prisma.service';
 
+type PublicOfferSort =
+  | 'name'
+  | 'lowest-price'
+  | 'highest-savings'
+  | 'highest-confidence'
+  | 'most-recent';
+
+type PublicOfferQuery = {
+  query?: string;
+  store?: string;
+  category?: string;
+  confidence?: string;
+  sort?: string;
+  page?: string;
+  pageSize?: string;
+};
+
 @Injectable()
 export class PublicPricingService {
   private readonly logger = new Logger(PublicPricingService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async listRegionOffers(regionSlug: string) {
+  async listRegionOffers(regionSlug: string, query: PublicOfferQuery = {}) {
     const region = await this.prisma.region.findUnique({
       where: {
         slug: regionSlug,
@@ -19,17 +36,100 @@ export class PublicPricingService {
       throw new NotFoundException(`Region ${regionSlug} was not found`);
     }
 
+    const normalizedQuery = query.query?.trim();
+    const normalizedStore = query.store?.trim();
+    const normalizedCategory = query.category?.trim();
+    const confidence =
+      query.confidence === 'high' ||
+      query.confidence === 'medium' ||
+      query.confidence === 'low'
+        ? query.confidence
+        : undefined;
+    const page = this.parsePositiveInteger(query.page, 1);
+    const pageSize = Math.min(
+      this.parsePositiveInteger(query.pageSize, 24),
+      48,
+    );
+    const sort = this.parseOfferSort(query.sort);
+
     const offers = await this.prisma.productOffer.findMany({
       where: {
         isActive: true,
         availabilityStatus: 'available',
+        ...(confidence ? { confidenceLevel: confidence } : {}),
         establishment: {
           isActive: true,
           regionId: region.id,
+          ...(normalizedStore
+            ? {
+                unitName: {
+                  equals: normalizedStore,
+                  mode: 'insensitive' as const,
+                },
+              }
+            : {}),
         },
         catalogProduct: {
           isActive: true,
+          ...(normalizedCategory
+            ? {
+                category: {
+                  equals: normalizedCategory,
+                  mode: 'insensitive' as const,
+                },
+              }
+            : {}),
         },
+        ...(normalizedQuery
+          ? {
+              OR: [
+                {
+                  displayName: {
+                    contains: normalizedQuery,
+                    mode: 'insensitive' as const,
+                  },
+                },
+                {
+                  packageLabel: {
+                    contains: normalizedQuery,
+                    mode: 'insensitive' as const,
+                  },
+                },
+                {
+                  catalogProduct: {
+                    name: {
+                      contains: normalizedQuery,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                },
+                {
+                  productVariant: {
+                    displayName: {
+                      contains: normalizedQuery,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                },
+                {
+                  establishment: {
+                    unitName: {
+                      contains: normalizedQuery,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                },
+                {
+                  establishment: {
+                    neighborhood: {
+                      contains: normalizedQuery,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                },
+              ],
+            }
+          : {}),
       },
       include: {
         catalogProduct: true,
@@ -46,6 +146,20 @@ export class PublicPricingService {
       ),
     );
 
+    const groupedOffers = this.sortRegionalOfferGroups(
+      this.groupRegionalOffers(projectedOffers),
+      sort,
+    );
+    const totalItems = groupedOffers.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const paginatedGroups = groupedOffers.slice(
+      (currentPage - 1) * pageSize,
+      currentPage * pageSize,
+    );
+    const visibleOfferIds = new Set(
+      paginatedGroups.flatMap((group) => group.offers.map((offer) => offer.id)),
+    );
     const response = {
       region: {
         id: region.id,
@@ -60,8 +174,28 @@ export class PublicPricingService {
         },
       }),
       offerCoverageStatus: offers.length > 0 ? 'live' : 'collecting_data',
-      offers: projectedOffers,
-      groupedOffers: this.groupRegionalOffers(projectedOffers),
+      offers: projectedOffers.filter((offer) => visibleOfferIds.has(offer.id)),
+      groupedOffers: paginatedGroups,
+      pagination: {
+        page: currentPage,
+        pageSize,
+        totalItems,
+        totalPages,
+        hasPreviousPage: currentPage > 1,
+        hasNextPage: currentPage < totalPages,
+      },
+      filters: {
+        stores: [
+          ...new Set(
+            projectedOffers.map((offer) => offer.storeName).filter(Boolean),
+          ),
+        ].sort((left, right) => left.localeCompare(right)),
+        categories: [
+          ...new Set(
+            projectedOffers.map((offer) => offer.category).filter(Boolean),
+          ),
+        ].sort((left, right) => left.localeCompare(right)),
+      },
     };
 
     this.logger.log(
@@ -216,6 +350,24 @@ export class PublicPricingService {
         this.calculateComparison(entries),
       ]),
     );
+  }
+
+  private parsePositiveInteger(value: string | undefined, fallback: number) {
+    const parsed = Number.parseInt(value ?? '', 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  private parseOfferSort(value: string | undefined): PublicOfferSort {
+    if (
+      value === 'lowest-price' ||
+      value === 'highest-savings' ||
+      value === 'highest-confidence' ||
+      value === 'most-recent'
+    ) {
+      return value;
+    }
+
+    return 'name';
   }
 
   private calculateComparison(
@@ -383,5 +535,50 @@ export class PublicPricingService {
 
         return left.cheapestPriceAmount - right.cheapestPriceAmount;
       });
+  }
+
+  private sortRegionalOfferGroups(
+    groups: ReturnType<PublicPricingService['groupRegionalOffers']>,
+    sort: PublicOfferSort,
+  ) {
+    return [...groups].sort((left, right) => {
+      if (sort === 'lowest-price') {
+        return left.cheapestPriceAmount - right.cheapestPriceAmount;
+      }
+
+      if (sort === 'highest-savings') {
+        const leftSavings = Math.max(
+          left.savingsVsSecondCheapest,
+          left.bestOffer.savingsVsRegionalAverage,
+          left.bestOffer.savingsVsComparison,
+        );
+        const rightSavings = Math.max(
+          right.savingsVsSecondCheapest,
+          right.bestOffer.savingsVsRegionalAverage,
+          right.bestOffer.savingsVsComparison,
+        );
+        return rightSavings - leftSavings;
+      }
+
+      if (sort === 'highest-confidence') {
+        const confidenceRank = { high: 3, medium: 2, low: 1 };
+        return (
+          confidenceRank[right.bestOffer.confidenceLevel] -
+          confidenceRank[left.bestOffer.confidenceLevel]
+        );
+      }
+
+      if (sort === 'most-recent') {
+        return (
+          new Date(right.bestOffer.observedAt).getTime() -
+          new Date(left.bestOffer.observedAt).getTime()
+        );
+      }
+
+      return (left.variantName ?? left.productName).localeCompare(
+        right.variantName ?? right.productName,
+        'pt-BR',
+      );
+    });
   }
 }
