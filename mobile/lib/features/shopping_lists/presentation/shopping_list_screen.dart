@@ -166,7 +166,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerLowest,
+                  color:
+                      Theme.of(context).colorScheme.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -234,7 +235,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerLowest,
+                  color:
+                      Theme.of(context).colorScheme.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -638,7 +640,7 @@ class _UnauthenticatedView extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerLowest,
+            color: Theme.of(context).colorScheme.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
