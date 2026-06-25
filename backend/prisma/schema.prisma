@@ -191,6 +191,13 @@ enum MissingProductRequestStatus {
   rejected
 }
 
+enum UserNotificationType {
+  price_drop
+  receipt_outcome
+  optimization_ready
+  optimization_failed
+}
+
 model UserAccount {
   id                      String                         @id @default(uuid()) @db.Uuid
   email                   String                         @unique
@@ -211,6 +218,8 @@ model UserAccount {
   locationPreferences     UserLocationPreference[]
   sessions                UserSession[]
   missingProductRequests  MissingProductRequest[]
+  notifications           UserNotification[]
+  notificationPreference  UserNotificationPreference?
   preferredRegion         Region?                        @relation("UserPreferredRegion", fields: [preferredRegionId], references: [id], onDelete: SetNull)
 }
 
@@ -345,6 +354,37 @@ model MissingProductRequest {
 
   @@index([status, createdAt])
   @@index([userId, createdAt])
+}
+
+model UserNotificationPreference {
+  id                       String      @id @default(uuid()) @db.Uuid
+  userId                   String      @unique @db.Uuid
+  inAppEnabled             Boolean     @default(true)
+  priceDropsEnabled        Boolean     @default(true)
+  receiptOutcomesEnabled   Boolean     @default(true)
+  optimizationReadyEnabled Boolean     @default(true)
+  emailEnabled             Boolean     @default(false)
+  pushEnabled              Boolean     @default(false)
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+  user                     UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserNotification {
+  id           String               @id @default(uuid()) @db.Uuid
+  userId       String               @db.Uuid
+  type         UserNotificationType
+  title        String
+  message      String
+  resourceType String?
+  resourceId   String?
+  metadata     Json?
+  readAt       DateTime?
+  createdAt    DateTime             @default(now())
+  user         UserAccount          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([type, createdAt])
 }
 
 model CatalogProductAlias {

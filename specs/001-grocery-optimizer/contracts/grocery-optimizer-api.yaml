@@ -373,6 +373,35 @@ paths:
       responses:
         '201':
           description: Request rejected
+  /notifications:
+    get:
+      summary: List authenticated in-app notifications
+      responses:
+        '200':
+          description: Notifications returned newest first
+  /notifications/{notificationId}/read:
+    patch:
+      summary: Mark one owned notification as read
+      responses:
+        '200':
+          description: Notification updated
+  /notifications/read-all:
+    post:
+      summary: Mark all authenticated user notifications as read
+      responses:
+        '201':
+          description: Unread notifications updated
+  /notification-preferences:
+    get:
+      summary: Fetch in-app notification category preferences
+      responses:
+        '200':
+          description: Preferences returned
+    patch:
+      summary: Update in-app notification category preferences
+      responses:
+        '200':
+          description: Preferences updated; email and push remain disabled
   /receipts:
     post:
       summary: Submit a receipt contribution from manual items or an NFC-e QR URL

@@ -565,7 +565,7 @@ the missing feature.
 - [X] T219 [P] Wire existing public UI affordances for location confirmation, optimization-result tabs, result item filtering, per-item evidence expansion, and browser-settings guidance in `web/src/public/` and `web/src/components/design-system/`
 - [X] T220 [P] Add shopper shareable-list support with access policy, public/share route behavior, and copy-link UI in `specs/001-grocery-optimizer/contracts/grocery-optimizer-api.yaml`, `backend/src/lists/`, and `web/src/public/`
 - [X] T221 [P] Add shopper missing-product request intake, admin triage, and catalog conversion workflow in `backend/src/catalog/`, `backend/src/admin/`, `web/src/public/`, and `web/src/dashboard/`
-- [ ] T222 [P] Specify and implement user notification preferences, alert triggers, and web notification-center states for price changes, receipt outcomes, and optimization readiness in `backend/src/users/`, `backend/src/receipts/`, `backend/src/optimization/`, and `web/src/public/`
+- [X] T222 [P] Specify and implement user notification preferences, alert triggers, and web notification-center states for price changes, receipt outcomes, and optimization readiness in `backend/src/users/`, `backend/src/receipts/`, `backend/src/optimization/`, and `web/src/public/`
 - [X] T223 [P] Add map/deep-link support for optimized store plans using saved establishment address/coordinates without exposing precise user location in `backend/src/establishments/`, `backend/src/optimization/`, and `web/src/public/`
 - [X] T224 Add generic processing-job lifecycle operations for retry, mark-reviewed, and cancel with queue safety rules, audit logging, admin API endpoints, and dashboard actions in `backend/src/processing/`, `backend/src/admin/`, and `web/src/dashboard/`
 

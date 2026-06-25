@@ -4,6 +4,7 @@ import {
   Logger,
   OnModuleDestroy,
   OnModuleInit,
+  Optional,
 } from '@nestjs/common';
 import { type ConnectionOptions, Worker } from 'bullmq';
 
@@ -12,10 +13,13 @@ import { type OptimizationJob } from '../common/queue/queue.tokens';
 import { ProcessingJobsService } from '../processing/application/processing-jobs.service';
 import { PrismaService } from '../persistence/prisma.service';
 import { EntitlementsService } from '../users/entitlements.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { OptimizationRunProcessor } from './optimization-run.processor';
 
 @Injectable()
-export class OptimizationWorkerService implements OnModuleInit, OnModuleDestroy {
+export class OptimizationWorkerService
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(OptimizationWorkerService.name);
   private worker: Worker<OptimizationJob> | null = null;
 
@@ -26,11 +30,18 @@ export class OptimizationWorkerService implements OnModuleInit, OnModuleDestroy 
     private readonly entitlementsService: EntitlementsService,
     private readonly processingJobsService: ProcessingJobsService,
     private readonly optimizationRunProcessor: OptimizationRunProcessor,
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
   ) {}
 
   onModuleInit() {
-    if (process.env.JEST_WORKER_ID || process.env.QUEUE_WORKERS_ENABLED === 'false') {
-      this.logger.log('Optimization worker bootstrap skipped for test or disabled environment');
+    if (
+      process.env.JEST_WORKER_ID ||
+      process.env.QUEUE_WORKERS_ENABLED === 'false'
+    ) {
+      this.logger.log(
+        'Optimization worker bootstrap skipped for test or disabled environment',
+      );
       return;
     }
 
@@ -77,7 +88,10 @@ export class OptimizationWorkerService implements OnModuleInit, OnModuleDestroy 
         this.logger.warn(
           `Retrying optimization job ${job.id} for run ${job.data.optimizationRunId}: ${message}`,
         );
-        await this.processingJobsService.markRetrying(job.data.processingJobId, message);
+        await this.processingJobsService.markRetrying(
+          job.data.processingJobId,
+          message,
+        );
         await this.prisma.optimizationRun.update({
           where: {
             id: job.data.optimizationRunId,
@@ -89,7 +103,10 @@ export class OptimizationWorkerService implements OnModuleInit, OnModuleDestroy 
         return;
       }
 
-      await this.processingJobsService.markFailed(job.data.processingJobId, message);
+      await this.processingJobsService.markFailed(
+        job.data.processingJobId,
+        message,
+      );
       const optimizationRun = await this.prisma.optimizationRun.findUnique({
         where: {
           id: job.data.optimizationRunId,
@@ -113,6 +130,15 @@ export class OptimizationWorkerService implements OnModuleInit, OnModuleDestroy 
           userId: optimizationRun.userId,
           optimizationRunId: optimizationRun.id,
           reason: 'optimization_failed',
+        });
+        await this.notificationsService?.create({
+          userId: optimizationRun.userId,
+          type: 'optimization_failed',
+          title: 'Nao foi possivel concluir a otimizacao',
+          message:
+            'O processamento falhou e o credito de otimizacao foi devolvido.',
+          resourceType: 'optimization_run',
+          resourceId: optimizationRun.id,
         });
       }
       this.logger.error(

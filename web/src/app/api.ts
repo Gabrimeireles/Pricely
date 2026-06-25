@@ -174,6 +174,30 @@ export type MissingProductRequestResponse = {
   } | null;
 };
 
+export type UserNotificationResponse = {
+  id: string;
+  type:
+    | 'price_drop'
+    | 'receipt_outcome'
+    | 'optimization_ready'
+    | 'optimization_failed';
+  title: string;
+  message: string;
+  resourceType?: string | null;
+  resourceId?: string | null;
+  readAt?: string | null;
+  createdAt: string;
+};
+
+export type NotificationPreferencesResponse = {
+  inAppEnabled: boolean;
+  priceDropsEnabled: boolean;
+  receiptOutcomesEnabled: boolean;
+  optimizationReadyEnabled: boolean;
+  emailEnabled: false;
+  pushEnabled: false;
+};
+
 type RegionOffersApiResponse = {
   region: {
     id: string;
@@ -966,6 +990,56 @@ export async function requestMissingProduct(
     '/missing-product-requests',
     {
       method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function fetchNotifications(token: string) {
+  return apiFetch<UserNotificationResponse[]>('/notifications', {}, token);
+}
+
+export async function markNotificationRead(token: string, id: string) {
+  return apiFetch<UserNotificationResponse>(
+    `/notifications/${id}/read`,
+    { method: 'PATCH' },
+    token,
+  );
+}
+
+export async function markAllNotificationsRead(token: string) {
+  return apiFetch<{ status: 'ok' }>(
+    '/notifications/read-all',
+    { method: 'POST' },
+    token,
+  );
+}
+
+export async function fetchNotificationPreferences(token: string) {
+  return apiFetch<NotificationPreferencesResponse>(
+    '/notification-preferences',
+    {},
+    token,
+  );
+}
+
+export async function updateNotificationPreferences(
+  token: string,
+  input: Partial<
+    Pick<
+      NotificationPreferencesResponse,
+      | 'inAppEnabled'
+      | 'priceDropsEnabled'
+      | 'receiptOutcomesEnabled'
+      | 'optimizationReadyEnabled'
+    >
+  >,
+) {
+  return apiFetch<NotificationPreferencesResponse>(
+    '/notification-preferences',
+    {
+      method: 'PATCH',
       body: JSON.stringify(input),
     },
     token,

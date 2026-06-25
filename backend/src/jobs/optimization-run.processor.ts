@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { ShoppingListsService } from '../lists/application/shopping-lists.service';
@@ -8,6 +8,7 @@ import { StoreOfferRepository } from '../stores/infrastructure/store-offer.repos
 import { type StoreOfferEntity } from '../stores/domain/store-offer.entity';
 import { OptimizationRunRepository } from '../optimization/infrastructure/optimization-run.repository';
 import { EntitlementsService } from '../users/entitlements.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class OptimizationRunProcessor {
@@ -20,6 +21,8 @@ export class OptimizationRunProcessor {
     private readonly multiMarketOptimizerService: MultiMarketOptimizerService,
     private readonly optimizationRunRepository: OptimizationRunRepository,
     private readonly entitlementsService: EntitlementsService,
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
   ) {}
 
   async process(optimizationRunId: string): Promise<void> {
@@ -189,6 +192,18 @@ export class OptimizationRunProcessor {
     await this.entitlementsService.consumeOptimizationToken({
       userId: optimizationRun.userId,
       optimizationRunId: optimizationRun.id,
+    });
+    await this.notificationsService?.create({
+      userId: optimizationRun.userId,
+      type: 'optimization_ready',
+      title: 'Sua otimizacao esta pronta',
+      message: `${shoppingList.name}: resultado concluido com cobertura ${computed.coverageStatus}.`,
+      resourceType: 'optimization_run',
+      resourceId: optimizationRun.id,
+      metadata: {
+        shoppingListId: optimizationRun.shoppingListId,
+        estimatedSavings: computed.estimatedSavings ?? 0,
+      },
     });
 
     this.logger.log(
