@@ -4,6 +4,7 @@ import { CatalogModule } from '../catalog/catalog.module';
 import { EstablishmentsModule } from '../establishments/establishments.module';
 import { PrismaModule } from '../persistence/prisma.module';
 import { PricingModule } from '../pricing/pricing.module';
+import { ProcessingModule } from '../processing/processing.module';
 import { ReceiptsModule } from '../receipts/receipts.module';
 import { RegionsModule } from '../regions/regions.module';
 import { UsersModule } from '../users/users.module';
@@ -18,6 +19,7 @@ import { AdminAccessController } from './admin-access.controller';
     EstablishmentsModule,
     CatalogModule,
     PricingModule,
+    ProcessingModule,
     ReceiptsModule,
     RegionsModule,
     UsersModule,

@@ -326,6 +326,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessingJob'
+  /missing-product-requests:
+    get:
+      summary: List the authenticated shopper missing-product requests
+      responses:
+        '200':
+          description: Requests returned
+    post:
+      summary: Request catalog review for a product that was not found
+      responses:
+        '201':
+          description: Missing-product request created
+  /admin/processing-jobs/{jobId}/retry:
+    post:
+      summary: Requeue a failed or cancelled processing job
+      responses:
+        '201':
+          description: Job requeued with persisted business payload
+  /admin/processing-jobs/{jobId}/review:
+    post:
+      summary: Mark a processing job as operationally reviewed
+      responses:
+        '201':
+          description: Review audit timestamp recorded
+  /admin/processing-jobs/{jobId}/cancel:
+    post:
+      summary: Cancel a queued or retrying job before worker execution
+      responses:
+        '201':
+          description: Job removed from the waiting queue and audit retained
+  /admin/missing-product-requests:
+    get:
+      summary: List shopper missing-product requests for catalog triage
+      responses:
+        '200':
+          description: Requests returned
+  /admin/missing-product-requests/{requestId}/convert:
+    post:
+      summary: Convert a shopper request into a catalog product
+      responses:
+        '201':
+          description: Catalog product created and request linked
+  /admin/missing-product-requests/{requestId}/reject:
+    post:
+      summary: Reject a missing-product request with audit context
+      responses:
+        '201':
+          description: Request rejected
   /receipts:
     post:
       summary: Submit a receipt contribution from manual items or an NFC-e QR URL

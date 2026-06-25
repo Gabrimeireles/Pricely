@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -110,9 +116,7 @@ describe('OptimizationPage', () => {
 
     fireEvent.click(screen.getAllByText('Uma loja perto de mim')[0]);
 
-    expect(
-      await screen.findByText('Ajuste sua cobertura local'),
-    ).toBeTruthy();
+    expect(await screen.findByText('Ajuste sua cobertura local')).toBeTruthy();
     expect(
       screen.getByText(
         'Nao encontramos estabelecimentos ativos com localizacao dentro do raio escolhido. Aumente o raio, salve outro local ou use o modo de menor total na cidade.',
@@ -147,6 +151,8 @@ describe('OptimizationPage', () => {
             selectedPackageLabel: '500 g',
             establishmentName: 'Mercado Centro',
             establishmentNeighborhood: 'Centro',
+            establishmentLatitude: -23.5505,
+            establishmentLongitude: -46.6333,
             priceAmount: 21.9,
             comparisonPriceAmount: 22.9,
             regionalAveragePriceAmount: 22.9,
@@ -189,9 +195,7 @@ describe('OptimizationPage', () => {
     expect(
       screen.getByText('Recomendação pronta para virar checklist'),
     ).toBeTruthy();
-    expect(
-      screen.getByText('Selecionado: Cafe Pilao 500g'),
-    ).toBeTruthy();
+    expect(screen.getByText('Selecionado: Cafe Pilao 500g')).toBeTruthy();
     expect(document.body.textContent).toMatch(/Confian[cç]a alta/);
     expect(screen.getByText('Feijao Carioca 1kg')).toBeTruthy();
     expect(screen.getByText('78/100')).toBeTruthy();
@@ -199,6 +203,11 @@ describe('OptimizationPage', () => {
     expect(screen.getByText(/segundo menor elegivel/)).toBeTruthy();
     expect(screen.getByText('Reportar preço')).toBeTruthy();
     expect(screen.getAllByText('Enviar nota').length).toBeGreaterThan(0);
+    expect(
+      screen
+        .getByRole('link', { name: /Abrir loja no mapa/i })
+        .getAttribute('href'),
+    ).toContain('www.google.com/maps/search');
     fireEvent.change(screen.getByLabelText(/Exibir/i), {
       target: { value: 'selected' },
     });

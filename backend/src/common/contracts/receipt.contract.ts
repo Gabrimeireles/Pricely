@@ -69,7 +69,8 @@ export interface ReceiptRecord {
     | 'running'
     | 'completed'
     | 'failed'
-    | 'retrying';
+    | 'retrying'
+    | 'cancelled';
   dataNotice: string;
 }
 

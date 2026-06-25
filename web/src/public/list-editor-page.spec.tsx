@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,6 +16,7 @@ const saveList = vi.fn();
 const shareList = vi.fn();
 
 const mockPricelyState = {
+  accessToken: 'token',
   cityId: 'sao-paulo-sp',
   cities: [
     {
@@ -70,6 +77,7 @@ vi.mock('@/app/api', () => ({
     },
   ]),
   fetchSharedShoppingList: vi.fn(),
+  requestMissingProduct: vi.fn(),
   mapShoppingList: vi.fn((list) => ({
     id: list.id,
     name: list.name,
@@ -128,13 +136,17 @@ describe('ListEditorPage', () => {
       expect(screen.getByRole('button', { name: 'Configurar' })).toBeTruthy(),
     );
 
-    const searchImage = screen.getByAltText('Arroz tipo 1 1kg') as HTMLImageElement;
+    const searchImage = screen.getByAltText(
+      'Arroz tipo 1 1kg',
+    ) as HTMLImageElement;
     expect(searchImage.src).toContain('https://example.com/arroz-camil.jpg');
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Adicionar' })[0]);
 
     await waitFor(() => {
-      expect(screen.getAllByText('Qualquer variante').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Qualquer variante').length).toBeGreaterThan(
+        0,
+      );
     });
     expect(screen.getAllByText('Arroz tipo 1 1kg').length).toBeGreaterThan(0);
   });
@@ -172,7 +184,9 @@ describe('ListEditorPage', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getAllByRole('button', { name: 'Configurar' }).length).toBeGreaterThan(0),
+      expect(
+        screen.getAllByRole('button', { name: 'Configurar' }).length,
+      ).toBeGreaterThan(0),
     );
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Configurar' })[0]);
@@ -185,7 +199,9 @@ describe('ListEditorPage', () => {
     });
 
     const variantImage = await screen.findByAltText('Camil · Arroz Tipo 1 1kg');
-    expect((variantImage as HTMLImageElement).src).toContain('https://example.com/arroz-camil.jpg');
+    expect((variantImage as HTMLImageElement).src).toContain(
+      'https://example.com/arroz-camil.jpg',
+    );
     expect(screen.getByText('Variante exata selecionada')).toBeTruthy();
   });
 
@@ -222,7 +238,9 @@ describe('ListEditorPage', () => {
     );
 
     expect(await screen.findByText('Camil · Arroz Tipo 1 1kg')).toBeTruthy();
-    expect(await screen.findByText('Variante exata: Camil · Arroz Tipo 1 1kg')).toBeTruthy();
+    expect(
+      await screen.findByText('Variante exata: Camil · Arroz Tipo 1 1kg'),
+    ).toBeTruthy();
   });
   it('copies a public share link for an existing list', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);

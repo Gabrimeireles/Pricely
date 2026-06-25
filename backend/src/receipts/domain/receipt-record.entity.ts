@@ -45,7 +45,8 @@ export interface ReceiptRecordEntity {
     | 'running'
     | 'completed'
     | 'failed'
-    | 'retrying';
+    | 'retrying'
+    | 'cancelled';
   processingLogs: string[];
   lineItems: ReceiptLineItemEntity[];
   createdAt: string;

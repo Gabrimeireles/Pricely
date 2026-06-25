@@ -89,6 +89,10 @@ type OptimizationResultApiResponse = {
     selectedVariantImageUrl?: string;
     establishmentName?: string;
     establishmentNeighborhood?: string;
+    establishmentAddressLine?: string;
+    establishmentPostalCode?: string;
+    establishmentLatitude?: number;
+    establishmentLongitude?: number;
     distanceKm?: number;
     estimatedCost?: number;
     priceAmount?: number;
@@ -148,6 +152,26 @@ type CityInclusionRequestResponse = {
   stateCode: string;
   status: 'requested' | 'reviewed' | 'planned' | 'rejected';
   createdAt: string;
+};
+
+export type MissingProductRequestResponse = {
+  id: string;
+  requestedName: string;
+  categoryHint?: string | null;
+  packageHint?: string | null;
+  notes?: string | null;
+  status: 'requested' | 'reviewing' | 'converted' | 'rejected';
+  createdAt: string;
+  user?: {
+    id: string;
+    displayName: string;
+    email: string;
+  };
+  catalogProduct?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
 };
 
 type RegionOffersApiResponse = {
@@ -353,12 +377,23 @@ type AdminProcessingJobResponse = {
   jobType: string;
   resourceType: string;
   resourceId: string;
-  status: 'queued' | 'running' | 'completed' | 'failed' | 'retrying';
+  status:
+    | 'queued'
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'retrying'
+    | 'cancelled';
   attemptCount: number;
   failureReason?: string | null;
   createdAt: string;
   updatedAt: string;
   finishedAt?: string;
+  reviewedAt?: string;
+  reviewedByUserId?: string;
+  cancelledAt?: string;
+  cancelledByUserId?: string;
+  cancellationReason?: string;
   owner?: {
     id: string;
     displayName: string;
@@ -579,7 +614,8 @@ type ReceiptSubmissionResponse = {
     | 'running'
     | 'completed'
     | 'failed'
-    | 'retrying';
+    | 'retrying'
+    | 'cancelled';
 };
 
 type AdminQueueHealthResponse = {
@@ -917,6 +953,25 @@ export async function requestCityInclusion(input: {
   });
 }
 
+export async function requestMissingProduct(
+  token: string,
+  input: {
+    requestedName: string;
+    categoryHint?: string;
+    packageHint?: string;
+    notes?: string;
+  },
+) {
+  return apiFetch<MissingProductRequestResponse>(
+    '/missing-product-requests',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
 export async function submitReceipt(
   token: string,
   input: {
@@ -1240,6 +1295,80 @@ export async function fetchAdminProcessingJobDetail(token: string, id: string) {
   return apiFetch<AdminProcessingJobDetailResponse>(
     `/admin/processing-jobs/${id}`,
     {},
+    token,
+  );
+}
+
+export async function retryAdminProcessingJob(token: string, id: string) {
+  return apiFetch<AdminProcessingJobDetailResponse>(
+    `/admin/processing-jobs/${id}/retry`,
+    { method: 'POST' },
+    token,
+  );
+}
+
+export async function reviewAdminProcessingJob(token: string, id: string) {
+  return apiFetch<AdminProcessingJobDetailResponse>(
+    `/admin/processing-jobs/${id}/review`,
+    { method: 'POST' },
+    token,
+  );
+}
+
+export async function cancelAdminProcessingJob(
+  token: string,
+  id: string,
+  reason?: string,
+) {
+  return apiFetch<AdminProcessingJobDetailResponse>(
+    `/admin/processing-jobs/${id}/cancel`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    },
+    token,
+  );
+}
+
+export async function fetchAdminMissingProductRequests(token: string) {
+  return apiFetch<MissingProductRequestResponse[]>(
+    '/admin/missing-product-requests',
+    {},
+    token,
+  );
+}
+
+export async function convertAdminMissingProductRequest(
+  token: string,
+  id: string,
+  input: {
+    name?: string;
+    category: string;
+    defaultUnit?: string;
+    imageUrl?: string;
+  },
+) {
+  return apiFetch<AdminProductResponse>(
+    `/admin/missing-product-requests/${id}/convert`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function rejectAdminMissingProductRequest(
+  token: string,
+  id: string,
+  notes?: string,
+) {
+  return apiFetch<MissingProductRequestResponse>(
+    `/admin/missing-product-requests/${id}/reject`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ notes }),
+    },
     token,
   );
 }

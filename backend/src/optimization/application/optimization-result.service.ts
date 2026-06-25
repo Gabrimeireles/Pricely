@@ -134,7 +134,9 @@ export class OptimizationResultService {
     };
   }
 
-  private normalizeMode(mode: OptimizeShoppingListRequest['mode']): OptimizationMode {
+  private normalizeMode(
+    mode: OptimizeShoppingListRequest['mode'],
+  ): OptimizationMode {
     const aliases: Record<string, OptimizationMode> = {
       local: 'local_unique',
       global_full: 'global_multi',
@@ -204,13 +206,14 @@ export class OptimizationResultService {
         'O raio de cobertura precisa estar entre 1 e 25 km',
       );
     }
-    const candidateEstablishmentCount =
-      await this.countCandidateEstablishments({
+    const candidateEstablishmentCount = await this.countCandidateEstablishments(
+      {
         regionId,
         latitude: Number(preference.latitude),
         longitude: Number(preference.longitude),
         coverageRadiusKm: Number(coverageRadiusKm),
-      });
+      },
+    );
 
     if (candidateEstablishmentCount === 0) {
       throw new BadRequestException(
@@ -279,7 +282,9 @@ export class OptimizationResultService {
         Math.sin(lonDelta / 2);
 
     return (
-      earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+      earthRadiusKm *
+      2 *
+      Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
     );
   }
 
@@ -354,6 +359,20 @@ export class OptimizationResultService {
           establishmentName: selection.productOffer?.establishment.unitName,
           establishmentNeighborhood:
             selection.productOffer?.establishment.neighborhood,
+          establishmentAddressLine:
+            selection.productOffer?.establishment.addressLine ?? undefined,
+          establishmentPostalCode:
+            selection.productOffer?.establishment.postalCode ?? undefined,
+          establishmentLatitude:
+            selection.productOffer?.establishment.latitude !== null &&
+            selection.productOffer?.establishment.latitude !== undefined
+              ? Number(selection.productOffer.establishment.latitude)
+              : undefined,
+          establishmentLongitude:
+            selection.productOffer?.establishment.longitude !== null &&
+            selection.productOffer?.establishment.longitude !== undefined
+              ? Number(selection.productOffer.establishment.longitude)
+              : undefined,
           distanceKm:
             selection.distanceKm !== null
               ? Number(selection.distanceKm)
