@@ -2,6 +2,17 @@ import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 
 import { RouteErrorPage } from './route-error';
 
+function RouteHydrationFallback() {
+  return (
+    <div
+      className="grid min-h-screen place-items-center bg-background text-sm text-muted-foreground"
+      role="status"
+    >
+      Carregando Pricely...
+    </div>
+  );
+}
+
 const publicChildren: RouteObject[] = [
   {
     index: true,
@@ -199,6 +210,7 @@ export const appRouter = createBrowserRouter([
   {
     path: '/',
     errorElement: <RouteErrorPage />,
+    hydrateFallbackElement: <RouteHydrationFallback />,
     lazy: async () => {
       const { PublicLayout } = await import('@/public/public-shell');
       return { Component: PublicLayout };
@@ -208,6 +220,7 @@ export const appRouter = createBrowserRouter([
   {
     path: '/dashboard',
     errorElement: <RouteErrorPage />,
+    hydrateFallbackElement: <RouteHydrationFallback />,
     lazy: async () => {
       const { AdminLayout } = await import('@/dashboard/admin-shell');
       return { Component: AdminLayout };
