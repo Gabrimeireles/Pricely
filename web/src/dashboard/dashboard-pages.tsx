@@ -22,6 +22,7 @@ import {
 import {
   type AdminEstablishmentResponse,
   type AdminMetricsResponse,
+  type MissingProductRequestResponse,
   type AdminOfferResponse,
   type AdminPublicSearchMetricsResponse,
   type AdminProcessingJobDetailResponse,
@@ -38,10 +39,12 @@ import {
   createAdminProduct,
   createAdminProductVariant,
   createAdminRegion,
+  convertAdminMissingProductRequest,
   deleteAdminProduct,
   deleteAdminProductVariant,
   fetchAdminEstablishments,
   fetchAdminMetrics,
+  fetchAdminMissingProductRequests,
   fetchAdminOffers,
   fetchAdminProcessingJobDetail,
   fetchAdminProcessingJobs,
@@ -55,9 +58,13 @@ import {
   fetchAdminShoppingLists,
   fetchAdminUsers,
   grantAdminUserTokens,
+  cancelAdminProcessingJob,
   releaseAdminReceiptProcessing,
   rejectAdminReceiptProcessing,
+  rejectAdminMissingProductRequest,
   reprocessAdminReceiptProcessing,
+  retryAdminProcessingJob,
+  reviewAdminProcessingJob,
   setAdminUserPremium,
   updateAdminOffer,
   updateAdminEstablishment,
@@ -249,6 +256,7 @@ function jobBusinessAuditTarget(job: AdminProcessingJobResponse) {
 function jobStatusLabel(status: AdminProcessingJobResponse['status']) {
   const labels: Record<AdminProcessingJobResponse['status'], string> = {
     completed: 'Concluido',
+    cancelled: 'Cancelado',
     failed: 'Falhou',
     queued: 'Em fila',
     retrying: 'Tentando novamente',
@@ -262,6 +270,8 @@ function jobStatusTooltip(status: AdminProcessingJobResponse['status']) {
   const labels: Record<AdminProcessingJobResponse['status'], string> = {
     completed:
       'Job concluído: valide a auditoria de negócio antes de considerar a evidência final.',
+    cancelled:
+      'Job cancelado antes da execução; o histórico e o motivo permanecem disponíveis.',
     failed:
       'Job com falha: revise motivo, tentativas e recurso vinculado antes de reprocessar.',
     queued:
@@ -278,6 +288,9 @@ function jobStatusTooltip(status: AdminProcessingJobResponse['status']) {
 function jobSeverity(status: AdminProcessingJobResponse['status']) {
   if (status === 'failed') {
     return 'critical' as const;
+  }
+  if (status === 'cancelled') {
+    return 'info' as const;
   }
   if (status === 'retrying' || status === 'queued') {
     return 'warning' as const;
@@ -1944,6 +1957,11 @@ export function AdminCatalogPage() {
     fetchAdminOffers,
     [],
   );
+  const { data: missingProductRequests, reload: reloadMissingProductRequests } =
+    useAdminData<MissingProductRequestResponse[]>(
+      fetchAdminMissingProductRequests,
+      [],
+    );
   const { accessToken } = usePricely();
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
@@ -1970,6 +1988,9 @@ export function AdminCatalogPage() {
   });
   const [catalogQuery, setCatalogQuery] = useState('');
   const [variantQuery, setVariantQuery] = useState('');
+  const [conversionCategories, setConversionCategories] = useState<
+    Record<string, string>
+  >({});
   const [expandedCatalogProductId, setExpandedCatalogProductId] = useState<
     string | null
   >(null);
@@ -2108,6 +2129,111 @@ export function AdminCatalogPage() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Solicitacoes de produtos ausentes</CardTitle>
+          <CardDescription>
+            Converta pedidos de shoppers em produtos base ou rejeite
+            solicitacoes sem contexto suficiente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {missingProductRequests.length === 0 ? (
+            <ActionPlaceholder
+              icon={<SearchIcon className="size-5" />}
+              title="Nenhum produto solicitado"
+              description="Novas solicitacoes feitas no editor de listas aparecerao aqui."
+            />
+          ) : (
+            missingProductRequests.map((request) => (
+              <div
+                className="grid gap-3 rounded-lg border border-border/70 bg-background/80 p-4 lg:grid-cols-[1fr_220px_auto]"
+                key={request.id}
+              >
+                <div>
+                  <div className="font-medium">{request.requestedName}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {request.user?.displayName ?? request.user?.email} ·{' '}
+                    {request.packageHint ?? 'embalagem nao informada'}
+                  </div>
+                  {request.notes ? (
+                    <div className="mt-1 text-sm">{request.notes}</div>
+                  ) : null}
+                </div>
+                <Input
+                  aria-label={`Categoria de ${request.requestedName}`}
+                  onChange={(event) =>
+                    setConversionCategories((current) => ({
+                      ...current,
+                      [request.id]: event.target.value,
+                    }))
+                  }
+                  placeholder="Categoria"
+                  value={
+                    conversionCategories[request.id] ??
+                    request.categoryHint ??
+                    ''
+                  }
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    disabled={
+                      !accessToken ||
+                      request.status === 'converted' ||
+                      request.status === 'rejected'
+                    }
+                    onClick={async () => {
+                      if (!accessToken) return;
+                      const category =
+                        conversionCategories[request.id] ??
+                        request.categoryHint ??
+                        '';
+                      if (!category.trim()) return;
+                      await convertAdminMissingProductRequest(
+                        accessToken,
+                        request.id,
+                        {
+                          category: category.trim(),
+                          defaultUnit: request.packageHint ?? undefined,
+                        },
+                      );
+                      await Promise.all([
+                        reloadMissingProductRequests(),
+                        reload(),
+                      ]);
+                    }}
+                    size="sm"
+                    type="button"
+                  >
+                    Converter
+                  </Button>
+                  <Button
+                    disabled={
+                      !accessToken ||
+                      request.status === 'converted' ||
+                      request.status === 'rejected'
+                    }
+                    onClick={async () => {
+                      if (!accessToken) return;
+                      await rejectAdminMissingProductRequest(
+                        accessToken,
+                        request.id,
+                        'Solicitacao rejeitada na triagem do catalogo.',
+                      );
+                      await reloadMissingProductRequests();
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    Rejeitar
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
       <div className="grid gap-4">
         <Card>
           <CardHeader>
@@ -5265,9 +5391,15 @@ export function AdminQueuePage() {
 
 export function AdminQueueDetailPage() {
   const { jobId = '' } = useParams();
+  const { accessToken } = usePricely();
   const loader = (token: string) => fetchAdminProcessingJobDetail(token, jobId);
-  const { data: job, error } =
-    useAdminData<AdminProcessingJobDetailResponse | null>(loader, null);
+  const {
+    data: job,
+    error,
+    reload,
+  } = useAdminData<AdminProcessingJobDetailResponse | null>(loader, null);
+  const [jobActionError, setJobActionError] = useState<string | null>(null);
+  const [activeJobAction, setActiveJobAction] = useState<string | null>(null);
 
   if (error) {
     return (
@@ -5289,6 +5421,35 @@ export function AdminQueueDetailPage() {
   }
 
   const auditTarget = jobBusinessAuditTarget(job);
+  const runJobAction = async (action: 'retry' | 'review' | 'cancel') => {
+    if (!accessToken) {
+      return;
+    }
+    setJobActionError(null);
+    setActiveJobAction(action);
+    try {
+      if (action === 'retry') {
+        await retryAdminProcessingJob(accessToken, job.id);
+      } else if (action === 'review') {
+        await reviewAdminProcessingJob(accessToken, job.id);
+      } else {
+        await cancelAdminProcessingJob(
+          accessToken,
+          job.id,
+          'Cancelado pelo painel administrativo.',
+        );
+      }
+      await reload();
+    } catch (actionError) {
+      setJobActionError(
+        actionError instanceof Error
+          ? actionError.message
+          : 'Nao foi possivel executar a acao.',
+      );
+    } finally {
+      setActiveJobAction(null);
+    }
+  };
   const jobTimeline = [
     {
       label: 'Entrou na fila',
@@ -5676,9 +5837,24 @@ export function AdminQueueDetailPage() {
               <CardTitle>Ações</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-2">
+              {jobActionError ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Acao nao executada</AlertTitle>
+                  <AlertDescription>{jobActionError}</AlertDescription>
+                </Alert>
+              ) : null}
               <WithTooltip label="Disponível apenas para jobs com falha, após revisão do motivo e do recurso vinculado.">
-                <Button type="button" disabled={job.status !== 'failed'}>
-                  Tentar novamente
+                <Button
+                  disabled={
+                    (job.status !== 'failed' && job.status !== 'cancelled') ||
+                    activeJobAction !== null
+                  }
+                  onClick={() => void runJobAction('retry')}
+                  type="button"
+                >
+                  {activeJobAction === 'retry'
+                    ? 'Reenfileirando...'
+                    : 'Tentar novamente'}
                 </Button>
               </WithTooltip>
               {job.status !== 'failed' ? (
@@ -5702,16 +5878,28 @@ export function AdminQueueDetailPage() {
                   <a href={auditTarget.href}>{auditTarget.label}</a>
                 </Button>
               ) : null}
-              <Button type="button" variant="outline">
-                Marcar como revisado
+              <Button
+                disabled={Boolean(job.reviewedAt) || activeJobAction !== null}
+                onClick={() => void runJobAction('review')}
+                type="button"
+                variant="outline"
+              >
+                {job.reviewedAt ? 'Revisado' : 'Marcar como revisado'}
               </Button>
-              <WithTooltip label="Ação destrutiva planejada: cancelar interromperia o job e exigiria auditoria posterior.">
+              <WithTooltip label="Disponível somente antes do worker iniciar. A ação remove o item aguardando na fila e preserva auditoria.">
                 <Button
                   className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  disabled={
+                    (job.status !== 'queued' && job.status !== 'retrying') ||
+                    activeJobAction !== null
+                  }
+                  onClick={() => void runJobAction('cancel')}
                   type="button"
                   variant="outline"
                 >
-                  Cancelar job
+                  {activeJobAction === 'cancel'
+                    ? 'Cancelando...'
+                    : 'Cancelar job'}
                 </Button>
               </WithTooltip>
             </CardContent>

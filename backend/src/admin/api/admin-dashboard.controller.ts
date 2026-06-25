@@ -28,6 +28,8 @@ import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
 import { RolesGuard } from '../../common/auth/roles.guard';
 import { PublicSearchMetricsService } from '../../pricing/application/public-search-metrics.service';
+import { ProcessingJobsService } from '../../processing/application/processing-jobs.service';
+import { MissingProductRequestsService } from '../../catalog/application/missing-product-requests.service';
 import { AdminDashboardService } from '../application/admin-dashboard.service';
 
 type UploadedMediaFile = {
@@ -400,6 +402,37 @@ class RejectReceiptDto {
   reason?: string;
 }
 
+class CancelProcessingJobDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
+class ConvertMissingProductRequestDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsString()
+  category!: string;
+
+  @IsOptional()
+  @IsString()
+  defaultUnit?: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+}
+
+class RejectMissingProductRequestDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+}
+
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -407,6 +440,8 @@ export class AdminDashboardController {
   constructor(
     private readonly adminDashboardService: AdminDashboardService,
     private readonly publicSearchMetrics: PublicSearchMetricsService,
+    private readonly processingJobsService: ProcessingJobsService,
+    private readonly missingProductRequestsService: MissingProductRequestsService,
   ) {}
 
   @Get('metrics')
@@ -427,6 +462,59 @@ export class AdminDashboardController {
   @Get('processing-jobs/:id')
   async getProcessingJobDetail(@Param('id') id: string) {
     return this.adminDashboardService.getProcessingJobDetail(id);
+  }
+
+  @Post('processing-jobs/:id/retry')
+  retryProcessingJob(@Param('id') id: string) {
+    return this.processingJobsService.retry(id);
+  }
+
+  @Post('processing-jobs/:id/review')
+  reviewProcessingJob(
+    @Param('id') id: string,
+    @Req() request: AuthenticatedAdminRequest,
+  ) {
+    return this.processingJobsService.markReviewed(id, request.user.id);
+  }
+
+  @Post('processing-jobs/:id/cancel')
+  cancelProcessingJob(
+    @Param('id') id: string,
+    @Body() body: CancelProcessingJobDto,
+    @Req() request: AuthenticatedAdminRequest,
+  ) {
+    return this.processingJobsService.cancel(id, request.user.id, body.reason);
+  }
+
+  @Get('missing-product-requests')
+  listMissingProductRequests() {
+    return this.missingProductRequestsService.listForAdmin();
+  }
+
+  @Post('missing-product-requests/:id/convert')
+  convertMissingProductRequest(
+    @Param('id') id: string,
+    @Body() body: ConvertMissingProductRequestDto,
+    @Req() request: AuthenticatedAdminRequest,
+  ) {
+    return this.missingProductRequestsService.convert(
+      id,
+      request.user.id,
+      body,
+    );
+  }
+
+  @Post('missing-product-requests/:id/reject')
+  rejectMissingProductRequest(
+    @Param('id') id: string,
+    @Body() body: RejectMissingProductRequestDto,
+    @Req() request: AuthenticatedAdminRequest,
+  ) {
+    return this.missingProductRequestsService.reject(
+      id,
+      request.user.id,
+      body.notes,
+    );
   }
 
   @Get('receipt-processing')

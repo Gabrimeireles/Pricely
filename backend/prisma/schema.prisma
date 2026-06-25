@@ -136,6 +136,7 @@ enum ProcessingJobStatus {
   completed
   failed
   retrying
+  cancelled
 }
 
 enum ReceiptSourceType {
@@ -183,6 +184,13 @@ enum CityInclusionRequestStatus {
   rejected
 }
 
+enum MissingProductRequestStatus {
+  requested
+  reviewing
+  converted
+  rejected
+}
+
 model UserAccount {
   id                      String                         @id @default(uuid()) @db.Uuid
   email                   String                         @unique
@@ -202,6 +210,7 @@ model UserAccount {
   optimizationTokenLedger OptimizationTokenLedgerEntry[]
   locationPreferences     UserLocationPreference[]
   sessions                UserSession[]
+  missingProductRequests  MissingProductRequest[]
   preferredRegion         Region?                        @relation("UserPreferredRegion", fields: [preferredRegionId], references: [id], onDelete: SetNull)
 }
 
@@ -299,22 +308,43 @@ model UserLocationPreference {
 }
 
 model CatalogProduct {
-  id                String                @id @default(uuid()) @db.Uuid
-  slug              String                @unique
-  name              String
-  category          String
-  defaultUnit       String?
-  imageUrl          String?
-  isActive          Boolean               @default(true)
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
-  aliases           CatalogProductAlias[]
-  productVariants   ProductVariant[]
-  productOffers     ProductOffer[]
-  shoppingListItems ShoppingListItem[]
+  id                     String                  @id @default(uuid()) @db.Uuid
+  slug                   String                  @unique
+  name                   String
+  category               String
+  defaultUnit            String?
+  imageUrl               String?
+  isActive               Boolean                 @default(true)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  aliases                CatalogProductAlias[]
+  productVariants        ProductVariant[]
+  productOffers          ProductOffer[]
+  shoppingListItems      ShoppingListItem[]
+  missingProductRequests MissingProductRequest[]
 
   @@unique([name, category, defaultUnit])
   @@index([category, isActive])
+}
+
+model MissingProductRequest {
+  id               String                      @id @default(uuid()) @db.Uuid
+  userId           String                      @db.Uuid
+  requestedName    String
+  categoryHint     String?
+  packageHint      String?
+  notes            String?
+  status           MissingProductRequestStatus @default(requested)
+  catalogProductId String?                     @db.Uuid
+  reviewedByUserId String?                     @db.Uuid
+  reviewedAt       DateTime?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  user             UserAccount                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogProduct   CatalogProduct?             @relation(fields: [catalogProductId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
 }
 
 model CatalogProductAlias {
@@ -545,19 +575,24 @@ model OptimizationSelection {
 }
 
 model ProcessingJob {
-  id              String              @id @default(uuid()) @db.Uuid
-  queueName       String
-  jobType         ProcessingJobType
-  resourceType    String
-  resourceId      String
-  status          ProcessingJobStatus @default(queued)
-  attemptCount    Int                 @default(0)
-  failureReason   String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  finishedAt      DateTime?
-  optimizationRun OptimizationRun?
-  receiptRecord   ReceiptRecord?
+  id                 String              @id @default(uuid()) @db.Uuid
+  queueName          String
+  jobType            ProcessingJobType
+  resourceType       String
+  resourceId         String
+  status             ProcessingJobStatus @default(queued)
+  attemptCount       Int                 @default(0)
+  failureReason      String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  finishedAt         DateTime?
+  reviewedAt         DateTime?
+  reviewedByUserId   String?             @db.Uuid
+  cancelledAt        DateTime?
+  cancelledByUserId  String?             @db.Uuid
+  cancellationReason String?
+  optimizationRun    OptimizationRun?
+  receiptRecord      ReceiptRecord?
 }
 
 model ReceiptRecord {

@@ -23,6 +23,10 @@ export interface OptimizationSelection {
   selectedVariantImageUrl?: string;
   establishmentName?: string;
   establishmentNeighborhood?: string;
+  establishmentAddressLine?: string;
+  establishmentPostalCode?: string;
+  establishmentLatitude?: number;
+  establishmentLongitude?: number;
   distanceKm?: number;
   estimatedCost?: number;
   priceAmount?: number;

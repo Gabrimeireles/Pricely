@@ -136,6 +136,11 @@ export class AdminDashboardService {
       status: job.status,
       attemptCount: job.attemptCount,
       failureReason: job.failureReason,
+      reviewedAt: job.reviewedAt?.toISOString(),
+      reviewedByUserId: job.reviewedByUserId,
+      cancelledAt: job.cancelledAt?.toISOString(),
+      cancelledByUserId: job.cancelledByUserId,
+      cancellationReason: job.cancellationReason,
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
       finishedAt: job.finishedAt?.toISOString(),
@@ -243,6 +248,11 @@ export class AdminDashboardService {
       status: job.status,
       attemptCount: job.attemptCount,
       failureReason: job.failureReason,
+      reviewedAt: job.reviewedAt?.toISOString(),
+      reviewedByUserId: job.reviewedByUserId,
+      cancelledAt: job.cancelledAt?.toISOString(),
+      cancelledByUserId: job.cancelledByUserId,
+      cancellationReason: job.cancellationReason,
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
       finishedAt: job.finishedAt?.toISOString(),
@@ -830,7 +840,8 @@ export class AdminDashboardService {
   }
 
   async reprocessReceipt(receiptRecordId: string) {
-    const receipt = await this.receiptIngestionService.reprocess(receiptRecordId);
+    const receipt =
+      await this.receiptIngestionService.reprocess(receiptRecordId);
 
     this.logger.log(`Receipt ${receiptRecordId} requeued for processing`);
 

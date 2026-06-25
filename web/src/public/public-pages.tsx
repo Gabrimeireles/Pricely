@@ -61,6 +61,7 @@ import {
   fetchSharedShoppingList,
   mapShoppingList,
   requestCityInclusion,
+  requestMissingProduct,
   searchCatalogProducts,
   submitReceipt,
 } from '@/app/api';
@@ -662,6 +663,36 @@ function selectionStatusLabel(status: 'selected' | 'missing' | 'review') {
   }
 
   return 'Sem oferta confirmada';
+}
+
+function buildEstablishmentMapUrl(selection: {
+  establishmentName?: string;
+  establishmentNeighborhood?: string;
+  establishmentAddressLine?: string;
+  establishmentPostalCode?: string;
+  establishmentLatitude?: number;
+  establishmentLongitude?: number;
+}) {
+  const { establishmentLatitude, establishmentLongitude } = selection;
+  if (
+    establishmentLatitude !== undefined &&
+    establishmentLongitude !== undefined
+  ) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      `${establishmentLatitude},${establishmentLongitude}`,
+    )}`;
+  }
+  const query = [
+    selection.establishmentName,
+    selection.establishmentAddressLine,
+    selection.establishmentNeighborhood,
+    selection.establishmentPostalCode,
+  ]
+    .filter(Boolean)
+    .join(', ');
+  return query
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+    : undefined;
 }
 
 function rejectedReasonLabel(reason?: string) {
@@ -3120,7 +3151,8 @@ export function ReceiptSubmissionPage() {
       | 'running'
       | 'completed'
       | 'failed'
-      | 'retrying';
+      | 'retrying'
+      | 'cancelled';
     rewardEligibilityStatus?:
       | 'disabled'
       | 'ineligible'
@@ -4537,8 +4569,15 @@ function buildEditableItems(source?: ShoppingList): EditableListItem[] {
 export function ListEditorPage() {
   const navigate = useNavigate();
   const { listId = 'nova' } = useParams();
-  const { cityId, cities, lists, preferredMode, saveList, shareList } =
-    usePricely();
+  const {
+    accessToken,
+    cityId,
+    cities,
+    lists,
+    preferredMode,
+    saveList,
+    shareList,
+  } = usePricely();
   const editingList =
     listId === 'nova' ? undefined : lists.find((entry) => entry.id === listId);
   const [name, setName] = useState(editingList?.name ?? '');
@@ -4568,6 +4607,12 @@ export function ListEditorPage() {
     ProductVariantResponse[]
   >([]);
   const [isBrandDialogOpen, setIsBrandDialogOpen] = useState(false);
+  const [isMissingProductDialogOpen, setIsMissingProductDialogOpen] =
+    useState(false);
+  const [missingProductCategory, setMissingProductCategory] = useState('');
+  const [missingProductMessage, setMissingProductMessage] = useState<
+    string | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -5210,11 +5255,97 @@ export function ListEditorPage() {
                 </div>
               );
             })}
-            <Button type="button" variant="outline">
+            <Button
+              onClick={() => setIsMissingProductDialogOpen(true)}
+              type="button"
+              variant="outline"
+            >
               Adicionar produto não encontrado
             </Button>
+            {missingProductMessage ? (
+              <p className="text-sm text-[var(--ds-savings)]">
+                {missingProductMessage}
+              </p>
+            ) : null}
           </div>
         </aside>
+
+        <Dialog
+          open={isMissingProductDialogOpen}
+          onOpenChange={setIsMissingProductDialogOpen}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Solicitar produto ao catalogo</DialogTitle>
+              <DialogDescription>
+                A equipe revisara o item e podera transforma-lo em um produto
+                comparavel.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4">
+              <Field>
+                <FieldLabel htmlFor="missing-product-name">Produto</FieldLabel>
+                <Input
+                  id="missing-product-name"
+                  onChange={(event) => setDraftName(event.target.value)}
+                  value={draftName}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="missing-product-category">
+                  Categoria sugerida
+                </FieldLabel>
+                <Input
+                  id="missing-product-category"
+                  onChange={(event) =>
+                    setMissingProductCategory(event.target.value)
+                  }
+                  placeholder="Ex.: mercearia"
+                  value={missingProductCategory}
+                />
+              </Field>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => setIsMissingProductDialogOpen(false)}
+                type="button"
+                variant="outline"
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={!accessToken || draftName.trim().length < 2}
+                onClick={async () => {
+                  if (!accessToken) {
+                    setError('Entre na conta para solicitar um produto.');
+                    return;
+                  }
+                  try {
+                    await requestMissingProduct(accessToken, {
+                      requestedName: draftName.trim(),
+                      categoryHint: missingProductCategory.trim() || undefined,
+                      packageHint: draftUnit.trim() || undefined,
+                      notes: draftNote.trim() || undefined,
+                    });
+                    setMissingProductMessage(
+                      'Solicitacao enviada para revisao do catalogo.',
+                    );
+                    setIsMissingProductDialogOpen(false);
+                  } catch (requestError) {
+                    setError(
+                      requestError instanceof Error
+                        ? requestError.message
+                        : 'Nao foi possivel enviar a solicitacao.',
+                    );
+                  }
+                }}
+                type="button"
+              >
+                Enviar solicitacao
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={isBrandDialogOpen} onOpenChange={setIsBrandDialogOpen}>
           <DialogContent>
@@ -5359,6 +5490,7 @@ export function OptimizationPage() {
           const current = stores.get(key) ?? {
             name: key,
             neighborhood: selection.establishmentNeighborhood,
+            mapUrl: buildEstablishmentMapUrl(selection),
             items: 0,
             total: 0,
           };
@@ -5373,6 +5505,7 @@ export function OptimizationPage() {
           {
             name: string;
             neighborhood?: string;
+            mapUrl?: string;
             items: number;
             total: number;
           }
@@ -6672,6 +6805,23 @@ export function OptimizationPage() {
                             Ver itens da parada
                           </Link>
                         </Button>
+                        {store.mapUrl ? (
+                          <Button
+                            asChild
+                            className="mt-1 w-full"
+                            size="sm"
+                            variant="outline"
+                          >
+                            <a
+                              href={store.mapUrl}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              Abrir loja no mapa
+                              <ExternalLinkIcon className="size-3.5" />
+                            </a>
+                          </Button>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -6685,10 +6835,9 @@ export function OptimizationPage() {
                       ).toFixed(1)}{' '}
                       km estimados
                     </div>
-                    <Button className="mt-2 px-0" size="sm" variant="link">
-                      Ver no mapa
-                      <ExternalLinkIcon className="size-3.5" />
-                    </Button>
+                    <div className="mt-2 text-xs">
+                      Os links usam apenas o endereco publico das lojas.
+                    </div>
                   </div>
                 </CardContent>
               </Card>

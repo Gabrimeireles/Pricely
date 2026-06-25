@@ -45,6 +45,12 @@ const fetchAdminEstablishments = vi.fn();
 const fetchAdminOffers = vi.fn();
 const fetchAdminProducts = vi.fn();
 const fetchAdminProductVariants = vi.fn();
+const fetchAdminMissingProductRequests = vi.fn();
+const convertAdminMissingProductRequest = vi.fn();
+const rejectAdminMissingProductRequest = vi.fn();
+const retryAdminProcessingJob = vi.fn();
+const reviewAdminProcessingJob = vi.fn();
+const cancelAdminProcessingJob = vi.fn();
 const createAdminOffer = vi.fn();
 const updateAdminOffer = vi.fn();
 const deleteAdminProduct = vi.fn();
@@ -111,6 +117,18 @@ vi.mock('@/app/api', () => ({
   fetchAdminProducts: (...args: unknown[]) => fetchAdminProducts(...args),
   fetchAdminProductVariants: (...args: unknown[]) =>
     fetchAdminProductVariants(...args),
+  fetchAdminMissingProductRequests: (...args: unknown[]) =>
+    fetchAdminMissingProductRequests(...args),
+  convertAdminMissingProductRequest: (...args: unknown[]) =>
+    convertAdminMissingProductRequest(...args),
+  rejectAdminMissingProductRequest: (...args: unknown[]) =>
+    rejectAdminMissingProductRequest(...args),
+  retryAdminProcessingJob: (...args: unknown[]) =>
+    retryAdminProcessingJob(...args),
+  reviewAdminProcessingJob: (...args: unknown[]) =>
+    reviewAdminProcessingJob(...args),
+  cancelAdminProcessingJob: (...args: unknown[]) =>
+    cancelAdminProcessingJob(...args),
   createAdminOffer: (...args: unknown[]) => createAdminOffer(...args),
   createAdminProduct: vi.fn(),
   createAdminProductVariant: vi.fn(),
@@ -295,6 +313,13 @@ describe('Admin dashboard pages', () => {
     fetchAdminOffers.mockReset();
     fetchAdminProducts.mockReset();
     fetchAdminProductVariants.mockReset();
+    fetchAdminMissingProductRequests.mockReset();
+    convertAdminMissingProductRequest.mockReset();
+    rejectAdminMissingProductRequest.mockReset();
+    retryAdminProcessingJob.mockReset();
+    reviewAdminProcessingJob.mockReset();
+    cancelAdminProcessingJob.mockReset();
+    fetchAdminMissingProductRequests.mockResolvedValue([]);
     createAdminOffer.mockReset();
     updateAdminOffer.mockReset();
     deleteAdminProduct.mockReset();
