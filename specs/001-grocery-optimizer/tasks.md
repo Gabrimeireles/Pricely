@@ -603,6 +603,7 @@ sensitive monetary values across web surfaces.
 - [X] T247 Add server-side public offer querying and pagination with URL-persisted web catalog state in `backend/src/pricing/` and `web/src/public/`
 - [X] T248 Debounce public offer search, add query-aligned Prisma indexes, and render compact numbered pagination in `backend/prisma/` and `web/src/public/`
 - [X] T249 Benchmark public offer text search and add adaptive candidate filtering with a high-cardinality fallback in `backend/src/pricing/`
+- [X] T250 Update GitHub Actions to Node 24-compatible releases and pin the reusable Docker build workflow in `.github/workflows/`
 
 **Homolog validation note (2026-06-15)**: Web/admin/backend MVP smoke passed on
 `https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.
