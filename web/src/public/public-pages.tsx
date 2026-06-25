@@ -1,11 +1,17 @@
 ﻿import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import {
   AlertCircleIcon,
   ArrowRightIcon,
   BadgeCheckIcon,
   BellIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
   CheckCircle2Icon,
   ClipboardListIcon,
@@ -132,20 +138,6 @@ type OptimizationResultTab =
   | 'stores'
   | 'savings';
 type OptimizationItemFilter = 'all' | 'selected' | 'review';
-type OfferSort =
-  | 'name'
-  | 'lowest-price'
-  | 'highest-savings'
-  | 'highest-confidence'
-  | 'most-recent';
-
-function normalizeSearchText(value: string | null | undefined) {
-  return (value ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
 
 function CitySelectionDialog({
   cityId,
@@ -746,50 +738,6 @@ function getComparableOffers(group: PublicOfferGroup) {
   return group.offers.length > 0
     ? group.offers
     : [group.bestOffer, ...group.alternativeOffers];
-}
-
-function buildOfferGroupFromOffers(
-  group: PublicOfferGroup,
-  offers: PublicOfferGroup['offers'],
-): PublicOfferGroup | null {
-  if (offers.length === 0) {
-    return null;
-  }
-
-  const sorted = [...offers].sort((left, right) => {
-    if (left.priceAmount !== right.priceAmount) {
-      return left.priceAmount - right.priceAmount;
-    }
-
-    return (
-      new Date(right.observedAt).getTime() - new Date(left.observedAt).getTime()
-    );
-  });
-  const prices = sorted.map((offer) => offer.priceAmount);
-  const cheapestPriceAmount = sorted[0].priceAmount;
-  const secondCheapestPriceAmount = sorted[1]?.priceAmount;
-  const averagePriceAmount = Number(
-    (prices.reduce((sum, price) => sum + price, 0) / prices.length).toFixed(2),
-  );
-
-  return {
-    ...group,
-    bestOffer: sorted[0],
-    alternativeOffers: sorted.slice(1),
-    offers: sorted,
-    establishmentCount: sorted.length,
-    cheapestPriceAmount,
-    secondCheapestPriceAmount,
-    savingsVsSecondCheapest: Number(
-      Math.max(
-        0,
-        (secondCheapestPriceAmount ?? cheapestPriceAmount) -
-          cheapestPriceAmount,
-      ).toFixed(2),
-    ),
-    averagePriceAmount,
-    highestPriceAmount: Math.max(...prices),
-  };
 }
 
 function groupFlatRegionalOffers(
@@ -2099,18 +2047,35 @@ export function LandingPage() {
 
 export function OffersPage() {
   const { cityId, cities, setCityId } = usePricely();
+  const [searchParams, setSearchParams] = useSearchParams();
   const city = cityId
     ? (cities.find((entry) => entry.id === cityId) ?? getCityById(cityId))
     : null;
   const [offerGroups, setOfferGroups] = useState<
     NonNullable<RegionOffersApiResponse['groupedOffers']>
   >([]);
-  const [storeFilter, setStoreFilter] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [confidenceFilter, setConfidenceFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [offerSort, setOfferSort] = useState<OfferSort>('name');
+  const [offerPagination, setOfferPagination] = useState<
+    NonNullable<RegionOffersApiResponse['pagination']>
+  >({
+    page: 1,
+    pageSize: 24,
+    totalItems: 0,
+    totalPages: 1,
+    hasPreviousPage: false,
+    hasNextPage: false,
+  });
+  const [availableStores, setAvailableStores] = useState<string[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [isCitySelectionOpen, setIsCitySelectionOpen] = useState(false);
+  const searchQuery = searchParams.get('q') ?? '';
+  const storeFilter = searchParams.get('store') ?? 'all';
+  const categoryFilter = searchParams.get('category') ?? 'all';
+  const confidenceFilter = searchParams.get('confidence') ?? 'all';
+  const offerSort = searchParams.get('sort') ?? 'name';
+  const requestedPage = Math.max(
+    1,
+    Number.parseInt(searchParams.get('page') ?? '1', 10) || 1,
+  );
 
   useEffect(() => {
     let disposed = false;
@@ -2118,15 +2083,57 @@ export function OffersPage() {
     const load = async () => {
       if (!cityId) {
         setOfferGroups([]);
+        setOfferPagination((current) => ({
+          ...current,
+          page: 1,
+          totalItems: 0,
+          totalPages: 1,
+          hasPreviousPage: false,
+          hasNextPage: false,
+        }));
         return;
       }
 
       try {
-        const response = await fetchRegionOffers(cityId);
+        const response = await fetchRegionOffers(cityId, {
+          q: searchQuery,
+          store: storeFilter,
+          category: categoryFilter,
+          confidence: confidenceFilter,
+          sort: offerSort,
+          page: requestedPage,
+          pageSize: 24,
+        });
         if (!disposed) {
           setOfferGroups(
             response.groupedOffers ?? groupFlatRegionalOffers(response.offers),
           );
+          setOfferPagination(
+            response.pagination ?? {
+              page: 1,
+              pageSize: response.groupedOffers?.length ?? response.offers.length,
+              totalItems:
+                response.groupedOffers?.length ?? response.offers.length,
+              totalPages: 1,
+              hasPreviousPage: false,
+              hasNextPage: false,
+            },
+          );
+          setAvailableStores(response.filters?.stores ?? []);
+          setAvailableCategories(response.filters?.categories ?? []);
+
+          if (
+            response.pagination &&
+            response.pagination.page !== requestedPage
+          ) {
+            const next = new URLSearchParams(searchParams);
+            if (response.pagination.page === 1) {
+              next.delete('page');
+            } else {
+              next.set('page', String(response.pagination.page));
+            }
+            setSearchParams(next, { replace: true });
+          }
         }
       } catch {
         if (!disposed) {
@@ -2140,21 +2147,37 @@ export function OffersPage() {
     return () => {
       disposed = true;
     };
-  }, [cityId]);
+  }, [
+    categoryFilter,
+    cityId,
+    confidenceFilter,
+    offerSort,
+    requestedPage,
+    searchParams,
+    searchQuery,
+    setSearchParams,
+    storeFilter,
+  ]);
 
   const storeOptions = Array.from(
-    new Set(
-      offerGroups.flatMap((group) =>
+    new Set([
+      ...availableStores,
+      ...(storeFilter !== 'all' ? [storeFilter] : []),
+      ...offerGroups.flatMap((group) =>
         getComparableOffers(group).map((offer) => offer.storeName),
       ),
-    ),
+    ]),
   ).sort((left, right) => left.localeCompare(right));
 
   const categoryOptions = Array.from(
     new Set(
-      offerGroups
-        .map((group) => group.category ?? group.bestOffer.category)
-        .filter((category): category is string => Boolean(category)),
+      [
+        ...availableCategories,
+        ...(categoryFilter !== 'all' ? [categoryFilter] : []),
+        ...offerGroups.map(
+          (group) => group.category ?? group.bestOffer.category,
+        ),
+      ].filter((category): category is string => Boolean(category)),
     ),
   ).sort((left, right) => left.localeCompare(right));
 
@@ -2164,108 +2187,41 @@ export function OffersPage() {
     categoryFilter !== 'all' ||
     confidenceFilter !== 'all';
 
-  const storeScopedOfferGroups =
-    storeFilter === 'all'
-      ? offerGroups
-      : offerGroups
-          .map((group) => {
-            const filteredOffers = getComparableOffers(group).filter(
-              (offer) => offer.storeName === storeFilter,
-            );
+  const visibleOfferGroups = offerGroups;
 
-            return buildOfferGroupFromOffers(group, filteredOffers);
-          })
-          .filter((group): group is NonNullable<typeof group> =>
-            Boolean(group),
-          );
-  const normalizedSearchQuery = normalizeSearchText(searchQuery);
-  const visibleOfferGroups = storeScopedOfferGroups
-    .filter((group) => {
-      const groupCategory = group.category ?? group.bestOffer.category ?? '';
-      const comparableOffers = getComparableOffers(group);
+  const updateOfferSearchParams = (
+    key: 'q' | 'store' | 'category' | 'confidence' | 'sort' | 'page',
+    value: string,
+    resetPage = true,
+  ) => {
+    const next = new URLSearchParams(searchParams);
 
-      if (categoryFilter !== 'all' && groupCategory !== categoryFilter) {
-        return false;
-      }
+    if (
+      !value ||
+      value === 'all' ||
+      (key === 'sort' && value === 'name') ||
+      (key === 'page' && value === '1')
+    ) {
+      next.delete(key);
+    } else {
+      next.set(key, value);
+    }
 
-      if (
-        confidenceFilter !== 'all' &&
-        group.bestOffer.confidenceLevel !== confidenceFilter
-      ) {
-        return false;
-      }
+    if (resetPage && key !== 'page') {
+      next.delete('page');
+    }
 
-      if (!normalizedSearchQuery) {
-        return true;
-      }
-
-      const searchableText = normalizeSearchText(
-        [
-          group.productName,
-          group.variantName,
-          group.packageLabel,
-          groupCategory,
-          group.bestOffer.displayName,
-          ...comparableOffers.flatMap((offer) => [
-            offer.productName,
-            offer.variantName,
-            offer.displayName,
-            offer.packageLabel,
-            offer.storeName,
-            offer.neighborhood,
-            offer.sourceLabel,
-          ]),
-        ].join(' '),
-      );
-
-      return searchableText.includes(normalizedSearchQuery);
-    })
-    .sort((left, right) => {
-      if (offerSort === 'lowest-price') {
-        return left.cheapestPriceAmount - right.cheapestPriceAmount;
-      }
-
-      if (offerSort === 'highest-savings') {
-        const leftSavings = Math.max(
-          left.savingsVsSecondCheapest ?? 0,
-          left.bestOffer.savingsVsRegionalAverage ?? 0,
-          left.bestOffer.savingsVsComparison ?? 0,
-        );
-        const rightSavings = Math.max(
-          right.savingsVsSecondCheapest ?? 0,
-          right.bestOffer.savingsVsRegionalAverage ?? 0,
-          right.bestOffer.savingsVsComparison ?? 0,
-        );
-
-        return rightSavings - leftSavings;
-      }
-
-      if (offerSort === 'highest-confidence') {
-        const confidenceRank = { high: 3, medium: 2, low: 1 };
-        return (
-          confidenceRank[right.bestOffer.confidenceLevel] -
-          confidenceRank[left.bestOffer.confidenceLevel]
-        );
-      }
-
-      if (offerSort === 'most-recent') {
-        return (
-          new Date(right.bestOffer.observedAt).getTime() -
-          new Date(left.bestOffer.observedAt).getTime()
-        );
-      }
-
-      return (left.variantName ?? left.productName).localeCompare(
-        right.variantName ?? right.productName,
-        'pt-BR',
-      );
-    });
+    setSearchParams(next);
+  };
 
   const clearOfferFilters = () => {
-    setSearchQuery('');
-    setStoreFilter('all');
-    setCategoryFilter('all');
-    setConfidenceFilter('all');
+    const next = new URLSearchParams(searchParams);
+    next.delete('q');
+    next.delete('store');
+    next.delete('category');
+    next.delete('confidence');
+    next.delete('page');
+    setSearchParams(next);
   };
 
   return (
@@ -2304,9 +2260,10 @@ export function OffersPage() {
                 Buscar e filtrar ofertas
               </div>
               <div className="text-sm text-muted-foreground">
-                {visibleOfferGroups.length} de {offerGroups.length} produtos
-                agrupados. Cada produto aparece uma vez, com o menor preço
-                primeiro.
+                {offerPagination.totalItems === 0
+                  ? 'Nenhum produto encontrado.'
+                  : `${visibleOfferGroups.length} produtos nesta página de ${offerPagination.totalItems} produtos encontrados.`}{' '}
+                Cada produto aparece uma vez.
               </div>
             </div>
             {hasActiveOfferFilters ? (
@@ -2322,7 +2279,9 @@ export function OffersPage() {
                 <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   className="pl-9"
-                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onChange={(event) =>
+                    updateOfferSearchParams('q', event.target.value)
+                  }
                   placeholder="Nome, produto, mercado, bairro..."
                   value={searchQuery}
                 />
@@ -2330,7 +2289,12 @@ export function OffersPage() {
             </label>
             <label className="grid gap-1 text-sm">
               <span className="font-medium">Mercado</span>
-              <Select onValueChange={setStoreFilter} value={storeFilter}>
+              <Select
+                onValueChange={(value) =>
+                  updateOfferSearchParams('store', value)
+                }
+                value={storeFilter}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Todos os mercados" />
                 </SelectTrigger>
@@ -2350,7 +2314,9 @@ export function OffersPage() {
               <span className="font-medium">Categoria</span>
               <Select
                 disabled={categoryOptions.length === 0}
-                onValueChange={setCategoryFilter}
+                onValueChange={(value) =>
+                  updateOfferSearchParams('category', value)
+                }
                 value={categoryFilter}
               >
                 <SelectTrigger className="w-full">
@@ -2377,7 +2343,9 @@ export function OffersPage() {
             <label className="grid gap-1 text-sm">
               <span className="font-medium">Confiança</span>
               <Select
-                onValueChange={setConfidenceFilter}
+                onValueChange={(value) =>
+                  updateOfferSearchParams('confidence', value)
+                }
                 value={confidenceFilter}
               >
                 <SelectTrigger className="w-full">
@@ -2396,7 +2364,9 @@ export function OffersPage() {
             <label className="grid gap-1 text-sm">
               <span className="font-medium">Ordenar por</span>
               <Select
-                onValueChange={(value) => setOfferSort(value as OfferSort)}
+                onValueChange={(value) =>
+                  updateOfferSearchParams('sort', value, false)
+                }
                 value={offerSort}
               >
                 <SelectTrigger className="w-full">
@@ -2548,6 +2518,51 @@ export function OffersPage() {
           </Card>
         ))}
       </div>
+      {cityId && offerPagination.totalItems > 0 ? (
+        <nav
+          aria-label="Paginação de ofertas"
+          className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card/90 p-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="text-sm text-muted-foreground">
+            Página {offerPagination.page} de {offerPagination.totalPages} ·{' '}
+            {offerPagination.totalItems} produtos
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              disabled={!offerPagination.hasPreviousPage}
+              onClick={() =>
+                updateOfferSearchParams(
+                  'page',
+                  String(offerPagination.page - 1),
+                  false,
+                )
+              }
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <ChevronLeftIcon data-icon="inline-start" />
+              Anterior
+            </Button>
+            <Button
+              disabled={!offerPagination.hasNextPage}
+              onClick={() =>
+                updateOfferSearchParams(
+                  'page',
+                  String(offerPagination.page + 1),
+                  false,
+                )
+              }
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Próxima
+              <ChevronRightIcon data-icon="inline-end" />
+            </Button>
+          </div>
+        </nav>
+      ) : null}
       {cityId && visibleOfferGroups.length === 0 ? (
         <ActionPlaceholder
           icon={<MapPinIcon className="size-5" />}

@@ -159,6 +159,18 @@ describe('PublicPricingService', () => {
           ],
         }),
       ],
+      pagination: {
+        page: 1,
+        pageSize: 24,
+        totalItems: 1,
+        totalPages: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
+      filters: {
+        stores: ['Mercado Centro'],
+        categories: ['mercearia'],
+      },
     });
 
     await expect(service.getOfferDetail('offer-1')).resolves.toEqual(
@@ -299,6 +311,105 @@ describe('PublicPricingService', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           productVariantId: 'variant-camil',
+        }),
+      }),
+    );
+  });
+
+  it('filters, sorts, and paginates regional offer groups', async () => {
+    jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    const makeOffer = (
+      id: string,
+      variantName: string,
+      priceAmount: number,
+      category: string,
+    ) => ({
+      id,
+      catalogProductId: `product-${id}`,
+      productVariantId: `variant-${id}`,
+      displayName: variantName,
+      packageLabel: '1 un',
+      priceAmount,
+      basePriceAmount: priceAmount,
+      promotionalPriceAmount: null,
+      sourceType: 'admin',
+      sourceReference: 'Teste',
+      observedAt: new Date('2026-06-24T10:00:00Z'),
+      confidenceLevel: 'high' as const,
+      catalogProduct: {
+        name: variantName,
+        category,
+        imageUrl: null,
+      },
+      productVariant: {
+        displayName: variantName,
+        imageUrl: null,
+      },
+      establishment: {
+        unitName: 'Mercado Centro',
+        neighborhood: 'Centro',
+      },
+    });
+    const findMany = jest.fn().mockResolvedValue([
+      makeOffer('cafe', 'Cafe 500g', 16.9, 'mercearia'),
+      makeOffer('acucar', 'Acucar 1kg', 4.19, 'mercearia'),
+      makeOffer('arroz', 'Arroz 5kg', 20.9, 'mercearia'),
+    ]);
+    const prisma = {
+      region: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'region-1',
+          slug: 'sao-paulo-sp',
+          name: 'Sao Paulo',
+          stateCode: 'SP',
+          implantationStatus: 'active',
+        }),
+      },
+      establishment: {
+        count: jest.fn().mockResolvedValue(1),
+      },
+      productOffer: {
+        findMany,
+      },
+    };
+    const service = new PublicPricingService(prisma as never);
+
+    const result = await service.listRegionOffers('sao-paulo-sp', {
+      query: 'a',
+      store: 'Mercado Centro',
+      category: 'mercearia',
+      confidence: 'high',
+      sort: 'lowest-price',
+      page: '2',
+      pageSize: '1',
+    });
+
+    expect(result.pagination).toEqual({
+      page: 2,
+      pageSize: 1,
+      totalItems: 3,
+      totalPages: 3,
+      hasPreviousPage: true,
+      hasNextPage: true,
+    });
+    expect(result.groupedOffers).toHaveLength(1);
+    expect(result.groupedOffers[0].variantName).toBe('Cafe 500g');
+    expect(result.offers).toHaveLength(1);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          confidenceLevel: 'high',
+          OR: expect.any(Array),
+          catalogProduct: expect.objectContaining({
+            category: expect.objectContaining({
+              equals: 'mercearia',
+            }),
+          }),
+          establishment: expect.objectContaining({
+            unitName: expect.objectContaining({
+              equals: 'Mercado Centro',
+            }),
+          }),
         }),
       }),
     );

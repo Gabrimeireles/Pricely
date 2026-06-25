@@ -174,6 +174,16 @@ describe('Grocery optimizer API contract', () => {
           offerCoverageStatus: expect.stringMatching(/live|collecting_data/),
           offers: expect.any(Array),
           groupedOffers: expect.any(Array),
+          pagination: expect.objectContaining({
+            page: expect.any(Number),
+            pageSize: expect.any(Number),
+            totalItems: expect.any(Number),
+            totalPages: expect.any(Number),
+          }),
+          filters: expect.objectContaining({
+            stores: expect.any(Array),
+            categories: expect.any(Array),
+          }),
         }),
       );
 
