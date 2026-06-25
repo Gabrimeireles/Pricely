@@ -41,6 +41,16 @@ enum ProductAliasSourceType {
   receipt
 }
 
+enum PublicSearchStrategy {
+  candidate
+  broad_fallback
+}
+
+enum PublicSearchSloAlertStatus {
+  active
+  resolved
+}
+
 enum ShoppingListStatus {
   draft
   ready
@@ -606,4 +616,35 @@ model ReceiptLineItem {
 
   @@index([receiptRecordId])
   @@index([ean])
+}
+
+model PublicSearchMetric {
+  id                          String               @id @default(uuid()) @db.Uuid
+  regionSlug                  String
+  strategy                    PublicSearchStrategy
+  durationMs                  Decimal              @db.Decimal(10, 2)
+  resultCount                 Int
+  candidateOfferCount         Int
+  candidateProductCount       Int
+  candidateVariantCount       Int
+  candidateEstablishmentCount Int
+  createdAt                   DateTime             @default(now())
+
+  @@index([createdAt])
+  @@index([strategy, createdAt])
+  @@index([regionSlug, createdAt])
+}
+
+model PublicSearchSloAlert {
+  id             String                     @id @default(uuid()) @db.Uuid
+  status         PublicSearchSloAlertStatus @default(active)
+  sampleCount    Int
+  observedP95Ms  Decimal                    @db.Decimal(10, 2)
+  targetP95Ms    Int
+  reason         String
+  triggeredAt    DateTime                   @default(now())
+  lastNotifiedAt DateTime                   @default(now())
+  resolvedAt     DateTime?
+
+  @@index([status, triggeredAt])
 }

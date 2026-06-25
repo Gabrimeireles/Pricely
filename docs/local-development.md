@@ -125,9 +125,13 @@ flutter run --dart-define=PRICELY_API_BASE_URL=http://192.168.0.10:3000
 - Observabilidade local usa logs Pino estruturados no backend. Ajuste `LOG_LEVEL`
   quando precisar de mais detalhe, mas nao registre payloads brutos de recibos,
   senhas, tokens, CPF, nome ou endereco.
-- A janela de latencia da busca publica pode ser consultada por admins em
-  `GET /admin/metrics/public-search`. A recomendacao de reavaliar `pg_trgm` so fica
-  ativa depois da amostra minima e quando o p95 ultrapassa o alvo configurado.
+- As metricas da busca publica ficam persistidas no PostgreSQL por
+  `PUBLIC_SEARCH_METRICS_RETENTION_DAYS` e podem ser consultadas por admins em
+  `GET /admin/metrics/public-search`. O endpoint inclui p50, p95, volume de 24h/7d,
+  fallback e serie de 24 horas.
+- O alerta de SLO so fica ativo depois da amostra minima e quando o p95 ultrapassa
+  o alvo configurado. Notificacoes estruturadas respeitam
+  `PUBLIC_SEARCH_ALERT_COOLDOWN_MINUTES`. O texto pesquisado nao e persistido.
 - Planos de operacao e deploy estao em:
   - [Pino logging](observability/pino-logging-plan.md)
   - [Sentry](observability/sentry-plan.md)

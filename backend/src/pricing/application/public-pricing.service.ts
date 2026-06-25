@@ -183,11 +183,6 @@ export class PublicPricingService {
 
     if (searchStartedAt !== undefined && textSearch) {
       const durationMs = performance.now() - searchStartedAt;
-      const snapshot = this.searchMetrics?.record({
-        durationMs,
-        strategy: textSearch.strategy,
-        resultCount: totalItems,
-      });
       const searchLog = {
         event: 'public_offer_search',
         regionSlug,
@@ -195,14 +190,25 @@ export class PublicPricingService {
         durationMs: Math.round(durationMs * 100) / 100,
         resultCount: totalItems,
         candidateCounts: textSearch.candidateCounts,
-        p95Ms: snapshot?.p95Ms,
-        p95TargetMs: snapshot?.p95TargetMs,
       };
 
-      if (snapshot?.pgTrgmEvaluation.recommended) {
-        this.logger.warn(searchLog);
-      } else {
-        this.logger.log(searchLog);
+      this.logger.log(searchLog);
+      if (this.searchMetrics) {
+        void this.searchMetrics
+          .record({
+            durationMs,
+            strategy: textSearch.strategy,
+            resultCount: totalItems,
+            regionSlug,
+            candidateCounts: textSearch.candidateCounts,
+          })
+          .catch((error: unknown) => {
+            this.logger.error({
+              event: 'public_search_metric_persistence_failed',
+              regionSlug,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
       }
     }
 

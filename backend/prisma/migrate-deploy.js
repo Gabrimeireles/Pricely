@@ -46,7 +46,7 @@ async function assertSchemaMatches() {
 
   if (status === 2) {
     throw new Error(
-      'Database schema drift detected. Refusing to baseline or start with an unversioned schema.',
+      'Database schema drift detected. Refusing to baseline or start until the drift is resolved.',
     );
   }
   if (status !== 0) {

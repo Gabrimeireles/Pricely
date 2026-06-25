@@ -225,7 +225,9 @@ async function mockApi(page: Page) {
       storeCnpj: receiptAudit.storeCnpj,
       parseStatus: receiptAudit.parseStatus,
       trustLevel: receiptRejected ? 'rejected' : receiptAudit.trustLevel,
-      moderationStatus: receiptRejected ? 'rejected' : receiptAudit.moderationStatus,
+      moderationStatus: receiptRejected
+        ? 'rejected'
+        : receiptAudit.moderationStatus,
       rewardEligibilityStatus: receiptRejected
         ? 'disabled'
         : receiptAudit.rewardEligibilityStatus,
@@ -239,7 +241,9 @@ async function mockApi(page: Page) {
     const receiptProcessingRecord = () => ({
       ...receiptAudit,
       trustLevel: receiptRejected ? 'rejected' : receiptAudit.trustLevel,
-      moderationStatus: receiptRejected ? 'rejected' : receiptAudit.moderationStatus,
+      moderationStatus: receiptRejected
+        ? 'rejected'
+        : receiptAudit.moderationStatus,
       rewardEligibilityStatus: receiptRejected
         ? 'disabled'
         : receiptAudit.rewardEligibilityStatus,
@@ -441,6 +445,48 @@ async function mockApi(page: Page) {
       });
     }
 
+    if (path === '/admin/metrics/public-search') {
+      return json({
+        windowSize: 500,
+        retentionDays: 30,
+        sampleCount: 120,
+        volume: {
+          last24Hours: 38,
+          last7Days: 120,
+        },
+        p50Ms: 28,
+        p95Ms: 72,
+        maxMs: 110,
+        p95TargetMs: 750,
+        strategyCounts: {
+          candidate: 118,
+          broadFallback: 2,
+        },
+        fallbackRate: 0.0167,
+        timeline: Array.from({ length: 12 }, (_, index) => ({
+          startsAt: new Date(
+            Date.now() - (12 - index) * 2 * 60 * 60 * 1000,
+          ).toISOString(),
+          sampleCount: index + 1,
+          p95Ms: 40 + index,
+        })),
+        pgTrgmEvaluation: {
+          minimumSamples: 100,
+          recommended: false,
+          reason: 'p95_within_target',
+        },
+        alert: {
+          status: 'healthy',
+          observedP95Ms: 72,
+          targetP95Ms: 750,
+          sampleCount: 120,
+          triggeredAt: null,
+          lastNotifiedAt: null,
+        },
+        lastRecordedAt: new Date().toISOString(),
+      });
+    }
+
     if (path === '/admin/receipt-processing' && method === 'GET') {
       return json([receiptProcessingRecord()]);
     }
@@ -570,7 +616,9 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   page,
 }) => {
   await page.goto('/entrar');
-  await expect(page.getByText('Sua conta para comprar melhor').first()).toBeVisible();
+  await expect(
+    page.getByText('Sua conta para comprar melhor').first(),
+  ).toBeVisible();
   await page.getByLabel('E-mail').fill(customerUser.email);
   await page.getByLabel('Senha').fill('password');
   await page.getByRole('button', { name: 'Entrar' }).click();
@@ -615,7 +663,10 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   await expect(page.getByText('Oferta confirmada selecionada')).toBeVisible();
   await expect(page.getByText('Confiança alta', { exact: true })).toBeVisible();
   await expect(page.getByText('82/100', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: /Abrir checklist/i }).first().click();
+  await page
+    .getByRole('link', { name: /Abrir checklist/i })
+    .first()
+    .click();
 
   await expect(
     page.getByRole('heading', { name: 'Checklist de compra' }),
@@ -641,11 +692,11 @@ test('location-aware web flow saves browser coordinates and shows local result d
   ).toBeVisible();
 
   await page.goto('/');
-  await page
-    .getByRole('button', { name: /Configurar localização/i })
-    .click();
+  await page.getByRole('button', { name: /Configurar localização/i }).click();
   await page.getByRole('button', { name: /Usar localizacao/i }).click();
-  await expect(page.getByText(/Preview local: 2 lojas dentro de 5 km/)).toBeVisible();
+  await expect(
+    page.getByText(/Preview local: 2 lojas dentro de 5 km/),
+  ).toBeVisible();
 
   await page.goto('/otimizacao/list-1');
   await expect(page.getByText('0.8 km do local salvo')).toBeVisible();
@@ -741,4 +792,80 @@ test('MVP admin flow covers route protection and queue detail', async ({
   await expect(
     page.getByRole('cell', { name: 'Arroz tipo 1 1kg', exact: true }),
   ).toBeVisible();
+});
+
+test('admin overview search observability is responsive and passes basic accessibility checks', async ({
+  page,
+}) => {
+  const consoleErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text());
+    }
+  });
+
+  await page.goto('/entrar');
+  await page.getByLabel('E-mail').fill(adminUser.email);
+  await page.getByLabel('Senha').fill('password');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  consoleErrors.length = 0;
+  await page.goto('/dashboard');
+
+  await expect(
+    page.getByRole('heading', { name: 'Busca pública' }),
+  ).toBeVisible();
+  await expect(page.getByText('72 ms')).toBeVisible();
+  await expect(page.getByText('Sem ação de índice')).toBeVisible();
+  await expect(
+    page.getByRole('img', {
+      name: 'Histórico de latência p95 da busca pública',
+    }),
+  ).toBeVisible();
+
+  const desktopAudit = await page.evaluate(() => {
+    const duplicateIds = [...document.querySelectorAll('[id]')]
+      .map((element) => element.id)
+      .filter((id, index, ids) => id && ids.indexOf(id) !== index);
+    const unnamedControls = [
+      ...document.querySelectorAll('button, a[href], input, select, textarea'),
+    ].filter((element) => {
+      const htmlElement = element as HTMLElement;
+      const name =
+        htmlElement.getAttribute('aria-label') ??
+        htmlElement.getAttribute('title') ??
+        htmlElement.textContent?.trim() ??
+        '';
+      return name.length === 0;
+    }).length;
+    const imagesWithoutAlt = [...document.querySelectorAll('img:not([alt])')]
+      .length;
+
+    return {
+      duplicateIds,
+      unnamedControls,
+      imagesWithoutAlt,
+      horizontalOverflow:
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth + 1,
+    };
+  });
+
+  expect(desktopAudit).toEqual({
+    duplicateIds: [],
+    unnamedControls: 0,
+    imagesWithoutAlt: 0,
+    horizontalOverflow: false,
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    page.getByRole('heading', { name: 'Busca pública' }),
+  ).toBeVisible();
+  const mobileOverflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth >
+      document.documentElement.clientWidth + 1,
+  );
+  expect(mobileOverflow).toBe(false);
+  expect(consoleErrors).toEqual([]);
 });

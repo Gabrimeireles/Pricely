@@ -309,6 +309,44 @@ type AdminMetricsResponse = {
   globalEstimatedSavings: number;
 };
 
+type AdminPublicSearchMetricsResponse = {
+  windowSize: number;
+  retentionDays: number;
+  sampleCount: number;
+  volume: {
+    last24Hours: number;
+    last7Days: number;
+  };
+  p50Ms: number | null;
+  p95Ms: number | null;
+  maxMs: number | null;
+  p95TargetMs: number;
+  strategyCounts: {
+    candidate: number;
+    broadFallback: number;
+  };
+  fallbackRate: number;
+  timeline: Array<{
+    startsAt: string;
+    sampleCount: number;
+    p95Ms: number | null;
+  }>;
+  pgTrgmEvaluation: {
+    minimumSamples: number;
+    recommended: boolean;
+    reason: 'insufficient_samples' | 'p95_within_target' | 'p95_above_target';
+  };
+  alert: {
+    status: 'healthy' | 'active';
+    observedP95Ms: number | null;
+    targetP95Ms: number;
+    sampleCount: number;
+    triggeredAt: string | null;
+    lastNotifiedAt: string | null;
+  };
+  lastRecordedAt: string | null;
+};
+
 type AdminProcessingJobResponse = {
   id: string;
   queueName: string;
@@ -797,7 +835,9 @@ async function apiFetch<T>(
         error?: { message?: string | string[] } | string;
       };
       const parsedMessage =
-        typeof parsed.error === 'object' ? parsed.error.message : parsed.message;
+        typeof parsed.error === 'object'
+          ? parsed.error.message
+          : parsed.message;
       message = Array.isArray(parsedMessage)
         ? parsedMessage.join('; ')
         : parsedMessage || message;
@@ -1178,6 +1218,14 @@ async function waitForOptimizationResult(token: string, listId: string) {
 
 export async function fetchAdminMetrics(token: string) {
   return apiFetch<AdminMetricsResponse>('/admin/metrics', {}, token);
+}
+
+export async function fetchAdminPublicSearchMetrics(token: string) {
+  return apiFetch<AdminPublicSearchMetricsResponse>(
+    '/admin/metrics/public-search',
+    {},
+    token,
+  );
 }
 
 export async function fetchAdminProcessingJobs(token: string) {
@@ -1604,6 +1652,7 @@ export type {
   CoveragePreviewResponse,
   AdminEstablishmentResponse,
   AdminMetricsResponse,
+  AdminPublicSearchMetricsResponse,
   AdminOfferResponse,
   AdminProductResponse,
   AdminProductVariantResponse,
