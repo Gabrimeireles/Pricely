@@ -627,7 +627,7 @@ channels without enabling provider sends prematurely.
 
 - [X] T262 Add `master` validation triggers for CI and Release Readiness while keeping Deploy Homolog Server scoped to `homolog` or manual dispatch in `.github/workflows/`
 - [X] T263 Document the Phase 35 email, push, quiet-hours, retry, and release-validation plan in `docs/product/notification-center.md`
-- [ ] T264 Add notification delivery persistence for channel attempts, provider message ids, retry state, and terminal failure reasons in `backend/prisma/` and `backend/src/notifications/`
+- [X] T264 Add notification delivery persistence for channel attempts, provider message ids, retry state, and terminal failure reasons in `backend/prisma/` and `backend/src/notifications/`
 - [ ] T265 Add user email destination verification, unsubscribe/category mapping, and email delivery queue integration in `backend/src/notifications/` and `backend/src/users/`
 - [ ] T266 Add mobile push device registration, token refresh/revocation, and authenticated device listing in `backend/src/notifications/` and `mobile/lib/features/`
 - [ ] T267 Add quiet-hour preferences with timezone-aware deferral for non-critical notifications in `backend/src/notifications/`, `web/src/components/design-system/`, and `mobile/lib/features/`

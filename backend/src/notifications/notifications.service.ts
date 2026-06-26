@@ -1,5 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { type Prisma, type UserNotificationType } from '@prisma/client';
+import {
+  type Prisma,
+  type UserNotificationDeliveryChannel,
+  type UserNotificationDeliveryStatus,
+  type UserNotificationType,
+} from '@prisma/client';
 
 import { PrismaService } from '../persistence/prisma.service';
 
@@ -101,6 +106,103 @@ export class NotificationsService {
     });
   }
 
+  async createDeliveryAttempt(input: {
+    notificationId: string;
+    userId: string;
+    channel: UserNotificationDeliveryChannel;
+    maxAttempts?: number;
+    nextAttemptAt?: Date;
+  }) {
+    return this.prisma.userNotificationDeliveryAttempt.create({
+      data: {
+        notificationId: input.notificationId,
+        userId: input.userId,
+        channel: input.channel,
+        maxAttempts: input.maxAttempts ?? 3,
+        nextAttemptAt: input.nextAttemptAt,
+      },
+    });
+  }
+
+  async listDeliveryAttempts(input: {
+    userId?: string;
+    notificationId?: string;
+    channel?: UserNotificationDeliveryChannel;
+    status?: UserNotificationDeliveryStatus;
+    dueOnly?: boolean;
+    take?: number;
+  }) {
+    return this.prisma.userNotificationDeliveryAttempt.findMany({
+      where: {
+        userId: input.userId,
+        notificationId: input.notificationId,
+        channel: input.channel,
+        status: input.status,
+        ...(input.dueOnly
+          ? {
+              OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: new Date() } }],
+            }
+          : {}),
+      },
+      orderBy: [{ nextAttemptAt: 'asc' }, { createdAt: 'asc' }],
+      take: input.take ?? 100,
+    });
+  }
+
+  async markDeliverySending(attemptId: string) {
+    const attempt = await this.findDeliveryAttempt(attemptId);
+    return this.prisma.userNotificationDeliveryAttempt.update({
+      where: { id: attempt.id },
+      data: {
+        status: 'sending',
+        attemptCount: { increment: 1 },
+        lastAttemptAt: new Date(),
+      },
+    });
+  }
+
+  async markDeliveryDelivered(
+    attemptId: string,
+    input: { providerMessageId?: string } = {},
+  ) {
+    const attempt = await this.findDeliveryAttempt(attemptId);
+    return this.prisma.userNotificationDeliveryAttempt.update({
+      where: { id: attempt.id },
+      data: {
+        status: 'delivered',
+        providerMessageId: input.providerMessageId,
+        lastFailureReason: null,
+        terminalFailureReason: null,
+        nextAttemptAt: null,
+        deliveredAt: new Date(),
+      },
+    });
+  }
+
+  async markDeliveryFailed(
+    attemptId: string,
+    input: {
+      reason: string;
+      retryable: boolean;
+      nextAttemptAt?: Date;
+    },
+  ) {
+    const attempt = await this.findDeliveryAttempt(attemptId);
+    const shouldRetry =
+      input.retryable && attempt.attemptCount < attempt.maxAttempts;
+    return this.prisma.userNotificationDeliveryAttempt.update({
+      where: { id: attempt.id },
+      data: {
+        status: shouldRetry ? 'retrying' : 'failed',
+        lastFailureReason: input.reason.slice(0, 500),
+        terminalFailureReason: shouldRetry
+          ? null
+          : input.reason.slice(0, 500),
+        nextAttemptAt: shouldRetry ? input.nextAttemptAt : null,
+      },
+    });
+  }
+
   async notifyPriceDropForProduct(input: {
     catalogProductId: string;
     productName: string;
@@ -155,5 +257,15 @@ export class NotificationsService {
       return preferences.receiptOutcomesEnabled;
     }
     return preferences.optimizationReadyEnabled;
+  }
+
+  private async findDeliveryAttempt(attemptId: string) {
+    const attempt = await this.prisma.userNotificationDeliveryAttempt.findUnique({
+      where: { id: attemptId },
+    });
+    if (!attempt) {
+      throw new NotFoundException('Tentativa de entrega nao encontrada');
+    }
+    return attempt;
   }
 }
