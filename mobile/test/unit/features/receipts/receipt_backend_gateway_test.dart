@@ -105,6 +105,9 @@ void main() {
             expect(body['platform'], 'android');
             expect(body['deviceToken'], 'push-token-value-1234567890');
             expect(body['provider'], 'fcm');
+            expect(body['appVersion'], '1.2.3');
+            expect(body['locale'], 'pt-BR');
+            expect(body['timezone'], 'America/Sao_Paulo');
             return http.Response(
               jsonEncode(<String, dynamic>{
                 'id': 'device-1',
@@ -112,6 +115,9 @@ void main() {
                 'provider': 'fcm',
                 'deviceTokenTail': 'e-1234567890',
                 'isActive': true,
+                'appVersion': '1.2.3',
+                'locale': 'pt-BR',
+                'timezone': 'America/Sao_Paulo',
                 'lastSeenAt': '2026-06-26T12:00:00.000Z',
               }),
               201,
@@ -143,6 +149,9 @@ void main() {
       accessToken: 'token-123',
       platform: 'android',
       deviceToken: 'push-token-value-1234567890',
+      appVersion: '1.2.3',
+      locale: 'pt-BR',
+      timezone: 'America/Sao_Paulo',
     );
     final revoked = await gateway.revokePushDevice(
       accessToken: 'token-123',
@@ -151,11 +160,54 @@ void main() {
 
     expect(registered.id, 'device-1');
     expect(registered.isActive, isTrue);
+    expect(registered.timezone, 'America/Sao_Paulo');
     expect(revoked.isActive, isFalse);
     expect(requestedPaths, <String>[
       '/notification-push-devices',
       '/notification-push-devices/device-1/revoke',
     ]);
+  });
+
+  test('lists authenticated push devices with redacted token tails only', () async {
+    final gateway = PricelyBackendGateway(
+      HttpApiClient(
+        client: MockClient((request) async {
+          expect(request.url.path, '/notification-push-devices');
+          expect(request.headers['authorization'], 'Bearer token-123');
+
+          return http.Response(
+            jsonEncode(<Map<String, dynamic>>[
+              {
+                'id': 'device-1',
+                'platform': 'android',
+                'provider': 'fcm',
+                'deviceTokenTail': 'e-1234567890',
+                'isActive': true,
+                'lastSeenAt': '2026-06-26T12:00:00.000Z',
+              },
+              {
+                'id': 'device-2',
+                'platform': 'ios',
+                'provider': 'apns',
+                'deviceTokenTail': 'ios-token-tail',
+                'isActive': false,
+                'revokedAt': '2026-06-26T12:05:00.000Z',
+                'lastSeenAt': '2026-06-26T11:00:00.000Z',
+              },
+            ]),
+            200,
+          );
+        }),
+      ),
+    );
+
+    final devices = await gateway.fetchPushDevices('token-123');
+
+    expect(devices, hasLength(2));
+    expect(devices.first.deviceTokenTail, 'e-1234567890');
+    expect(devices.first.isActive, isTrue);
+    expect(devices.last.platform, 'ios');
+    expect(devices.last.revokedAt, '2026-06-26T12:05:00.000Z');
   });
 
   test('updates notification quiet-hour preferences', () async {
@@ -200,5 +252,65 @@ void main() {
     expect(capturedBody?['quietHoursStartMinute'], 1320);
     expect(preferences.quietHoursEnabled, isTrue);
     expect(preferences.quietHoursTimezone, 'America/Sao_Paulo');
+  });
+
+  test('fetches notification preferences and sends only changed preference fields', () async {
+    final requestedMethods = <String>[];
+    Map<String, dynamic>? patchBody;
+    final gateway = PricelyBackendGateway(
+      HttpApiClient(
+        client: MockClient((request) async {
+          requestedMethods.add(request.method);
+          expect(request.url.path, '/notification-preferences');
+          expect(request.headers['authorization'], 'Bearer token-123');
+
+          if (request.method == 'GET') {
+            return http.Response(
+              jsonEncode(<String, dynamic>{
+                'inAppEnabled': true,
+                'priceDropsEnabled': false,
+                'receiptOutcomesEnabled': true,
+                'optimizationReadyEnabled': true,
+                'emailEnabled': false,
+                'pushEnabled': false,
+                'quietHoursEnabled': false,
+                'quietHoursStartMinute': null,
+                'quietHoursEndMinute': null,
+                'quietHoursTimezone': null,
+              }),
+              200,
+            );
+          }
+
+          patchBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(
+            jsonEncode(<String, dynamic>{
+              'inAppEnabled': true,
+              'priceDropsEnabled': false,
+              'receiptOutcomesEnabled': true,
+              'optimizationReadyEnabled': true,
+              'emailEnabled': false,
+              'pushEnabled': false,
+              'quietHoursEnabled': true,
+              'quietHoursStartMinute': 1320,
+              'quietHoursEndMinute': 420,
+              'quietHoursTimezone': 'America/Sao_Paulo',
+            }),
+            200,
+          );
+        }),
+      ),
+    );
+
+    final initial = await gateway.fetchNotificationPreferences('token-123');
+    final updated = await gateway.updateNotificationPreferences(
+      accessToken: 'token-123',
+      quietHoursEnabled: true,
+    );
+
+    expect(initial.priceDropsEnabled, isFalse);
+    expect(patchBody, <String, dynamic>{'quietHoursEnabled': true});
+    expect(updated.quietHoursStartMinute, 1320);
+    expect(requestedMethods, <String>['GET', 'PATCH']);
   });
 }

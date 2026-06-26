@@ -533,6 +533,60 @@ describe('NotificationsService', () => {
     });
   });
 
+  it('defers push delivery attempts during quiet hours using the same outbound policy as email', async () => {
+    jest
+      .useFakeTimers()
+      .setSystemTime(new Date('2026-06-26T23:30:00.000Z').getTime());
+    const prisma = {
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({
+          inAppEnabled: true,
+          emailEnabled: false,
+          pushEnabled: true,
+          priceDropsEnabled: true,
+          receiptOutcomesEnabled: true,
+          optimizationReadyEnabled: true,
+          quietHoursEnabled: true,
+          quietHoursStartMinute: 22 * 60,
+          quietHoursEndMinute: 7 * 60,
+          quietHoursTimezone: 'UTC',
+        }),
+      },
+      userNotification: {
+        create: jest.fn().mockResolvedValue({
+          id: 'notification-1',
+          userId: 'user-1',
+          type: 'optimization_ready',
+        }),
+      },
+      userPushDevice: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'device-1' }]),
+      },
+      userNotificationDeliveryAttempt: {
+        create: jest.fn().mockResolvedValue({ id: 'attempt-1' }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.create({
+      userId: 'user-1',
+      type: 'optimization_ready',
+      title: 'Otimizacao pronta',
+      message: 'Sua lista foi otimizada.',
+    });
+
+    expect(prisma.userNotificationDeliveryAttempt.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        notificationId: 'notification-1',
+        userId: 'user-1',
+        channel: 'push',
+        pushDeviceId: 'device-1',
+        nextAttemptAt: new Date('2026-06-27T07:00:00.000Z'),
+      }),
+    });
+    jest.useRealTimers();
+  });
+
   it('marks a delivery attempt as sending and increments attempt count', async () => {
     const prisma = {
       userNotificationDeliveryAttempt: {
@@ -643,6 +697,46 @@ describe('NotificationsService', () => {
         nextAttemptAt: expect.any(Date),
       }),
     });
+  });
+
+  it('rejects delivery retry after the attempt budget is exhausted', async () => {
+    const prisma = {
+      userNotificationDeliveryAttempt: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'attempt-1',
+          status: 'failed',
+          attemptCount: 3,
+          maxAttempts: 3,
+        }),
+        update: jest.fn(),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await expect(service.retryDeliveryAttempt('attempt-1')).rejects.toThrow(
+      'Limite de tentativas ja foi atingido',
+    );
+    expect(prisma.userNotificationDeliveryAttempt.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects cancellation for terminal delivery attempts', async () => {
+    const prisma = {
+      userNotificationDeliveryAttempt: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'attempt-1',
+          status: 'delivered',
+          attemptCount: 1,
+          maxAttempts: 3,
+        }),
+        update: jest.fn(),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await expect(service.cancelDeliveryAttempt('attempt-1')).rejects.toThrow(
+      'Apenas entregas aguardando envio podem ser canceladas',
+    );
+    expect(prisma.userNotificationDeliveryAttempt.update).not.toHaveBeenCalled();
   });
 
   it('cancels queued delivery attempts with an admin-visible terminal reason', async () => {
