@@ -24,6 +24,55 @@ export interface AdminQueueHealthContract {
   }>;
 }
 
+export interface AdminNotificationDeliveryContract {
+  id: string;
+  notificationId: string;
+  userId: string;
+  channel: 'email' | 'push';
+  status:
+    | 'queued'
+    | 'sending'
+    | 'retrying'
+    | 'delivered'
+    | 'failed'
+    | 'cancelled';
+  attemptCount: number;
+  maxAttempts: number;
+  providerMessage: string | null;
+  lastFailureReason: string | null;
+  nextAttemptAt: string | null;
+  lastAttemptAt: string | null;
+  deliveredAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  canRetry: boolean;
+  canCancel: boolean;
+  owner: {
+    id: string;
+    displayName: string;
+    email: string;
+  };
+  notification: {
+    id: string;
+    type:
+      | 'price_drop'
+      | 'receipt_outcome'
+      | 'optimization_ready'
+      | 'optimization_failed';
+    title: string;
+    resourceType: string | null;
+    resourceId: string | null;
+    createdAt: string;
+  };
+  destination: {
+    kind: 'email' | 'push';
+    id: string;
+    label: string;
+    status: string;
+    provider?: string;
+  } | null;
+}
+
 export interface AdminShoppingListAuditContract {
   id: string;
   name: string;

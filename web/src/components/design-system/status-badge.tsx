@@ -69,9 +69,12 @@ const statusPresets = {
   },
   queue: {
     queued: { icon: Clock3Icon, label: 'Na fila', tone: 'location' },
+    sending: { icon: Clock3Icon, label: 'Enviando', tone: 'primary' },
     running: { icon: Clock3Icon, label: 'Executando', tone: 'primary' },
     retrying: { icon: AlertTriangleIcon, label: 'Tentando novamente', tone: 'warning' },
     failed: { icon: XCircleIcon, label: 'Falhou', tone: 'critical' },
+    cancelled: { icon: CircleIcon, label: 'Cancelado', tone: 'neutral' },
+    delivered: { icon: CheckCircle2Icon, label: 'Entregue', tone: 'savings' },
     completed: { icon: CheckCircle2Icon, label: 'Concluido', tone: 'savings' },
   },
   receipt: {

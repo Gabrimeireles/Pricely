@@ -35,6 +35,9 @@ as a controlled fan-out layer.
   preferences.
 - Track delivery attempts, provider message id, terminal failure, and retryable
   failure reason without storing provider payloads that may contain personal data.
+- Expose admin diagnostics with masked destinations, redacted provider errors,
+  manual retry for retryable attempts, and cancellation for queued/retrying
+  attempts.
 
 ### Push
 
@@ -57,7 +60,8 @@ as a controlled fan-out layer.
 - Use bounded exponential retry for provider failures and stop retrying after a
   terminal provider response.
 - Expose delivery state in admin diagnostics before enabling automatic external
-  sends broadly.
+  sends broadly; provider message ids, emails, push token tails, URLs, and long
+  tokens must not be shown raw in the dashboard.
 
 ### Release validation
 

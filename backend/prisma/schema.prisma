@@ -209,6 +209,7 @@ enum UserNotificationDeliveryStatus {
   retrying
   delivered
   failed
+  cancelled
 }
 
 enum UserEmailNotificationStatus {

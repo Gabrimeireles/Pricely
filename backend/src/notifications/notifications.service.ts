@@ -1,6 +1,10 @@
 import { randomBytes, createHash } from 'node:crypto';
 
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   type Prisma,
   type UserEmailNotificationDestination,
@@ -442,6 +446,44 @@ export class NotificationsService {
           ? null
           : input.reason.slice(0, 500),
         nextAttemptAt: shouldRetry ? input.nextAttemptAt : null,
+      },
+    });
+  }
+
+  async retryDeliveryAttempt(attemptId: string) {
+    const attempt = await this.findDeliveryAttempt(attemptId);
+    if (!['failed', 'retrying'].includes(attempt.status)) {
+      throw new BadRequestException(
+        'Apenas entregas com falha ou retry podem ser reenfileiradas',
+      );
+    }
+    if (attempt.attemptCount >= attempt.maxAttempts) {
+      throw new BadRequestException('Limite de tentativas ja foi atingido');
+    }
+    return this.prisma.userNotificationDeliveryAttempt.update({
+      where: { id: attempt.id },
+      data: {
+        status: 'queued',
+        lastFailureReason: null,
+        terminalFailureReason: null,
+        nextAttemptAt: new Date(),
+      },
+    });
+  }
+
+  async cancelDeliveryAttempt(attemptId: string, reason?: string) {
+    const attempt = await this.findDeliveryAttempt(attemptId);
+    if (!['queued', 'retrying'].includes(attempt.status)) {
+      throw new BadRequestException(
+        'Apenas entregas aguardando envio podem ser canceladas',
+      );
+    }
+    return this.prisma.userNotificationDeliveryAttempt.update({
+      where: { id: attempt.id },
+      data: {
+        status: 'cancelled',
+        nextAttemptAt: null,
+        terminalFailureReason: (reason ?? 'admin_cancelled').slice(0, 500),
       },
     });
   }

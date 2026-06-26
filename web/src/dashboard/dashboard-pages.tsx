@@ -23,6 +23,7 @@ import {
   type AdminEstablishmentResponse,
   type AdminMetricsResponse,
   type MissingProductRequestResponse,
+  type AdminNotificationDeliveryResponse,
   type AdminOfferResponse,
   type AdminPublicSearchMetricsResponse,
   type AdminProcessingJobDetailResponse,
@@ -40,11 +41,13 @@ import {
   createAdminProductVariant,
   createAdminRegion,
   convertAdminMissingProductRequest,
+  cancelAdminNotificationDelivery,
   deleteAdminProduct,
   deleteAdminProductVariant,
   fetchAdminEstablishments,
   fetchAdminMetrics,
   fetchAdminMissingProductRequests,
+  fetchAdminNotificationDeliveries,
   fetchAdminOffers,
   fetchAdminProcessingJobDetail,
   fetchAdminProcessingJobs,
@@ -63,6 +66,7 @@ import {
   rejectAdminReceiptProcessing,
   rejectAdminMissingProductRequest,
   reprocessAdminReceiptProcessing,
+  retryAdminNotificationDelivery,
   retryAdminProcessingJob,
   reviewAdminProcessingJob,
   setAdminUserPremium,
@@ -299,6 +303,36 @@ function jobSeverity(status: AdminProcessingJobResponse['status']) {
     return 'healthy' as const;
   }
 
+  return 'info' as const;
+}
+
+function notificationDeliveryStatusLabel(
+  status: AdminNotificationDeliveryResponse['status'],
+) {
+  const labels: Record<AdminNotificationDeliveryResponse['status'], string> = {
+    cancelled: 'Cancelada',
+    delivered: 'Entregue',
+    failed: 'Falhou',
+    queued: 'Em fila',
+    retrying: 'Tentando novamente',
+    sending: 'Enviando',
+  };
+
+  return labels[status];
+}
+
+function notificationDeliverySeverity(
+  status: AdminNotificationDeliveryResponse['status'],
+) {
+  if (status === 'failed') {
+    return 'critical' as const;
+  }
+  if (status === 'queued' || status === 'retrying' || status === 'sending') {
+    return 'warning' as const;
+  }
+  if (status === 'delivered') {
+    return 'healthy' as const;
+  }
   return 'info' as const;
 }
 
@@ -5217,6 +5251,7 @@ export function AdminReceiptAuditPage() {
 }
 
 export function AdminQueuePage() {
+  const { accessToken } = usePricely();
   const { data: metrics } = useAdminData<AdminMetricsResponse | null>(
     fetchAdminMetrics,
     null,
@@ -5229,6 +5264,51 @@ export function AdminQueuePage() {
     fetchAdminQueueHealth,
     null,
   );
+  const {
+    data: notificationDeliveries,
+    error: notificationDeliveriesError,
+    reload: reloadNotificationDeliveries,
+  } = useAdminData<AdminNotificationDeliveryResponse[]>(
+    fetchAdminNotificationDeliveries,
+    [],
+  );
+  const [deliveryActionError, setDeliveryActionError] = useState<string | null>(
+    null,
+  );
+  const [activeDeliveryAction, setActiveDeliveryAction] = useState<
+    string | null
+  >(null);
+
+  const runDeliveryAction = async (
+    delivery: AdminNotificationDeliveryResponse,
+    action: 'retry' | 'cancel',
+  ) => {
+    if (!accessToken) {
+      return;
+    }
+    setDeliveryActionError(null);
+    setActiveDeliveryAction(`${action}:${delivery.id}`);
+    try {
+      if (action === 'retry') {
+        await retryAdminNotificationDelivery(accessToken, delivery.id);
+      } else {
+        await cancelAdminNotificationDelivery(
+          accessToken,
+          delivery.id,
+          'Cancelada pelo painel administrativo.',
+        );
+      }
+      await reloadNotificationDeliveries();
+    } catch (error) {
+      setDeliveryActionError(
+        error instanceof Error
+          ? error.message
+          : 'Nao foi possivel alterar a entrega.',
+      );
+    } finally {
+      setActiveDeliveryAction(null);
+    }
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[0.72fr_1.28fr]">
@@ -5377,6 +5457,130 @@ export function AdminQueuePage() {
                       >
                         <ExternalLinkIcon className="size-4" />
                       </a>
+                    </Button>
+                  </WithTooltip>
+                </div>
+              }
+            />
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/70 bg-card/90 shadow-sm lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Entregas de notificações</CardTitle>
+          <CardDescription>
+            Diagnóstico de email e push com dados sensíveis redigidos antes de
+            aparecer no painel.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {notificationDeliveriesError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Falha ao carregar entregas</AlertTitle>
+              <AlertDescription>{notificationDeliveriesError}</AlertDescription>
+            </Alert>
+          ) : null}
+          {deliveryActionError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Ação não executada</AlertTitle>
+              <AlertDescription>{deliveryActionError}</AlertDescription>
+            </Alert>
+          ) : null}
+          {notificationDeliveries.length === 0 ? (
+            <ActionPlaceholder
+              icon={<BellRingIcon className="size-5" />}
+              title="Nenhuma entrega de notificação"
+              description="Email e push aparecerão aqui quando notificações gerarem tentativas de entrega. A central in-app continua registrada separadamente."
+              primaryAction={<a href="/dashboard">Ver overview</a>}
+              secondaryAction={<a href="/dashboard/fila">Ver jobs</a>}
+            />
+          ) : null}
+          {notificationDeliveries.slice(0, 12).map((delivery) => (
+            <AdminActionQueueItem
+              key={delivery.id}
+              severity={notificationDeliverySeverity(delivery.status)}
+              severityTooltip={`Entrega ${notificationDeliveryStatusLabel(
+                delivery.status,
+              ).toLowerCase()} para ${delivery.channel}.`}
+              title={
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground">
+                    <BellRingIcon className="size-4" />
+                  </span>
+                  <span className="truncate">
+                    {delivery.notification.title}
+                  </span>
+                </span>
+              }
+              description={
+                <>
+                  {delivery.owner.displayName} · {delivery.owner.email} ·{' '}
+                  {delivery.destination?.label ?? 'Destino não vinculado'}
+                  {delivery.lastFailureReason ? (
+                    <span className="mt-2 block rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">
+                      {delivery.lastFailureReason}
+                    </span>
+                  ) : null}
+                </>
+              }
+              age={`Atualizada ${formatFreshnessLabel(delivery.updatedAt)}`}
+              context={
+                <>
+                  {delivery.channel} · tentativa {delivery.attemptCount}/
+                  {delivery.maxAttempts}
+                  {delivery.nextAttemptAt
+                    ? ` · próxima ${formatFreshnessLabel(delivery.nextAttemptAt)}`
+                    : ''}
+                </>
+              }
+              meta={
+                <>
+                  ID técnico: entrega {delivery.id} · notificação{' '}
+                  {delivery.notificationId}
+                  {delivery.providerMessage
+                    ? ` · provider ${delivery.providerMessage}`
+                    : ''}
+                </>
+              }
+              action={
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <StatusBadge
+                    family="queue"
+                    status={delivery.status}
+                    tooltip={`Status de entrega ${delivery.channel}.`}
+                  >
+                    {notificationDeliveryStatusLabel(delivery.status)}
+                  </StatusBadge>
+                  <WithTooltip label="Reenfileira a entrega quando ainda há tentativas disponíveis.">
+                    <Button
+                      disabled={
+                        !delivery.canRetry || activeDeliveryAction !== null
+                      }
+                      onClick={() => void runDeliveryAction(delivery, 'retry')}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      {activeDeliveryAction === `retry:${delivery.id}`
+                        ? 'Reenfileirando...'
+                        : 'Retry'}
+                    </Button>
+                  </WithTooltip>
+                  <WithTooltip label="Cancela entregas ainda em fila ou retry, preservando o histórico.">
+                    <Button
+                      className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                      disabled={
+                        !delivery.canCancel || activeDeliveryAction !== null
+                      }
+                      onClick={() => void runDeliveryAction(delivery, 'cancel')}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      {activeDeliveryAction === `cancel:${delivery.id}`
+                        ? 'Cancelando...'
+                        : 'Cancelar'}
                     </Button>
                   </WithTooltip>
                 </div>

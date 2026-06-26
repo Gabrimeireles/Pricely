@@ -409,6 +409,13 @@ class CancelProcessingJobDto {
   reason?: string;
 }
 
+class CancelNotificationDeliveryDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
 class ConvertMissingProductRequestDto {
   @IsOptional()
   @IsString()
@@ -545,6 +552,27 @@ export class AdminDashboardController {
   @Get('queue-health')
   async queueHealth() {
     return this.adminDashboardService.getQueueHealth();
+  }
+
+  @Get('notification-deliveries')
+  async listNotificationDeliveries() {
+    return this.adminDashboardService.listNotificationDeliveries();
+  }
+
+  @Post('notification-deliveries/:id/retry')
+  retryNotificationDelivery(@Param('id') id: string) {
+    return this.adminDashboardService.retryNotificationDelivery(id);
+  }
+
+  @Post('notification-deliveries/:id/cancel')
+  cancelNotificationDelivery(
+    @Param('id') id: string,
+    @Body() body: CancelNotificationDeliveryDto,
+  ) {
+    return this.adminDashboardService.cancelNotificationDelivery(
+      id,
+      body.reason,
+    );
   }
 
   @Get('shopping-lists')
