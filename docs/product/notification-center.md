@@ -26,6 +26,14 @@ device registration, and quiet-hour deferral.
 Phase 35 keeps the in-app center as the source of truth and adds outbound delivery
 as a controlled fan-out layer.
 
+**Status (2026-06-26)**: Complete on `homolog` at
+`11400cb1a4e39c31bc8f48389bd77fd282ddb8de`. CI, Release Readiness, and Deploy
+Homolog Server passed after T269. Email and push remain provider-gated; the
+platform now persists preferences, email verification, unsubscribe/category
+mapping, push device registration, quiet-hour deferral, delivery attempts,
+retry/cancel admin controls, and redacted diagnostics across backend, web, and
+mobile coverage.
+
 ### Email
 
 - Store a verified email destination per user before delivery is enabled.
@@ -67,3 +75,19 @@ as a controlled fan-out layer.
 
 - CI and Release Readiness should validate both `homolog` and `master`.
 - Deploy Homolog Server remains scoped to `homolog` and manual dispatch only.
+
+## Recommended next phase
+
+Phase 36 should focus on provider-gated outbound delivery hardening rather than
+turning on broad sends immediately:
+
+- Add provider adapter contracts for email and push with sandbox-only sends.
+- Add worker-level observability for queued, sent, deferred, retrying, failed,
+  cancelled, and delivered attempts.
+- Add admin filters/search for notification delivery diagnostics once volume grows.
+- Add release checklist entries for provider credentials, unsubscribe safety,
+  quiet-hour policy, and incident rollback.
+
+If product priority shifts back to UX, the alternate next phase is mobile/web
+parity polish for notification preferences, device management, and admin delivery
+diagnostics.

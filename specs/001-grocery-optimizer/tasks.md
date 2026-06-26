@@ -641,6 +641,18 @@ Validated public bundle load, customer login, receipt submission with
 processing release, and backend coverage-preview API. Mobile receipt scanning,
 manual-location fallback, and dark-mode parity were completed in Phase 32.
 
+**Phase 35 completion note (2026-06-26)**: Notification delivery and
+default-branch validation were completed on `homolog` commit
+`11400cb1a4e39c31bc8f48389bd77fd282ddb8de`. PR #456 closed T269 with backend,
+web, and mobile coverage for delivery preferences, quiet-hour deferral, push
+device registration, retry/cancel policy, and redacted admin diagnostics. CI,
+Release Readiness, and Deploy Homolog Server passed after merge.
+
+**Recommended next phase**: Phase 36 should harden provider-gated outbound
+delivery with sandbox provider adapters, worker observability, admin filtering
+for delivery diagnostics, and release/rollback checklist entries before broad
+external sends are enabled.
+
 ---
 
 ## Dependencies & Execution Order
