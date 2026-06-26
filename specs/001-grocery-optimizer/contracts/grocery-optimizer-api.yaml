@@ -443,6 +443,35 @@ paths:
       responses:
         '201':
           description: Email preference updated
+  /notification-push-devices:
+    get:
+      summary: List authenticated mobile push devices
+      responses:
+        '200':
+          description: Push devices returned newest active first
+    post:
+      summary: Register or refresh an authenticated mobile push device token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushDeviceRegistrationRequest'
+      responses:
+        '201':
+          description: Push device registered or refreshed
+  /notification-push-devices/{deviceId}/revoke:
+    post:
+      summary: Revoke an authenticated mobile push device
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Push device revoked
   /receipts:
     post:
       summary: Submit a receipt contribution from manual items or an NFC-e QR URL
@@ -840,6 +869,51 @@ components:
           type: string
           format: date-time
         unsubscribedAt:
+          type: string
+          format: date-time
+    PushDeviceRegistrationRequest:
+      type: object
+      required: [platform, deviceToken]
+      properties:
+        platform:
+          type: string
+          enum: [android, ios]
+        deviceToken:
+          type: string
+        provider:
+          type: string
+          default: fcm
+        appVersion:
+          type: string
+        locale:
+          type: string
+        timezone:
+          type: string
+    PushDevice:
+      type: object
+      required: [id, platform, provider, deviceTokenTail, isActive, lastSeenAt]
+      properties:
+        id:
+          type: string
+        platform:
+          type: string
+          enum: [android, ios]
+        provider:
+          type: string
+        deviceTokenTail:
+          type: string
+        appVersion:
+          type: string
+        locale:
+          type: string
+        timezone:
+          type: string
+        isActive:
+          type: boolean
+        revokedAt:
+          type: string
+          format: date-time
+        lastSeenAt:
           type: string
           format: date-time
     AuthSession:

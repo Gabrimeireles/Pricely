@@ -91,6 +91,7 @@ describe('NotificationsService', () => {
         maxAttempts: 5,
         nextAttemptAt: undefined,
         emailDestinationId: undefined,
+        pushDeviceId: undefined,
       },
     });
   });
@@ -112,6 +113,27 @@ describe('NotificationsService', () => {
       expect.objectContaining({
         create: expect.objectContaining({ emailEnabled: false }),
         update: expect.objectContaining({ emailEnabled: false }),
+      }),
+    );
+  });
+
+  it('does not enable push preferences until an active device exists', async () => {
+    const prisma = {
+      userPushDevice: {
+        count: jest.fn().mockResolvedValue(0),
+      },
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({ pushEnabled: false }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.updatePreferences('user-1', { pushEnabled: true });
+
+    expect(prisma.userNotificationPreference.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ pushEnabled: false }),
+        update: expect.objectContaining({ pushEnabled: false }),
       }),
     );
   });
@@ -277,6 +299,147 @@ describe('NotificationsService', () => {
         userId: 'user-1',
         channel: 'email',
         emailDestinationId: 'destination-1',
+      }),
+    });
+  });
+
+  it('registers push devices with hashed token and enables push preferences', async () => {
+    const prisma = {
+      userPushDevice: {
+        upsert: jest.fn().mockResolvedValue({
+          id: 'device-1',
+          userId: 'user-1',
+          platform: 'android',
+          deviceTokenTail: 'token-tail-1',
+          isActive: true,
+        }),
+        count: jest.fn().mockResolvedValue(1),
+      },
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({ pushEnabled: true }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.registerPushDevice('user-1', {
+      platform: 'android',
+      deviceToken: 'push-token-value-1234567890',
+      appVersion: '1.0.0',
+      locale: 'pt-BR',
+      timezone: 'America/Sao_Paulo',
+    });
+
+    expect(prisma.userPushDevice.upsert).toHaveBeenCalledWith({
+      where: { deviceTokenHash: expect.any(String) },
+      create: expect.objectContaining({
+        userId: 'user-1',
+        platform: 'android',
+        deviceTokenHash: expect.any(String),
+        deviceTokenTail: 'e-1234567890',
+        provider: 'fcm',
+        appVersion: '1.0.0',
+        locale: 'pt-BR',
+        timezone: 'America/Sao_Paulo',
+        isActive: true,
+        revokedAt: null,
+        lastSeenAt: expect.any(Date),
+      }),
+      update: expect.objectContaining({
+        userId: 'user-1',
+        isActive: true,
+        revokedAt: null,
+        lastSeenAt: expect.any(Date),
+      }),
+    });
+    expect(prisma.userNotificationPreference.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ pushEnabled: true }),
+      }),
+    );
+  });
+
+  it('revokes push devices and disables push when no active device remains', async () => {
+    const prisma = {
+      userPushDevice: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'device-1',
+          userId: 'user-1',
+        }),
+        update: jest.fn().mockResolvedValue({
+          id: 'device-1',
+          isActive: false,
+        }),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({ pushEnabled: false }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.revokePushDevice('user-1', 'device-1');
+
+    expect(prisma.userPushDevice.update).toHaveBeenCalledWith({
+      where: { id: 'device-1' },
+      data: {
+        isActive: false,
+        revokedAt: expect.any(Date),
+      },
+    });
+    expect(prisma.userNotificationPreference.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ pushEnabled: false }),
+      }),
+    );
+  });
+
+  it('queues push delivery attempts for each active device', async () => {
+    const prisma = {
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({
+          inAppEnabled: true,
+          emailEnabled: false,
+          pushEnabled: true,
+          priceDropsEnabled: true,
+          receiptOutcomesEnabled: true,
+          optimizationReadyEnabled: true,
+        }),
+      },
+      userNotification: {
+        create: jest.fn().mockResolvedValue({
+          id: 'notification-1',
+          userId: 'user-1',
+          type: 'optimization_ready',
+        }),
+      },
+      userPushDevice: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'device-1' },
+          { id: 'device-2' },
+        ]),
+      },
+      userNotificationDeliveryAttempt: {
+        create: jest.fn().mockResolvedValue({ id: 'attempt-1' }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.create({
+      userId: 'user-1',
+      type: 'optimization_ready',
+      title: 'Otimizacao pronta',
+      message: 'Sua lista foi otimizada.',
+    });
+
+    expect(prisma.userNotificationDeliveryAttempt.create).toHaveBeenCalledTimes(
+      2,
+    );
+    expect(prisma.userNotificationDeliveryAttempt.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        notificationId: 'notification-1',
+        userId: 'user-1',
+        channel: 'push',
+        pushDeviceId: 'device-1',
       }),
     });
   });

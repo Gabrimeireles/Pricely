@@ -8,6 +8,7 @@ import {
   type UserNotificationDeliveryStatus,
   type UserNotificationPreference,
   type UserNotificationType,
+  type UserPushDevicePlatform,
 } from '@prisma/client';
 
 import { PrismaService } from '../persistence/prisma.service';
@@ -49,12 +50,17 @@ export class NotificationsService {
       receiptOutcomesEnabled?: boolean;
       optimizationReadyEnabled?: boolean;
       emailEnabled?: boolean;
+      pushEnabled?: boolean;
     },
   ) {
     const emailEnabled =
       input.emailEnabled === true
         ? await this.hasVerifiedEmailDestination(userId)
         : input.emailEnabled;
+    const pushEnabled =
+      input.pushEnabled === true
+        ? await this.hasActivePushDevice(userId)
+        : input.pushEnabled;
 
     return this.prisma.userNotificationPreference.upsert({
       where: { userId },
@@ -62,12 +68,12 @@ export class NotificationsService {
         userId,
         ...input,
         emailEnabled: emailEnabled ?? false,
-        pushEnabled: false,
+        pushEnabled: pushEnabled ?? false,
       },
       update: {
         ...input,
         emailEnabled,
-        pushEnabled: false,
+        pushEnabled,
       },
     });
   }
@@ -187,6 +193,98 @@ export class NotificationsService {
     return this.toEmailDestinationResponse(destination);
   }
 
+  async listPushDevices(userId: string) {
+    return this.prisma.userPushDevice.findMany({
+      where: { userId },
+      orderBy: [{ isActive: 'desc' }, { lastSeenAt: 'desc' }],
+      select: {
+        id: true,
+        platform: true,
+        provider: true,
+        deviceTokenTail: true,
+        appVersion: true,
+        locale: true,
+        timezone: true,
+        isActive: true,
+        revokedAt: true,
+        lastSeenAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async registerPushDevice(
+    userId: string,
+    input: {
+      platform: UserPushDevicePlatform;
+      deviceToken: string;
+      provider?: string;
+      appVersion?: string;
+      locale?: string;
+      timezone?: string;
+    },
+  ) {
+    const deviceToken = input.deviceToken.trim();
+    if (deviceToken.length < 16) {
+      throw new BadRequestException('Token de push invalido');
+    }
+
+    const now = new Date();
+    const device = await this.prisma.userPushDevice.upsert({
+      where: { deviceTokenHash: this.hashToken(deviceToken) },
+      create: {
+        userId,
+        platform: input.platform,
+        deviceTokenHash: this.hashToken(deviceToken),
+        deviceTokenTail: deviceToken.slice(-12),
+        provider: input.provider?.trim() || 'fcm',
+        appVersion: input.appVersion,
+        locale: input.locale,
+        timezone: input.timezone,
+        isActive: true,
+        revokedAt: null,
+        lastSeenAt: now,
+      },
+      update: {
+        userId,
+        platform: input.platform,
+        deviceTokenTail: deviceToken.slice(-12),
+        provider: input.provider?.trim() || 'fcm',
+        appVersion: input.appVersion,
+        locale: input.locale,
+        timezone: input.timezone,
+        isActive: true,
+        revokedAt: null,
+        lastSeenAt: now,
+      },
+    });
+    await this.updatePreferences(userId, { pushEnabled: true });
+    return device;
+  }
+
+  async revokePushDevice(userId: string, deviceId: string) {
+    const device = await this.prisma.userPushDevice.findFirst({
+      where: { id: deviceId, userId },
+    });
+    if (!device) {
+      throw new NotFoundException('Dispositivo de push nao encontrado');
+    }
+
+    const updated = await this.prisma.userPushDevice.update({
+      where: { id: device.id },
+      data: {
+        isActive: false,
+        revokedAt: new Date(),
+      },
+    });
+    const hasActiveDevice = await this.hasActivePushDevice(userId);
+    if (!hasActiveDevice) {
+      await this.updatePreferences(userId, { pushEnabled: false });
+    }
+    return updated;
+  }
+
   async markRead(userId: string, notificationId: string) {
     const notification = await this.prisma.userNotification.findFirst({
       where: { id: notificationId, userId },
@@ -236,6 +334,7 @@ export class NotificationsService {
       },
     });
     await this.queueEmailDeliveryIfEligible(notification, preferences);
+    await this.queuePushDeliveryIfEligible(notification, preferences);
     return notification;
   }
 
@@ -246,6 +345,7 @@ export class NotificationsService {
     maxAttempts?: number;
     nextAttemptAt?: Date;
     emailDestinationId?: string;
+    pushDeviceId?: string;
   }) {
     return this.prisma.userNotificationDeliveryAttempt.create({
       data: {
@@ -255,6 +355,7 @@ export class NotificationsService {
         maxAttempts: input.maxAttempts ?? 3,
         nextAttemptAt: input.nextAttemptAt,
         emailDestinationId: input.emailDestinationId,
+        pushDeviceId: input.pushDeviceId,
       },
     });
   }
@@ -426,9 +527,52 @@ export class NotificationsService {
     });
   }
 
+  private async queuePushDeliveryIfEligible(
+    notification: {
+      id: string;
+      userId: string;
+      type: UserNotificationType;
+    },
+    preferences: UserNotificationPreference,
+  ) {
+    if (
+      !preferences.pushEnabled ||
+      !this.typeEnabled(preferences, notification.type)
+    ) {
+      return;
+    }
+
+    const devices = await this.prisma.userPushDevice.findMany({
+      where: {
+        userId: notification.userId,
+        isActive: true,
+      },
+      take: 10,
+      orderBy: { lastSeenAt: 'desc' },
+    });
+
+    await Promise.all(
+      devices.map((device) =>
+        this.createDeliveryAttempt({
+          notificationId: notification.id,
+          userId: notification.userId,
+          channel: 'push',
+          pushDeviceId: device.id,
+        }),
+      ),
+    );
+  }
+
   private async hasVerifiedEmailDestination(userId: string) {
     const count = await this.prisma.userEmailNotificationDestination.count({
       where: { userId, status: 'verified' },
+    });
+    return count > 0;
+  }
+
+  private async hasActivePushDevice(userId: string) {
+    const count = await this.prisma.userPushDevice.count({
+      where: { userId, isActive: true },
     });
     return count > 0;
   }

@@ -217,6 +217,11 @@ enum UserEmailNotificationStatus {
   unsubscribed
 }
 
+enum UserPushDevicePlatform {
+  android
+  ios
+}
+
 model UserAccount {
   id                      String                            @id @default(uuid()) @db.Uuid
   email                   String                            @unique
@@ -240,6 +245,7 @@ model UserAccount {
   notifications           UserNotification[]
   notificationDeliveries  UserNotificationDeliveryAttempt[]
   emailNotificationTarget UserEmailNotificationDestination?
+  pushDevices             UserPushDevice[]
   notificationPreference  UserNotificationPreference?
   preferredRegion         Region?                           @relation("UserPreferredRegion", fields: [preferredRegionId], references: [id], onDelete: SetNull)
 }
@@ -408,6 +414,28 @@ model UserEmailNotificationDestination {
   @@index([email, status])
 }
 
+model UserPushDevice {
+  id               String                            @id @default(uuid()) @db.Uuid
+  userId           String                            @db.Uuid
+  platform         UserPushDevicePlatform
+  deviceTokenHash  String                            @unique
+  deviceTokenTail  String                            @db.VarChar(16)
+  provider         String                            @default("fcm")
+  appVersion       String?
+  locale           String?
+  timezone         String?
+  isActive         Boolean                           @default(true)
+  revokedAt        DateTime?
+  lastSeenAt       DateTime                          @default(now())
+  createdAt        DateTime                          @default(now())
+  updatedAt        DateTime                          @updatedAt
+  user             UserAccount                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveryAttempts UserNotificationDeliveryAttempt[]
+
+  @@index([userId, isActive, lastSeenAt])
+  @@index([platform, isActive])
+}
+
 model UserNotification {
   id               String                            @id @default(uuid()) @db.Uuid
   userId           String                            @db.Uuid
@@ -431,6 +459,7 @@ model UserNotificationDeliveryAttempt {
   notificationId        String                            @db.Uuid
   userId                String                            @db.Uuid
   emailDestinationId    String?                           @db.Uuid
+  pushDeviceId          String?                           @db.Uuid
   channel               UserNotificationDeliveryChannel
   status                UserNotificationDeliveryStatus    @default(queued)
   attemptCount          Int                               @default(0)
@@ -446,11 +475,13 @@ model UserNotificationDeliveryAttempt {
   notification          UserNotification                  @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   user                  UserAccount                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   emailDestination      UserEmailNotificationDestination? @relation(fields: [emailDestinationId], references: [id], onDelete: SetNull)
+  pushDevice            UserPushDevice?                   @relation(fields: [pushDeviceId], references: [id], onDelete: SetNull)
 
   @@index([status, nextAttemptAt, createdAt], map: "notification_delivery_status_due_idx")
   @@index([userId, channel, status], map: "notification_delivery_user_channel_status_idx")
   @@index([notificationId, channel, createdAt], map: "notification_delivery_notification_channel_idx")
   @@index([emailDestinationId, status], map: "notification_delivery_email_destination_idx")
+  @@index([pushDeviceId, status], map: "notification_delivery_push_device_idx")
 }
 
 model CatalogProductAlias {
