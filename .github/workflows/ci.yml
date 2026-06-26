@@ -4,10 +4,12 @@ on:
   workflow_dispatch:
   pull_request:
     branches:
+      - master
       - homolog
       - phase/**
   push:
     branches:
+      - master
       - homolog
       - phase/**
 

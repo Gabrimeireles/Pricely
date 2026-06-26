@@ -619,6 +619,21 @@ sensitive monetary values across web surfaces.
 - [X] T260 Complete mobile parity validation for auth, city, lists, optimization evidence, receipts, and monetary privacy before production promotion
 - [X] T261 Execute a restore drill and migration rollback rehearsal on an isolated production-like database
 
+## Phase 35: Notification Delivery and Default-Branch Validation
+
+**Purpose**: Keep the in-app notification center as the canonical record while adding
+safe release validation on the default branch and preparing real outbound delivery
+channels without enabling provider sends prematurely.
+
+- [X] T262 Add `master` validation triggers for CI and Release Readiness while keeping Deploy Homolog Server scoped to `homolog` or manual dispatch in `.github/workflows/`
+- [X] T263 Document the Phase 35 email, push, quiet-hours, retry, and release-validation plan in `docs/product/notification-center.md`
+- [ ] T264 Add notification delivery persistence for channel attempts, provider message ids, retry state, and terminal failure reasons in `backend/prisma/` and `backend/src/notifications/`
+- [ ] T265 Add user email destination verification, unsubscribe/category mapping, and email delivery queue integration in `backend/src/notifications/` and `backend/src/users/`
+- [ ] T266 Add mobile push device registration, token refresh/revocation, and authenticated device listing in `backend/src/notifications/` and `mobile/lib/features/`
+- [ ] T267 Add quiet-hour preferences with timezone-aware deferral for non-critical notifications in `backend/src/notifications/`, `web/src/components/design-system/`, and `mobile/lib/features/`
+- [ ] T268 Add admin notification delivery diagnostics, retry/cancel controls, and provider-error redaction in `web/src/dashboard/` and `backend/src/admin/`
+- [ ] T269 Add backend, web, and mobile coverage for delivery preferences, quiet-hour deferral, device registration, retry policy, and redacted admin diagnostics in `backend/test/`, `web/src/`, and `mobile/test/`
+
 **Homolog validation note (2026-06-15)**: Web/admin/backend MVP smoke passed on
 `https://pricely.grmeireles.dev` after deploying `homolog` commit `ed82c6a`.
 Validated public bundle load, customer login, receipt submission with

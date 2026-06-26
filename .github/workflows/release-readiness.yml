@@ -3,6 +3,7 @@ name: Release Readiness
 on:
   push:
     branches:
+      - master
       - homolog
   workflow_dispatch:
     inputs:
