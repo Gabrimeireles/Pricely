@@ -115,6 +115,17 @@ function SidebarLogo() {
   );
 }
 
+function formatQuietHour(minute?: number | null) {
+  if (minute === undefined || minute === null) {
+    return '--:--';
+  }
+  const hour = Math.floor(minute / 60)
+    .toString()
+    .padStart(2, '0');
+  const normalizedMinute = (minute % 60).toString().padStart(2, '0');
+  return `${hour}:${normalizedMinute}`;
+}
+
 export function PublicSidebarShell({ children }: PropsWithChildren) {
   const {
     cityId,
@@ -712,6 +723,8 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
                     ['priceDropsEnabled', 'Quedas de preco'],
                     ['receiptOutcomesEnabled', 'Resultado de notas'],
                     ['optimizationReadyEnabled', 'Otimizacoes prontas'],
+                    ['emailEnabled', 'Email verificado'],
+                    ['pushEnabled', 'Push no celular'],
                   ].map(([key, label]) => (
                     <label
                       className="flex items-center justify-between gap-3 text-sm"
@@ -735,9 +748,113 @@ export function PublicSidebarShell({ children }: PropsWithChildren) {
                       />
                     </label>
                   ))}
-                  <div className="text-xs text-muted-foreground">
-                    E-mail e push serao adicionados depois; permanecem
-                    desativados nesta fase.
+                  <div className="grid gap-3 rounded-lg border border-border/70 bg-card p-3">
+                    <label className="flex items-center justify-between gap-3 text-sm">
+                      <span>
+                        <span className="block font-medium">
+                          Horario silencioso
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Segura email e push ate o fim da janela configurada.
+                        </span>
+                      </span>
+                      <Switch
+                        checked={notificationPreferences.quietHoursEnabled}
+                        onCheckedChange={async (checked) => {
+                          if (!accessToken) return;
+                          const updated = await updateNotificationPreferences(
+                            accessToken,
+                            {
+                              quietHoursEnabled: checked,
+                              quietHoursStartMinute:
+                                notificationPreferences.quietHoursStartMinute ??
+                                22 * 60,
+                              quietHoursEndMinute:
+                                notificationPreferences.quietHoursEndMinute ??
+                                7 * 60,
+                              quietHoursTimezone:
+                                notificationPreferences.quietHoursTimezone ??
+                                Intl.DateTimeFormat().resolvedOptions()
+                                  .timeZone ??
+                                'America/Sao_Paulo',
+                            },
+                          );
+                          setNotificationPreferences(updated);
+                        }}
+                      />
+                    </label>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Select
+                        disabled={!notificationPreferences.quietHoursEnabled}
+                        onValueChange={async (value) => {
+                          if (!accessToken) return;
+                          const [start, end] = value.split('-').map(Number);
+                          const updated = await updateNotificationPreferences(
+                            accessToken,
+                            {
+                              quietHoursStartMinute: start,
+                              quietHoursEndMinute: end,
+                            },
+                          );
+                          setNotificationPreferences(updated);
+                        }}
+                        value={`${notificationPreferences.quietHoursStartMinute ?? 22 * 60}-${notificationPreferences.quietHoursEndMinute ?? 7 * 60}`}
+                      >
+                        <SelectTrigger>
+                          <MoonStarIcon />
+                          <SelectValue placeholder="Janela" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1320-420">
+                            22:00 ate 07:00
+                          </SelectItem>
+                          <SelectItem value="1260-480">
+                            21:00 ate 08:00
+                          </SelectItem>
+                          <SelectItem value="0-420">
+                            00:00 ate 07:00
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
+                        disabled={!notificationPreferences.quietHoursEnabled}
+                        onValueChange={async (timezone) => {
+                          if (!accessToken) return;
+                          const updated = await updateNotificationPreferences(
+                            accessToken,
+                            { quietHoursTimezone: timezone },
+                          );
+                          setNotificationPreferences(updated);
+                        }}
+                        value={
+                          notificationPreferences.quietHoursTimezone ??
+                          'America/Sao_Paulo'
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Timezone" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="America/Sao_Paulo">
+                            Sao Paulo
+                          </SelectItem>
+                          <SelectItem value="America/Manaus">Manaus</SelectItem>
+                          <SelectItem value="America/Recife">Recife</SelectItem>
+                          <SelectItem value="UTC">UTC</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Janela atual:{' '}
+                      {formatQuietHour(
+                        notificationPreferences.quietHoursStartMinute ?? 22 * 60,
+                      )}{' '}
+                      ate{' '}
+                      {formatQuietHour(
+                        notificationPreferences.quietHoursEndMinute ?? 7 * 60,
+                      )}
+                      .
+                    </div>
                   </div>
                 </div>
               ) : null}

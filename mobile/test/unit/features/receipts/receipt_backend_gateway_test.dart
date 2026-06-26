@@ -157,4 +157,48 @@ void main() {
       '/notification-push-devices/device-1/revoke',
     ]);
   });
+
+  test('updates notification quiet-hour preferences', () async {
+    Map<String, dynamic>? capturedBody;
+    final gateway = PricelyBackendGateway(
+      HttpApiClient(
+        client: MockClient((request) async {
+          expect(request.url.path, '/notification-preferences');
+          expect(request.headers['authorization'], 'Bearer token-123');
+          capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
+
+          return http.Response(
+            jsonEncode(<String, dynamic>{
+              'inAppEnabled': true,
+              'priceDropsEnabled': true,
+              'receiptOutcomesEnabled': true,
+              'optimizationReadyEnabled': true,
+              'emailEnabled': false,
+              'pushEnabled': true,
+              'quietHoursEnabled': true,
+              'quietHoursStartMinute': 1320,
+              'quietHoursEndMinute': 420,
+              'quietHoursTimezone': 'America/Sao_Paulo',
+            }),
+            200,
+          );
+        }),
+      ),
+    );
+
+    final preferences = await gateway.updateNotificationPreferences(
+      accessToken: 'token-123',
+      pushEnabled: true,
+      quietHoursEnabled: true,
+      quietHoursStartMinute: 1320,
+      quietHoursEndMinute: 420,
+      quietHoursTimezone: 'America/Sao_Paulo',
+    );
+
+    expect(capturedBody?['pushEnabled'], isTrue);
+    expect(capturedBody?['quietHoursEnabled'], isTrue);
+    expect(capturedBody?['quietHoursStartMinute'], 1320);
+    expect(preferences.quietHoursEnabled, isTrue);
+    expect(preferences.quietHoursTimezone, 'America/Sao_Paulo');
+  });
 }

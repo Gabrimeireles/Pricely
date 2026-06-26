@@ -392,6 +392,10 @@ model UserNotificationPreference {
   optimizationReadyEnabled Boolean     @default(true)
   emailEnabled             Boolean     @default(false)
   pushEnabled              Boolean     @default(false)
+  quietHoursEnabled        Boolean     @default(false)
+  quietHoursStartMinute    Int?
+  quietHoursEndMinute      Int?
+  quietHoursTimezone       String?
   createdAt                DateTime    @default(now())
   updatedAt                DateTime    @updatedAt
   user                     UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -51,6 +51,10 @@ export class NotificationsService {
       optimizationReadyEnabled?: boolean;
       emailEnabled?: boolean;
       pushEnabled?: boolean;
+      quietHoursEnabled?: boolean;
+      quietHoursStartMinute?: number | null;
+      quietHoursEndMinute?: number | null;
+      quietHoursTimezone?: string | null;
     },
   ) {
     const emailEnabled =
@@ -61,17 +65,20 @@ export class NotificationsService {
       input.pushEnabled === true
         ? await this.hasActivePushDevice(userId)
         : input.pushEnabled;
+    const quietHoursPatch = this.normalizeQuietHoursPatch(input);
 
     return this.prisma.userNotificationPreference.upsert({
       where: { userId },
       create: {
         userId,
         ...input,
+        ...quietHoursPatch,
         emailEnabled: emailEnabled ?? false,
         pushEnabled: pushEnabled ?? false,
       },
       update: {
         ...input,
+        ...quietHoursPatch,
         emailEnabled,
         pushEnabled,
       },
@@ -524,6 +531,7 @@ export class NotificationsService {
       userId: notification.userId,
       channel: 'email',
       emailDestinationId: destination.id,
+      nextAttemptAt: this.resolveQuietHoursNextAttemptAt(preferences),
     });
   }
 
@@ -558,9 +566,119 @@ export class NotificationsService {
           userId: notification.userId,
           channel: 'push',
           pushDeviceId: device.id,
+          nextAttemptAt: this.resolveQuietHoursNextAttemptAt(preferences),
         }),
       ),
     );
+  }
+
+  private normalizeQuietHoursPatch(input: {
+    quietHoursEnabled?: boolean;
+    quietHoursStartMinute?: number | null;
+    quietHoursEndMinute?: number | null;
+    quietHoursTimezone?: string | null;
+  }) {
+    const patch: {
+      quietHoursEnabled?: boolean;
+      quietHoursStartMinute?: number | null;
+      quietHoursEndMinute?: number | null;
+      quietHoursTimezone?: string | null;
+    } = {};
+
+    if (input.quietHoursEnabled !== undefined) {
+      patch.quietHoursEnabled = input.quietHoursEnabled;
+      if (input.quietHoursEnabled) {
+        patch.quietHoursStartMinute = input.quietHoursStartMinute ?? 22 * 60;
+        patch.quietHoursEndMinute = input.quietHoursEndMinute ?? 7 * 60;
+        patch.quietHoursTimezone =
+          this.normalizeTimezone(input.quietHoursTimezone) ??
+          'America/Sao_Paulo';
+      }
+    }
+    if (input.quietHoursStartMinute !== undefined) {
+      patch.quietHoursStartMinute = input.quietHoursStartMinute;
+    }
+    if (input.quietHoursEndMinute !== undefined) {
+      patch.quietHoursEndMinute = input.quietHoursEndMinute;
+    }
+    if (input.quietHoursTimezone !== undefined) {
+      patch.quietHoursTimezone = this.normalizeTimezone(
+        input.quietHoursTimezone,
+      );
+    }
+
+    return patch;
+  }
+
+  private resolveQuietHoursNextAttemptAt(
+    preferences: Pick<
+      UserNotificationPreference,
+      | 'quietHoursEnabled'
+      | 'quietHoursStartMinute'
+      | 'quietHoursEndMinute'
+      | 'quietHoursTimezone'
+    >,
+    now = new Date(),
+  ) {
+    if (!preferences.quietHoursEnabled) {
+      return undefined;
+    }
+    const startMinute = preferences.quietHoursStartMinute ?? 22 * 60;
+    const endMinute = preferences.quietHoursEndMinute ?? 7 * 60;
+    if (startMinute === endMinute) {
+      return undefined;
+    }
+    const timezone = preferences.quietHoursTimezone ?? 'America/Sao_Paulo';
+    const localMinute = this.localMinuteOfDay(now, timezone);
+    const minutes = this.minutesUntilQuietHoursEnd(
+      startMinute,
+      endMinute,
+      localMinute,
+    );
+    if (minutes <= 0) {
+      return undefined;
+    }
+    return new Date(now.getTime() + minutes * 60 * 1000);
+  }
+
+  private minutesUntilQuietHoursEnd(
+    startMinute: number,
+    endMinute: number,
+    currentMinute: number,
+  ) {
+    if (startMinute < endMinute) {
+      return currentMinute >= startMinute && currentMinute < endMinute
+        ? endMinute - currentMinute
+        : 0;
+    }
+    if (currentMinute >= startMinute) {
+      return 1440 - currentMinute + endMinute;
+    }
+    if (currentMinute < endMinute) {
+      return endMinute - currentMinute;
+    }
+    return 0;
+  }
+
+  private localMinuteOfDay(date: Date, timezone: string) {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(date);
+      const hour = Number(parts.find((part) => part.type === 'hour')?.value);
+      const minute = Number(
+        parts.find((part) => part.type === 'minute')?.value,
+      );
+      if (Number.isFinite(hour) && Number.isFinite(minute)) {
+        return (hour % 24) * 60 + minute;
+      }
+    } catch {
+      return date.getUTCHours() * 60 + date.getUTCMinutes();
+    }
+    return date.getUTCHours() * 60 + date.getUTCMinutes();
   }
 
   private async hasVerifiedEmailDestination(userId: string) {
@@ -615,6 +733,22 @@ export class NotificationsService {
       throw new BadRequestException('Email invalido');
     }
     return normalizedEmail;
+  }
+
+  private normalizeTimezone(timezone?: string | null) {
+    if (timezone === null) {
+      return null;
+    }
+    const normalizedTimezone = timezone?.trim();
+    if (!normalizedTimezone) {
+      return undefined;
+    }
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: normalizedTimezone });
+      return normalizedTimezone;
+    } catch {
+      throw new BadRequestException('Timezone invalido');
+    }
   }
 
   private createToken() {

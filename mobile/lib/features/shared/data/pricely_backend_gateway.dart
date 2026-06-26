@@ -158,6 +158,55 @@ class PricelyBackendGateway {
     return PushDeviceSummary.fromJson(response);
   }
 
+  Future<NotificationPreferencesSummary> fetchNotificationPreferences(
+    String accessToken,
+  ) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      '/notification-preferences',
+      accessToken: accessToken,
+    );
+    return NotificationPreferencesSummary.fromJson(response);
+  }
+
+  Future<NotificationPreferencesSummary> updateNotificationPreferences({
+    required String accessToken,
+    bool? inAppEnabled,
+    bool? priceDropsEnabled,
+    bool? receiptOutcomesEnabled,
+    bool? optimizationReadyEnabled,
+    bool? emailEnabled,
+    bool? pushEnabled,
+    bool? quietHoursEnabled,
+    int? quietHoursStartMinute,
+    int? quietHoursEndMinute,
+    String? quietHoursTimezone,
+  }) async {
+    final response = await _apiClient.patch<Map<String, dynamic>>(
+      '/notification-preferences',
+      accessToken: accessToken,
+      body: <String, dynamic>{
+        if (inAppEnabled != null) 'inAppEnabled': inAppEnabled,
+        if (priceDropsEnabled != null)
+          'priceDropsEnabled': priceDropsEnabled,
+        if (receiptOutcomesEnabled != null)
+          'receiptOutcomesEnabled': receiptOutcomesEnabled,
+        if (optimizationReadyEnabled != null)
+          'optimizationReadyEnabled': optimizationReadyEnabled,
+        if (emailEnabled != null) 'emailEnabled': emailEnabled,
+        if (pushEnabled != null) 'pushEnabled': pushEnabled,
+        if (quietHoursEnabled != null)
+          'quietHoursEnabled': quietHoursEnabled,
+        if (quietHoursStartMinute != null)
+          'quietHoursStartMinute': quietHoursStartMinute,
+        if (quietHoursEndMinute != null)
+          'quietHoursEndMinute': quietHoursEndMinute,
+        if (quietHoursTimezone != null)
+          'quietHoursTimezone': quietHoursTimezone,
+      },
+    );
+    return NotificationPreferencesSummary.fromJson(response);
+  }
+
   List<Map<String, dynamic>> _parseManualReceiptItems(String? rawReceipt) {
     if (rawReceipt == null || rawReceipt.trim().isEmpty) {
       return <Map<String, dynamic>>[];
@@ -827,6 +876,52 @@ class PushDeviceSummary {
       locale: json['locale'] as String?,
       timezone: json['timezone'] as String?,
       revokedAt: json['revokedAt'] as String?,
+    );
+  }
+}
+
+class NotificationPreferencesSummary {
+  NotificationPreferencesSummary({
+    required this.inAppEnabled,
+    required this.priceDropsEnabled,
+    required this.receiptOutcomesEnabled,
+    required this.optimizationReadyEnabled,
+    required this.emailEnabled,
+    required this.pushEnabled,
+    required this.quietHoursEnabled,
+    this.quietHoursStartMinute,
+    this.quietHoursEndMinute,
+    this.quietHoursTimezone,
+  });
+
+  final bool inAppEnabled;
+  final bool priceDropsEnabled;
+  final bool receiptOutcomesEnabled;
+  final bool optimizationReadyEnabled;
+  final bool emailEnabled;
+  final bool pushEnabled;
+  final bool quietHoursEnabled;
+  final int? quietHoursStartMinute;
+  final int? quietHoursEndMinute;
+  final String? quietHoursTimezone;
+
+  factory NotificationPreferencesSummary.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return NotificationPreferencesSummary(
+      inAppEnabled: json['inAppEnabled'] as bool? ?? true,
+      priceDropsEnabled: json['priceDropsEnabled'] as bool? ?? true,
+      receiptOutcomesEnabled:
+          json['receiptOutcomesEnabled'] as bool? ?? true,
+      optimizationReadyEnabled:
+          json['optimizationReadyEnabled'] as bool? ?? true,
+      emailEnabled: json['emailEnabled'] as bool? ?? false,
+      pushEnabled: json['pushEnabled'] as bool? ?? false,
+      quietHoursEnabled: json['quietHoursEnabled'] as bool? ?? false,
+      quietHoursStartMinute:
+          (json['quietHoursStartMinute'] as num?)?.toInt(),
+      quietHoursEndMinute: (json['quietHoursEndMinute'] as num?)?.toInt(),
+      quietHoursTimezone: json['quietHoursTimezone'] as String?,
     );
   }
 }

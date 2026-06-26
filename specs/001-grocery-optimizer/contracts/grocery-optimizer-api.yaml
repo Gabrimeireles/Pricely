@@ -397,11 +397,25 @@ paths:
       responses:
         '200':
           description: Preferences returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
     patch:
       summary: Update notification channel and category preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferencesUpdate'
       responses:
         '200':
-          description: Preferences updated; email can be enabled after destination verification
+          description: Preferences updated; outbound channels can be deferred by quiet hours
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
   /notification-email-destination:
     get:
       summary: Fetch the authenticated user's email notification destination
@@ -838,6 +852,73 @@ components:
         email:
           type: string
           format: email
+    NotificationPreferences:
+      type: object
+      required:
+        [
+          inAppEnabled,
+          priceDropsEnabled,
+          receiptOutcomesEnabled,
+          optimizationReadyEnabled,
+          emailEnabled,
+          pushEnabled,
+          quietHoursEnabled,
+        ]
+      properties:
+        inAppEnabled:
+          type: boolean
+        priceDropsEnabled:
+          type: boolean
+        receiptOutcomesEnabled:
+          type: boolean
+        optimizationReadyEnabled:
+          type: boolean
+        emailEnabled:
+          type: boolean
+        pushEnabled:
+          type: boolean
+        quietHoursEnabled:
+          type: boolean
+        quietHoursStartMinute:
+          type: integer
+          minimum: 0
+          maximum: 1439
+          nullable: true
+        quietHoursEndMinute:
+          type: integer
+          minimum: 0
+          maximum: 1439
+          nullable: true
+        quietHoursTimezone:
+          type: string
+          nullable: true
+    NotificationPreferencesUpdate:
+      type: object
+      properties:
+        inAppEnabled:
+          type: boolean
+        priceDropsEnabled:
+          type: boolean
+        receiptOutcomesEnabled:
+          type: boolean
+        optimizationReadyEnabled:
+          type: boolean
+        emailEnabled:
+          type: boolean
+        pushEnabled:
+          type: boolean
+        quietHoursEnabled:
+          type: boolean
+        quietHoursStartMinute:
+          type: integer
+          minimum: 0
+          maximum: 1439
+        quietHoursEndMinute:
+          type: integer
+          minimum: 0
+          maximum: 1439
+        quietHoursTimezone:
+          type: string
     EmailTokenRequest:
       type: object
       required: [token]
