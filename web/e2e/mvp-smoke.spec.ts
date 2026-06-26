@@ -724,7 +724,16 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   await expect(
     page.getByRole('heading', { name: 'Checklist de compra' }),
   ).toBeVisible();
-  await page.getByRole('checkbox').click();
+  await Promise.all([
+    page.waitForResponse((response) =>
+      response.url().includes('/shopping-lists/list-1/items/item-1/purchase-status'),
+    ),
+    page
+      .getByRole('checkbox', {
+        name: 'Marcar Arroz tipo 1 1kg como comprado',
+      })
+      .click(),
+  ]);
   await expect(page.getByText('Comprado', { exact: true })).toBeVisible();
 });
 
