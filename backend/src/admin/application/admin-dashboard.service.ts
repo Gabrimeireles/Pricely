@@ -1,5 +1,6 @@
 import {
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
   Optional,
@@ -929,6 +930,258 @@ export class AdminDashboardService {
     );
 
     return summary;
+  }
+
+  async listNotificationDeliveries() {
+    const attempts =
+      await this.prisma.userNotificationDeliveryAttempt.findMany({
+        orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+        take: 100,
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              email: true,
+            },
+          },
+          notification: {
+            select: {
+              id: true,
+              type: true,
+              title: true,
+              resourceType: true,
+              resourceId: true,
+              createdAt: true,
+            },
+          },
+          emailDestination: {
+            select: {
+              id: true,
+              email: true,
+              status: true,
+            },
+          },
+          pushDevice: {
+            select: {
+              id: true,
+              platform: true,
+              provider: true,
+              deviceTokenTail: true,
+              isActive: true,
+            },
+          },
+        },
+      });
+
+    const projected = attempts.map((attempt) =>
+      this.projectNotificationDelivery(attempt),
+    );
+
+    this.logger.log(
+      `Admin notification delivery diagnostics requested: ${projected.length} attempts returned`,
+    );
+
+    return projected;
+  }
+
+  async retryNotificationDelivery(attemptId: string) {
+    await this.requireNotificationsService().retryDeliveryAttempt(attemptId);
+    const [attempt] = await this.listNotificationDeliveriesByIds([attemptId]);
+    if (!attempt) {
+      throw new NotFoundException(
+        `Notification delivery attempt ${attemptId} was not found`,
+      );
+    }
+    return attempt;
+  }
+
+  async cancelNotificationDelivery(attemptId: string, reason?: string) {
+    await this.requireNotificationsService().cancelDeliveryAttempt(
+      attemptId,
+      reason,
+    );
+    const [attempt] = await this.listNotificationDeliveriesByIds([attemptId]);
+    if (!attempt) {
+      throw new NotFoundException(
+        `Notification delivery attempt ${attemptId} was not found`,
+      );
+    }
+    return attempt;
+  }
+
+  private async listNotificationDeliveriesByIds(attemptIds: string[]) {
+    const attempts =
+      await this.prisma.userNotificationDeliveryAttempt.findMany({
+        where: { id: { in: attemptIds } },
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              email: true,
+            },
+          },
+          notification: {
+            select: {
+              id: true,
+              type: true,
+              title: true,
+              resourceType: true,
+              resourceId: true,
+              createdAt: true,
+            },
+          },
+          emailDestination: {
+            select: {
+              id: true,
+              email: true,
+              status: true,
+            },
+          },
+          pushDevice: {
+            select: {
+              id: true,
+              platform: true,
+              provider: true,
+              deviceTokenTail: true,
+              isActive: true,
+            },
+          },
+        },
+      });
+    return attempts.map((attempt) =>
+      this.projectNotificationDelivery(attempt),
+    );
+  }
+
+  private projectNotificationDelivery(attempt: {
+    id: string;
+    notificationId: string;
+    userId: string;
+    channel: string;
+    status: string;
+    attemptCount: number;
+    maxAttempts: number;
+    providerMessageId: string | null;
+    lastFailureReason: string | null;
+    terminalFailureReason: string | null;
+    nextAttemptAt: Date | null;
+    lastAttemptAt: Date | null;
+    deliveredAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    user: { id: string; displayName: string; email: string };
+    notification: {
+      id: string;
+      type: string;
+      title: string;
+      resourceType: string | null;
+      resourceId: string | null;
+      createdAt: Date;
+    };
+    emailDestination: {
+      id: string;
+      email: string;
+      status: string;
+    } | null;
+    pushDevice: {
+      id: string;
+      platform: string;
+      provider: string;
+      deviceTokenTail: string;
+      isActive: boolean;
+    } | null;
+  }) {
+    return {
+      id: attempt.id,
+      notificationId: attempt.notificationId,
+      userId: attempt.userId,
+      channel: attempt.channel,
+      status: attempt.status,
+      attemptCount: attempt.attemptCount,
+      maxAttempts: attempt.maxAttempts,
+      providerMessage: this.redactSecret(attempt.providerMessageId),
+      lastFailureReason: this.redactProviderError(
+        attempt.lastFailureReason ?? attempt.terminalFailureReason,
+      ),
+      nextAttemptAt: attempt.nextAttemptAt?.toISOString() ?? null,
+      lastAttemptAt: attempt.lastAttemptAt?.toISOString() ?? null,
+      deliveredAt: attempt.deliveredAt?.toISOString() ?? null,
+      createdAt: attempt.createdAt.toISOString(),
+      updatedAt: attempt.updatedAt.toISOString(),
+      canRetry:
+        ['failed', 'retrying'].includes(attempt.status) &&
+        attempt.attemptCount < attempt.maxAttempts,
+      canCancel: ['queued', 'retrying'].includes(attempt.status),
+      owner: {
+        id: attempt.user.id,
+        displayName: attempt.user.displayName,
+        email: this.maskEmail(attempt.user.email),
+      },
+      notification: {
+        id: attempt.notification.id,
+        type: attempt.notification.type,
+        title: attempt.notification.title,
+        resourceType: attempt.notification.resourceType,
+        resourceId: attempt.notification.resourceId,
+        createdAt: attempt.notification.createdAt.toISOString(),
+      },
+      destination: attempt.emailDestination
+        ? {
+            kind: 'email',
+            id: attempt.emailDestination.id,
+            label: this.maskEmail(attempt.emailDestination.email),
+            status: attempt.emailDestination.status,
+          }
+        : attempt.pushDevice
+          ? {
+              kind: 'push',
+              id: attempt.pushDevice.id,
+              label: `${attempt.pushDevice.platform} ${this.redactSecret(
+                attempt.pushDevice.deviceTokenTail,
+              )}`,
+              status: attempt.pushDevice.isActive ? 'active' : 'revoked',
+              provider: attempt.pushDevice.provider,
+            }
+          : null,
+    };
+  }
+
+  private redactProviderError(reason?: string | null) {
+    if (!reason) {
+      return null;
+    }
+    return reason
+      .slice(0, 500)
+      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
+      .replace(/https?:\/\/\S+/gi, '[url]')
+      .replace(/[A-Za-z0-9_-]{24,}/g, '[token]');
+  }
+
+  private redactSecret(value?: string | null) {
+    if (!value) {
+      return null;
+    }
+    const visibleTail = value.slice(-6);
+    return `redacted:${visibleTail}`;
+  }
+
+  private maskEmail(email: string) {
+    const [name, domain] = email.split('@');
+    if (!domain) {
+      return '[email]';
+    }
+    return `${name.slice(0, 2)}***@${domain}`;
+  }
+
+  private requireNotificationsService() {
+    if (!this.notificationsService) {
+      throw new InternalServerErrorException(
+        'Notification delivery service is not available',
+      );
+    }
+    return this.notificationsService;
   }
 
   async listShoppingListAudits() {

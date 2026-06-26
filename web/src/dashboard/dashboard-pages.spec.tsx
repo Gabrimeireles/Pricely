@@ -34,6 +34,7 @@ const fetchAdminMetrics = vi.fn();
 const fetchAdminPublicSearchMetrics = vi.fn();
 const fetchAdminQueueHealth = vi.fn();
 const fetchAdminProcessingJobs = vi.fn();
+const fetchAdminNotificationDeliveries = vi.fn();
 const fetchAdminProcessingJobDetail = vi.fn();
 const fetchAdminReceiptProcessing = vi.fn();
 const fetchAdminReceiptProcessingDetail = vi.fn();
@@ -51,6 +52,8 @@ const rejectAdminMissingProductRequest = vi.fn();
 const retryAdminProcessingJob = vi.fn();
 const reviewAdminProcessingJob = vi.fn();
 const cancelAdminProcessingJob = vi.fn();
+const retryAdminNotificationDelivery = vi.fn();
+const cancelAdminNotificationDelivery = vi.fn();
 const createAdminOffer = vi.fn();
 const updateAdminOffer = vi.fn();
 const deleteAdminProduct = vi.fn();
@@ -90,6 +93,8 @@ vi.mock('@/app/api', () => ({
   fetchAdminQueueHealth: (...args: unknown[]) => fetchAdminQueueHealth(...args),
   fetchAdminProcessingJobs: (...args: unknown[]) =>
     fetchAdminProcessingJobs(...args),
+  fetchAdminNotificationDeliveries: (...args: unknown[]) =>
+    fetchAdminNotificationDeliveries(...args),
   fetchAdminProcessingJobDetail: (...args: unknown[]) =>
     fetchAdminProcessingJobDetail(...args),
   fetchAdminReceiptProcessing: (...args: unknown[]) =>
@@ -129,6 +134,10 @@ vi.mock('@/app/api', () => ({
     reviewAdminProcessingJob(...args),
   cancelAdminProcessingJob: (...args: unknown[]) =>
     cancelAdminProcessingJob(...args),
+  retryAdminNotificationDelivery: (...args: unknown[]) =>
+    retryAdminNotificationDelivery(...args),
+  cancelAdminNotificationDelivery: (...args: unknown[]) =>
+    cancelAdminNotificationDelivery(...args),
   createAdminOffer: (...args: unknown[]) => createAdminOffer(...args),
   createAdminProduct: vi.fn(),
   createAdminProductVariant: vi.fn(),
@@ -302,6 +311,7 @@ describe('Admin dashboard pages', () => {
     fetchAdminPublicSearchMetrics.mockReset();
     fetchAdminQueueHealth.mockReset();
     fetchAdminProcessingJobs.mockReset();
+    fetchAdminNotificationDeliveries.mockReset();
     fetchAdminProcessingJobDetail.mockReset();
     fetchAdminReceiptProcessing.mockReset();
     fetchAdminReceiptProcessingDetail.mockReset();
@@ -319,7 +329,10 @@ describe('Admin dashboard pages', () => {
     retryAdminProcessingJob.mockReset();
     reviewAdminProcessingJob.mockReset();
     cancelAdminProcessingJob.mockReset();
+    retryAdminNotificationDelivery.mockReset();
+    cancelAdminNotificationDelivery.mockReset();
     fetchAdminMissingProductRequests.mockResolvedValue([]);
+    fetchAdminNotificationDeliveries.mockResolvedValue([]);
     createAdminOffer.mockReset();
     updateAdminOffer.mockReset();
     deleteAdminProduct.mockReset();
@@ -486,6 +499,46 @@ describe('Admin dashboard pages', () => {
         },
       },
     ]);
+    fetchAdminNotificationDeliveries.mockResolvedValue([
+      {
+        id: 'attempt-1',
+        notificationId: 'notification-1',
+        userId: 'user-1',
+        channel: 'email',
+        status: 'failed',
+        attemptCount: 1,
+        maxAttempts: 3,
+        providerMessage: 'redacted:123456',
+        lastFailureReason: 'provider rejected [email] token [token]',
+        nextAttemptAt: null,
+        lastAttemptAt: '2026-05-10T04:02:00.000Z',
+        deliveredAt: null,
+        createdAt: '2026-05-10T04:00:00.000Z',
+        updatedAt: '2026-05-10T04:03:00.000Z',
+        canRetry: true,
+        canCancel: false,
+        owner: {
+          id: 'user-1',
+          displayName: 'Cliente Teste',
+          email: 'cl***@pricely.local',
+        },
+        notification: {
+          id: 'notification-1',
+          type: 'price_drop',
+          title: 'Preco menor para arroz',
+          resourceType: 'product_offer',
+          resourceId: 'offer-1',
+          createdAt: '2026-05-10T04:00:00.000Z',
+        },
+        destination: {
+          kind: 'email',
+          id: 'destination-1',
+          label: 'cl***@pricely.local',
+          status: 'verified',
+        },
+      },
+    ]);
+    retryAdminNotificationDelivery.mockResolvedValue({});
 
     render(<AdminQueuePage />);
 
@@ -496,6 +549,19 @@ describe('Admin dashboard pages', () => {
     expect(screen.getByText('Lista: Compra da semana')).toBeTruthy();
     expect(screen.getByText(/Menor total na cidade/)).toBeTruthy();
     expect(screen.getByLabelText('Abrir detalhe do job job-1')).toBeTruthy();
+    expect(await screen.findByText('Entregas de notificações')).toBeTruthy();
+    expect(screen.getByText('Preco menor para arroz')).toBeTruthy();
+    expect(screen.getAllByText(/cl\*\*\*@pricely.local/).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByText(/provider rejected \[email\]/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() =>
+      expect(retryAdminNotificationDelivery).toHaveBeenCalledWith(
+        'token',
+        'attempt-1',
+      ),
+    );
     expect(screen.queryByText('Go to link')).toBeNull();
   });
 

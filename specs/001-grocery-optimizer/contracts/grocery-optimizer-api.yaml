@@ -355,6 +355,30 @@ paths:
       responses:
         '201':
           description: Job removed from the waiting queue and audit retained
+  /admin/notification-deliveries:
+    get:
+      summary: List redacted notification delivery attempts for admin diagnostics
+      responses:
+        '200':
+          description: Notification delivery attempts returned newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminNotificationDelivery'
+  /admin/notification-deliveries/{attemptId}/retry:
+    post:
+      summary: Requeue a failed or retrying notification delivery attempt
+      responses:
+        '201':
+          description: Delivery attempt requeued when retry budget remains
+  /admin/notification-deliveries/{attemptId}/cancel:
+    post:
+      summary: Cancel a queued or retrying notification delivery attempt
+      responses:
+        '201':
+          description: Delivery attempt cancelled with audit reason
   /admin/missing-product-requests:
     get:
       summary: List shopper missing-product requests for catalog triage
@@ -997,6 +1021,125 @@ components:
         lastSeenAt:
           type: string
           format: date-time
+    AdminNotificationDelivery:
+      type: object
+      required:
+        [
+          id,
+          notificationId,
+          userId,
+          channel,
+          status,
+          attemptCount,
+          maxAttempts,
+          createdAt,
+          updatedAt,
+          canRetry,
+          canCancel,
+          owner,
+          notification,
+        ]
+      properties:
+        id:
+          type: string
+        notificationId:
+          type: string
+        userId:
+          type: string
+        channel:
+          type: string
+          enum: [email, push]
+        status:
+          type: string
+          enum: [queued, sending, retrying, delivered, failed, cancelled]
+        attemptCount:
+          type: integer
+        maxAttempts:
+          type: integer
+        providerMessage:
+          type: string
+          nullable: true
+          description: Redacted provider id, never the raw provider message id
+        lastFailureReason:
+          type: string
+          nullable: true
+          description: Provider/user-sensitive values are redacted
+        nextAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        canRetry:
+          type: boolean
+        canCancel:
+          type: boolean
+        owner:
+          type: object
+          required: [id, displayName, email]
+          properties:
+            id:
+              type: string
+            displayName:
+              type: string
+            email:
+              type: string
+              description: Masked email
+        notification:
+          type: object
+          required: [id, type, title, createdAt]
+          properties:
+            id:
+              type: string
+            type:
+              type: string
+              enum:
+                [
+                  price_drop,
+                  receipt_outcome,
+                  optimization_ready,
+                  optimization_failed,
+                ]
+            title:
+              type: string
+            resourceType:
+              type: string
+              nullable: true
+            resourceId:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+              format: date-time
+        destination:
+          type: object
+          nullable: true
+          required: [kind, id, label, status]
+          properties:
+            kind:
+              type: string
+              enum: [email, push]
+            id:
+              type: string
+            label:
+              type: string
+              description: Masked destination label
+            status:
+              type: string
+            provider:
+              type: string
     AuthSession:
       type: object
       required: [accessToken, user]

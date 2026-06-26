@@ -460,6 +460,55 @@ type AdminProcessingJobResponse = {
   } | null;
 };
 
+type AdminNotificationDeliveryResponse = {
+  id: string;
+  notificationId: string;
+  userId: string;
+  channel: 'email' | 'push';
+  status:
+    | 'queued'
+    | 'sending'
+    | 'retrying'
+    | 'delivered'
+    | 'failed'
+    | 'cancelled';
+  attemptCount: number;
+  maxAttempts: number;
+  providerMessage?: string | null;
+  lastFailureReason?: string | null;
+  nextAttemptAt?: string | null;
+  lastAttemptAt?: string | null;
+  deliveredAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  canRetry: boolean;
+  canCancel: boolean;
+  owner: {
+    id: string;
+    displayName: string;
+    email: string;
+  };
+  notification: {
+    id: string;
+    type:
+      | 'price_drop'
+      | 'receipt_outcome'
+      | 'optimization_ready'
+      | 'optimization_failed';
+    title: string;
+    resourceType?: string | null;
+    resourceId?: string | null;
+    createdAt: string;
+  };
+  destination?: {
+    kind: 'email' | 'push';
+    id: string;
+    label: string;
+    status: string;
+    provider?: string;
+  } | null;
+};
+
 type AdminProcessingJobDetailResponse = AdminProcessingJobResponse & {
   optimizationRun?:
     | (NonNullable<AdminProcessingJobResponse['optimizationRun']> & {
@@ -1414,6 +1463,40 @@ export async function cancelAdminProcessingJob(
   );
 }
 
+export async function fetchAdminNotificationDeliveries(token: string) {
+  return apiFetch<AdminNotificationDeliveryResponse[]>(
+    '/admin/notification-deliveries',
+    {},
+    token,
+  );
+}
+
+export async function retryAdminNotificationDelivery(
+  token: string,
+  id: string,
+) {
+  return apiFetch<AdminNotificationDeliveryResponse>(
+    `/admin/notification-deliveries/${id}/retry`,
+    { method: 'POST' },
+    token,
+  );
+}
+
+export async function cancelAdminNotificationDelivery(
+  token: string,
+  id: string,
+  reason?: string,
+) {
+  return apiFetch<AdminNotificationDeliveryResponse>(
+    `/admin/notification-deliveries/${id}/cancel`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    },
+    token,
+  );
+}
+
 export async function fetchAdminMissingProductRequests(token: string) {
   return apiFetch<MissingProductRequestResponse[]>(
     '/admin/missing-product-requests',
@@ -1867,6 +1950,7 @@ export type {
   AdminMetricsResponse,
   AdminPublicSearchMetricsResponse,
   AdminOfferResponse,
+  AdminNotificationDeliveryResponse,
   AdminProductResponse,
   AdminProductVariantResponse,
   AdminProcessingJobResponse,

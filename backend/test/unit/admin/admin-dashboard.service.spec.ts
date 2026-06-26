@@ -445,6 +445,104 @@ describe('AdminDashboardService', () => {
     expect(logSpy).toHaveBeenCalledWith('Admin updated region region-1');
   });
 
+  it('projects notification delivery diagnostics with redacted provider data and delegates admin actions', async () => {
+    const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    const deliveryAttempt = {
+      id: 'attempt-1',
+      notificationId: 'notification-1',
+      userId: 'user-1',
+      channel: 'email',
+      status: 'failed',
+      attemptCount: 1,
+      maxAttempts: 3,
+      providerMessageId: 'provider-message-secret-1234567890',
+      lastFailureReason:
+        'provider rejected cliente@pricely.local token abcdefghijklmnopqrstuvwxyz url https://provider.example/error',
+      terminalFailureReason: null,
+      nextAttemptAt: null,
+      lastAttemptAt: new Date('2026-06-26T10:00:00Z'),
+      deliveredAt: null,
+      createdAt: new Date('2026-06-26T09:00:00Z'),
+      updatedAt: new Date('2026-06-26T10:01:00Z'),
+      user: {
+        id: 'user-1',
+        displayName: 'Cliente 1',
+        email: 'cliente@pricely.local',
+      },
+      notification: {
+        id: 'notification-1',
+        type: 'price_drop',
+        title: 'Preco menor',
+        resourceType: 'product_offer',
+        resourceId: 'offer-1',
+        createdAt: new Date('2026-06-26T08:59:00Z'),
+      },
+      emailDestination: {
+        id: 'destination-1',
+        email: 'cliente@pricely.local',
+        status: 'verified',
+      },
+      pushDevice: null,
+    };
+    const prisma = {
+      userNotificationDeliveryAttempt: {
+        findMany: jest.fn().mockResolvedValue([deliveryAttempt]),
+      },
+    };
+    const notificationsService = {
+      retryDeliveryAttempt: jest.fn().mockResolvedValue(null),
+      cancelDeliveryAttempt: jest.fn().mockResolvedValue(null),
+    };
+    const service = new AdminDashboardService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      notificationsService as never,
+    );
+
+    await expect(service.listNotificationDeliveries()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'attempt-1',
+        status: 'failed',
+        providerMessage: 'redacted:567890',
+        lastFailureReason:
+          'provider rejected [email] token [token] url [url]',
+        canRetry: true,
+        canCancel: false,
+        owner: {
+          id: 'user-1',
+          displayName: 'Cliente 1',
+          email: 'cl***@pricely.local',
+        },
+        destination: {
+          kind: 'email',
+          id: 'destination-1',
+          label: 'cl***@pricely.local',
+          status: 'verified',
+        },
+      }),
+    ]);
+
+    await service.retryNotificationDelivery('attempt-1');
+    await service.cancelNotificationDelivery('attempt-1', 'admin cancel');
+
+    expect(notificationsService.retryDeliveryAttempt).toHaveBeenCalledWith(
+      'attempt-1',
+    );
+    expect(notificationsService.cancelDeliveryAttempt).toHaveBeenCalledWith(
+      'attempt-1',
+      'admin cancel',
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Admin notification delivery diagnostics'),
+    );
+  });
+
   it('projects receipt line extraction, maker action, and price comparison for admin review', async () => {
     const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     const prisma = {

@@ -618,6 +618,59 @@ describe('NotificationsService', () => {
     });
   });
 
+  it('requeues retryable delivery attempts without clearing attempt history', async () => {
+    const prisma = {
+      userNotificationDeliveryAttempt: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'attempt-1',
+          status: 'failed',
+          attemptCount: 1,
+          maxAttempts: 3,
+        }),
+        update: jest.fn().mockResolvedValue({ id: 'attempt-1' }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.retryDeliveryAttempt('attempt-1');
+
+    expect(prisma.userNotificationDeliveryAttempt.update).toHaveBeenCalledWith({
+      where: { id: 'attempt-1' },
+      data: expect.objectContaining({
+        status: 'queued',
+        lastFailureReason: null,
+        terminalFailureReason: null,
+        nextAttemptAt: expect.any(Date),
+      }),
+    });
+  });
+
+  it('cancels queued delivery attempts with an admin-visible terminal reason', async () => {
+    const prisma = {
+      userNotificationDeliveryAttempt: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'attempt-1',
+          status: 'queued',
+          attemptCount: 0,
+          maxAttempts: 3,
+        }),
+        update: jest.fn().mockResolvedValue({ id: 'attempt-1' }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.cancelDeliveryAttempt('attempt-1', 'cancelado pelo admin');
+
+    expect(prisma.userNotificationDeliveryAttempt.update).toHaveBeenCalledWith({
+      where: { id: 'attempt-1' },
+      data: {
+        status: 'cancelled',
+        nextAttemptAt: null,
+        terminalFailureReason: 'cancelado pelo admin',
+      },
+    });
+  });
+
   it('marks delivery success with provider message id', async () => {
     const prisma = {
       userNotificationDeliveryAttempt: {
