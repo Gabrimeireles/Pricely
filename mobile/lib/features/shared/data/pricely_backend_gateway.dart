@@ -111,6 +111,52 @@ class PricelyBackendGateway {
     return LocationCoveragePreviewSummary.fromJson(response);
   }
 
+  Future<List<PushDeviceSummary>> fetchPushDevices(String accessToken) async {
+    final response = await _apiClient.get<List<dynamic>>(
+      '/notification-push-devices',
+      accessToken: accessToken,
+    );
+    return response
+        .map(
+          (entry) => PushDeviceSummary.fromJson(entry as Map<String, dynamic>),
+        )
+        .toList();
+  }
+
+  Future<PushDeviceSummary> registerPushDevice({
+    required String accessToken,
+    required String platform,
+    required String deviceToken,
+    String provider = 'fcm',
+    String? appVersion,
+    String? locale,
+    String? timezone,
+  }) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/notification-push-devices',
+      accessToken: accessToken,
+      body: <String, dynamic>{
+        'platform': platform,
+        'deviceToken': deviceToken,
+        'provider': provider,
+        if (appVersion != null) 'appVersion': appVersion,
+        if (locale != null) 'locale': locale,
+        if (timezone != null) 'timezone': timezone,
+      },
+    );
+    return PushDeviceSummary.fromJson(response);
+  }
+
+  Future<PushDeviceSummary> revokePushDevice({
+    required String accessToken,
+    required String deviceId,
+  }) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/notification-push-devices/$deviceId/revoke',
+      accessToken: accessToken,
+    );
+    return PushDeviceSummary.fromJson(response);
+  }
 
   List<Map<String, dynamic>> _parseManualReceiptItems(String? rawReceipt) {
     if (rawReceipt == null || rawReceipt.trim().isEmpty) {
@@ -740,6 +786,47 @@ class LocationCoveragePreviewSummary {
       activeEstablishmentCount:
           (json['activeEstablishmentCount'] as num? ?? 0).toInt(),
       fallbackUsed: json['fallbackUsed'] as bool? ?? false,
+    );
+  }
+}
+
+class PushDeviceSummary {
+  PushDeviceSummary({
+    required this.id,
+    required this.platform,
+    required this.provider,
+    required this.deviceTokenTail,
+    required this.isActive,
+    required this.lastSeenAt,
+    this.appVersion,
+    this.locale,
+    this.timezone,
+    this.revokedAt,
+  });
+
+  final String id;
+  final String platform;
+  final String provider;
+  final String deviceTokenTail;
+  final bool isActive;
+  final String lastSeenAt;
+  final String? appVersion;
+  final String? locale;
+  final String? timezone;
+  final String? revokedAt;
+
+  factory PushDeviceSummary.fromJson(Map<String, dynamic> json) {
+    return PushDeviceSummary(
+      id: json['id'] as String,
+      platform: json['platform'] as String? ?? 'android',
+      provider: json['provider'] as String? ?? 'fcm',
+      deviceTokenTail: json['deviceTokenTail'] as String? ?? '',
+      isActive: json['isActive'] as bool? ?? false,
+      lastSeenAt: json['lastSeenAt'] as String? ?? '',
+      appVersion: json['appVersion'] as String?,
+      locale: json['locale'] as String?,
+      timezone: json['timezone'] as String?,
+      revokedAt: json['revokedAt'] as String?,
     );
   }
 }

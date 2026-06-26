@@ -8,7 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 
 import { type JwtUserPayload } from '../auth/auth.types';
 import { CurrentUser } from '../common/auth/current-user.decorator';
@@ -54,6 +54,31 @@ class UnsubscribeEmailDto {
   @IsOptional()
   @IsIn(['all', 'price_drop', 'receipt_outcome', 'optimization'])
   category?: 'all' | 'price_drop' | 'receipt_outcome' | 'optimization';
+}
+
+class RegisterPushDeviceDto {
+  @IsIn(['android', 'ios'])
+  platform!: 'android' | 'ios';
+
+  @IsString()
+  @MinLength(16)
+  deviceToken!: string;
+
+  @IsOptional()
+  @IsString()
+  provider?: string;
+
+  @IsOptional()
+  @IsString()
+  appVersion?: string;
+
+  @IsOptional()
+  @IsString()
+  locale?: string;
+
+  @IsOptional()
+  @IsString()
+  timezone?: string;
 }
 
 @Controller()
@@ -122,5 +147,26 @@ export class NotificationsController {
   @Post('notification-email-unsubscribe')
   unsubscribeEmail(@Body() body: UnsubscribeEmailDto) {
     return this.notificationsService.unsubscribeEmail(body);
+  }
+
+  @Get('notification-push-devices')
+  @UseGuards(JwtAuthGuard)
+  pushDevices(@CurrentUser() user: JwtUserPayload) {
+    return this.notificationsService.listPushDevices(user.sub);
+  }
+
+  @Post('notification-push-devices')
+  @UseGuards(JwtAuthGuard)
+  registerPushDevice(
+    @CurrentUser() user: JwtUserPayload,
+    @Body() body: RegisterPushDeviceDto,
+  ) {
+    return this.notificationsService.registerPushDevice(user.sub, body);
+  }
+
+  @Post('notification-push-devices/:id/revoke')
+  @UseGuards(JwtAuthGuard)
+  revokePushDevice(@CurrentUser() user: JwtUserPayload, @Param('id') id: string) {
+    return this.notificationsService.revokePushDevice(user.sub, id);
   }
 }
