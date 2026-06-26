@@ -543,6 +543,90 @@ describe('AdminDashboardService', () => {
     );
   });
 
+  it('projects push notification delivery diagnostics without raw provider tokens', async () => {
+    const deliveryAttempt = {
+      id: 'attempt-push-1',
+      notificationId: 'notification-1',
+      userId: 'user-1',
+      channel: 'push',
+      status: 'retrying',
+      attemptCount: 2,
+      maxAttempts: 4,
+      providerMessageId: 'projects/pricely/messages/0:push-secret-token-tail',
+      lastFailureReason:
+        'push token abcdefghijklmnopqrstuvwxyz for cliente@pricely.local returned https://fcm.example/error',
+      terminalFailureReason: null,
+      nextAttemptAt: new Date('2026-06-26T11:00:00Z'),
+      lastAttemptAt: new Date('2026-06-26T10:00:00Z'),
+      deliveredAt: null,
+      createdAt: new Date('2026-06-26T09:00:00Z'),
+      updatedAt: new Date('2026-06-26T10:01:00Z'),
+      user: {
+        id: 'user-1',
+        displayName: 'Cliente 1',
+        email: 'cliente@pricely.local',
+      },
+      notification: {
+        id: 'notification-1',
+        type: 'optimization_ready',
+        title: 'Lista pronta',
+        resourceType: 'optimization_run',
+        resourceId: 'run-1',
+        createdAt: new Date('2026-06-26T08:59:00Z'),
+      },
+      emailDestination: null,
+      pushDevice: {
+        id: 'device-1',
+        platform: 'android',
+        provider: 'fcm',
+        deviceTokenTail: 'token-tail-123',
+        isActive: true,
+      },
+    };
+    const prisma = {
+      userNotificationDeliveryAttempt: {
+        findMany: jest.fn().mockResolvedValue([deliveryAttempt]),
+      },
+    };
+    const service = new AdminDashboardService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(service.listNotificationDeliveries()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'attempt-push-1',
+        channel: 'push',
+        status: 'retrying',
+        providerMessage: 'redacted:n-tail',
+        lastFailureReason: 'push token [token] for [email] returned [url]',
+        canRetry: true,
+        canCancel: true,
+        destination: {
+          kind: 'push',
+          id: 'device-1',
+          label: 'android redacted:il-123',
+          status: 'active',
+          provider: 'fcm',
+        },
+      }),
+    ]);
+
+    const [projected] = await service.listNotificationDeliveries();
+    expect(JSON.stringify(projected)).not.toContain(
+      'abcdefghijklmnopqrstuvwxyz',
+    );
+    expect(JSON.stringify(projected)).not.toContain('cliente@pricely.local');
+    expect(JSON.stringify(projected)).not.toContain('https://fcm.example');
+  });
+
   it('projects receipt line extraction, maker action, and price comparison for admin review', async () => {
     const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     const prisma = {

@@ -537,8 +537,47 @@ describe('Admin dashboard pages', () => {
           status: 'verified',
         },
       },
+      {
+        id: 'attempt-2',
+        notificationId: 'notification-2',
+        userId: 'user-2',
+        channel: 'push',
+        status: 'queued',
+        attemptCount: 0,
+        maxAttempts: 3,
+        providerMessage: null,
+        lastFailureReason: null,
+        nextAttemptAt: '2026-05-10T04:10:00.000Z',
+        lastAttemptAt: null,
+        deliveredAt: null,
+        createdAt: '2026-05-10T04:01:00.000Z',
+        updatedAt: '2026-05-10T04:01:00.000Z',
+        canRetry: false,
+        canCancel: true,
+        owner: {
+          id: 'user-2',
+          displayName: 'Cliente Push',
+          email: 'pu***@pricely.local',
+        },
+        notification: {
+          id: 'notification-2',
+          type: 'optimization_ready',
+          title: 'Lista pronta',
+          resourceType: 'optimization_run',
+          resourceId: 'run-1',
+          createdAt: '2026-05-10T04:01:00.000Z',
+        },
+        destination: {
+          kind: 'push',
+          id: 'device-1',
+          label: 'android redacted:il-123',
+          status: 'active',
+          provider: 'fcm',
+        },
+      },
     ]);
     retryAdminNotificationDelivery.mockResolvedValue({});
+    cancelAdminNotificationDelivery.mockResolvedValue({});
 
     render(<AdminQueuePage />);
 
@@ -554,12 +593,32 @@ describe('Admin dashboard pages', () => {
     expect(screen.getAllByText(/cl\*\*\*@pricely.local/).length).toBeGreaterThan(
       0,
     );
+    expect(screen.getByText('Lista pronta')).toBeTruthy();
+    expect(screen.getByText(/android redacted:il-123/)).toBeTruthy();
     expect(screen.getByText(/provider rejected \[email\]/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(screen.queryByText(/cliente@pricely.local/)).toBeNull();
+    expect(screen.queryByText(/provider-message-secret/)).toBeNull();
+    const enabledRetryButton = screen
+      .getAllByRole('button', { name: 'Retry' })
+      .find((button) => !button.hasAttribute('disabled'));
+    expect(enabledRetryButton).toBeTruthy();
+    fireEvent.click(enabledRetryButton!);
     await waitFor(() =>
       expect(retryAdminNotificationDelivery).toHaveBeenCalledWith(
         'token',
         'attempt-1',
+      ),
+    );
+    const enabledCancelButton = screen
+      .getAllByRole('button', { name: 'Cancelar' })
+      .find((button) => !button.hasAttribute('disabled'));
+    expect(enabledCancelButton).toBeTruthy();
+    fireEvent.click(enabledCancelButton!);
+    await waitFor(() =>
+      expect(cancelAdminNotificationDelivery).toHaveBeenCalledWith(
+        'token',
+        'attempt-2',
+        'Cancelada pelo painel administrativo.',
       ),
     );
     expect(screen.queryByText('Go to link')).toBeNull();
