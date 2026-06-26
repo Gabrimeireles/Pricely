@@ -90,7 +90,194 @@ describe('NotificationsService', () => {
         channel: 'email',
         maxAttempts: 5,
         nextAttemptAt: undefined,
+        emailDestinationId: undefined,
       },
+    });
+  });
+
+  it('does not enable email preferences until the destination is verified', async () => {
+    const prisma = {
+      userEmailNotificationDestination: {
+        count: jest.fn().mockResolvedValue(0),
+      },
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({ emailEnabled: false }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.updatePreferences('user-1', { emailEnabled: true });
+
+    expect(prisma.userNotificationPreference.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ emailEnabled: false }),
+        update: expect.objectContaining({ emailEnabled: false }),
+      }),
+    );
+  });
+
+  it('requests email destination verification with normalized email tokens', async () => {
+    const prisma = {
+      userEmailNotificationDestination: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({
+          id: 'destination-1',
+          userId: 'user-1',
+          email: 'cliente@pricely.local',
+          status: 'pending',
+          verifiedAt: null,
+          unsubscribedAt: null,
+        }),
+      },
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({ emailEnabled: false }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    const result = await service.requestEmailDestination(
+      'user-1',
+      ' Cliente@Pricely.Local ',
+    );
+
+    expect(prisma.userEmailNotificationDestination.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'user-1',
+        email: 'cliente@pricely.local',
+        status: 'pending',
+        verificationTokenHash: expect.any(String),
+        unsubscribeTokenHash: expect.any(String),
+      }),
+    });
+    expect(result.verificationToken).toEqual(expect.any(String));
+    expect(result.unsubscribeToken).toEqual(expect.any(String));
+  });
+
+  it('confirms email destination and enables email preferences', async () => {
+    const prisma = {
+      userEmailNotificationDestination: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'destination-1',
+          userId: 'user-1',
+          email: 'cliente@pricely.local',
+          status: 'pending',
+        }),
+        update: jest.fn().mockResolvedValue({
+          id: 'destination-1',
+          userId: 'user-1',
+          email: 'cliente@pricely.local',
+          status: 'verified',
+          verifiedAt: new Date('2026-06-26T04:00:00.000Z'),
+          unsubscribedAt: null,
+        }),
+        count: jest.fn().mockResolvedValue(1),
+      },
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({ emailEnabled: true }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.confirmEmailDestination('verification-token');
+
+    expect(prisma.userEmailNotificationDestination.update).toHaveBeenCalledWith({
+      where: { id: 'destination-1' },
+      data: expect.objectContaining({
+        status: 'verified',
+        verificationTokenHash: null,
+        verifiedAt: expect.any(Date),
+        unsubscribedAt: null,
+      }),
+    });
+    expect(prisma.userNotificationPreference.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ emailEnabled: true }),
+      }),
+    );
+  });
+
+  it('maps email unsubscribe category to notification preferences', async () => {
+    const prisma = {
+      userEmailNotificationDestination: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'destination-1',
+          userId: 'user-1',
+          email: 'cliente@pricely.local',
+          status: 'verified',
+          verifiedAt: new Date('2026-06-26T04:00:00.000Z'),
+          unsubscribedAt: null,
+        }),
+      },
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({
+          receiptOutcomesEnabled: false,
+        }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.unsubscribeEmail({
+      token: 'unsubscribe-token',
+      category: 'receipt_outcome',
+    });
+
+    expect(prisma.userNotificationPreference.upsert).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+      create: {
+        userId: 'user-1',
+        receiptOutcomesEnabled: false,
+      },
+      update: {
+        receiptOutcomesEnabled: false,
+      },
+    });
+  });
+
+  it('queues email delivery attempts for verified destinations and enabled categories', async () => {
+    const prisma = {
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({
+          inAppEnabled: true,
+          emailEnabled: true,
+          priceDropsEnabled: true,
+          receiptOutcomesEnabled: true,
+          optimizationReadyEnabled: true,
+        }),
+      },
+      userNotification: {
+        create: jest.fn().mockResolvedValue({
+          id: 'notification-1',
+          userId: 'user-1',
+          type: 'price_drop',
+        }),
+      },
+      userEmailNotificationDestination: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'destination-1',
+          userId: 'user-1',
+          status: 'verified',
+        }),
+      },
+      userNotificationDeliveryAttempt: {
+        create: jest.fn().mockResolvedValue({ id: 'attempt-1' }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.create({
+      userId: 'user-1',
+      type: 'price_drop',
+      title: 'Preco menor',
+      message: 'Novo preco disponivel.',
+    });
+
+    expect(prisma.userNotificationDeliveryAttempt.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        notificationId: 'notification-1',
+        userId: 'user-1',
+        channel: 'email',
+        emailDestinationId: 'destination-1',
+      }),
     });
   });
 

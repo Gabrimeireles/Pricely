@@ -1,12 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes, createHash } from 'node:crypto';
+
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   type Prisma,
+  type UserEmailNotificationDestination,
   type UserNotificationDeliveryChannel,
   type UserNotificationDeliveryStatus,
+  type UserNotificationPreference,
   type UserNotificationType,
 } from '@prisma/client';
 
 import { PrismaService } from '../persistence/prisma.service';
+
+type EmailUnsubscribeCategory =
+  | 'all'
+  | 'price_drop'
+  | 'receipt_outcome'
+  | 'optimization';
 
 @Injectable()
 export class NotificationsService {
@@ -38,22 +48,143 @@ export class NotificationsService {
       priceDropsEnabled?: boolean;
       receiptOutcomesEnabled?: boolean;
       optimizationReadyEnabled?: boolean;
+      emailEnabled?: boolean;
     },
   ) {
+    const emailEnabled =
+      input.emailEnabled === true
+        ? await this.hasVerifiedEmailDestination(userId)
+        : input.emailEnabled;
+
     return this.prisma.userNotificationPreference.upsert({
       where: { userId },
       create: {
         userId,
         ...input,
-        emailEnabled: false,
+        emailEnabled: emailEnabled ?? false,
         pushEnabled: false,
       },
       update: {
         ...input,
-        emailEnabled: false,
+        emailEnabled,
         pushEnabled: false,
       },
     });
+  }
+
+  async getEmailDestination(userId: string) {
+    return this.prisma.userEmailNotificationDestination.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        email: true,
+        status: true,
+        verifiedAt: true,
+        unsubscribedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async requestEmailDestination(userId: string, email: string) {
+    const normalizedEmail = this.normalizeEmail(email);
+    const verificationToken = this.createToken();
+    const unsubscribeToken = this.createToken();
+    const existing =
+      await this.prisma.userEmailNotificationDestination.findUnique({
+        where: { userId },
+      });
+
+    const destination = existing
+      ? await this.prisma.userEmailNotificationDestination.update({
+          where: { userId },
+          data: {
+            email: normalizedEmail,
+            status: 'pending',
+            verificationTokenHash: this.hashToken(verificationToken),
+            verifiedAt: null,
+            unsubscribedAt: null,
+          },
+        })
+      : await this.prisma.userEmailNotificationDestination.create({
+          data: {
+            userId,
+            email: normalizedEmail,
+            status: 'pending',
+            verificationTokenHash: this.hashToken(verificationToken),
+            unsubscribeTokenHash: this.hashToken(unsubscribeToken),
+          },
+        });
+
+    await this.updatePreferences(userId, { emailEnabled: false });
+
+    return this.toEmailDestinationResponse(destination, {
+      verificationToken,
+      unsubscribeToken: existing ? undefined : unsubscribeToken,
+    });
+  }
+
+  async confirmEmailDestination(token: string) {
+    const destination =
+      await this.prisma.userEmailNotificationDestination.findFirst({
+        where: {
+          verificationTokenHash: this.hashToken(token),
+          status: 'pending',
+        },
+      });
+    if (!destination) {
+      throw new NotFoundException('Destino de email nao encontrado');
+    }
+
+    const updated = await this.prisma.userEmailNotificationDestination.update({
+      where: { id: destination.id },
+      data: {
+        status: 'verified',
+        verificationTokenHash: null,
+        verifiedAt: new Date(),
+        unsubscribedAt: null,
+      },
+    });
+    await this.updatePreferences(updated.userId, { emailEnabled: true });
+
+    return this.toEmailDestinationResponse(updated);
+  }
+
+  async unsubscribeEmail(input: {
+    token: string;
+    category?: EmailUnsubscribeCategory;
+  }) {
+    const destination =
+      await this.prisma.userEmailNotificationDestination.findFirst({
+        where: { unsubscribeTokenHash: this.hashToken(input.token) },
+      });
+    if (!destination) {
+      throw new NotFoundException('Destino de email nao encontrado');
+    }
+
+    const category = input.category ?? 'all';
+    await this.prisma.userNotificationPreference.upsert({
+      where: { userId: destination.userId },
+      create: {
+        userId: destination.userId,
+        ...this.unsubscribePreferencePatch(category),
+      },
+      update: this.unsubscribePreferencePatch(category),
+    });
+
+    if (category === 'all') {
+      const updated = await this.prisma.userEmailNotificationDestination.update({
+        where: { id: destination.id },
+        data: {
+          status: 'unsubscribed',
+          unsubscribedAt: new Date(),
+        },
+      });
+      return this.toEmailDestinationResponse(updated);
+    }
+
+    return this.toEmailDestinationResponse(destination);
   }
 
   async markRead(userId: string, notificationId: string) {
@@ -93,7 +224,7 @@ export class NotificationsService {
     ) {
       return null;
     }
-    return this.prisma.userNotification.create({
+    const notification = await this.prisma.userNotification.create({
       data: {
         userId: input.userId,
         type: input.type,
@@ -104,6 +235,8 @@ export class NotificationsService {
         metadata: input.metadata,
       },
     });
+    await this.queueEmailDeliveryIfEligible(notification, preferences);
+    return notification;
   }
 
   async createDeliveryAttempt(input: {
@@ -112,6 +245,7 @@ export class NotificationsService {
     channel: UserNotificationDeliveryChannel;
     maxAttempts?: number;
     nextAttemptAt?: Date;
+    emailDestinationId?: string;
   }) {
     return this.prisma.userNotificationDeliveryAttempt.create({
       data: {
@@ -120,6 +254,7 @@ export class NotificationsService {
         channel: input.channel,
         maxAttempts: input.maxAttempts ?? 3,
         nextAttemptAt: input.nextAttemptAt,
+        emailDestinationId: input.emailDestinationId,
       },
     });
   }
@@ -257,6 +392,93 @@ export class NotificationsService {
       return preferences.receiptOutcomesEnabled;
     }
     return preferences.optimizationReadyEnabled;
+  }
+
+  private async queueEmailDeliveryIfEligible(
+    notification: {
+      id: string;
+      userId: string;
+      type: UserNotificationType;
+    },
+    preferences: UserNotificationPreference,
+  ) {
+    if (
+      !preferences.emailEnabled ||
+      !this.typeEnabled(preferences, notification.type)
+    ) {
+      return;
+    }
+    const destination =
+      await this.prisma.userEmailNotificationDestination.findFirst({
+        where: {
+          userId: notification.userId,
+          status: 'verified',
+        },
+      });
+    if (!destination) {
+      return;
+    }
+    await this.createDeliveryAttempt({
+      notificationId: notification.id,
+      userId: notification.userId,
+      channel: 'email',
+      emailDestinationId: destination.id,
+    });
+  }
+
+  private async hasVerifiedEmailDestination(userId: string) {
+    const count = await this.prisma.userEmailNotificationDestination.count({
+      where: { userId, status: 'verified' },
+    });
+    return count > 0;
+  }
+
+  private unsubscribePreferencePatch(category: EmailUnsubscribeCategory) {
+    if (category === 'all') {
+      return { emailEnabled: false };
+    }
+    if (category === 'price_drop') {
+      return { priceDropsEnabled: false };
+    }
+    if (category === 'receipt_outcome') {
+      return { receiptOutcomesEnabled: false };
+    }
+    return { optimizationReadyEnabled: false };
+  }
+
+  private toEmailDestinationResponse(
+    destination: UserEmailNotificationDestination,
+    tokens: { verificationToken?: string; unsubscribeToken?: string } = {},
+  ) {
+    return {
+      id: destination.id,
+      email: destination.email,
+      status: destination.status,
+      verifiedAt: destination.verifiedAt,
+      unsubscribedAt: destination.unsubscribedAt,
+      verificationToken:
+        process.env.NODE_ENV === 'production'
+          ? undefined
+          : tokens.verificationToken,
+      unsubscribeToken:
+        process.env.NODE_ENV === 'production' ? undefined : tokens.unsubscribeToken,
+    };
+  }
+
+  private normalizeEmail(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail.includes('@')) {
+      throw new BadRequestException('Email invalido');
+    }
+    return normalizedEmail;
+  }
+
+  private createToken() {
+    return randomBytes(32).toString('base64url');
+  }
+
+  private hashToken(token: string) {
+    return createHash('sha256').update(token.trim()).digest('hex');
   }
 
   private async findDeliveryAttempt(attemptId: string) {
