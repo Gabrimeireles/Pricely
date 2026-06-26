@@ -630,7 +630,7 @@ channels without enabling provider sends prematurely.
 - [X] T264 Add notification delivery persistence for channel attempts, provider message ids, retry state, and terminal failure reasons in `backend/prisma/` and `backend/src/notifications/`
 - [X] T265 Add user email destination verification, unsubscribe/category mapping, and email delivery queue integration in `backend/src/notifications/` and `backend/src/users/`
 - [X] T266 Add mobile push device registration, token refresh/revocation, and authenticated device listing in `backend/src/notifications/` and `mobile/lib/features/`
-- [ ] T267 Add quiet-hour preferences with timezone-aware deferral for non-critical notifications in `backend/src/notifications/`, `web/src/components/design-system/`, and `mobile/lib/features/`
+- [X] T267 Add quiet-hour preferences with timezone-aware deferral for non-critical notifications in `backend/src/notifications/`, `web/src/components/design-system/`, and `mobile/lib/features/`
 - [ ] T268 Add admin notification delivery diagnostics, retry/cancel controls, and provider-error redaction in `web/src/dashboard/` and `backend/src/admin/`
 - [ ] T269 Add backend, web, and mobile coverage for delivery preferences, quiet-hour deferral, device registration, retry policy, and redacted admin diagnostics in `backend/test/`, `web/src/`, and `mobile/test/`
 

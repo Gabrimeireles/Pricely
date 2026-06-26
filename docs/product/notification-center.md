@@ -13,12 +13,13 @@ The current engagement channel is the authenticated in-app notification center.
 Users can disable all in-app notifications or control price, receipt, and
 optimization categories independently.
 
-## Deferred channels
+## Outbound channels
 
-Email and push fields are persisted as disabled capabilities. Enabling either
-channel requires provider configuration, verified destination ownership,
-delivery/retry tracking, unsubscribe handling, and quiet-hour policy. No
-external delivery is attempted in this phase.
+Email and push delivery are modeled as queued delivery attempts. Email requires
+a verified destination and push requires an active mobile device. Provider sends
+remain gated by the delivery worker/provider configuration, while the product
+surface can already persist preferences, delivery attempts, unsubscribe state,
+device registration, and quiet-hour deferral.
 
 ## Phase 35 delivery plan
 
@@ -47,8 +48,12 @@ as a controlled fan-out layer.
 ### Quiet hours and retries
 
 - Add a per-user quiet-hour window with timezone.
-- Defer non-critical notifications during quiet hours; allow critical account or
-  receipt-result notifications only if product policy explicitly allows them.
+- Defer non-critical email and push delivery attempts during quiet hours by
+  setting `nextAttemptAt` to the end of the user-local quiet window.
+- Keep in-app notifications immediate so users can still see account activity
+  after signing in.
+- Allow critical account or receipt-result notifications only if product policy
+  explicitly allows them.
 - Use bounded exponential retry for provider failures and stop retrying after a
   terminal provider response.
 - Expose delivery state in admin diagnostics before enabling automatic external

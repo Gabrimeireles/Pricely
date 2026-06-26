@@ -303,6 +303,95 @@ describe('NotificationsService', () => {
     });
   });
 
+  it('defers email delivery attempts until quiet hours end in the user timezone', async () => {
+    jest
+      .useFakeTimers()
+      .setSystemTime(new Date('2026-06-26T23:30:00.000Z').getTime());
+    const prisma = {
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({
+          inAppEnabled: true,
+          emailEnabled: true,
+          priceDropsEnabled: true,
+          receiptOutcomesEnabled: true,
+          optimizationReadyEnabled: true,
+          quietHoursEnabled: true,
+          quietHoursStartMinute: 22 * 60,
+          quietHoursEndMinute: 7 * 60,
+          quietHoursTimezone: 'UTC',
+        }),
+      },
+      userNotification: {
+        create: jest.fn().mockResolvedValue({
+          id: 'notification-1',
+          userId: 'user-1',
+          type: 'price_drop',
+        }),
+      },
+      userEmailNotificationDestination: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'destination-1',
+          userId: 'user-1',
+          status: 'verified',
+        }),
+      },
+      userNotificationDeliveryAttempt: {
+        create: jest.fn().mockResolvedValue({ id: 'attempt-1' }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.create({
+      userId: 'user-1',
+      type: 'price_drop',
+      title: 'Preco menor',
+      message: 'Novo preco disponivel.',
+    });
+
+    expect(prisma.userNotificationDeliveryAttempt.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        notificationId: 'notification-1',
+        userId: 'user-1',
+        channel: 'email',
+        nextAttemptAt: new Date('2026-06-27T07:00:00.000Z'),
+      }),
+    });
+    jest.useRealTimers();
+  });
+
+  it('persists quiet-hour preferences with default window when enabled', async () => {
+    const prisma = {
+      userNotificationPreference: {
+        upsert: jest.fn().mockResolvedValue({
+          quietHoursEnabled: true,
+          quietHoursStartMinute: 1320,
+          quietHoursEndMinute: 420,
+          quietHoursTimezone: 'America/Sao_Paulo',
+        }),
+      },
+    } as any;
+    const service = new NotificationsService(prisma);
+
+    await service.updatePreferences('user-1', { quietHoursEnabled: true });
+
+    expect(prisma.userNotificationPreference.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          quietHoursEnabled: true,
+          quietHoursStartMinute: 1320,
+          quietHoursEndMinute: 420,
+          quietHoursTimezone: 'America/Sao_Paulo',
+        }),
+        update: expect.objectContaining({
+          quietHoursEnabled: true,
+          quietHoursStartMinute: 1320,
+          quietHoursEndMinute: 420,
+          quietHoursTimezone: 'America/Sao_Paulo',
+        }),
+      }),
+    );
+  });
+
   it('registers push devices with hashed token and enables push preferences', async () => {
     const prisma = {
       userPushDevice: {

@@ -194,8 +194,12 @@ export type NotificationPreferencesResponse = {
   priceDropsEnabled: boolean;
   receiptOutcomesEnabled: boolean;
   optimizationReadyEnabled: boolean;
-  emailEnabled: false;
-  pushEnabled: false;
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  quietHoursEnabled: boolean;
+  quietHoursStartMinute?: number | null;
+  quietHoursEndMinute?: number | null;
+  quietHoursTimezone?: string | null;
 };
 
 type RegionOffersApiResponse = {
@@ -1033,6 +1037,12 @@ export async function updateNotificationPreferences(
       | 'priceDropsEnabled'
       | 'receiptOutcomesEnabled'
       | 'optimizationReadyEnabled'
+      | 'emailEnabled'
+      | 'pushEnabled'
+      | 'quietHoursEnabled'
+      | 'quietHoursStartMinute'
+      | 'quietHoursEndMinute'
+      | 'quietHoursTimezone'
     >
   >,
 ) {

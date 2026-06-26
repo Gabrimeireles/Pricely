@@ -8,7 +8,17 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 import { type JwtUserPayload } from '../auth/auth.types';
 import { CurrentUser } from '../common/auth/current-user.decorator';
@@ -35,6 +45,30 @@ class UpdateNotificationPreferencesDto {
   @IsOptional()
   @IsBoolean()
   emailEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  pushEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  quietHoursEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  quietHoursStartMinute?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  quietHoursEndMinute?: number;
+
+  @IsOptional()
+  @IsString()
+  quietHoursTimezone?: string;
 }
 
 class RequestEmailDestinationDto {
