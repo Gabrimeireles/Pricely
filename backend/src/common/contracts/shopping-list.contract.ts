@@ -1,10 +1,19 @@
-export type OptimizationMode = 'local' | 'global_unique' | 'global_full';
+export type LegacyOptimizationMode = 'local' | 'global_unique' | 'global_full';
+export type LocationAwareOptimizationMode =
+  | 'local_unique'
+  | 'local_multi'
+  | 'global_multi';
+export type OptimizationMode =
+  | LegacyOptimizationMode
+  | LocationAwareOptimizationMode;
+export type OptimizationModeRequest =
+  | OptimizationMode;
 
 export interface ShoppingListItemInput {
   requestedName: string;
   catalogProductId?: string;
   lockedProductVariantId?: string;
-  brandPreferenceMode?: 'any' | 'exact';
+  brandPreferenceMode?: 'any' | 'preferred' | 'exact';
   preferredBrandNames?: string[];
   purchaseStatus?: 'pending' | 'purchased';
   quantity?: number;
@@ -22,7 +31,10 @@ export interface ShoppingListItem {
   id: string;
   catalogProductId?: string;
   lockedProductVariantId?: string;
-  brandPreferenceMode: 'any' | 'exact';
+  optimizedProductVariantId?: string;
+  optimizedFromBrandPreferenceMode?: 'any' | 'preferred' | 'exact';
+  optimizedAt?: string;
+  brandPreferenceMode: 'any' | 'preferred' | 'exact';
   preferredBrandNames: string[];
   imageUrl?: string;
   requestedName: string;
@@ -44,6 +56,10 @@ export interface ShoppingList {
   latestEstimatedSavings: number;
   latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
   latestOptimizedAt?: string;
+  shareToken?: string;
+  sharedAt?: string;
+  completedAt?: string;
+  paidTotal?: number;
   items: ShoppingListItem[];
   createdAt: string;
   updatedAt: string;

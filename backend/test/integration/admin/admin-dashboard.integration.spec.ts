@@ -4,6 +4,10 @@ import request from 'supertest';
 
 import { AdminModule } from '../../../src/admin/admin.module';
 import { AuthModule } from '../../../src/auth/auth.module';
+import {
+  OPTIMIZATION_QUEUE,
+  RECEIPT_PROCESSING_QUEUE,
+} from '../../../src/common/queue/queue.tokens';
 import { HttpExceptionFilter } from '../../../src/common/errors/http-exception.filter';
 import { AppValidationPipe } from '../../../src/common/validation/validation.pipe';
 import { PrismaService } from '../../../src/persistence/prisma.service';
@@ -23,6 +27,7 @@ type StoredUser = {
 
 class AdminPrismaMock {
   private readonly users = new Map<string, StoredUser>();
+  private readonly sessions = new Map<string, any>();
   private readonly regions = [
     {
       id: 'region-1',
@@ -87,6 +92,15 @@ class AdminPrismaMock {
     count: async () => 2,
   };
 
+  readonly publicSearchMetric = {
+    findMany: async () => [],
+    count: async () => 0,
+  };
+
+  readonly publicSearchSloAlert = {
+    findFirst: async () => null,
+  };
+
   readonly userEntitlement = {
     findFirst: jest.fn().mockResolvedValue(null),
   };
@@ -98,6 +112,43 @@ class AdminPrismaMock {
         amount: 2,
       },
     }),
+  };
+
+  readonly userSession = {
+    create: async ({ data }: { data: any }) => {
+      const session = {
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        revokedAt: null,
+        ...data,
+      };
+      this.sessions.set(session.id, session);
+      return structuredClone(session);
+    },
+    findUnique: async ({ where }: { where: any }) => {
+      const session =
+        [...this.sessions.values()].find(
+          (entry) => entry.refreshTokenHash === where.refreshTokenHash,
+        ) ?? null;
+      if (!session) {
+        return null;
+      }
+      return {
+        ...structuredClone(session),
+        user: this.users.get(session.userId) ?? null,
+      };
+    },
+    update: async ({ where, data }: { where: any; data: any }) => {
+      const session = this.sessions.get(where.id);
+      if (!session) {
+        throw new Error(`Session ${where.id} not found`);
+      }
+      const updated = { ...session, ...data, updatedAt: new Date() };
+      this.sessions.set(updated.id, updated);
+      return structuredClone(updated);
+    },
+    updateMany: async () => ({ count: 0 }),
   };
 
   readonly shoppingList = {
@@ -147,6 +198,24 @@ class AdminPrismaMock {
   readonly region = {
     count: async () => 1,
     findMany: async () => this.regions,
+    findUnique: async ({
+      where,
+      select,
+    }: {
+      where: { id: string };
+      select?: { name?: boolean };
+    }) => {
+      const region = this.regions.find((entry) => entry.id === where.id);
+      if (!region) {
+        return null;
+      }
+
+      if (select?.name) {
+        return { name: region.name };
+      }
+
+      return region;
+    },
     create: async ({ data }: { data: any }) => {
       const region = {
         id: crypto.randomUUID(),
@@ -235,6 +304,10 @@ describe('Admin dashboard integration', () => {
     })
       .overrideProvider(PrismaService)
       .useValue(prismaMock)
+      .overrideProvider(RECEIPT_PROCESSING_QUEUE)
+      .useValue({ add: jest.fn(), close: jest.fn() })
+      .overrideProvider(OPTIMIZATION_QUEUE)
+      .useValue({ add: jest.fn(), close: jest.fn() })
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -284,6 +357,27 @@ describe('Admin dashboard integration', () => {
         activeRegions: 1,
         activeOffers: 12,
         globalEstimatedSavings: 88.4,
+      }),
+    );
+
+    const publicSearchMetrics = await request(app.getHttpServer())
+      .get('/admin/metrics/public-search')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(publicSearchMetrics.body).toEqual(
+      expect.objectContaining({
+        sampleCount: 0,
+        p50Ms: null,
+        p95Ms: null,
+        strategyCounts: {
+          candidate: 0,
+          broadFallback: 0,
+        },
+        pgTrgmEvaluation: expect.objectContaining({
+          recommended: false,
+          reason: 'insufficient_samples',
+        }),
       }),
     );
 
@@ -424,7 +518,8 @@ describe('Admin dashboard integration', () => {
         establishmentId: createEstablishment.body.id,
         displayName: 'Cafe Pilao 500g',
         packageLabel: '500 g',
-        priceAmount: 15.9,
+        priceAmount: 'R$ 15,90',
+        basePriceAmount: '18,90',
         availabilityStatus: 'available',
         confidenceLevel: 'high',
       })
@@ -433,6 +528,8 @@ describe('Admin dashboard integration', () => {
     expect(createOffer.body).toEqual(
       expect.objectContaining({
         displayName: 'Cafe Pilao 500g',
+        priceAmount: 15.9,
+        basePriceAmount: 18.9,
       }),
     );
 

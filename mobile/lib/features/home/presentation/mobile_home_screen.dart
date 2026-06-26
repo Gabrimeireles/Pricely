@@ -1,10 +1,13 @@
 ﻿import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
+import '../../../app/app_scope.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../discovery/application/market_discovery_controller.dart';
+import '../../location/application/mobile_location_controller.dart';
 import '../../optimization/application/optimization_controller.dart';
 import '../../optimization/domain/optimization_result.dart';
+import '../../privacy/presentation/sensitive_currency.dart';
 import '../../receipts/application/receipt_flow_controller.dart';
 import '../../receipts/domain/receipt_submission.dart';
 import '../../shared/data/pricely_backend_gateway.dart';
@@ -18,6 +21,7 @@ class MobileHomeScreen extends StatefulWidget {
     required this.shoppingListController,
     required this.optimizationController,
     required this.receiptFlowController,
+    required this.locationController,
     super.key,
   });
 
@@ -26,6 +30,7 @@ class MobileHomeScreen extends StatefulWidget {
   final ShoppingListController shoppingListController;
   final OptimizationController optimizationController;
   final ReceiptFlowController receiptFlowController;
+  final MobileLocationController locationController;
 
   @override
   State<MobileHomeScreen> createState() => _MobileHomeScreenState();
@@ -44,6 +49,8 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final privacyController =
+        AppScope.maybeOf(context)?.monetaryPrivacyController;
     return AnimatedBuilder(
       animation: Listenable.merge(<Listenable>[
         widget.authController,
@@ -51,6 +58,8 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
         widget.shoppingListController,
         widget.optimizationController,
         widget.receiptFlowController,
+        widget.locationController,
+        if (privacyController != null) privacyController,
       ]),
       builder: (context, _) {
         final user = widget.authController.currentUser;
@@ -74,10 +83,14 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
             authController: widget.authController,
             discoveryController: widget.discoveryController,
             shoppingListController: widget.shoppingListController,
+            optimizationController: widget.optimizationController,
+            receiptFlowController: widget.receiptFlowController,
+            locationController: widget.locationController,
             onOpenAuth: () =>
                 Navigator.of(context).pushNamed(AppRouter.authRoute),
             onOpenList: () => setState(() => _currentIndex = 1),
             onOpenResults: () => setState(() => _currentIndex = 2),
+            onOpenReceipts: () => setState(() => _currentIndex = 3),
           ),
           ShoppingListScreen(
             authController: widget.authController,
@@ -88,6 +101,7 @@ class _MobileHomeScreenState extends State<MobileHomeScreen> {
             authController: widget.authController,
             controller: widget.optimizationController,
             listController: widget.shoppingListController,
+            locationController: widget.locationController,
           ),
           _ReceiptTab(controller: widget.receiptFlowController),
           _ProfileTab(
@@ -245,246 +259,372 @@ class _HomeTab extends StatelessWidget {
     required this.authController,
     required this.discoveryController,
     required this.shoppingListController,
+    required this.optimizationController,
+    required this.receiptFlowController,
+    required this.locationController,
     required this.onOpenAuth,
     required this.onOpenList,
     required this.onOpenResults,
+    required this.onOpenReceipts,
   });
 
   final AuthController authController;
   final MarketDiscoveryController discoveryController;
   final ShoppingListController shoppingListController;
+  final OptimizationController optimizationController;
+  final ReceiptFlowController receiptFlowController;
+  final MobileLocationController locationController;
   final VoidCallback onOpenAuth;
   final VoidCallback onOpenList;
   final VoidCallback onOpenResults;
+  final VoidCallback onOpenReceipts;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final region = discoveryController.selectedRegion;
     final user = authController.currentUser;
+    final draft = shoppingListController.draft;
+    final activeItems = draft.items.length;
+    final result = optimizationController.result;
+    final receipt = receiptFlowController.lastSubmission;
+    final receiptLabel = receipt == null
+        ? 'Aguardando envio'
+        : receipt.isWaitingManualRelease
+            ? 'Aguardando liberacao'
+            : _processingLabel(receipt.processingStatus);
+    final hasCity = region != null;
+    final hasActiveList = activeItems > 0;
 
     return RefreshIndicator(
       onRefresh: discoveryController.refresh,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      child: Stack(
         children: <Widget>[
-          Row(
+          ListView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 118),
             children: <Widget>[
-              Expanded(
+              _HomeAccountHeader(
+                userName: user?.displayName ?? 'Cliente Pricely',
+                cityLabel: hasCity
+                    ? '${region.name}, ${region.stateCode}'
+                    : 'Escolha sua cidade',
+                establishmentLabel: hasCity
+                    ? '${region.activeEstablishmentCount} lojas ativas'
+                    : 'Sem cidade salva',
+                isSignedIn: user != null,
+                onOpenAuth: onOpenAuth,
+              ),
+              const SizedBox(height: 14),
+              _HomeSectionCard(
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      user == null
-                          ? 'Preços com contexto real'
-                          : 'Olá, ${user.displayName}',
-                      style: theme.textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      user == null
-                          ? 'Escolha a cidade ativa, veja ofertas do dia e monte sua lista com continuidade entre web e mobile.'
-                          : 'Sua cidade fica salva na conta. Monte a lista, acompanhe ofertas e use o checklist direto no mercado.',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-              if (user == null)
-                FilledButton(
-                  onPressed: onOpenAuth,
-                  child: const Text('Entrar'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: <Color>[Color(0xFF005C55), Color(0xFF0F766E)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  user == null ? 'Cidade e lista sincronizadas' : 'Economia estimada',
-                  style: theme.textTheme.labelLarge
-                      ?.copyWith(color: Colors.white70),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  user == null
-                      ? 'Escolha a cidade e continue no celular'
-                      : _formatCurrency(user.totalEstimatedSavings),
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: user == null ? 26 : null,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: <Widget>[
-                    _SignalChip(
-                      label: '${user?.shoppingListsCount ?? 0} listas',
-                      foreground: Colors.white,
-                      background: Colors.white24,
-                    ),
-                    _SignalChip(
-                      label: region == null
-                          ? 'Sem cidade carregada'
-                          : '${region.name} · ${region.activeEstablishmentCount} lojas',
-                      foreground: Colors.white,
-                      background: Colors.white24,
-                    ),
-                    _SignalChip(
-                      label: region?.offerCoverageStatus == 'collecting_data'
-                          ? 'Cobertura em coleta'
-                          : 'Ofertas ao vivo',
-                      foreground: Colors.white,
-                      background: Colors.white24,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text('Escolha sua cidade', style: theme.textTheme.titleLarge),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: region?.slug,
-                  items: discoveryController.regions
-                      .map(
-                        (entry) => DropdownMenuItem<String>(
-                          value: entry.slug,
+                    Row(
+                      children: <Widget>[
+                        Expanded(
                           child: Text(
-                              '${entry.name} - ${entry.activeEstablishmentCount} estabelecimentos'),
+                            'Cidade ativa',
+                            style: theme.textTheme.titleMedium,
+                          ),
                         ),
-                      )
-                      .toList(),
-                  onChanged: (value) async {
-                    if (value == null) {
-                      return;
-                    }
-                    await discoveryController.selectRegion(value);
-                    if (authController.isAuthenticated) {
-                      await authController.updatePreferredRegion(value);
-                    }
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Cidade ativa',
-                  ),
-                ),
-                if (region != null) ...<Widget>[
-                  const SizedBox(height: 12),
-                  Text(
-                    region.activeEstablishmentCount == 0
-                        ? 'Ainda não temos estabelecimentos ativos nessa cidade. Você pode trocar de cidade ou começar a contribuir com recibos.'
-                        : region.offerCoverageStatus == 'collecting_data'
-                            ? 'A cidade já está aberta, mas a cobertura ainda está sendo populada. Os preços podem ser parciais.'
-                            : 'Cidade com ofertas disponíveis e estabelecimentos ativos.',
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _ActionCard(
-                  title: 'Minha lista',
-                  description: 'Monte, salve e reuse sua compra mensal.',
-                  icon: Icons.playlist_add_check_circle_outlined,
-                  onTap: onOpenList,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                    child: _ActionCard(
-                      title: 'Resultado',
-                      description: 'Compare deslocamento, cobertura e menor total antes de comprar.',
-                      icon: Icons.auto_graph_outlined,
-                      onTap: onOpenResults,
+                        if (discoveryController.isLoading)
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                      ],
                     ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  'Ofertas por cidade',
-                  style: theme.textTheme.titleLarge,
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: region?.slug,
+                      items: discoveryController.regions
+                          .map(
+                            (entry) => DropdownMenuItem<String>(
+                              value: entry.slug,
+                              child: Text(
+                                '${entry.name} - ${entry.activeEstablishmentCount} estabelecimentos',
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) async {
+                        if (value == null) {
+                          return;
+                        }
+                        await discoveryController.selectRegion(value);
+                        if (authController.isAuthenticated) {
+                          await authController.updatePreferredRegion(value);
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Cidade ativa',
+                      ),
+                    ),
+                    if (region != null) ...<Widget>[
+                      const SizedBox(height: 12),
+                      Text(
+                        region.activeEstablishmentCount == 0
+                            ? 'Ainda não temos estabelecimentos ativos nessa cidade. Você pode trocar de cidade ou começar a contribuir com recibos.'
+                            : region.offerCoverageStatus == 'collecting_data'
+                                ? 'Cobertura em coleta. Alguns preços podem estar parciais.'
+                                : 'Cidade com ofertas disponíveis e estabelecimentos ativos.',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              if (discoveryController.isLoading)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-            ],
-          ),
-          if (discoveryController.errorMessage != null) ...<Widget>[
-            const SizedBox(height: 12),
-            Text(
-              discoveryController.errorMessage!,
-              style: TextStyle(color: theme.colorScheme.error),
-            ),
-          ],
-          const SizedBox(height: 12),
-          if (discoveryController.offers.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEBF6F1),
-                borderRadius: BorderRadius.circular(18),
+              const SizedBox(height: 14),
+              _CoverageHomeCard(
+                authController: authController,
+                controller: locationController,
+                region: region,
               ),
-              child: const Text(
-                'Sem ofertas suficientes nesta cidade no momento.',
+              const SizedBox(height: 14),
+              _NextActionCard(
+                title: hasActiveList
+                    ? 'Continue sua lista'
+                    : hasCity
+                        ? 'Monte sua primeira lista'
+                        : 'Escolha a cidade',
+                description: hasActiveList
+                    ? '${draft.title} esta pronta para revisar no mercado.'
+                    : hasCity
+                        ? 'Adicione produtos comparaveis antes de otimizar.'
+                        : 'Salve a cidade para carregar ofertas e lojas.',
+                icon: hasActiveList
+                    ? Icons.playlist_add_check_circle_outlined
+                    : Icons.add_task_outlined,
+                onTap: hasCity ? onOpenList : null,
               ),
-            )
-          else
-            Column(
-              children: discoveryController.offers
-                  .take(6)
-                  .map(
-                    (offer) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _OfferCard(
-                        offer: offer,
-                        onTap: () => _showOfferDetail(
-                          context,
-                          discoveryController,
-                          offer.id,
+              const SizedBox(height: 14),
+              _HomeSectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            hasActiveList ? draft.title : 'Nenhuma lista ativa',
+                            style: theme.textTheme.titleLarge,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        _HomeStatusPill(
+                          label: hasActiveList
+                              ? '$activeItems itens'
+                              : '${shoppingListController.lists.length} salvas',
+                          foreground: const Color(0xFF005C55),
+                          background: const Color(0xFFE0F3EF),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (hasActiveList)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: draft.items.take(4).map((item) {
+                          return _HomeStatusPill(
+                            label: item.name,
+                            foreground: const Color(0xFF3E4947),
+                            background: const Color(0xFFF1F4F2),
+                          );
+                        }).toList(),
+                      )
+                    else
+                      const Text(
+                        'Crie uma lista para continuar a compra no celular.',
+                      ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: onOpenList,
+                        icon: const Icon(Icons.list_alt_outlined),
+                        label: Text(
+                          hasActiveList ? 'Abrir checklist' : 'Criar lista',
                         ),
                       ),
                     ),
-                  )
-                  .toList(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: _MetricHomeCard(
+                      label: 'Ultima economia',
+                      value: result == null
+                          ? formatSensitiveCurrency(
+                              context,
+                              user?.totalEstimatedSavings ?? 0,
+                            )
+                          : formatSensitiveCurrency(
+                              context,
+                              result.estimatedSavings,
+                            ),
+                      detail: result == null
+                          ? '${user?.completedOptimizationRuns ?? 0} otimizacoes'
+                          : result.shoppingListTitle,
+                      icon: Icons.savings_outlined,
+                      onTap: onOpenResults,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _MetricHomeCard(
+                      label: 'Nota fiscal',
+                      value: receiptLabel,
+                      detail: receipt == null
+                          ? '${user?.receiptSubmissionsCount ?? 0} enviadas'
+                          : '${receipt.ingestedItems} itens ingeridos',
+                      icon: Icons.receipt_long_outlined,
+                      onTap: onOpenReceipts,
+                    ),
+                  ),
+                ],
+              ),
+              if (optimizationController.errorMessage != null) ...<Widget>[
+                const SizedBox(height: 14),
+                _InlineStateMessage(
+                  icon: Icons.error_outline,
+                  message: optimizationController.errorMessage!,
+                  color: theme.colorScheme.error,
+                ),
+              ],
+              if (receiptFlowController.state == ReceiptSubmissionState.failure &&
+                  receiptFlowController.errorMessage != null) ...<Widget>[
+                const SizedBox(height: 14),
+                _InlineStateMessage(
+                  icon: Icons.error_outline,
+                  message: receiptFlowController.errorMessage!,
+                  color: theme.colorScheme.error,
+                ),
+              ],
+              if (discoveryController.errorMessage != null) ...<Widget>[
+                const SizedBox(height: 14),
+                _InlineStateMessage(
+                  icon: Icons.wifi_off_outlined,
+                  message: discoveryController.errorMessage!,
+                  color: theme.colorScheme.error,
+                ),
+              ],
+              const SizedBox(height: 14),
+              Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _QuickActionButton(
+                        icon: Icons.local_offer_outlined,
+                        label: 'Ofertas',
+                        onTap: onOpenResults,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _QuickActionButton(
+                        icon: Icons.add_a_photo_outlined,
+                        label: 'Enviar nota',
+                        onTap: onOpenReceipts,
+                      ),
+                    ),
+                  ],
+              ),
+              if (discoveryController.offers.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 18),
+                Text(
+                  'Ofertas ativas',
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 10),
+                ...discoveryController.offers.take(3).map(
+                      (offer) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _OfferCard(
+                          offer: offer,
+                          onTap: () => _showOfferDetail(
+                            context,
+                            discoveryController,
+                            offer.id,
+                          ),
+                        ),
+                      ),
+                    ),
+              ] else ...<Widget>[
+                const SizedBox(height: 18),
+                _InlineStateMessage(
+                  icon: Icons.local_offer_outlined,
+                  message: 'Sem ofertas suficientes nesta cidade no momento.',
+                  color: const Color(0xFF3E4947),
+                ),
+              ],
+            ],
+          ),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 18,
+            child: SafeArea(
+              top: false,
+              child: FilledButton.icon(
+                onPressed: optimizationController.isLoading
+                    ? null
+                    : () async {
+                        if (!authController.isAuthenticated) {
+                          onOpenAuth();
+                          return;
+                        }
+                        if (!hasActiveList) {
+                          onOpenList();
+                          return;
+                        }
+                        await optimizationController.optimize();
+                        onOpenResults();
+                      },
+                icon: optimizationController.isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_graph_outlined),
+                label: Text(
+                  optimizationController.isLoading
+                      ? 'Otimizando...'
+                      : hasActiveList
+                          ? 'Otimizar agora'
+                          : 'Montar lista',
+                ),
+              ),
             ),
+          ),
         ],
       ),
     );
+  }
+
+  String _processingLabel(String status) {
+    switch (status) {
+      case 'waiting_manual_release':
+        return 'Aguardando liberacao';
+      case 'queued':
+        return 'Na fila';
+      case 'running':
+        return 'Processando';
+      case 'completed':
+        return 'Processada';
+      case 'failed':
+        return 'Falhou';
+      case 'retrying':
+        return 'Retentando';
+      default:
+        return status;
+    }
   }
 
   Future<void> _showOfferDetail(
@@ -527,10 +667,6 @@ class _HomeTab extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(detail.category),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Use este detalhe para comparar loja principal, alternativas e embalagem.',
-                  ),
                   const SizedBox(height: 16),
                   _OfferDetailRow(
                     title: 'Melhor oferta agora',
@@ -559,6 +695,565 @@ class _HomeTab extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+class _HomeAccountHeader extends StatelessWidget {
+  const _HomeAccountHeader({
+    required this.userName,
+    required this.cityLabel,
+    required this.establishmentLabel,
+    required this.isSignedIn,
+    required this.onOpenAuth,
+  });
+
+  final String userName;
+  final String cityLabel;
+  final String establishmentLabel;
+  final bool isSignedIn;
+  final VoidCallback onOpenAuth;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: <Widget>[
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: const Color(0xFF005C55),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(Icons.check, color: Color(0xFFB5FF56)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                userName,
+                style: theme.textTheme.titleMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '$cityLabel - $establishmentLabel',
+                style: theme.textTheme.bodySmall,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        if (!isSignedIn)
+          TextButton(
+            onPressed: onOpenAuth,
+            child: const Text('Entrar'),
+          ),
+      ],
+    );
+  }
+}
+
+class _CoverageHomeCard extends StatelessWidget {
+  const _CoverageHomeCard({
+    required this.authController,
+    required this.controller,
+    required this.region,
+  });
+
+  final AuthController authController;
+  final MobileLocationController controller;
+  final PublicRegionSummary? region;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final statusLabel = _statusLabel(controller.status);
+    final preview = controller.coveragePreview;
+    final preference = controller.activePreference;
+    final coverageCount = preview?.activeEstablishmentCount ??
+        (preference?.activeEstablishmentCount ?? region?.activeEstablishmentCount ?? 0);
+    final radius = preview?.coverageRadiusKm ??
+        (preference?.coverageRadiusKm ?? 5);
+
+    return _HomeSectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.my_location_outlined, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Localização e raio',
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+              _HomeStatusPill(
+                label: statusLabel,
+                foreground: _statusColor(controller.status),
+                background: const Color(0xFFF1F4F2),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _HomeMiniMetric(
+                  value: '$coverageCount',
+                  label: 'lojas em ${radius.toStringAsFixed(0)} km',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _HomeMiniMetric(
+                  value: region == null ? 'Cidade' : region!.stateCode,
+                  label: region == null ? 'nao selecionada' : region!.name,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            controller.message ??
+                (region == null
+                    ? 'Escolha uma cidade para carregar o preview local.'
+                    : 'Sem localizacao precisa, o app usa apenas a cidade e nao promete proximidade.'),
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: authController.isAuthenticated &&
+                      region != null &&
+                      !controller.isRequesting
+                  ? () => controller.captureAndSave()
+                  : null,
+              icon: controller.isRequesting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.near_me_outlined),
+              label: Text(
+                controller.isRequesting
+                    ? 'Solicitando...'
+                    : 'Usar localização atual',
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: authController.isAuthenticated &&
+                      region != null &&
+                      !controller.isRequesting
+                  ? () => _showManualLocationDialog(context)
+                  : null,
+              icon: const Icon(Icons.edit_location_alt_outlined),
+              label: const Text('Usar CEP manualmente'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _statusLabel(MobileLocationStatus status) {
+    switch (status) {
+      case MobileLocationStatus.allowed:
+        return 'Salva';
+      case MobileLocationStatus.denied:
+        return 'Negada';
+      case MobileLocationStatus.restricted:
+        return 'Restrita';
+      case MobileLocationStatus.serviceDisabled:
+        return 'GPS off';
+      case MobileLocationStatus.unavailable:
+        return 'Indisp.';
+      case MobileLocationStatus.requesting:
+        return 'Solicitando';
+      case MobileLocationStatus.error:
+        return 'Erro';
+      case MobileLocationStatus.manual:
+        return 'Manual';
+    }
+  }
+
+  Color _statusColor(MobileLocationStatus status) {
+    switch (status) {
+      case MobileLocationStatus.allowed:
+        return const Color(0xFF005C55);
+      case MobileLocationStatus.denied:
+      case MobileLocationStatus.restricted:
+      case MobileLocationStatus.serviceDisabled:
+      case MobileLocationStatus.unavailable:
+      case MobileLocationStatus.error:
+        return const Color(0xFFB42318);
+      case MobileLocationStatus.requesting:
+      case MobileLocationStatus.manual:
+        return const Color(0xFF003EA8);
+    }
+  }
+
+  Future<void> _showManualLocationDialog(BuildContext context) async {
+    final postalCodeController = TextEditingController();
+    var radius = 5.0;
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Configurar localizacao manual'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text(
+                'O CEP fornece somente cobertura aproximada. Distancias reais exigem permissao de localizacao.',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: postalCodeController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'CEP'),
+              ),
+              const SizedBox(height: 12),
+              Text('Raio de cobertura: ${radius.toStringAsFixed(0)} km'),
+              Slider(
+                value: radius,
+                min: 1,
+                max: 25,
+                divisions: 24,
+                onChanged: (value) => setState(() => radius = value),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Salvar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (submitted == true) {
+      await controller.saveManualPostalCode(
+        postalCode: postalCodeController.text,
+        coverageRadiusKm: radius,
+      );
+    }
+    postalCodeController.dispose();
+  }
+}
+
+class _NextActionCard extends StatelessWidget {
+  const _NextActionCard({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final String description;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Ink(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF005C55),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(icon, color: const Color(0xFFB5FF56), size: 28),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(Icons.chevron_right, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeSectionCard extends StatelessWidget {
+  const _HomeSectionCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x0A141E1B),
+            blurRadius: 14,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _MetricHomeCard extends StatelessWidget {
+  const _MetricHomeCard({
+    required this.label,
+    required this.value,
+    required this.detail,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final String detail;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Ink(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(icon, color: theme.colorScheme.primary),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: theme.textTheme.labelLarge,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              detail,
+              style: theme.textTheme.bodySmall,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeMiniMetric extends StatelessWidget {
+  const _HomeMiniMetric({
+    required this.value,
+    required this.label,
+  });
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F4F2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            value,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeStatusPill extends StatelessWidget {
+  const _HomeStatusPill({
+    required this.label,
+    required this.foreground,
+    required this.background,
+  });
+
+  final String label;
+  final Color foreground;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w700,
+            ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+class _InlineStateMessage extends StatelessWidget {
+  const _InlineStateMessage({
+    required this.icon,
+    required this.message,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String message;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: color,
+                  ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -644,7 +1339,7 @@ class _ShoppingListTabState extends State<_ShoppingListTab> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: theme.colorScheme.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(18),
             ),
             child: Column(
@@ -743,7 +1438,7 @@ class _ShoppingListTabState extends State<_ShoppingListTab> {
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: theme.colorScheme.surfaceContainerLowest,
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Row(
@@ -811,11 +1506,13 @@ class _OptimizationTab extends StatelessWidget {
     required this.authController,
     required this.controller,
     required this.listController,
+    required this.locationController,
   });
 
   final AuthController authController;
   final OptimizationController controller;
   final ShoppingListController listController;
+  final MobileLocationController locationController;
 
   @override
   Widget build(BuildContext context) {
@@ -834,7 +1531,7 @@ class _OptimizationTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.colorScheme.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(18),
           ),
           child: Column(
@@ -851,22 +1548,23 @@ class _OptimizationTab extends StatelessWidget {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text('Local: menos deslocamento.'),
+                    Text('Uma loja local: menos deslocamento.'),
                     SizedBox(height: 6),
-                    Text('Global unico: melhor loja unica.'),
+                    Text('Menor preco local: divide entre lojas no raio.'),
                     SizedBox(height: 6),
-                    Text('Global completo: menor total, mesmo dividindo a compra.'),
+                    Text('Menor total cidade: compara toda a cidade.'),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
               SegmentedButton<String>(
                 segments: const <ButtonSegment<String>>[
-                  ButtonSegment<String>(value: 'local', label: Text('Local')),
                   ButtonSegment<String>(
-                      value: 'global_unique', label: Text('Global único')),
+                      value: 'local_unique', label: Text('Uma loja local')),
                   ButtonSegment<String>(
-                      value: 'global_full', label: Text('Global completo')),
+                      value: 'local_multi', label: Text('Preco local')),
+                  ButtonSegment<String>(
+                      value: 'global_multi', label: Text('Cidade')),
                 ],
                 selected: <String>{listController.draft.lastMode},
                 onSelectionChanged: (selection) {
@@ -874,6 +1572,18 @@ class _OptimizationTab extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 16),
+              if (_requiresLocation(listController.draft.lastMode) &&
+                  locationController.preferenceIdForRegionSlug(
+                        listController.draft.regionId,
+                      ) ==
+                      null) ...<Widget>[
+                Text(
+                  'Salve sua localizacao na aba Inicio para usar este modo local.',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.error),
+                ),
+                const SizedBox(height: 12),
+              ],
               FilledButton.icon(
                 onPressed:
                     authController.isAuthenticated ? controller.optimize : null,
@@ -940,7 +1650,7 @@ class _OptimizationTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.colorScheme.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(18),
               ),
               child: Column(
@@ -957,6 +1667,12 @@ class _OptimizationTab extends StatelessWidget {
       ],
     );
   }
+
+  bool _requiresLocation(String mode) {
+    return mode == 'local' ||
+        mode == 'local_unique' ||
+        mode == 'local_multi';
+  }
 }
 
 class _ReceiptTab extends StatefulWidget {
@@ -970,20 +1686,21 @@ class _ReceiptTab extends StatefulWidget {
 
 class _ReceiptTabState extends State<_ReceiptTab> {
   late final TextEditingController _storeController;
+  late final TextEditingController _qrCodeController;
   late final TextEditingController _receiptController;
 
   @override
   void initState() {
     super.initState();
     _storeController = TextEditingController(text: 'Mercado Azul');
-    _receiptController = TextEditingController(
-      text: 'Arroz 22.90\nFeijão 9.40\nBanana 4.90',
-    );
+    _qrCodeController = TextEditingController();
+    _receiptController = TextEditingController();
   }
 
   @override
   void dispose() {
     _storeController.dispose();
+    _qrCodeController.dispose();
     _receiptController.dispose();
     super.dispose();
   }
@@ -997,21 +1714,45 @@ class _ReceiptTabState extends State<_ReceiptTab> {
         Text('Enviar contribuição', style: theme.textTheme.headlineMedium),
         const SizedBox(height: 8),
         const Text(
-          'Envie recibos para ajudar a popular regiões com pouca cobertura. O processamento completo ainda é evolutivo.',
+          'Envie a URL do QR Code da NFC-e. A nota fica aguardando liberação manual do admin antes de reforçar preços e liberar rewards.',
         ),
         const SizedBox(height: 18),
         TextField(
           controller: _storeController,
-          decoration: const InputDecoration(labelText: 'Estabelecimento'),
+          decoration:
+              const InputDecoration(labelText: 'Estabelecimento opcional'),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _qrCodeController,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(
+            labelText: 'URL do QR Code NFC-e',
+            hintText: 'https://www.fazenda.../qrcode?p=...',
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Leitor de câmera será ativado no app nativo; por enquanto cole a URL lida do QR Code.',
+                ),
+              ),
+            );
+          },
+          icon: const Icon(Icons.qr_code_scanner),
+          label: const Text('Ler QR Code com a câmera'),
         ),
         const SizedBox(height: 16),
         TextField(
           controller: _receiptController,
-          minLines: 7,
-          maxLines: 12,
+          minLines: 4,
+          maxLines: 8,
           decoration: const InputDecoration(
-            labelText: 'Itens do recibo',
-            hintText: 'Um item por linha com preço ao final.',
+            labelText: 'Itens manuais opcionais',
+            hintText: 'Arroz 22.90\nFeijão 9.40',
           ),
         ),
         const SizedBox(height: 16),
@@ -1022,11 +1763,12 @@ class _ReceiptTabState extends State<_ReceiptTab> {
                   : () => widget.controller.submitReceipt(
                         storeName: _storeController.text.trim(),
                         rawReceipt: _receiptController.text.trim(),
+                        qrCodeUrl: _qrCodeController.text.trim(),
                       ),
           child: Text(
             widget.controller.state == ReceiptSubmissionState.submitting
                 ? 'Enviando...'
-                : 'Processar contribuição',
+                : 'Enviar nota para fila',
           ),
         ),
         if (widget.controller.errorMessage != null) ...<Widget>[
@@ -1058,6 +1800,9 @@ class _ProfileTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final user = authController.currentUser;
+    final privacyController =
+        AppScope.maybeOf(context)?.monetaryPrivacyController;
+    final themeController = AppScope.maybeOf(context)?.themeController;
 
     if (user == null) {
       return ListView(
@@ -1085,7 +1830,7 @@ class _ProfileTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.colorScheme.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
@@ -1101,7 +1846,10 @@ class _ProfileTab extends StatelessWidget {
                 children: <Widget>[
                   _MetricTile(
                       label: 'Economia estimada',
-                      value: _formatCurrency(user.totalEstimatedSavings)),
+                      value: formatSensitiveCurrency(
+                        context,
+                        user.totalEstimatedSavings,
+                      )),
                   _MetricTile(
                       label: 'Listas', value: '${user.shoppingListsCount}'),
                   _MetricTile(
@@ -1121,6 +1869,81 @@ class _ProfileTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
+        if (privacyController != null) ...<Widget>[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: <Widget>[
+                Icon(
+                  privacyController.isVisible
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text('Privacidade de valores'),
+                      Text(
+                        'Oculte preços, economia e totais sensíveis em todas as telas.',
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: privacyController.isVisible,
+                  onChanged: (_) => privacyController.toggle(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+        if (themeController != null) ...<Widget>[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('Aparencia', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 10),
+                SegmentedButton<ThemeMode>(
+                  segments: const <ButtonSegment<ThemeMode>>[
+                    ButtonSegment<ThemeMode>(
+                      value: ThemeMode.system,
+                      icon: Icon(Icons.settings_brightness),
+                      label: Text('Sistema'),
+                    ),
+                    ButtonSegment<ThemeMode>(
+                      value: ThemeMode.light,
+                      icon: Icon(Icons.light_mode_outlined),
+                      label: Text('Claro'),
+                    ),
+                    ButtonSegment<ThemeMode>(
+                      value: ThemeMode.dark,
+                      icon: Icon(Icons.dark_mode_outlined),
+                      label: Text('Escuro'),
+                    ),
+                  ],
+                  selected: <ThemeMode>{themeController.themeMode},
+                  onSelectionChanged: (selection) {
+                    themeController.setThemeMode(selection.first);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
@@ -1193,7 +2016,7 @@ class _OfferCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.colorScheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -1239,7 +2062,10 @@ class _OfferCard extends StatelessWidget {
                           offer.basePriceAmount! >
                               offer.promotionalPriceAmount!) ...<Widget>[
                         Text(
-                          _formatCurrency(offer.basePriceAmount!),
+                          formatSensitiveCurrency(
+                            context,
+                            offer.basePriceAmount!,
+                          ),
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: const Color(0xFFE5E7EB),
                             decoration: TextDecoration.lineThrough,
@@ -1247,7 +2073,7 @@ class _OfferCard extends StatelessWidget {
                         ),
                       ],
                       Text(
-                        _formatCurrency(offer.priceAmount),
+                        formatSensitiveCurrency(context, offer.priceAmount),
                         style: theme.textTheme.labelLarge
                             ?.copyWith(color: const Color(0xFFB5FF56)),
                       ),
@@ -1319,60 +2145,20 @@ class _OfferDetailRow extends StatelessWidget {
               offer.basePriceAmount != null &&
               offer.basePriceAmount! > offer.promotionalPriceAmount!) ...<Widget>[
             Text(
-              _formatCurrency(offer.basePriceAmount!),
+              formatSensitiveCurrency(context, offer.basePriceAmount!),
               style: const TextStyle(decoration: TextDecoration.lineThrough),
             ),
             const SizedBox(height: 2),
           ],
-          Text(_formatCurrency(offer.priceAmount)),
+          Text(formatSensitiveCurrency(context, offer.priceAmount)),
           if (offer.savingsVsComparison != null &&
               offer.savingsVsComparison! > 0) ...<Widget>[
             const SizedBox(height: 4),
             Text(
-              'Economia de ${_formatCurrency(offer.savingsVsComparison!)} versus outra loja',
+              'Economia de ${formatSensitiveCurrency(context, offer.savingsVsComparison!)} versus outra loja',
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _ActionCard extends StatelessWidget {
-  const _ActionCard({
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String title;
-  final String description;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Icon(icon, color: const Color(0xFF005C55)),
-            const SizedBox(height: 12),
-            Text(title, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(description),
-          ],
-        ),
       ),
     );
   }
@@ -1465,7 +2251,7 @@ class _ResultSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            _formatCurrency(result.totalCost),
+            formatSensitiveCurrency(context, result.totalCost),
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -1473,7 +2259,7 @@ class _ResultSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Economia estimada ${_formatCurrency(result.estimatedSavings)}',
+            'Economia estimada ${formatSensitiveCurrency(context, result.estimatedSavings)}',
             style: Theme.of(context)
                 .textTheme
                 .bodyLarge
@@ -1498,7 +2284,7 @@ class _StorePlanCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
@@ -1510,7 +2296,7 @@ class _StorePlanCard extends StatelessWidget {
                   child:
                       Text(plan.storeName, style: theme.textTheme.titleLarge),
                 ),
-                Text(_formatCurrency(plan.subtotal)),
+                Text(formatSensitiveCurrency(context, plan.subtotal)),
               ],
             ),
             const SizedBox(height: 12),
@@ -1527,11 +2313,17 @@ class _StorePlanCard extends StatelessWidget {
                               style: theme.textTheme.titleMedium),
                           const SizedBox(height: 4),
                           Text(
-                              '${selection.quantity} ${selection.unit} • ${selection.confidenceLabel}'),
+                            '${selection.quantity} ${selection.unit} - ${_distanceLabel(selection)}',
+                          ),
+                          Text(_trustEvidenceLabel(selection)),
+                          if (selection.selectedVariantName != null)
+                            Text('Selecionado: ${selection.selectedVariantName}'),
                         ],
                       ),
                     ),
-                    Text(_formatCurrency(selection.subtotal)),
+                    Text(
+                      formatSensitiveCurrency(context, selection.subtotal),
+                    ),
                   ],
                 ),
               ),
@@ -1540,6 +2332,27 @@ class _StorePlanCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _distanceLabel(OptimizationSelection selection) {
+    final distance = selection.distanceKm;
+    if (distance == null) {
+      return 'modo cidade';
+    }
+    return '${distance.toStringAsFixed(1)} km';
+  }
+
+  String _trustEvidenceLabel(OptimizationSelection selection) {
+    final source = selection.sourceLabel ?? 'fonte operacional';
+    final trustFactor = selection.trustFactor;
+    final trustText = trustFactor == null ? '' : ' - trust $trustFactor/100';
+    final evidenceCount = selection.trustEvidenceCount ?? 0;
+    final evidenceText = evidenceCount == 0
+        ? 'sem nota fiscal aceita'
+        : evidenceCount == 1
+            ? '1 nota fiscal aceita'
+            : '$evidenceCount notas fiscais aceitas';
+    return 'Confianca da oferta: $source$trustText - $evidenceText';
   }
 }
 
@@ -1553,7 +2366,7 @@ class _ReceiptSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -1562,10 +2375,41 @@ class _ReceiptSummaryCard extends StatelessWidget {
           Text(summary.storeName,
               style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
+          Text('Protocolo: ${summary.id}'),
+          if (summary.qrCodeUrl != null && summary.qrCodeUrl!.isNotEmpty)
+            const Text('Origem: QR Code NFC-e'),
           Text('${summary.ingestedItems} itens ingeridos'),
-          Text('Status: ${summary.moderationStatus}'),
-          Text('Rewards: ${summary.rewardEligibilityStatus}'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              _SignalChip(
+                label: 'Fila: ${_processingLabel(summary.processingStatus)}',
+                foreground: const Color(0xFF003EA8),
+                background: const Color(0xFFDDE7FF),
+              ),
+              _SignalChip(
+                label: 'Moderacao: ${_moderationLabel(summary.moderationStatus)}',
+                foreground: const Color(0xFF5C3B00),
+                background: const Color(0xFFFFF4D6),
+              ),
+              _SignalChip(
+                label: 'Reward: ${_rewardLabel(summary.rewardEligibilityStatus)}',
+                foreground: const Color(0xFF005C55),
+                background: const Color(0xFFEAF5F1),
+              ),
+            ],
+          ),
+          if (summary.rewardPoints > 0 ||
+              summary.rewardOptimizationTokens > 0)
+            Text(
+              summary.rewardEligibilityStatus == 'granted'
+                  ? '${summary.rewardPoints} pontos - ${summary.rewardOptimizationTokens} creditos concedidos'
+                  : 'Previsto apos validacao: ${summary.rewardPoints} pontos - ${summary.rewardOptimizationTokens} creditos',
+            ),
           Text('Motivo: ${summary.reviewReason}'),
+          Text(summary.rewardMessage),
           if (summary.lowConfidenceItems.isNotEmpty) ...<Widget>[
             const SizedBox(height: 8),
             Text('Baixa confiança: ${summary.lowConfidenceItems.join(', ')}'),
@@ -1574,8 +2418,55 @@ class _ReceiptSummaryCard extends StatelessWidget {
       ),
     );
   }
-}
 
-String _formatCurrency(double value) {
-  return 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
+  String _processingLabel(String status) {
+    switch (status) {
+      case 'waiting_manual_release':
+        return 'aguardando liberação manual';
+      case 'queued':
+        return 'liberada para processamento';
+      case 'running':
+        return 'processando';
+      case 'completed':
+        return 'processada';
+      case 'failed':
+        return 'falhou';
+      case 'retrying':
+        return 'tentando novamente';
+      default:
+        return status;
+    }
+  }
+
+  String _rewardLabel(String status) {
+    switch (status) {
+      case 'granted':
+        return 'validado';
+      case 'eligible_pending':
+        return 'em processamento';
+      case 'ineligible':
+        return 'não elegível';
+      case 'disabled':
+        return 'desativado';
+      default:
+        return status;
+    }
+  }
+
+  String _moderationLabel(String status) {
+    switch (status) {
+      case 'accepted':
+        return 'aceita';
+      case 'duplicate':
+        return 'duplicada';
+      case 'pending':
+        return 'pendente';
+      case 'quarantined':
+        return 'em revisao';
+      case 'rejected':
+        return 'rejeitada';
+      default:
+        return status;
+    }
+  }
 }

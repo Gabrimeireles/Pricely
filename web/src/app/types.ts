@@ -1,17 +1,30 @@
-export type OptimizationModeId = 'local' | 'global_unique' | 'global_full';
+export type OptimizationModeId =
+  | 'local'
+  | 'global_unique'
+  | 'global_full'
+  | 'local_unique'
+  | 'local_multi'
+  | 'global_multi';
 
 export type FreshnessLevel = 'fresh' | 'aging' | 'stale';
 export type ConfidenceLevel = 'alta' | 'media' | 'baixa';
 
 export interface SupportedCity {
   id: string;
+  regionId?: string;
   name: string;
   stateCode: string;
   activeStoreCount: number;
   coverageStatus: 'live' | 'collecting_data';
   regionLabel: string;
   status: 'supported' | 'pilot' | 'soon';
-  stores: string[];
+  stores: Array<{
+    id?: string;
+    name: string;
+    brandName?: string;
+    neighborhood?: string;
+    offerCount?: number;
+  }>;
   neighborhoods: string[];
 }
 
@@ -45,7 +58,10 @@ export interface ShoppingListItem {
   name: string;
   catalogProductId?: string;
   lockedProductVariantId?: string;
-  brandPreferenceMode?: 'any' | 'exact';
+  optimizedProductVariantId?: string;
+  optimizedFromBrandPreferenceMode?: 'any' | 'preferred' | 'exact';
+  optimizedAt?: string;
+  brandPreferenceMode?: 'any' | 'preferred' | 'exact';
   preferredBrandNames?: string[];
   imageUrl?: string;
   quantity: number;
@@ -62,6 +78,12 @@ export interface ShoppingList {
   lastMode: OptimizationModeId;
   updatedAt: string;
   expectedSavings: number;
+  latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
+  shareToken?: string;
+  sharedAt?: string;
+  shareUrl?: string;
+  completedAt?: string;
+  paidTotal?: number;
   items: ShoppingListItem[];
 }
 

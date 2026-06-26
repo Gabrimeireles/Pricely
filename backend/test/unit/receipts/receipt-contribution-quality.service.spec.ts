@@ -35,7 +35,7 @@ function createReceipt(
 }
 
 describe('ReceiptContributionQualityService', () => {
-  it('accepts trusted non-duplicated receipts but keeps rewards disabled for MVP', async () => {
+  it('accepts trusted non-duplicated receipts and marks rewards ready', async () => {
     const service = new ReceiptContributionQualityService({
       findDuplicateCandidate: jest.fn().mockResolvedValue(null),
     } as never);
@@ -46,9 +46,11 @@ describe('ReceiptContributionQualityService', () => {
       duplicateKey: 'access-key:12345678901234567890123456789012345678901234',
       trustLevel: 'trusted',
       moderationStatus: 'accepted',
-      rewardEligibilityStatus: 'disabled',
-      reviewReason: 'receipt_rewards_disabled',
+      rewardEligibilityStatus: 'eligible_pending',
+      reviewReason: 'receipt_reward_ready',
     });
+    expect(result.logs).toContain('reward:points_pending:100');
+    expect(result.logs).toContain('reward:optimization_token_pending:1');
   });
 
   it('rejects duplicate receipts before reward eligibility', async () => {

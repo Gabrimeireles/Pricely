@@ -12,6 +12,11 @@ export interface ReceiptLineItemInput {
 export interface ReceiptIngestionRequest {
   storeName?: string;
   storeCnpj?: string;
+  storeAddressLine?: string;
+  storeNeighborhood?: string;
+  storePostalCode?: string;
+  storeCityName?: string;
+  storeStateCode?: string;
   purchaseDate?: string;
   sourceType?:
     | 'manual_entry'
@@ -31,6 +36,11 @@ export interface ReceiptRecord {
   storeId?: string;
   storeName?: string;
   storeCnpj?: string;
+  storeAddressLine?: string;
+  storeNeighborhood?: string;
+  storePostalCode?: string;
+  storeCityName?: string;
+  storeStateCode?: string;
   accessKey?: string;
   sefazUrl?: string;
   purchaseDate?: string;
@@ -48,9 +58,19 @@ export interface ReceiptRecord {
     | 'ineligible'
     | 'eligible_pending'
     | 'granted';
+  rewardPoints?: number;
+  rewardOptimizationTokens?: number;
+  rewardMessage?: string;
   reviewReason?: string;
   jobId?: string;
-  processingStatus?: 'queued' | 'running' | 'completed' | 'failed' | 'retrying';
+  processingStatus?:
+    | 'waiting_manual_release'
+    | 'queued'
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'retrying'
+    | 'cancelled';
   dataNotice: string;
 }
 

@@ -8,6 +8,7 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
 
 type AuthSessionResponse = {
   accessToken: string;
+  accessTokenExpiresInSeconds: number;
   user: {
     id: string;
     email: string;
@@ -42,12 +43,19 @@ type ShoppingListApiResponse = {
   latestEstimatedSavings: number;
   latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
   latestOptimizedAt?: string;
+  shareToken?: string;
+  sharedAt?: string;
+  completedAt?: string;
+  paidTotal?: number;
   items: Array<{
     id: string;
     requestedName: string;
     catalogProductId?: string;
     lockedProductVariantId?: string;
-    brandPreferenceMode?: 'any' | 'exact';
+    optimizedProductVariantId?: string;
+    optimizedFromBrandPreferenceMode?: 'any' | 'preferred' | 'exact';
+    optimizedAt?: string;
+    brandPreferenceMode?: 'any' | 'preferred' | 'exact';
     preferredBrandNames?: string[];
     imageUrl?: string;
     quantity?: number;
@@ -75,8 +83,17 @@ type OptimizationResultApiResponse = {
     id?: string;
     shoppingListItemId: string;
     shoppingListItemName: string;
+    selectedOfferName?: string;
+    selectedVariantName?: string;
+    selectedPackageLabel?: string;
+    selectedVariantImageUrl?: string;
     establishmentName?: string;
     establishmentNeighborhood?: string;
+    establishmentAddressLine?: string;
+    establishmentPostalCode?: string;
+    establishmentLatitude?: number;
+    establishmentLongitude?: number;
+    distanceKm?: number;
     estimatedCost?: number;
     priceAmount?: number;
     comparisonPriceAmount?: number;
@@ -84,6 +101,12 @@ type OptimizationResultApiResponse = {
     savingsVsComparison?: number;
     sourceLabel?: string;
     observedAt?: string;
+    trustFactor?: number;
+    trustLevel?: 'high' | 'medium' | 'low';
+    trustEvidenceCount?: number;
+    trustFreshnessDays?: number;
+    trustLastValidatedAt?: string;
+    trustExplanation?: string;
     selectionStatus: 'selected' | 'missing' | 'review';
     confidenceNotice?: string;
     decisionReason?: string;
@@ -108,11 +131,71 @@ type PublicRegionApiResponse = {
   implantationStatus: 'active' | 'activating' | 'inactive';
   activeEstablishmentCount: number;
   offerCoverageStatus: 'live' | 'collecting_data';
+  establishments?: Array<{
+    id: string;
+    brandName: string;
+    unitName: string;
+    neighborhood: string;
+    cityName: string;
+    offerCount: number;
+  }>;
 };
 
 type PublicImpactResponse = {
   totalEstimatedSavings: number;
   optimizedListsCount: number;
+};
+
+type CityInclusionRequestResponse = {
+  id: string;
+  cityName: string;
+  stateCode: string;
+  status: 'requested' | 'reviewed' | 'planned' | 'rejected';
+  createdAt: string;
+};
+
+export type MissingProductRequestResponse = {
+  id: string;
+  requestedName: string;
+  categoryHint?: string | null;
+  packageHint?: string | null;
+  notes?: string | null;
+  status: 'requested' | 'reviewing' | 'converted' | 'rejected';
+  createdAt: string;
+  user?: {
+    id: string;
+    displayName: string;
+    email: string;
+  };
+  catalogProduct?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+};
+
+export type UserNotificationResponse = {
+  id: string;
+  type:
+    | 'price_drop'
+    | 'receipt_outcome'
+    | 'optimization_ready'
+    | 'optimization_failed';
+  title: string;
+  message: string;
+  resourceType?: string | null;
+  resourceId?: string | null;
+  readAt?: string | null;
+  createdAt: string;
+};
+
+export type NotificationPreferencesResponse = {
+  inAppEnabled: boolean;
+  priceDropsEnabled: boolean;
+  receiptOutcomesEnabled: boolean;
+  optimizationReadyEnabled: boolean;
+  emailEnabled: false;
+  pushEnabled: false;
 };
 
 type RegionOffersApiResponse = {
@@ -124,25 +207,64 @@ type RegionOffersApiResponse = {
   };
   activeEstablishmentCount: number;
   offerCoverageStatus: 'live' | 'collecting_data';
-  offers: Array<{
-    id: string;
-    catalogProductId: string;
-    productVariantId: string;
-    productName: string;
-    variantName?: string;
-    imageUrl?: string;
-    displayName: string;
-    packageLabel: string;
-    priceAmount: number;
-    basePriceAmount?: number;
-    promotionalPriceAmount?: number;
-    savingsVsRegionalAverage?: number;
-    observedAt: string;
-    sourceLabel: string;
-    storeName: string;
-    neighborhood: string;
-    confidenceLevel: 'high' | 'medium' | 'low';
-  }>;
+  offers: RegionalOfferApiResponse[];
+  groupedOffers?: RegionalOfferGroupApiResponse[];
+  pagination?: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+  };
+  filters?: {
+    stores: string[];
+    categories: string[];
+  };
+};
+
+type RegionalOfferApiResponse = {
+  id: string;
+  catalogProductId: string;
+  productVariantId: string;
+  productName: string;
+  category?: string;
+  variantName?: string;
+  imageUrl?: string;
+  displayName: string;
+  packageLabel: string;
+  priceAmount: number;
+  basePriceAmount?: number;
+  promotionalPriceAmount?: number;
+  savingsVsRegionalAverage?: number;
+  regionalAveragePriceAmount?: number;
+  comparisonPriceAmount?: number;
+  savingsVsComparison?: number;
+  observedAt: string;
+  sourceLabel: string;
+  storeName: string;
+  neighborhood: string;
+  confidenceLevel: 'high' | 'medium' | 'low';
+};
+
+type RegionalOfferGroupApiResponse = {
+  id: string;
+  catalogProductId: string;
+  productVariantId: string;
+  productName: string;
+  category?: string;
+  variantName?: string;
+  imageUrl?: string;
+  packageLabel: string;
+  bestOffer: RegionalOfferApiResponse;
+  alternativeOffers: RegionalOfferApiResponse[];
+  offers: RegionalOfferApiResponse[];
+  establishmentCount: number;
+  cheapestPriceAmount: number;
+  secondCheapestPriceAmount?: number;
+  savingsVsSecondCheapest?: number;
+  averagePriceAmount: number;
+  highestPriceAmount: number;
 };
 
 type OfferDetailApiResponse = {
@@ -235,18 +357,67 @@ type AdminMetricsResponse = {
   globalEstimatedSavings: number;
 };
 
+type AdminPublicSearchMetricsResponse = {
+  windowSize: number;
+  retentionDays: number;
+  sampleCount: number;
+  volume: {
+    last24Hours: number;
+    last7Days: number;
+  };
+  p50Ms: number | null;
+  p95Ms: number | null;
+  maxMs: number | null;
+  p95TargetMs: number;
+  strategyCounts: {
+    candidate: number;
+    broadFallback: number;
+  };
+  fallbackRate: number;
+  timeline: Array<{
+    startsAt: string;
+    sampleCount: number;
+    p95Ms: number | null;
+  }>;
+  pgTrgmEvaluation: {
+    minimumSamples: number;
+    recommended: boolean;
+    reason: 'insufficient_samples' | 'p95_within_target' | 'p95_above_target';
+  };
+  alert: {
+    status: 'healthy' | 'active';
+    observedP95Ms: number | null;
+    targetP95Ms: number;
+    sampleCount: number;
+    triggeredAt: string | null;
+    lastNotifiedAt: string | null;
+  };
+  lastRecordedAt: string | null;
+};
+
 type AdminProcessingJobResponse = {
   id: string;
   queueName: string;
   jobType: string;
   resourceType: string;
   resourceId: string;
-  status: 'queued' | 'running' | 'completed' | 'failed' | 'retrying';
+  status:
+    | 'queued'
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'retrying'
+    | 'cancelled';
   attemptCount: number;
   failureReason?: string | null;
   createdAt: string;
   updatedAt: string;
   finishedAt?: string;
+  reviewedAt?: string;
+  reviewedByUserId?: string;
+  cancelledAt?: string;
+  cancelledByUserId?: string;
+  cancellationReason?: string;
   owner?: {
     id: string;
     displayName: string;
@@ -306,8 +477,25 @@ type AdminProcessingJobDetailResponse = AdminProcessingJobResponse & {
             establishmentName: string;
             neighborhood: string;
             priceAmount: number;
+            confidenceLevel?: 'high' | 'medium' | 'low';
+            sourceType?: string;
             sourceLabel: string;
             observedAt: string;
+            receiptEvidence?: {
+              id: string;
+              moderationStatus:
+                | 'pending'
+                | 'accepted'
+                | 'quarantined'
+                | 'duplicate'
+                | 'rejected';
+              trustLevel:
+                | 'untrusted'
+                | 'pending_review'
+                | 'trusted'
+                | 'rejected';
+              reviewReason?: string | null;
+            } | null;
           } | null;
         }>;
       })
@@ -327,6 +515,131 @@ type AdminProcessingJobDetailResponse = AdminProcessingJobResponse & {
         }>;
       })
     | null;
+};
+
+type AdminReceiptProcessingResponse = {
+  id: string;
+  storeName?: string | null;
+  storeCnpj?: string | null;
+  parseStatus: 'queued' | 'parsed' | 'partial' | 'failed';
+  trustLevel: 'untrusted' | 'pending_review' | 'trusted' | 'rejected';
+  moderationStatus:
+    | 'pending'
+    | 'accepted'
+    | 'quarantined'
+    | 'duplicate'
+    | 'rejected';
+  rewardEligibilityStatus:
+    | 'disabled'
+    | 'ineligible'
+    | 'eligible_pending'
+    | 'granted';
+  reviewReason?: string | null;
+  purchaseDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  owner: {
+    id: string;
+    displayName: string;
+    email: string;
+  };
+  processingJob?: {
+    id: string;
+    status: 'queued' | 'running' | 'completed' | 'failed' | 'retrying';
+    attemptCount: number;
+    failureReason?: string | null;
+    updatedAt: string;
+  } | null;
+  quality: {
+    lineItemCount: number;
+    highConfidenceLineItemCount: number;
+    averageMatchConfidence: number;
+    usefulDataRatio: number;
+  };
+  reward: {
+    points: number;
+    optimizationTokens: number;
+    label: string;
+  };
+  extractedPayload: {
+    accessKey?: string | null;
+    sefazUrl?: string | null;
+    rawReference?: string | null;
+    purchaseDate?: string | null;
+    lineItemCount: number;
+    totalLineAmount: number;
+  };
+  lineItems: Array<{
+    id: string;
+    rawProductName: string;
+    normalizedName: string;
+    ean?: string | null;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+    originalUnitPrice?: number | null;
+    promotionalUnitPrice?: number | null;
+    matchConfidence: number;
+    matcherStatus:
+      | 'matched_offer'
+      | 'matched_name_only'
+      | 'needs_product_review';
+    makerAction:
+      | 'offer_created'
+      | 'link_existing_product'
+      | 'create_or_match_product';
+    offers: Array<{
+      id: string;
+      catalogProductName: string;
+      variantName: string;
+      brandName?: string | null;
+      establishmentName: string;
+      neighborhood: string;
+      displayName: string;
+      packageLabel: string;
+      priceAmount: number;
+      observedAt: string;
+      comparison: {
+        previousPriceAmount?: number | null;
+        newPriceAmount: number;
+        deltaAmount?: number | null;
+        direction: 'new' | 'up' | 'down' | 'same';
+        previousObservedAt?: string | null;
+      };
+    }>;
+  }>;
+};
+
+type ReceiptSubmissionResponse = {
+  id: string;
+  storeName?: string;
+  storeCnpj?: string;
+  parseStatus: 'queued' | 'parsed' | 'partial' | 'failed';
+  trustLevel?: 'untrusted' | 'pending_review' | 'trusted' | 'rejected';
+  moderationStatus?:
+    | 'pending'
+    | 'accepted'
+    | 'quarantined'
+    | 'duplicate'
+    | 'rejected';
+  rewardEligibilityStatus?:
+    | 'disabled'
+    | 'ineligible'
+    | 'eligible_pending'
+    | 'granted';
+  rewardPoints?: number;
+  rewardOptimizationTokens?: number;
+  rewardMessage?: string;
+  reviewReason?: string;
+  jobId?: string;
+  processingStatus?:
+    | 'waiting_manual_release'
+    | 'queued'
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'retrying'
+    | 'cancelled';
 };
 
 type AdminQueueHealthResponse = {
@@ -376,6 +689,7 @@ type AdminShoppingListAuditResponse = {
   city?: string;
   latestOptimization?: {
     id: string;
+    jobId?: string | null;
     mode: OptimizationModeId;
     status: string;
     estimatedSavings: number;
@@ -384,6 +698,80 @@ type AdminShoppingListAuditResponse = {
     createdAt: string;
     completedAt?: string;
   } | null;
+};
+
+type AdminUserResponse = {
+  id: string;
+  email: string;
+  displayName: string;
+  role: 'customer' | 'admin';
+  status: 'active' | 'suspended';
+  preferredRegion?: {
+    id: string;
+    slug: string;
+    name: string;
+    stateCode: string;
+  } | null;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  counts: {
+    shoppingLists: number;
+    optimizationRuns: number;
+    receiptRecords: number;
+    priceMismatchReports: number;
+  };
+  entitlement: {
+    plan: 'free' | 'premium';
+    status: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired';
+    source: string;
+    availableOptimizationTokens: number | null;
+    monthlyFreeOptimizationTokens: number;
+    billingEnabled: boolean;
+    checkoutEnabled: boolean;
+    lastPaymentAt: string | null;
+    lastPaymentStatus: 'billing_disabled' | 'none' | 'paid' | 'failed';
+  };
+  latestOptimization?: {
+    id: string;
+    mode: OptimizationModeId;
+    status: 'queued' | 'running' | 'completed' | 'failed';
+    createdAt: string;
+    completedAt?: string;
+  } | null;
+};
+
+type UserLocationPreferenceResponse = {
+  id: string;
+  regionId: string;
+  regionSlug: string;
+  regionName: string;
+  label: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  postalCode?: string | null;
+  coverageRadiusKm: number;
+  activeEstablishmentCount: number;
+  isDefault: boolean;
+  locationSource: 'manual' | 'browser_geolocation' | 'postal_code_fallback';
+  createdAt: string;
+  updatedAt: string;
+};
+
+type CoveragePreviewResponse = {
+  regionId: string;
+  coverageRadiusKm: number;
+  activeEstablishmentCount: number;
+  fallbackUsed: boolean;
+  fallbackReason?: 'missing_coordinates' | 'postal_code_only';
+  establishments: Array<{
+    id: string;
+    brandName: string;
+    unitName: string;
+    neighborhood: string;
+    postalCode?: string | null;
+    distanceKm?: number | null;
+  }>;
 };
 
 type AdminEstablishmentResponse = {
@@ -458,6 +846,8 @@ type AdminOfferResponse = {
     id: string;
     displayName: string;
     brandName?: string | null;
+    imageUrl?: string | null;
+    packageLabel?: string | null;
   };
   establishment: {
     id: string;
@@ -492,10 +882,29 @@ async function apiFetch<T>(
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     headers,
+    credentials: 'include',
   });
 
   if (!response.ok) {
-    const message = await response.text();
+    const payload = await response.text();
+    let message = payload;
+
+    try {
+      const parsed = JSON.parse(payload) as {
+        message?: string | string[];
+        error?: { message?: string | string[] } | string;
+      };
+      const parsedMessage =
+        typeof parsed.error === 'object'
+          ? parsed.error.message
+          : parsed.message;
+      message = Array.isArray(parsedMessage)
+        ? parsedMessage.join('; ')
+        : parsedMessage || message;
+    } catch {
+      message = payload;
+    }
+
     throw new Error(message || `Request failed with status ${response.status}`);
   }
 
@@ -517,6 +926,18 @@ export async function signUp(
   return apiFetch<AuthSessionResponse>('/auth/register', {
     method: 'POST',
     body: JSON.stringify({ email, password, displayName }),
+  });
+}
+
+export async function refreshSession() {
+  return apiFetch<AuthSessionResponse>('/auth/refresh', {
+    method: 'POST',
+  });
+}
+
+export async function signOutSession() {
+  return apiFetch<{ status: 'ok' }>('/auth/logout', {
+    method: 'POST',
   });
 }
 
@@ -543,8 +964,144 @@ export async function fetchPublicImpact() {
   return apiFetch<PublicImpactResponse>('/regions/impact');
 }
 
-export async function fetchRegionOffers(regionSlug: string) {
-  return apiFetch<RegionOffersApiResponse>(`/regions/${regionSlug}/offers`);
+export async function requestCityInclusion(input: {
+  cityName: string;
+  stateCode: string;
+  contactName?: string;
+  contactEmail?: string;
+  message?: string;
+}) {
+  return apiFetch<CityInclusionRequestResponse>('/regions/requests', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function requestMissingProduct(
+  token: string,
+  input: {
+    requestedName: string;
+    categoryHint?: string;
+    packageHint?: string;
+    notes?: string;
+  },
+) {
+  return apiFetch<MissingProductRequestResponse>(
+    '/missing-product-requests',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function fetchNotifications(token: string) {
+  return apiFetch<UserNotificationResponse[]>('/notifications', {}, token);
+}
+
+export async function markNotificationRead(token: string, id: string) {
+  return apiFetch<UserNotificationResponse>(
+    `/notifications/${id}/read`,
+    { method: 'PATCH' },
+    token,
+  );
+}
+
+export async function markAllNotificationsRead(token: string) {
+  return apiFetch<{ status: 'ok' }>(
+    '/notifications/read-all',
+    { method: 'POST' },
+    token,
+  );
+}
+
+export async function fetchNotificationPreferences(token: string) {
+  return apiFetch<NotificationPreferencesResponse>(
+    '/notification-preferences',
+    {},
+    token,
+  );
+}
+
+export async function updateNotificationPreferences(
+  token: string,
+  input: Partial<
+    Pick<
+      NotificationPreferencesResponse,
+      | 'inAppEnabled'
+      | 'priceDropsEnabled'
+      | 'receiptOutcomesEnabled'
+      | 'optimizationReadyEnabled'
+    >
+  >,
+) {
+  return apiFetch<NotificationPreferencesResponse>(
+    '/notification-preferences',
+    {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function submitReceipt(
+  token: string,
+  input: {
+    storeName?: string;
+    storeCnpj?: string;
+    purchaseDate?: string;
+    qrCodeUrl?: string;
+    accessKey?: string;
+    items?: Array<{
+      rawProductName: string;
+      ean?: string;
+      quantity?: number;
+      unitPrice: number;
+      originalUnitPrice?: number;
+      promotionalUnitPrice?: number;
+      packageSize?: string;
+    }>;
+  },
+) {
+  return apiFetch<ReceiptSubmissionResponse>(
+    '/receipts',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        ...input,
+        sourceType: input.qrCodeUrl ? 'qr_code_url' : 'manual_entry',
+      }),
+    },
+    token,
+  );
+}
+
+export async function fetchRegionOffers(
+  regionSlug: string,
+  query?: {
+    q?: string;
+    store?: string;
+    category?: string;
+    confidence?: string;
+    sort?: string;
+    page?: number;
+    pageSize?: number;
+  },
+) {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(query ?? {})) {
+    if (value !== undefined && value !== '' && value !== 'all') {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  const suffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
+  return apiFetch<RegionOffersApiResponse>(
+    `/regions/${regionSlug}/offers${suffix}`,
+  );
 }
 
 export async function fetchOfferDetail(offerId: string) {
@@ -572,6 +1129,12 @@ export async function fetchShoppingList(token: string, listId: string) {
     `/shopping-lists/${listId}`,
     {},
     token,
+  );
+}
+
+export async function fetchSharedShoppingList(shareToken: string) {
+  return apiFetch<ShoppingListApiResponse>(
+    `/shopping-lists/shared/${encodeURIComponent(shareToken)}`,
   );
 }
 
@@ -604,7 +1167,7 @@ export async function replaceShoppingList(
       requestedName: string;
       catalogProductId?: string;
       lockedProductVariantId?: string;
-      brandPreferenceMode?: 'any' | 'exact';
+      brandPreferenceMode?: 'any' | 'preferred' | 'exact';
       preferredBrandNames?: string[];
       purchaseStatus?: 'pending' | 'purchased';
       quantity?: number;
@@ -618,6 +1181,16 @@ export async function replaceShoppingList(
     {
       method: 'PATCH',
       body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function shareShoppingList(token: string, listId: string) {
+  return apiFetch<ShoppingListApiResponse>(
+    `/shopping-lists/${listId}/share`,
+    {
+      method: 'POST',
     },
     token,
   );
@@ -639,16 +1212,102 @@ export async function updateShoppingListItemPurchaseStatus(
   );
 }
 
+export async function completeShoppingListCheckout(
+  token: string,
+  listId: string,
+  paidTotal?: number,
+) {
+  return apiFetch<ShoppingListApiResponse>(
+    `/shopping-lists/${listId}/checkout-completion`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ paidTotal }),
+    },
+    token,
+  );
+}
+
+export async function reportShoppingListItemPriceMismatch(
+  token: string,
+  listId: string,
+  itemId: string,
+  input: {
+    expectedPrice?: number;
+    reportedPrice?: number;
+    reason?: string;
+  },
+) {
+  return apiFetch<{ id: string; createdAt: string }>(
+    `/shopping-lists/${listId}/items/${itemId}/price-reports`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function fetchLocationPreferences(token: string) {
+  return apiFetch<UserLocationPreferenceResponse[]>('/locations', {}, token);
+}
+
+export async function previewLocationCoverage(
+  token: string,
+  input: {
+    regionId: string;
+    latitude?: number;
+    longitude?: number;
+    postalCode?: string;
+    coverageRadiusKm?: number;
+  },
+) {
+  return apiFetch<CoveragePreviewResponse>(
+    '/locations/coverage-preview',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function createLocationPreference(
+  token: string,
+  input: {
+    regionId: string;
+    label: string;
+    latitude?: number;
+    longitude?: number;
+    postalCode?: string;
+    coverageRadiusKm?: number;
+    isDefault?: boolean;
+    locationSource?: 'manual' | 'browser_geolocation' | 'postal_code_fallback';
+  },
+) {
+  return apiFetch<UserLocationPreferenceResponse>(
+    '/locations',
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
 export async function runOptimization(
   token: string,
   listId: string,
   mode: OptimizationModeId,
+  input?: {
+    userLocationPreferenceId?: string;
+    coverageRadiusKm?: number;
+  },
 ) {
   await apiFetch<OptimizationRunAcceptedResponse>(
     `/shopping-lists/${listId}/optimize`,
     {
       method: 'POST',
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify({ mode, ...input }),
     },
     token,
   );
@@ -690,6 +1349,14 @@ export async function fetchAdminMetrics(token: string) {
   return apiFetch<AdminMetricsResponse>('/admin/metrics', {}, token);
 }
 
+export async function fetchAdminPublicSearchMetrics(token: string) {
+  return apiFetch<AdminPublicSearchMetricsResponse>(
+    '/admin/metrics/public-search',
+    {},
+    token,
+  );
+}
+
 export async function fetchAdminProcessingJobs(token: string) {
   return apiFetch<AdminProcessingJobResponse[]>(
     '/admin/processing-jobs',
@@ -706,6 +1373,139 @@ export async function fetchAdminProcessingJobDetail(token: string, id: string) {
   );
 }
 
+export async function retryAdminProcessingJob(token: string, id: string) {
+  return apiFetch<AdminProcessingJobDetailResponse>(
+    `/admin/processing-jobs/${id}/retry`,
+    { method: 'POST' },
+    token,
+  );
+}
+
+export async function reviewAdminProcessingJob(token: string, id: string) {
+  return apiFetch<AdminProcessingJobDetailResponse>(
+    `/admin/processing-jobs/${id}/review`,
+    { method: 'POST' },
+    token,
+  );
+}
+
+export async function cancelAdminProcessingJob(
+  token: string,
+  id: string,
+  reason?: string,
+) {
+  return apiFetch<AdminProcessingJobDetailResponse>(
+    `/admin/processing-jobs/${id}/cancel`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    },
+    token,
+  );
+}
+
+export async function fetchAdminMissingProductRequests(token: string) {
+  return apiFetch<MissingProductRequestResponse[]>(
+    '/admin/missing-product-requests',
+    {},
+    token,
+  );
+}
+
+export async function convertAdminMissingProductRequest(
+  token: string,
+  id: string,
+  input: {
+    name?: string;
+    category: string;
+    defaultUnit?: string;
+    imageUrl?: string;
+  },
+) {
+  return apiFetch<AdminProductResponse>(
+    `/admin/missing-product-requests/${id}/convert`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function rejectAdminMissingProductRequest(
+  token: string,
+  id: string,
+  notes?: string,
+) {
+  return apiFetch<MissingProductRequestResponse>(
+    `/admin/missing-product-requests/${id}/reject`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ notes }),
+    },
+    token,
+  );
+}
+
+export async function fetchAdminReceiptProcessing(token: string) {
+  return apiFetch<AdminReceiptProcessingResponse[]>(
+    '/admin/receipt-processing',
+    {},
+    token,
+  );
+}
+
+export async function fetchAdminReceiptProcessingDetail(
+  token: string,
+  id: string,
+) {
+  return apiFetch<AdminReceiptProcessingResponse>(
+    `/admin/receipt-processing/${id}`,
+    {},
+    token,
+  );
+}
+
+export async function releaseAdminReceiptProcessing(token: string, id: string) {
+  return apiFetch<ReceiptSubmissionResponse>(
+    `/admin/receipt-processing/${id}/release`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
+    token,
+  );
+}
+
+export async function reprocessAdminReceiptProcessing(
+  token: string,
+  id: string,
+) {
+  return apiFetch<ReceiptSubmissionResponse>(
+    `/admin/receipt-processing/${id}/reprocess`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
+    token,
+  );
+}
+
+export async function rejectAdminReceiptProcessing(
+  token: string,
+  id: string,
+  reason = 'manual_admin_rejection',
+) {
+  return apiFetch<ReceiptSubmissionResponse>(
+    `/admin/receipt-processing/${id}/reject`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    },
+    token,
+  );
+}
+
 export async function fetchAdminQueueHealth(token: string) {
   return apiFetch<AdminQueueHealthResponse>('/admin/queue-health', {}, token);
 }
@@ -718,6 +1518,40 @@ export async function fetchAdminShoppingLists(token: string) {
   return apiFetch<AdminShoppingListAuditResponse[]>(
     '/admin/shopping-lists',
     {},
+    token,
+  );
+}
+
+export async function fetchAdminUsers(token: string) {
+  return apiFetch<AdminUserResponse[]>('/admin/users', {}, token);
+}
+
+export async function setAdminUserPremium(
+  token: string,
+  id: string,
+  enabled: boolean,
+) {
+  return apiFetch<AdminUserResponse>(
+    `/admin/users/${id}/premium`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    },
+    token,
+  );
+}
+
+export async function grantAdminUserTokens(
+  token: string,
+  id: string,
+  input: { amount: number; reason?: string },
+) {
+  return apiFetch<AdminUserResponse>(
+    `/admin/users/${id}/tokens`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
     token,
   );
 }
@@ -821,6 +1655,16 @@ export async function updateAdminProduct(
   );
 }
 
+export async function deleteAdminProduct(token: string, id: string) {
+  return apiFetch<AdminProductResponse>(
+    `/admin/catalog-products/${id}`,
+    {
+      method: 'DELETE',
+    },
+    token,
+  );
+}
+
 export async function uploadAdminProductImage(
   token: string,
   id: string,
@@ -870,6 +1714,16 @@ export async function updateAdminProductVariant(
     {
       method: 'PATCH',
       body: JSON.stringify(input),
+    },
+    token,
+  );
+}
+
+export async function deleteAdminProductVariant(token: string, id: string) {
+  return apiFetch<AdminProductVariantResponse>(
+    `/admin/product-variants/${id}`,
+    {
+      method: 'DELETE',
     },
     token,
   );
@@ -952,6 +1806,11 @@ export function mapProfile(user: AuthSessionResponse['user']): ProfileSnapshot {
 export function mapShoppingList(
   apiList: ShoppingListApiResponse,
 ): ShoppingList {
+  const shareUrl =
+    apiList.shareToken && typeof window !== 'undefined'
+      ? `${window.location.origin}/compartilhar/listas/${apiList.shareToken}`
+      : undefined;
+
   return {
     id: apiList.id,
     name: apiList.name,
@@ -959,11 +1818,19 @@ export function mapShoppingList(
     lastMode: apiList.lastMode,
     updatedAt: apiList.updatedAt,
     expectedSavings: apiList.latestEstimatedSavings ?? 0,
+    shareToken: apiList.shareToken,
+    sharedAt: apiList.sharedAt,
+    shareUrl,
+    completedAt: apiList.completedAt,
+    paidTotal: apiList.paidTotal,
     items: apiList.items.map((item) => ({
       id: item.id,
       name: item.requestedName,
       catalogProductId: item.catalogProductId,
       lockedProductVariantId: item.lockedProductVariantId,
+      optimizedProductVariantId: item.optimizedProductVariantId,
+      optimizedFromBrandPreferenceMode: item.optimizedFromBrandPreferenceMode,
+      optimizedAt: item.optimizedAt,
       brandPreferenceMode: item.brandPreferenceMode ?? 'any',
       preferredBrandNames: item.preferredBrandNames ?? [],
       imageUrl: item.imageUrl,
@@ -983,20 +1850,27 @@ export function mapShoppingList(
 
 export type {
   AdminShoppingListAuditResponse,
+  AdminUserResponse,
+  CityInclusionRequestResponse,
+  CoveragePreviewResponse,
   AdminEstablishmentResponse,
   AdminMetricsResponse,
+  AdminPublicSearchMetricsResponse,
   AdminOfferResponse,
   AdminProductResponse,
   AdminProductVariantResponse,
   AdminProcessingJobResponse,
   AdminProcessingJobDetailResponse,
   AdminQueueHealthResponse,
+  AdminReceiptProcessingResponse,
   AdminRegionResponse,
   OfferDetailApiResponse,
   OptimizationResultApiResponse,
   PublicRegionApiResponse,
   PublicImpactResponse,
   ProductVariantResponse,
+  ReceiptSubmissionResponse,
   RegionOffersApiResponse,
   CatalogProductSearchResponse,
+  UserLocationPreferenceResponse,
 };

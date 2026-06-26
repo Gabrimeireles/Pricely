@@ -6,6 +6,11 @@ export interface ReceiptRecordEntity {
   storeId?: string;
   storeName?: string;
   storeCnpj?: string;
+  storeAddressLine?: string;
+  storeNeighborhood?: string;
+  storePostalCode?: string;
+  storeCityName?: string;
+  storeStateCode?: string;
   accessKey?: string;
   sefazUrl?: string;
   purchaseDate?: string;
@@ -34,7 +39,14 @@ export interface ReceiptRecordEntity {
   reviewReason?: string;
   rawSourceReference?: string;
   processingJobId?: string;
-  processingStatus?: 'queued' | 'running' | 'completed' | 'failed' | 'retrying';
+  processingStatus?:
+    | 'waiting_manual_release'
+    | 'queued'
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'retrying'
+    | 'cancelled';
   processingLogs: string[];
   lineItems: ReceiptLineItemEntity[];
   createdAt: string;

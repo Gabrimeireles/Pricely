@@ -29,7 +29,14 @@ export class UpdateShoppingListDto {
   preferredRegionId?: string;
 
   @IsOptional()
-  @IsIn(['local', 'global_unique', 'global_full'])
+  @IsIn([
+    'local',
+    'global_unique',
+    'global_full',
+    'local_unique',
+    'local_multi',
+    'global_multi',
+  ])
   lastMode?: OptimizationMode;
 
   @IsOptional()

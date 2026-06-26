@@ -9,6 +9,7 @@ import 'package:pricely_mobile/core/storage/local_cache_service.dart';
 import 'package:pricely_mobile/features/auth/application/auth_controller.dart';
 import 'package:pricely_mobile/features/discovery/application/market_discovery_controller.dart';
 import 'package:pricely_mobile/features/home/presentation/mobile_home_screen.dart';
+import 'package:pricely_mobile/features/location/application/mobile_location_controller.dart';
 import 'package:pricely_mobile/features/optimization/application/optimization_controller.dart';
 import 'package:pricely_mobile/features/optimization/data/demo_grocery_workflow_gateway.dart';
 import 'package:pricely_mobile/features/receipts/application/receipt_flow_controller.dart';
@@ -32,7 +33,7 @@ void main() {
 
     expect(find.text('Escolha sua cidade'), findsWidgets);
     expect(find.textContaining('precisamos salvar sua cidade'), findsOneWidget);
-    expect(find.textContaining('Campinas · SP'), findsOneWidget);
+    expect(find.textContaining('Campinas'), findsOneWidget);
   });
 
   testWidgets('shows zero-store messaging for collecting regions', (
@@ -44,27 +45,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('Ainda não temos estabelecimentos ativos'),
-      findsOneWidget,
+      find.textContaining('estabelecimentos ativos'),
+      findsWidgets,
     );
     expect(
       find.textContaining('contribuir com recibos'),
       findsOneWidget,
     );
+    await tester.scrollUntilVisible(
+      find.textContaining('e raio'),
+      220,
+    );
+    expect(find.textContaining('e raio'), findsOneWidget);
+    expect(find.textContaining('lojas em 5 km'), findsOneWidget);
+    expect(find.textContaining('nao promete proximidade'), findsOneWidget);
   });
 
-  testWidgets('renders active city offers and opens the offer detail sheet', (tester) async {
+  testWidgets('renders active city offers and opens the offer detail sheet', (
+    tester,
+  ) async {
     final app = await _buildApp(preselectedRegionSlug: 'sao-paulo-sp');
 
     await tester.pumpWidget(app.widget);
     await tester.pumpAndSettle();
 
     expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
-    expect(find.textContaining('2 lojas'), findsOneWidget);
+    expect(find.textContaining('2 lojas ativas'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Ofertas ativas'),
+      220,
+    );
+    expect(find.text('Ofertas ativas'), findsOneWidget);
     expect(app.discoveryController.offers, hasLength(1));
     expect(app.discoveryController.offers.single.productName, 'Cafe torrado');
-    final detail =
-        await app.discoveryController.fetchOfferDetail(app.discoveryController.offers.single.id);
+    final detail = await app.discoveryController.fetchOfferDetail(
+      app.discoveryController.offers.single.id,
+    );
     expect(detail.productName, 'Cafe torrado');
     expect(detail.alternativeOffers.single.storeName, 'Mercado Bairro');
   });
@@ -193,6 +209,24 @@ Future<_MobileHomeHarness> _buildApp({
           );
         }
 
+        if (request.url.path == '/locations') {
+          return http.Response(
+            jsonEncode(<String, dynamic>{
+              'id': 'location-1',
+              'regionId': 'region-1',
+              'regionSlug': 'campinas-sp',
+              'label': 'Local atual',
+              'latitude': -22.9,
+              'longitude': -47.06,
+              'coverageRadiusKm': 5,
+              'activeEstablishmentCount': 0,
+              'isDefault': true,
+              'locationSource': 'browser_geolocation',
+            }),
+            201,
+          );
+        }
+
         return http.Response('{}', 404);
       }),
     ),
@@ -225,6 +259,12 @@ Future<_MobileHomeHarness> _buildApp({
     backendGateway: backendGateway,
     authController: authController,
   );
+  final locationController = MobileLocationController(
+    authController: authController,
+    discoveryController: discoveryController,
+    backendGateway: backendGateway,
+    locationService: const _FakeMobileLocationService(),
+  );
   final receiptFlowController = ReceiptFlowController(
     DemoGroceryWorkflowGateway(),
   );
@@ -237,6 +277,7 @@ Future<_MobileHomeHarness> _buildApp({
         shoppingListController: shoppingListController,
         optimizationController: optimizationController,
         receiptFlowController: receiptFlowController,
+        locationController: locationController,
       ),
     ),
     discoveryController,
@@ -248,4 +289,20 @@ class _MobileHomeHarness {
 
   final Widget widget;
   final MarketDiscoveryController discoveryController;
+}
+
+class _FakeMobileLocationService implements MobileLocationService {
+  const _FakeMobileLocationService();
+
+  @override
+  Future<MobileLocationCaptureResult> captureCurrentLocation() async {
+    return const MobileLocationCaptureResult(
+      status: MobileLocationStatus.allowed,
+      reading: MobileLocationReading(
+        latitude: -22.9,
+        longitude: -47.06,
+        accuracyMeters: 30,
+      ),
+    );
+  }
 }

@@ -3,6 +3,7 @@
 import '../../../app/router.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../optimization/application/optimization_controller.dart';
+import '../../privacy/presentation/sensitive_currency.dart';
 import '../../shared/data/pricely_backend_gateway.dart';
 import '../application/shopping_list_controller.dart';
 
@@ -165,7 +166,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color:
+                      Theme.of(context).colorScheme.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -177,7 +179,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${widget.authController.currentUser?.shoppingListsCount ?? 0} listas sincronizadas · economia estimada ${_formatCurrency(widget.authController.currentUser?.totalEstimatedSavings ?? 0)}',
+                      '${widget.authController.currentUser?.shoppingListsCount ?? 0} listas sincronizadas · economia estimada ${formatSensitiveCurrency(context, widget.authController.currentUser?.totalEstimatedSavings ?? 0)}',
                     ),
                   ],
                 ),
@@ -233,7 +235,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color:
+                      Theme.of(context).colorScheme.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -516,10 +519,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     );
   }
 
-  String _formatCurrency(double value) {
-    return 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
-  }
-
   String _brandPreferenceSummary() {
     if (_brandPreferenceMode == 'exact') {
       return _selectedVariantId == null || _selectedVariantId!.isEmpty
@@ -641,7 +640,7 @@ class _UnauthenticatedView extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(

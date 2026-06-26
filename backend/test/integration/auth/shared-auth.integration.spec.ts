@@ -4,6 +4,10 @@ import request from 'supertest';
 
 import { AdminModule } from '../../../src/admin/admin.module';
 import { AuthModule } from '../../../src/auth/auth.module';
+import {
+  OPTIMIZATION_QUEUE,
+  RECEIPT_PROCESSING_QUEUE,
+} from '../../../src/common/queue/queue.tokens';
 import { HttpExceptionFilter } from '../../../src/common/errors/http-exception.filter';
 import { AppValidationPipe } from '../../../src/common/validation/validation.pipe';
 import { PrismaService } from '../../../src/persistence/prisma.service';
@@ -23,6 +27,7 @@ type StoredUser = {
 
 class PrismaUserAccountMock {
   private readonly users = new Map<string, StoredUser>();
+  private readonly sessions = new Map<string, any>();
 
   seed(user: StoredUser): void {
     this.users.set(user.id, structuredClone(user));
@@ -149,6 +154,59 @@ class PrismaUserAccountMock {
       },
     }),
   };
+
+  readonly userSession = {
+    create: jest.fn().mockImplementation(async ({ data }: { data: any }) => {
+      const session = {
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        revokedAt: null,
+        ...data,
+      };
+      this.sessions.set(session.id, session);
+      return structuredClone(session);
+    }),
+    findUnique: jest.fn().mockImplementation(async ({ where }: { where: any }) => {
+      const session =
+        [...this.sessions.values()].find(
+          (entry) => entry.refreshTokenHash === where.refreshTokenHash,
+        ) ?? null;
+      if (!session) {
+        return null;
+      }
+      return {
+        ...structuredClone(session),
+        user: this.clone(this.users.get(session.userId) ?? null),
+      };
+    }),
+    update: jest.fn().mockImplementation(async ({ where, data }: { where: any; data: any }) => {
+      const session = this.sessions.get(where.id);
+      if (!session) {
+        throw new Error(`Session ${where.id} not found`);
+      }
+      const updated = {
+        ...session,
+        ...data,
+        updatedAt: new Date(),
+      };
+      this.sessions.set(updated.id, updated);
+      return structuredClone(updated);
+    }),
+    updateMany: jest.fn().mockImplementation(async ({ where, data }: { where: any; data: any }) => {
+      let count = 0;
+      for (const [id, session] of this.sessions.entries()) {
+        if (
+          session.refreshTokenHash === where.refreshTokenHash &&
+          (where.revokedAt === undefined || session.revokedAt === where.revokedAt)
+        ) {
+          this.sessions.set(id, { ...session, ...data, updatedAt: new Date() });
+          count += 1;
+        }
+      }
+      return { count };
+    }),
+  };
 }
 
 describe('Shared auth integration', () => {
@@ -170,10 +228,15 @@ describe('Shared auth integration', () => {
         receiptRecord: userAccountMock.receiptRecord,
         region: userAccountMock.region,
         userEntitlement: userAccountMock.userEntitlement,
+        userSession: userAccountMock.userSession,
         optimizationTokenLedgerEntry:
           userAccountMock.optimizationTokenLedgerEntry,
         $queryRaw: userAccountMock.$queryRaw,
       })
+      .overrideProvider(RECEIPT_PROCESSING_QUEUE)
+      .useValue({ add: jest.fn(), close: jest.fn() })
+      .overrideProvider(OPTIMIZATION_QUEUE)
+      .useValue({ add: jest.fn(), close: jest.fn() })
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -199,6 +262,7 @@ describe('Shared auth integration', () => {
     expect(response.body).toEqual(
       expect.objectContaining({
         accessToken: expect.any(String),
+        accessTokenExpiresInSeconds: 900,
         user: expect.objectContaining({
           email: 'cliente@pricely.local',
           role: 'customer',
@@ -213,6 +277,60 @@ describe('Shared auth integration', () => {
         }),
       }),
     );
+    expect(response.body.refreshToken).toBeUndefined();
+    expect(response.headers['set-cookie']?.join(';')).toContain(
+      'pricely_refresh=',
+    );
+  });
+
+  it('refreshes access tokens through an httpOnly cookie and clears it on logout', async () => {
+    const registerResponse = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        email: 'refresh-user@pricely.local',
+        password: 'strong-password',
+        displayName: 'Refresh User',
+      })
+      .expect(201);
+    const cookie = registerResponse.headers['set-cookie'];
+
+    const refreshResponse = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', cookie)
+      .expect(200);
+
+    expect(refreshResponse.body).toEqual(
+      expect.objectContaining({
+        accessToken: expect.any(String),
+        accessTokenExpiresInSeconds: 900,
+        user: expect.objectContaining({
+          email: 'refresh-user@pricely.local',
+        }),
+      }),
+    );
+    expect(refreshResponse.body.refreshToken).toBeUndefined();
+    expect(refreshResponse.headers['set-cookie']?.join(';')).toContain(
+      'pricely_refresh=',
+    );
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', cookie)
+      .expect(401);
+
+    const rotatedCookie = refreshResponse.headers['set-cookie'];
+    const logoutResponse = await request(app.getHttpServer())
+      .post('/auth/logout')
+      .set('Cookie', rotatedCookie)
+      .expect(200);
+
+    expect(logoutResponse.headers['set-cookie']?.join(';')).toContain(
+      'pricely_refresh=;',
+    );
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', rotatedCookie)
+      .expect(401);
   });
 
   it('authenticates an existing account and exposes /auth/me with the same identity', async () => {

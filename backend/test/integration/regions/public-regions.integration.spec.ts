@@ -23,6 +23,11 @@ describe('Public regions and pricing integration', () => {
             implantationStatus: 'active',
             establishments: [
               {
+                id: 'est-1',
+                brandName: 'Mercado',
+                unitName: 'Mercado Centro',
+                neighborhood: 'Centro',
+                cityName: 'Sao Paulo',
                 productOffers: [{ id: 'offer-1' }],
               },
             ],
@@ -49,6 +54,15 @@ describe('Public regions and pricing integration', () => {
       },
       establishment: {
         count: async () => 1,
+      },
+      cityInclusionRequest: {
+        create: async ({ data }: { data: Record<string, unknown> }) => ({
+          id: 'request-1',
+          status: 'requested',
+          createdAt: new Date('2026-05-10T10:00:00Z'),
+          updatedAt: new Date('2026-05-10T10:00:00Z'),
+          ...data,
+        }),
       },
       productOffer: {
         findMany: async ({ where }: { where: Record<string, unknown> }) => {
@@ -168,13 +182,22 @@ describe('Public regions and pricing integration', () => {
   });
 
   it('lists visible regions and excludes inactive ones', async () => {
-    const response = await request(app.getHttpServer()).get('/regions').expect(200);
+    const response = await request(app.getHttpServer())
+      .get('/regions')
+      .expect(200);
 
     expect(response.body).toEqual([
       expect.objectContaining({
         slug: 'sao-paulo-sp',
         activeEstablishmentCount: 1,
         offerCoverageStatus: 'live',
+        establishments: [
+          expect.objectContaining({
+            unitName: 'Mercado Centro',
+            neighborhood: 'Centro',
+            offerCount: 1,
+          }),
+        ],
       }),
       expect.objectContaining({
         slug: 'campinas-sp',
@@ -211,6 +234,27 @@ describe('Public regions and pricing integration', () => {
           id: 'variant-1',
         }),
         alternativeOffers: expect.any(Array),
+      }),
+    );
+  });
+
+  it('accepts public city inclusion requests without creating a region', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/regions/requests')
+      .send({
+        cityName: 'Santos',
+        stateCode: 'sp',
+        contactEmail: 'cliente@pricely.local',
+        message: 'Priorizar mercados da orla',
+      })
+      .expect(201);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        id: 'request-1',
+        cityName: 'Santos',
+        stateCode: 'SP',
+        status: 'requested',
       }),
     );
   });

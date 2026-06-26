@@ -11,6 +11,10 @@ export interface StoreOfferEntity {
   variantName?: string;
   storeId: string;
   storeName: string;
+  storeRegionId?: string;
+  storeLatitude?: number;
+  storeLongitude?: number;
+  distanceKm?: number;
   canonicalName: string;
   matchingCanonicalNames?: string[];
   displayName: string;
@@ -20,6 +24,12 @@ export interface StoreOfferEntity {
   quantityContext?: string;
   availabilityStatus: StoreOfferAvailabilityStatus;
   confidenceScore: number;
+  trustFactor?: number;
+  trustLevel?: 'high' | 'medium' | 'low';
+  trustEvidenceCount?: number;
+  trustFreshnessDays?: number;
+  trustLastValidatedAt?: string;
+  trustExplanation?: string;
   sourceReceiptLineItemId: string;
   observedAt: string;
 }

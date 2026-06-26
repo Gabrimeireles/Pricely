@@ -5,11 +5,16 @@ import request from 'supertest';
 
 import { AdminModule } from '../../../src/admin/admin.module';
 import { AuthModule } from '../../../src/auth/auth.module';
+import {
+  OPTIMIZATION_QUEUE,
+  RECEIPT_PROCESSING_QUEUE,
+} from '../../../src/common/queue/queue.tokens';
 import { HttpExceptionFilter } from '../../../src/common/errors/http-exception.filter';
 import { AppValidationPipe } from '../../../src/common/validation/validation.pipe';
 import { PrismaService } from '../../../src/persistence/prisma.service';
 
 class AdminProcessingPrismaMock {
+  private readonly sessions = new Map<string, any>();
   private readonly adminUser = {
     id: 'admin-1',
     email: 'admin@pricely.local',
@@ -78,6 +83,42 @@ class AdminProcessingPrismaMock {
     }),
   };
 
+  readonly userSession = {
+    create: async ({ data }: { data: any }) => {
+      const session = {
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        revokedAt: null,
+        ...data,
+      };
+      this.sessions.set(session.id, session);
+      return structuredClone(session);
+    },
+    findUnique: async ({ where }: { where: any }) => {
+      const session =
+        [...this.sessions.values()].find(
+          (entry) => entry.refreshTokenHash === where.refreshTokenHash,
+        ) ?? null;
+      return session
+        ? {
+            ...structuredClone(session),
+            user: this.adminUser,
+          }
+        : null;
+    },
+    update: async ({ where, data }: { where: any; data: any }) => {
+      const session = this.sessions.get(where.id);
+      if (!session) {
+        throw new Error(`Session ${where.id} not found`);
+      }
+      const updated = { ...session, ...data, updatedAt: new Date() };
+      this.sessions.set(updated.id, updated);
+      return structuredClone(updated);
+    },
+    updateMany: async () => ({ count: 0 }),
+  };
+
   readonly shoppingList = { count: async () => 2 };
   readonly optimizationRun = {
     count: async () => 3,
@@ -143,6 +184,10 @@ describe('Admin processing diagnostics integration', () => {
     })
       .overrideProvider(PrismaService)
       .useValue(new AdminProcessingPrismaMock())
+      .overrideProvider(RECEIPT_PROCESSING_QUEUE)
+      .useValue({ add: jest.fn(), close: jest.fn() })
+      .overrideProvider(OPTIMIZATION_QUEUE)
+      .useValue({ add: jest.fn(), close: jest.fn() })
       .compile();
 
     app = moduleRef.createNestApplication();

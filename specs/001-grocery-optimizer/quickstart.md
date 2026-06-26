@@ -27,7 +27,8 @@ jobs de otimizacao e CRUD administrativo.
 ## Setup do backend
 
 1. Configure ambiente para PostgreSQL, Redis, segredos JWT/sessao e demais ajustes.
-2. Aplique migrations do Prisma ou `db push` e rode o seed minimo com:
+2. Aplique migrations versionadas do Prisma com
+   `npm run db:migrate:deploy:safe` e rode o seed minimo com:
    - um admin
    - um customer
    - uma cidade ativa
@@ -74,6 +75,9 @@ jobs de otimizacao e CRUD administrativo.
    - a falha aparece nos logs
    - o processing job registra o estado de falha
    - o diagnostico admin consegue expor o problema
+9. Execute buscas publicas seletivas e amplas e consulte
+   `GET /admin/metrics/public-search` para validar contagem, p50, p95, taxa de fallback
+   e o gatilho de reavaliacao de `pg_trgm`.
 
 ## Resultado esperado
 

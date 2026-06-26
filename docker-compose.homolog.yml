@@ -64,19 +64,17 @@ services:
     env_file:
       - .env.backend
     environment:
-      PORT: ${BACKEND_PORT:-3000}
+      PORT: 3000
       APP_HOST: 0.0.0.0
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: ${NODE_ENV:-production}
+      APP_ENVIRONMENT: homolog
+      APP_RELEASE: ${IMAGE_TAG}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-pricely}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      WEB_APP_URL: ${WEB_APP_URL:-http://localhost:5173}
-    command:
-      [
-        "sh",
-        "-lc",
-        "npm run db:generate && npm run db:push && npm run start:dev",
-      ]
+      WEB_APP_URL: ${WEB_APP_URL:-https://pricely.grmeireles.dev}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://pricely.grmeireles.dev}
+    command: ["sh", "-lc", "npm run db:generate && npm run start"]
     ports:
       - "${BACKEND_PORT:-3000}:3000"
 
@@ -87,9 +85,19 @@ services:
     depends_on:
       backend:
         condition: service_started
+    env_file:
+      - .env.web
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
-    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-pricely.grmeireles.dev}
+      VITE_ALLOW_ALL_HOSTS: ${VITE_ALLOW_ALL_HOSTS:-true}
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -qO- http://127.0.0.1:5173 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
     ports:
       - "${WEB_PORT:-5173}:5173"
 

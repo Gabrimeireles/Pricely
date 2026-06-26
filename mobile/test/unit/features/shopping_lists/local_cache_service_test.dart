@@ -12,7 +12,7 @@ void main() {
       id: 'list-1',
       title: 'Feira',
       regionId: 'sao-paulo-sp',
-      lastMode: 'global_full',
+      lastMode: 'global_multi',
       items: const <ShoppingListItemDraft>[
         ShoppingListItemDraft(id: '1', name: 'Banana', quantity: 6, unit: 'un'),
       ],

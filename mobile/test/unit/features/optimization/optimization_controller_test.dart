@@ -80,7 +80,7 @@ void main() {
                   'id': 'list-1',
                   'name': 'Compra mensal',
                   'preferredRegionId': 'sao-paulo-sp',
-                  'lastMode': 'global_full',
+                  'lastMode': 'global_multi',
                   'items': <dynamic>[
                     <String, dynamic>{
                       'id': 'item-1',
@@ -147,6 +147,98 @@ void main() {
     final cached = await cacheService.loadOptimizationResult();
     expect(cached?.totalCost, 22.9);
   });
+
+  test('does not run local optimization before a location preference is saved', () async {
+    final cacheService = LocalCacheService(InMemoryKeyValueStore());
+    await cacheService.saveAuthToken('token-123');
+
+    var optimizeRequests = 0;
+    final backendGateway = PricelyBackendGateway(
+      HttpApiClient(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/auth/me')) {
+            return http.Response(jsonEncode(_profilePayload()), 200);
+          }
+
+          if (request.url.path.endsWith('/shopping-lists')) {
+            return http.Response(
+              jsonEncode(<dynamic>[
+                <String, dynamic>{
+                  'id': 'list-1',
+                  'name': 'Compra mensal',
+                  'preferredRegionId': 'sao-paulo-sp',
+                  'lastMode': 'local_multi',
+                  'items': <dynamic>[
+                    <String, dynamic>{
+                      'id': 'item-1',
+                      'requestedName': 'Arroz tipo 1',
+                      'quantity': 1,
+                      'unitLabel': 'un',
+                      'purchaseStatus': 'pending',
+                      'resolutionStatus': 'matched',
+                    },
+                  ],
+                  'createdAt': '2026-04-28T12:00:00.000Z',
+                  'updatedAt': '2026-04-28T12:00:00.000Z',
+                },
+              ]),
+              200,
+            );
+          }
+
+          if (request.url.path.endsWith('/shopping-lists/list-1/optimize')) {
+            optimizeRequests += 1;
+            return http.Response(
+              jsonEncode(<String, dynamic>{'acceptedStatus': 'queued'}),
+              201,
+            );
+          }
+
+          return http.Response('{}', 404);
+        }),
+      ),
+    );
+
+    final authController = AuthController(
+      cacheService: cacheService,
+      backendGateway: backendGateway,
+    );
+    await authController.bootstrap();
+    final shoppingListController = ShoppingListController(
+      cacheService: cacheService,
+      authController: authController,
+      backendGateway: backendGateway,
+    );
+    await shoppingListController.loadDraft();
+    final controller = OptimizationController(
+      cacheService: cacheService,
+      shoppingListController: shoppingListController,
+      backendGateway: backendGateway,
+      authController: authController,
+    );
+
+    await controller.optimize();
+
+    expect(optimizeRequests, 0);
+    expect(controller.errorMessage, contains('Salve sua localizacao'));
+  });
+}
+
+Map<String, dynamic> _profilePayload() {
+  return <String, dynamic>{
+    'id': 'user-1',
+    'email': 'cliente@pricely.app',
+    'displayName': 'Cliente Pricely',
+    'role': 'customer',
+    'profileStats': <String, dynamic>{
+      'shoppingListsCount': 1,
+      'totalEstimatedSavings': 12.3,
+      'completedOptimizationRuns': 1,
+      'contributionsCount': 0,
+      'receiptSubmissionsCount': 0,
+      'offerReportsCount': 0,
+    },
+  };
 }
 
 Map<String, dynamic> _buildOptimizationPayload() {

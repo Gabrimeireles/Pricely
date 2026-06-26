@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/app_scope.dart';
 import '../../shopping_lists/application/shopping_list_controller.dart';
 import '../../shopping_lists/domain/shopping_list_draft.dart';
+import '../../privacy/presentation/sensitive_currency.dart';
 import '../application/optimization_controller.dart';
 import '../domain/optimization_result.dart';
 
@@ -17,12 +19,17 @@ class MultiMarketResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final privacyController =
+        AppScope.maybeOf(context)?.monetaryPrivacyController;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Resultado da otimização'),
       ),
       body: AnimatedBuilder(
-        animation: controller,
+        animation: Listenable.merge(<Listenable>[
+          controller,
+          if (privacyController != null) privacyController,
+        ]),
         builder: (context, _) {
           final result = controller.result;
 
@@ -115,13 +122,36 @@ class MultiMarketResultView extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 8),
-                Text('Total otimizado: ${_formatCurrency(result.totalCost)}'),
                 Text(
-                  'Economia estimada: ${_formatCurrency(result.estimatedSavings)}',
+                  'Total otimizado: ${formatSensitiveCurrency(context, result.totalCost)}',
+                ),
+                Text(
+                  'Economia estimada: ${formatSensitiveCurrency(context, result.estimatedSavings)}',
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Compare produto, regra de marca, loja sugerida e subtotal por parada.',
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Localização e raio',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                const Text('Raio local padrao: 5 km.'),
+                const SizedBox(height: 6),
+                const Text(
+                  'Modos locais usam a localizacao salva e lojas dentro do raio. O modo cidade ignora distancia e compara toda a regiao.',
                 ),
               ],
             ),
@@ -140,7 +170,9 @@ class MultiMarketResultView extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
-                  Text('Subtotal: ${_formatCurrency(plan.subtotal)}'),
+                  Text(
+                    'Subtotal: ${formatSensitiveCurrency(context, plan.subtotal)}',
+                  ),
                   const SizedBox(height: 12),
                   for (final selection in plan.selections)
                     Builder(
@@ -161,10 +193,26 @@ class MultiMarketResultView extends StatelessWidget {
                                 )
                               : null,
                           title: Text(selection.itemName),
-                          subtitle: Text(
-                            '${selection.quantity} ${selection.unit} - ${_brandRuleLabel(draftItem)} - confiança ${selection.confidenceLabel}',
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                '${selection.quantity} ${selection.unit} - ${_brandRuleLabel(draftItem)} - ${_distanceLabel(selection)}',
+                              ),
+                              if (_variantLabel(selection).isNotEmpty)
+                                Text(_variantLabel(selection)),
+                              Text(_trustEvidenceLabel(selection)),
+                              if (selection.confidenceNotice != null &&
+                                  selection.confidenceNotice!.isNotEmpty)
+                                Text(_confidenceNoticeLabel(selection)),
+                            ],
                           ),
-                          trailing: Text(_formatCurrency(selection.subtotal)),
+                          trailing: Text(
+                            formatSensitiveCurrency(
+                              context,
+                              selection.subtotal,
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -195,10 +243,6 @@ class MultiMarketResultView extends StatelessWidget {
     );
   }
 
-  String _formatCurrency(double value) {
-    return 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
-  }
-
   ShoppingListItemDraft? _findDraftItem(String itemName) {
     for (final item in shoppingListController.draft.items) {
       if (item.name.trim().toLowerCase() == itemName.trim().toLowerCase()) {
@@ -216,5 +260,53 @@ class MultiMarketResultView extends StatelessWidget {
       return 'variante exata: ${item.name}';
     }
     return 'qualquer variante';
+  }
+
+  String _distanceLabel(OptimizationSelection selection) {
+    final distance = selection.distanceKm;
+    if (distance == null) {
+      return 'modo cidade';
+    }
+    return '${distance.toStringAsFixed(1)} km';
+  }
+
+  String _variantLabel(OptimizationSelection selection) {
+    final variant = selection.selectedVariantName;
+    if (variant == null || variant.isEmpty) {
+      return '';
+    }
+    final package = selection.selectedPackageLabel;
+    if (package == null || package.isEmpty || variant.contains(package)) {
+      return 'Selecionado: $variant';
+    }
+    return 'Selecionado: $variant - $package';
+  }
+
+  String _trustEvidenceLabel(OptimizationSelection selection) {
+    final source = selection.sourceLabel ?? 'fonte operacional';
+    final trustFactor = selection.trustFactor;
+    final trustText = trustFactor == null ? '' : ' - trust $trustFactor/100';
+    final evidenceCount = selection.trustEvidenceCount ?? 0;
+    final evidenceText = evidenceCount == 0
+        ? 'sem nota fiscal aceita ainda'
+        : evidenceCount == 1
+            ? '1 nota fiscal aceita'
+            : '$evidenceCount notas fiscais aceitas';
+    final freshness = selection.trustFreshnessDays;
+    final freshnessText = freshness == null
+        ? ''
+        : freshness == 0
+            ? ' - validado hoje'
+            : ' - validado ha ${freshness}d';
+
+    return 'Confianca da oferta: $source$trustText - $evidenceText$freshnessText';
+  }
+
+  String _confidenceNoticeLabel(OptimizationSelection selection) {
+    final notice = selection.confidenceNotice ?? selection.confidenceLabel;
+    if (notice.toLowerCase().contains('low')) {
+      return 'Alerta: evidencia de preco com baixa confianca.';
+    }
+    return 'Alerta: $notice';
   }
 }

@@ -1,11 +1,19 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 
 import { CatalogProductsService } from '../../catalog/application/catalog-products.service';
 import { CatalogMediaService } from '../../catalog/application/catalog-media.service';
 import { EstablishmentsService } from '../../establishments/application/establishments.service';
 import { PrismaService } from '../../persistence/prisma.service';
 import { OfferManagementService } from '../../pricing/application/offer-management.service';
+import { ReceiptIngestionService } from '../../receipts/application/receipt-ingestion.service';
 import { RegionsAdminService } from '../../regions/application/regions-admin.service';
+import { EntitlementsService } from '../../users/entitlements.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 @Injectable()
 export class AdminDashboardService {
@@ -18,6 +26,10 @@ export class AdminDashboardService {
     private readonly catalogProductsService: CatalogProductsService,
     private readonly catalogMediaService: CatalogMediaService,
     private readonly offerManagementService: OfferManagementService,
+    private readonly entitlementsService: EntitlementsService,
+    private readonly receiptIngestionService: ReceiptIngestionService,
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
   ) {}
 
   async getMetrics() {
@@ -132,6 +144,11 @@ export class AdminDashboardService {
       status: job.status,
       attemptCount: job.attemptCount,
       failureReason: job.failureReason,
+      reviewedAt: job.reviewedAt?.toISOString(),
+      reviewedByUserId: job.reviewedByUserId,
+      cancelledAt: job.cancelledAt?.toISOString(),
+      cancelledByUserId: job.cancelledByUserId,
+      cancellationReason: job.cancellationReason,
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
       finishedAt: job.finishedAt?.toISOString(),
@@ -210,6 +227,7 @@ export class AdminDashboardService {
                   include: {
                     productVariant: true,
                     establishment: true,
+                    receiptRecord: true,
                   },
                 },
               },
@@ -238,6 +256,11 @@ export class AdminDashboardService {
       status: job.status,
       attemptCount: job.attemptCount,
       failureReason: job.failureReason,
+      reviewedAt: job.reviewedAt?.toISOString(),
+      reviewedByUserId: job.reviewedByUserId,
+      cancelledAt: job.cancelledAt?.toISOString(),
+      cancelledByUserId: job.cancelledByUserId,
+      cancellationReason: job.cancellationReason,
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
       finishedAt: job.finishedAt?.toISOString(),
@@ -303,17 +326,567 @@ export class AdminDashboardService {
                       neighborhood:
                         selection.productOffer.establishment.neighborhood,
                       priceAmount: Number(selection.productOffer.priceAmount),
+                      confidenceLevel: selection.productOffer.confidenceLevel,
+                      sourceType: selection.productOffer.sourceType,
                       sourceLabel:
                         selection.productOffer.sourceReference ??
                         selection.productOffer.sourceType,
                       observedAt:
                         selection.productOffer.observedAt.toISOString(),
+                      receiptEvidence: selection.productOffer.receiptRecord
+                        ? {
+                            id: selection.productOffer.receiptRecord.id,
+                            moderationStatus:
+                              selection.productOffer.receiptRecord
+                                .moderationStatus,
+                            trustLevel:
+                              selection.productOffer.receiptRecord.trustLevel,
+                            reviewReason:
+                              selection.productOffer.receiptRecord.reviewReason,
+                          }
+                        : null,
                     }
                   : null,
               }),
             ),
           }
         : null,
+    };
+  }
+
+  async listReceiptProcessingReviews() {
+    const receipts = await this.prisma.receiptRecord.findMany({
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 100,
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+          },
+        },
+        processingJob: true,
+        lineItems: {
+          select: {
+            id: true,
+            rawProductName: true,
+            normalizedName: true,
+            ean: true,
+            quantity: true,
+            unitPrice: true,
+            lineTotal: true,
+            originalUnitPrice: true,
+            promotionalUnitPrice: true,
+            matchConfidence: true,
+            productOffers: {
+              select: {
+                id: true,
+                catalogProductId: true,
+                productVariantId: true,
+                establishmentId: true,
+                displayName: true,
+                packageLabel: true,
+                priceAmount: true,
+                observedAt: true,
+                catalogProduct: {
+                  select: {
+                    name: true,
+                  },
+                },
+                productVariant: {
+                  select: {
+                    displayName: true,
+                    brandName: true,
+                  },
+                },
+                establishment: {
+                  select: {
+                    unitName: true,
+                    neighborhood: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const generatedOffers = receipts.flatMap((receipt) =>
+      receipt.lineItems.flatMap((item) => item.productOffers),
+    );
+    const comparisonCandidates =
+      generatedOffers.length > 0
+        ? await this.prisma.productOffer.findMany({
+            where: {
+              isActive: true,
+              availabilityStatus: 'available',
+              receiptRecordId: {
+                notIn: receipts.map((receipt) => receipt.id),
+              },
+              OR: generatedOffers.map((offer) => ({
+                productVariantId: offer.productVariantId,
+                establishmentId: offer.establishmentId,
+              })),
+            },
+            orderBy: [{ observedAt: 'desc' }],
+            select: {
+              productVariantId: true,
+              establishmentId: true,
+              priceAmount: true,
+              observedAt: true,
+            },
+          })
+        : [];
+    const latestComparisonByVariantAndStore = new Map<
+      string,
+      (typeof comparisonCandidates)[number]
+    >();
+
+    for (const offer of comparisonCandidates) {
+      const key = `${offer.productVariantId}:${offer.establishmentId}`;
+      if (!latestComparisonByVariantAndStore.has(key)) {
+        latestComparisonByVariantAndStore.set(key, offer);
+      }
+    }
+
+    const projectedReceipts = receipts.map((receipt) => {
+      const confidences = receipt.lineItems.map((item) =>
+        Number(item.matchConfidence),
+      );
+      const lineItemCount = confidences.length;
+      const highConfidenceLineItemCount = confidences.filter(
+        (confidence) => confidence >= 0.75,
+      ).length;
+      const averageMatchConfidence =
+        lineItemCount === 0
+          ? 0
+          : Number(
+              (
+                confidences.reduce((sum, confidence) => sum + confidence, 0) /
+                lineItemCount
+              ).toFixed(2),
+            );
+      const totalLineAmount = Number(
+        receipt.lineItems
+          .reduce((sum, item) => sum + Number(item.lineTotal), 0)
+          .toFixed(2),
+      );
+
+      return {
+        id: receipt.id,
+        storeName: receipt.storeName,
+        storeCnpj: receipt.storeCnpj,
+        parseStatus: receipt.parseStatus,
+        trustLevel: receipt.trustLevel,
+        moderationStatus: receipt.moderationStatus,
+        rewardEligibilityStatus: receipt.rewardEligibilityStatus,
+        reviewReason: receipt.reviewReason,
+        purchaseDate: receipt.purchaseDate?.toISOString(),
+        createdAt: receipt.createdAt.toISOString(),
+        updatedAt: receipt.updatedAt.toISOString(),
+        owner: receipt.user,
+        processingJob: receipt.processingJob
+          ? {
+              id: receipt.processingJob.id,
+              status: receipt.processingJob.status,
+              attemptCount: receipt.processingJob.attemptCount,
+              failureReason: receipt.processingJob.failureReason,
+              updatedAt: receipt.processingJob.updatedAt.toISOString(),
+            }
+          : null,
+        quality: {
+          lineItemCount,
+          highConfidenceLineItemCount,
+          averageMatchConfidence,
+          usefulDataRatio:
+            lineItemCount === 0
+              ? 0
+              : Number(
+                  (highConfidenceLineItemCount / lineItemCount).toFixed(2),
+                ),
+        },
+        reward: this.receiptRewardProjection(receipt.rewardEligibilityStatus),
+        extractedPayload: {
+          accessKey: receipt.accessKey,
+          sefazUrl: receipt.sefazUrl,
+          rawReference: receipt.rawReference,
+          purchaseDate: receipt.purchaseDate?.toISOString() ?? null,
+          lineItemCount,
+          totalLineAmount,
+        },
+        lineItems: receipt.lineItems.map((item) => ({
+          id: item.id,
+          rawProductName: item.rawProductName,
+          normalizedName: item.normalizedName,
+          ean: item.ean,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+          lineTotal: Number(item.lineTotal),
+          originalUnitPrice:
+            item.originalUnitPrice === null
+              ? null
+              : Number(item.originalUnitPrice),
+          promotionalUnitPrice:
+            item.promotionalUnitPrice === null
+              ? null
+              : Number(item.promotionalUnitPrice),
+          matchConfidence: Number(item.matchConfidence),
+          matcherStatus:
+            item.productOffers.length > 0
+              ? 'matched_offer'
+              : Number(item.matchConfidence) >= 0.75
+                ? 'matched_name_only'
+                : 'needs_product_review',
+          makerAction:
+            item.productOffers.length > 0
+              ? 'offer_created'
+              : Number(item.matchConfidence) >= 0.75
+                ? 'link_existing_product'
+                : 'create_or_match_product',
+          offers: item.productOffers.map((offer) => {
+            const comparison =
+              latestComparisonByVariantAndStore.get(
+                `${offer.productVariantId}:${offer.establishmentId}`,
+              ) ?? null;
+            const newPriceAmount = Number(offer.priceAmount);
+            const previousPriceAmount = comparison
+              ? Number(comparison.priceAmount)
+              : null;
+            const deltaAmount =
+              previousPriceAmount === null
+                ? null
+                : Number((newPriceAmount - previousPriceAmount).toFixed(2));
+
+            return {
+              id: offer.id,
+              catalogProductName: offer.catalogProduct.name,
+              variantName: offer.productVariant.displayName,
+              brandName: offer.productVariant.brandName,
+              establishmentName: offer.establishment.unitName,
+              neighborhood: offer.establishment.neighborhood,
+              displayName: offer.displayName,
+              packageLabel: offer.packageLabel,
+              priceAmount: newPriceAmount,
+              observedAt: offer.observedAt.toISOString(),
+              comparison: {
+                previousPriceAmount,
+                newPriceAmount,
+                deltaAmount,
+                direction:
+                  deltaAmount === null
+                    ? 'new'
+                    : deltaAmount > 0
+                      ? 'up'
+                      : deltaAmount < 0
+                        ? 'down'
+                        : 'same',
+                previousObservedAt:
+                  comparison?.observedAt.toISOString() ?? null,
+              },
+            };
+          }),
+        })),
+      };
+    });
+
+    this.logger.log(
+      `Admin receipt processing requested: ${projectedReceipts.length} records returned`,
+    );
+
+    return projectedReceipts;
+  }
+
+  async getReceiptProcessingReview(id: string) {
+    const receipts = await this.prisma.receiptRecord.findMany({
+      where: { id },
+      take: 1,
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+          },
+        },
+        processingJob: true,
+        lineItems: {
+          select: {
+            id: true,
+            rawProductName: true,
+            normalizedName: true,
+            ean: true,
+            quantity: true,
+            unitPrice: true,
+            lineTotal: true,
+            originalUnitPrice: true,
+            promotionalUnitPrice: true,
+            matchConfidence: true,
+            productOffers: {
+              select: {
+                id: true,
+                catalogProductId: true,
+                productVariantId: true,
+                establishmentId: true,
+                displayName: true,
+                packageLabel: true,
+                priceAmount: true,
+                observedAt: true,
+                catalogProduct: {
+                  select: {
+                    name: true,
+                  },
+                },
+                productVariant: {
+                  select: {
+                    displayName: true,
+                    brandName: true,
+                  },
+                },
+                establishment: {
+                  select: {
+                    unitName: true,
+                    neighborhood: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (receipts.length === 0) {
+      throw new NotFoundException(`Receipt ${id} was not found`);
+    }
+
+    const generatedOffers = receipts.flatMap((receipt) =>
+      receipt.lineItems.flatMap((item) => item.productOffers),
+    );
+    const comparisonCandidates =
+      generatedOffers.length > 0
+        ? await this.prisma.productOffer.findMany({
+            where: {
+              isActive: true,
+              availabilityStatus: 'available',
+              receiptRecordId: {
+                notIn: receipts.map((receipt) => receipt.id),
+              },
+              OR: generatedOffers.map((offer) => ({
+                productVariantId: offer.productVariantId,
+                establishmentId: offer.establishmentId,
+              })),
+            },
+            orderBy: [{ observedAt: 'desc' }],
+            select: {
+              productVariantId: true,
+              establishmentId: true,
+              priceAmount: true,
+              observedAt: true,
+            },
+          })
+        : [];
+    const latestComparisonByVariantAndStore = new Map<
+      string,
+      (typeof comparisonCandidates)[number]
+    >();
+
+    for (const offer of comparisonCandidates) {
+      const key = `${offer.productVariantId}:${offer.establishmentId}`;
+      if (!latestComparisonByVariantAndStore.has(key)) {
+        latestComparisonByVariantAndStore.set(key, offer);
+      }
+    }
+
+    const receipt = receipts[0];
+    const confidences = receipt.lineItems.map((item) =>
+      Number(item.matchConfidence),
+    );
+    const lineItemCount = confidences.length;
+    const highConfidenceLineItemCount = confidences.filter(
+      (confidence) => confidence >= 0.75,
+    ).length;
+    const averageMatchConfidence =
+      lineItemCount === 0
+        ? 0
+        : Number(
+            (
+              confidences.reduce((sum, confidence) => sum + confidence, 0) /
+              lineItemCount
+            ).toFixed(2),
+          );
+    const totalLineAmount = Number(
+      receipt.lineItems
+        .reduce((sum, item) => sum + Number(item.lineTotal), 0)
+        .toFixed(2),
+    );
+
+    return {
+      id: receipt.id,
+      storeName: receipt.storeName,
+      storeCnpj: receipt.storeCnpj,
+      parseStatus: receipt.parseStatus,
+      trustLevel: receipt.trustLevel,
+      moderationStatus: receipt.moderationStatus,
+      rewardEligibilityStatus: receipt.rewardEligibilityStatus,
+      reviewReason: receipt.reviewReason,
+      purchaseDate: receipt.purchaseDate?.toISOString(),
+      createdAt: receipt.createdAt.toISOString(),
+      updatedAt: receipt.updatedAt.toISOString(),
+      owner: receipt.user,
+      processingJob: receipt.processingJob
+        ? {
+            id: receipt.processingJob.id,
+            status: receipt.processingJob.status,
+            attemptCount: receipt.processingJob.attemptCount,
+            failureReason: receipt.processingJob.failureReason,
+            updatedAt: receipt.processingJob.updatedAt.toISOString(),
+          }
+        : null,
+      quality: {
+        lineItemCount,
+        highConfidenceLineItemCount,
+        averageMatchConfidence,
+        usefulDataRatio:
+          lineItemCount === 0
+            ? 0
+            : Number((highConfidenceLineItemCount / lineItemCount).toFixed(2)),
+      },
+      reward: this.receiptRewardProjection(receipt.rewardEligibilityStatus),
+      extractedPayload: {
+        accessKey: receipt.accessKey,
+        sefazUrl: receipt.sefazUrl,
+        rawReference: receipt.rawReference,
+        purchaseDate: receipt.purchaseDate?.toISOString() ?? null,
+        lineItemCount,
+        totalLineAmount,
+      },
+      lineItems: receipt.lineItems.map((item) => ({
+        id: item.id,
+        rawProductName: item.rawProductName,
+        normalizedName: item.normalizedName,
+        ean: item.ean,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        lineTotal: Number(item.lineTotal),
+        originalUnitPrice:
+          item.originalUnitPrice === null
+            ? null
+            : Number(item.originalUnitPrice),
+        promotionalUnitPrice:
+          item.promotionalUnitPrice === null
+            ? null
+            : Number(item.promotionalUnitPrice),
+        matchConfidence: Number(item.matchConfidence),
+        matcherStatus:
+          item.productOffers.length > 0
+            ? 'matched_offer'
+            : Number(item.matchConfidence) >= 0.75
+              ? 'matched_name_only'
+              : 'needs_product_review',
+        makerAction:
+          item.productOffers.length > 0
+            ? 'offer_created'
+            : Number(item.matchConfidence) >= 0.75
+              ? 'link_existing_product'
+              : 'create_or_match_product',
+        offers: item.productOffers.map((offer) => {
+          const comparison =
+            latestComparisonByVariantAndStore.get(
+              `${offer.productVariantId}:${offer.establishmentId}`,
+            ) ?? null;
+          const newPriceAmount = Number(offer.priceAmount);
+          const previousPriceAmount = comparison
+            ? Number(comparison.priceAmount)
+            : null;
+          const deltaAmount =
+            previousPriceAmount === null
+              ? null
+              : Number((newPriceAmount - previousPriceAmount).toFixed(2));
+
+          return {
+            id: offer.id,
+            catalogProductName: offer.catalogProduct.name,
+            variantName: offer.productVariant.displayName,
+            brandName: offer.productVariant.brandName,
+            establishmentName: offer.establishment.unitName,
+            neighborhood: offer.establishment.neighborhood,
+            displayName: offer.displayName,
+            packageLabel: offer.packageLabel,
+            priceAmount: newPriceAmount,
+            observedAt: offer.observedAt.toISOString(),
+            comparison: {
+              previousPriceAmount,
+              newPriceAmount,
+              deltaAmount,
+              direction:
+                deltaAmount === null
+                  ? 'new'
+                  : deltaAmount > 0
+                    ? 'up'
+                    : deltaAmount < 0
+                      ? 'down'
+                      : 'same',
+              previousObservedAt: comparison?.observedAt.toISOString() ?? null,
+            },
+          };
+        }),
+      })),
+    };
+  }
+
+  async releaseReceiptForProcessing(receiptRecordId: string) {
+    const receipt =
+      await this.receiptIngestionService.releaseForProcessing(receiptRecordId);
+
+    this.logger.log(
+      `Receipt ${receiptRecordId} released for manual processing queue`,
+    );
+
+    return receipt;
+  }
+
+  async reprocessReceipt(receiptRecordId: string) {
+    const receipt =
+      await this.receiptIngestionService.reprocess(receiptRecordId);
+
+    this.logger.log(`Receipt ${receiptRecordId} requeued for processing`);
+
+    return receipt;
+  }
+
+  async rejectReceipt(receiptRecordId: string, reason?: string) {
+    const receipt = await this.receiptIngestionService.rejectManually(
+      receiptRecordId,
+      reason,
+    );
+
+    this.logger.log(`Receipt ${receiptRecordId} rejected manually`);
+
+    return receipt;
+  }
+
+  private receiptRewardProjection(status: string) {
+    if (status === 'granted') {
+      return {
+        points: 100,
+        optimizationTokens: 1,
+        label: '100 pontos + 1 credito concedido',
+      };
+    }
+    if (status === 'eligible_pending') {
+      return {
+        points: 100,
+        optimizationTokens: 1,
+        label: '100 pontos + 1 credito pendente',
+      };
+    }
+
+    return {
+      points: 0,
+      optimizationTokens: 0,
+      label: 'Sem reward',
     };
   }
 
@@ -403,6 +976,7 @@ export class AdminDashboardService {
         latestOptimization: latest
           ? {
               id: latest.id,
+              jobId: latest.jobId,
               mode: latest.mode,
               status: latest.status,
               estimatedSavings: Number(latest.estimatedSavings ?? 0),
@@ -420,6 +994,169 @@ export class AdminDashboardService {
     );
 
     return projected;
+  }
+
+  async listUsers(userIds?: string[]) {
+    const users = await this.prisma.userAccount.findMany({
+      where: userIds?.length
+        ? {
+            id: {
+              in: userIds,
+            },
+          }
+        : undefined,
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 100,
+      include: {
+        preferredRegion: {
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            stateCode: true,
+          },
+        },
+        entitlements: {
+          orderBy: [{ createdAt: 'desc' }],
+          take: 1,
+        },
+        optimizationRuns: {
+          orderBy: [{ createdAt: 'desc' }],
+          take: 1,
+          select: {
+            id: true,
+            mode: true,
+            status: true,
+            createdAt: true,
+            completedAt: true,
+          },
+        },
+        _count: {
+          select: {
+            shoppingLists: true,
+            optimizationRuns: true,
+            receiptRecords: true,
+            priceMismatchReports: true,
+          },
+        },
+      },
+    });
+
+    const tokenBalances =
+      await this.prisma.optimizationTokenLedgerEntry.groupBy({
+        by: ['userId'],
+        where: {
+          userId: {
+            in: users.map((user) => user.id),
+          },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        _sum: {
+          amount: true,
+        },
+      });
+    const tokenBalanceByUser = new Map(
+      tokenBalances.map((entry) => [
+        entry.userId,
+        Number(entry._sum.amount ?? 0),
+      ]),
+    );
+
+    return users.map((user) => {
+      const latestEntitlement = user.entitlements[0];
+      const hasActivePremium =
+        latestEntitlement?.plan === 'premium' &&
+        ['active', 'trialing'].includes(latestEntitlement.status) &&
+        (!latestEntitlement.endsAt || latestEntitlement.endsAt > new Date());
+      const latestOptimization = user.optimizationRuns[0];
+
+      return {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        status: user.status,
+        preferredRegion: user.preferredRegion,
+        lastLoginAt: user.lastLoginAt?.toISOString(),
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+        counts: {
+          shoppingLists: user._count.shoppingLists,
+          optimizationRuns: user._count.optimizationRuns,
+          receiptRecords: user._count.receiptRecords,
+          priceMismatchReports: user._count.priceMismatchReports,
+        },
+        entitlement: {
+          plan: hasActivePremium ? 'premium' : 'free',
+          status: latestEntitlement?.status ?? 'active',
+          source: latestEntitlement?.source ?? 'monthly_free_refill',
+          availableOptimizationTokens: hasActivePremium
+            ? null
+            : (tokenBalanceByUser.get(user.id) ?? 0),
+          monthlyFreeOptimizationTokens:
+            this.entitlementsService.monthlyFreeTokenCount(),
+          billingEnabled: false,
+          checkoutEnabled: false,
+          lastPaymentAt: null,
+          lastPaymentStatus: 'billing_disabled',
+        },
+        latestOptimization: latestOptimization
+          ? {
+              id: latestOptimization.id,
+              mode: latestOptimization.mode,
+              status: latestOptimization.status,
+              createdAt: latestOptimization.createdAt.toISOString(),
+              completedAt: latestOptimization.completedAt?.toISOString(),
+            }
+          : null,
+      };
+    });
+  }
+
+  async setUserPremium(
+    userId: string,
+    input: { enabled: boolean },
+    adminUserId: string,
+  ) {
+    await this.entitlementsService.setManualPremium({
+      userId,
+      enabled: input.enabled,
+      adminUserId,
+    });
+
+    this.logger.log(
+      `Admin ${adminUserId} ${input.enabled ? 'enabled' : 'disabled'} premium for user ${userId}`,
+    );
+
+    return this.getUserOrThrow(userId);
+  }
+
+  async grantUserOptimizationTokens(
+    userId: string,
+    input: { amount: number; reason?: string },
+    adminUserId: string,
+  ) {
+    await this.entitlementsService.grantAdminOptimizationTokens({
+      userId,
+      amount: input.amount,
+      reason: input.reason,
+      adminUserId,
+    });
+
+    this.logger.log(
+      `Admin ${adminUserId} granted ${input.amount} optimization tokens to user ${userId}`,
+    );
+
+    return this.getUserOrThrow(userId);
+  }
+
+  private async getUserOrThrow(userId: string) {
+    const [found] = await this.listUsers([userId]);
+    if (!found) {
+      throw new NotFoundException(`User ${userId} was not found`);
+    }
+
+    return found;
   }
 
   async listRegions() {
@@ -465,7 +1202,7 @@ export class AdminDashboardService {
     brandName: string;
     unitName: string;
     cnpj: string;
-    cityName: string;
+    cityName?: string;
     neighborhood: string;
     regionId: string;
     isActive?: boolean;
@@ -537,6 +1274,14 @@ export class AdminDashboardService {
     return updated;
   }
 
+  async deleteProduct(id: string) {
+    const deleted = await this.catalogProductsService.deleteProduct(id);
+
+    this.logger.log(`Admin deactivated catalog product ${id}`);
+
+    return deleted;
+  }
+
   async uploadCatalogProductImage(
     id: string,
     file: { buffer: Buffer; mimetype: string; originalname: string },
@@ -595,6 +1340,14 @@ export class AdminDashboardService {
     this.logger.log(`Admin updated product variant ${id}`);
 
     return updated;
+  }
+
+  async deleteProductVariant(id: string) {
+    const deleted = await this.catalogProductsService.deleteVariant(id);
+
+    this.logger.log(`Admin deactivated product variant ${id}`);
+
+    return deleted;
   }
 
   async uploadProductVariantImage(
@@ -657,7 +1410,44 @@ export class AdminDashboardService {
       isActive: boolean;
     }>,
   ) {
+    const productOfferDelegate = (
+      this.prisma as unknown as {
+        productOffer?: {
+          findUnique?: (input: {
+            where: { id: string };
+            select: {
+              catalogProductId: true;
+              displayName: true;
+              priceAmount: true;
+            };
+          }) => Promise<{
+            catalogProductId: string;
+            displayName: string;
+            priceAmount: { toString(): string } | number;
+          } | null>;
+        };
+      }
+    ).productOffer;
+    const previous = productOfferDelegate?.findUnique
+      ? await productOfferDelegate.findUnique({
+          where: { id },
+          select: {
+            catalogProductId: true,
+            displayName: true,
+            priceAmount: true,
+          },
+        })
+      : null;
     const updated = await this.offerManagementService.update(id, input);
+    if (previous && input.priceAmount !== undefined) {
+      await this.notificationsService?.notifyPriceDropForProduct({
+        catalogProductId: previous.catalogProductId,
+        productName: previous.displayName,
+        previousPrice: Number(previous.priceAmount),
+        currentPrice: Number(updated.priceAmount),
+        offerId: id,
+      });
+    }
 
     this.logger.log(`Admin updated product offer ${id}`);
 

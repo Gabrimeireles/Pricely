@@ -16,7 +16,7 @@ describe('Grocery optimizer API contract', () => {
         .send({
           name: 'Contract list',
           preferredRegionId: 'sao-paulo-sp',
-          lastMode: 'global_full',
+          lastMode: 'global_multi',
         })
         .expect(201);
 
@@ -26,7 +26,7 @@ describe('Grocery optimizer API contract', () => {
           name: 'Contract list',
           preferredRegionId: 'sao-paulo-sp',
           status: 'draft',
-          lastMode: 'global_full',
+          lastMode: 'global_multi',
           latestEstimatedSavings: 0,
           items: expect.any(Array),
         }),
@@ -53,10 +53,36 @@ describe('Grocery optimizer API contract', () => {
         }),
       );
 
+      const shareResponse = await request(app.getHttpServer())
+        .post(`/shopping-lists/${shoppingListId}/share`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .expect(200);
+
+      expect(shareResponse.body).toEqual(
+        expect.objectContaining({
+          id: shoppingListId,
+          shareToken: expect.any(String),
+          sharedAt: expect.any(String),
+        }),
+      );
+
+      const sharedListResponse = await request(app.getHttpServer())
+        .get(`/shopping-lists/shared/${shareResponse.body.shareToken}`)
+        .expect(200);
+
+      expect(sharedListResponse.body).toEqual(
+        expect.objectContaining({
+          id: shoppingListId,
+          name: 'Contract list',
+          shareToken: shareResponse.body.shareToken,
+          items: expect.any(Array),
+        }),
+      );
+
       const optimizationResponse = await request(app.getHttpServer())
         .post(`/shopping-lists/${shoppingListId}/optimize`)
         .set('Authorization', `Bearer ${session.accessToken}`)
-        .send({ mode: 'global_full' })
+        .send({ mode: 'global_multi' })
         .expect(201);
 
       expect(optimizationResponse.body).toEqual(
@@ -64,7 +90,7 @@ describe('Grocery optimizer API contract', () => {
           id: expect.any(String),
           jobId: expect.any(String),
           shoppingListId,
-          mode: 'global_full',
+          mode: 'global_multi',
           status: expect.stringMatching(/queued|running|completed|failed/),
           queuedAt: expect.any(String),
         }),
@@ -79,12 +105,20 @@ describe('Grocery optimizer API contract', () => {
         expect.objectContaining({
           id: optimizationResponse.body.id,
           shoppingListId,
-          mode: 'global_full',
+          mode: 'global_multi',
           coverageStatus: expect.stringMatching(/complete|partial|none/),
           createdAt: expect.any(String),
           selections: expect.any(Array),
         }),
       );
+
+      if (latestResponse.body.selections.length > 0) {
+        expect(latestResponse.body.selections[0]).toEqual(
+          expect.objectContaining({
+            shoppingListItemName: expect.any(String),
+          }),
+        );
+      }
     } finally {
       await app.close();
     }
@@ -139,10 +173,36 @@ describe('Grocery optimizer API contract', () => {
           activeEstablishmentCount: expect.any(Number),
           offerCoverageStatus: expect.stringMatching(/live|collecting_data/),
           offers: expect.any(Array),
+          groupedOffers: expect.any(Array),
+          pagination: expect.objectContaining({
+            page: expect.any(Number),
+            pageSize: expect.any(Number),
+            totalItems: expect.any(Number),
+            totalPages: expect.any(Number),
+          }),
+          filters: expect.objectContaining({
+            stores: expect.any(Array),
+            categories: expect.any(Array),
+          }),
         }),
       );
 
       if (regionalOffersResponse.body.offers.length > 0) {
+        expect(regionalOffersResponse.body.groupedOffers[0]).toEqual(
+          expect.objectContaining({
+            productName: expect.any(String),
+            category: expect.any(String),
+            bestOffer: expect.objectContaining({
+              id: expect.any(String),
+              category: expect.any(String),
+              priceAmount: expect.any(Number),
+              storeName: expect.any(String),
+            }),
+            offers: expect.any(Array),
+            establishmentCount: expect.any(Number),
+          }),
+        );
+
         const offerId = regionalOffersResponse.body.offers[0].id as string;
         const offerDetailResponse = await request(app.getHttpServer())
           .get(`/offers/${offerId}`)

@@ -53,6 +53,7 @@
   - `cityName`: Human-readable city name
   - `neighborhood`: Neighborhood or district
   - `addressLine`: Optional address detail
+  - `postalCode`: Optional CEP/postal code for future distance and coverage previews
   - `latitude`: Optional decimal latitude for distance-based optimization
   - `longitude`: Optional decimal longitude for distance-based optimization
   - `locationSource`: Optional source label such as `admin`, `geocoded_address`, or
@@ -82,10 +83,14 @@
   - `label`: User-facing label such as `Casa` or `Trabalho`
   - `latitude`: Decimal latitude configured by the user or permissioned location flow
   - `longitude`: Decimal longitude configured by the user or permissioned location flow
+  - `postalCode`: Optional CEP fallback used only for coverage preview when exact
+    coordinates are not available
   - `coverageRadiusKm`: Maximum radius used to include nearby establishments
+    (`5 km` default, currently bounded to `1-25 km`)
   - `activeEstablishmentCount`: Last computed count of active establishments inside the
     radius
   - `isDefault`: Whether this preference is the account default for local optimization
+  - `locationSource`: `manual`, `browser_geolocation`, or `postal_code_fallback`
   - `createdAt`: Creation timestamp
   - `updatedAt`: Last mutation timestamp
 - **Relationships**:
@@ -94,10 +99,31 @@
 - **Validation Rules**:
   - Location must be provided directly by the user or through explicit device
     permission
+  - Latitude and longitude must be provided together; CEP-only fallback is allowed for
+    preview but cannot power distance-aware selection
   - Coordinates must not be derived from receipts, CPF, address text, or IP geolocation
   - `coverageRadiusKm` must be positive and bounded by product policy
   - The establishment count shown to the user must be recomputed when coordinates or
     radius changes
+
+## CoveragePreview
+
+- **Purpose**: Non-persistent preview of active stores that would be candidates for a
+  local optimization radius.
+- **Fields**:
+  - `regionId`: City/region used as the hard boundary for candidate establishments
+  - `coverageRadiusKm`: Normalized radius used for the preview; defaults to `5`
+  - `activeEstablishmentCount`: Number of active establishments returned by the
+    preview
+  - `fallbackUsed`: Whether the preview had to fall back to city/CEP coverage because
+    coordinates were missing
+  - `fallbackReason`: `missing_coordinates` or `postal_code_only`
+  - `establishments`: Up to 12 visible active establishments, sorted by distance when
+    coordinates exist
+- **Validation Rules**:
+  - Region remains the hard boundary even when coordinates are provided
+  - Stores without coordinates are excluded from distance-filtered previews
+  - CEP fallback never claims distance or proximity; returned `distanceKm` is null
 
 ## CatalogProduct
 

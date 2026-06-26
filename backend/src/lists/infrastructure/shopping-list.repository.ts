@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 
 import { ProductNormalizerService } from '../../catalog/application/product-normalizer.service';
 import { PrismaService } from '../../persistence/prisma.service';
+import { type OptimizationMode } from '../../common/contracts';
 import {
   type ShoppingListEntity,
   type ShoppingListItemEntity,
@@ -43,7 +44,7 @@ export class ShoppingListRepository {
     userId: string;
     name: string;
     preferredRegionId?: string;
-    lastMode: 'local' | 'global_unique' | 'global_full';
+    lastMode: OptimizationMode;
   }): Promise<ShoppingListEntity> {
     const list = await this.prisma.shoppingList.create({
       data: {
@@ -83,6 +84,47 @@ export class ShoppingListRepository {
     });
 
     return list ? this.toEntity(list) : null;
+  }
+
+  async findByShareToken(shareToken: string): Promise<ShoppingListEntity | null> {
+    const list = await this.prisma.shoppingList.findFirst({
+      where: {
+        shareToken,
+        sharedAt: {
+          not: null,
+        },
+        shareRevokedAt: null,
+      },
+      include: shoppingListInclude,
+    });
+
+    return list ? this.toEntity(list) : null;
+  }
+
+  async share(
+    id: string,
+    userId: string,
+    shareToken: string,
+  ): Promise<ShoppingListEntity | null> {
+    const existing = await this.findByIdForUser(id, userId);
+
+    if (!existing) {
+      return null;
+    }
+
+    const updated = await this.prisma.shoppingList.update({
+      where: {
+        id,
+      },
+      data: {
+        shareToken,
+        sharedAt: new Date(),
+        shareRevokedAt: null,
+      },
+      include: shoppingListInclude,
+    });
+
+    return this.toEntity(updated, existing.lastMode);
   }
 
   async appendItems(
@@ -149,7 +191,7 @@ export class ShoppingListRepository {
     data: {
       name?: string;
       preferredRegionId?: string;
-      lastMode?: 'local' | 'global_unique' | 'global_full';
+      lastMode?: OptimizationMode;
       items: ShoppingListItemEntity[];
     },
   ): Promise<ShoppingListEntity | null> {
@@ -225,9 +267,72 @@ export class ShoppingListRepository {
     return updated ? this.toEntity(updated, existing.lastMode) : null;
   }
 
+  async completeCheckout(
+    shoppingListId: string,
+    userId: string,
+    paidTotal?: number,
+  ): Promise<ShoppingListEntity | null> {
+    const existing = await this.findByIdForUser(shoppingListId, userId);
+
+    if (!existing) {
+      return null;
+    }
+
+    const updated = await this.prisma.shoppingList.update({
+      where: {
+        id: shoppingListId,
+      },
+      data: {
+        completedAt: new Date(),
+        paidTotal:
+          paidTotal !== undefined ? new Prisma.Decimal(paidTotal) : undefined,
+      },
+      include: shoppingListInclude,
+    });
+
+    return this.toEntity(updated, existing.lastMode);
+  }
+
+  async createPriceMismatchReport(
+    shoppingListId: string,
+    userId: string,
+    itemId: string,
+    input: {
+      expectedPrice?: number;
+      reportedPrice?: number;
+      reason?: string;
+    },
+  ): Promise<{ id: string; createdAt: string }> {
+    const report = await this.prisma.priceMismatchReport.create({
+      data: {
+        userId,
+        shoppingListId,
+        shoppingListItemId: itemId,
+        expectedPrice:
+          input.expectedPrice !== undefined
+            ? new Prisma.Decimal(input.expectedPrice)
+            : null,
+        reportedPrice:
+          input.reportedPrice !== undefined
+            ? new Prisma.Decimal(input.reportedPrice)
+            : null,
+        reason: input.reason?.trim() || null,
+      },
+      select: {
+        id: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      id: report.id,
+      createdAt: report.createdAt.toISOString(),
+    };
+  }
+
   private toEntity(
     record: ShoppingListRecord,
-    fallbackMode: 'local' | 'global_unique' | 'global_full' = 'global_full',
+    fallbackMode: OptimizationMode = 'global_multi',
   ): ShoppingListEntity {
     const latestRun = record.optimizationRuns[0];
 
@@ -244,14 +349,28 @@ export class ShoppingListRepository {
           : 0,
       latestOptimizationStatus: latestRun?.status,
       latestOptimizedAt: latestRun?.completedAt?.toISOString(),
+      shareToken: record.shareRevokedAt ? undefined : record.shareToken ?? undefined,
+      sharedAt:
+        !record.shareRevokedAt && record.sharedAt
+          ? record.sharedAt.toISOString()
+          : undefined,
+      completedAt: record.completedAt?.toISOString(),
+      paidTotal:
+        record.paidTotal !== null && record.paidTotal !== undefined
+          ? Number(record.paidTotal)
+          : undefined,
       createdAt: record.createdAt.toISOString(),
       updatedAt: record.updatedAt.toISOString(),
       items: record.shoppingListItems.map((item) => ({
         id: item.id,
         catalogProductId: item.catalogProductId ?? undefined,
         lockedProductVariantId: item.lockedProductVariantId ?? undefined,
-        brandPreferenceMode:
-          item.brandPreferenceMode === 'exact' ? 'exact' : 'any',
+        optimizedProductVariantId:
+          item.optimizedProductVariantId ?? undefined,
+        optimizedFromBrandPreferenceMode:
+          item.optimizedFromBrandPreferenceMode ?? undefined,
+        optimizedAt: item.optimizedAt?.toISOString(),
+        brandPreferenceMode: item.brandPreferenceMode,
         preferredBrandNames: item.preferredBrandNames,
         imageUrl:
           item.lockedProductVariant?.imageUrl ??

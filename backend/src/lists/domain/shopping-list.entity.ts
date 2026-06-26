@@ -11,7 +11,10 @@ export interface ShoppingListItemEntity {
   id: string;
   catalogProductId?: string;
   lockedProductVariantId?: string;
-  brandPreferenceMode: 'any' | 'exact';
+  optimizedProductVariantId?: string;
+  optimizedFromBrandPreferenceMode?: 'any' | 'preferred' | 'exact';
+  optimizedAt?: string;
+  brandPreferenceMode: 'any' | 'preferred' | 'exact';
   preferredBrandNames: string[];
   imageUrl?: string;
   requestedName: string;
@@ -34,6 +37,10 @@ export interface ShoppingListEntity {
   latestEstimatedSavings: number;
   latestOptimizationStatus?: 'queued' | 'running' | 'completed' | 'failed';
   latestOptimizedAt?: string;
+  shareToken?: string;
+  sharedAt?: string;
+  completedAt?: string;
+  paidTotal?: number;
   items: ShoppingListItemEntity[];
   createdAt: string;
   updatedAt: string;

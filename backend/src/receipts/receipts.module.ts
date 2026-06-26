@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 
 import { CatalogModule } from '../catalog/catalog.module';
+import { QueueModule } from '../common/queue/queue.module';
 import { ProcessingModule } from '../processing/processing.module';
 import { StoresModule } from '../stores/stores.module';
+import { UsersModule } from '../users/users.module';
 import { ReceiptsController } from './api/receipts.controller';
 import {
   OCR_RECEIPT_EXTRACTOR,
@@ -20,7 +22,13 @@ import { ReceiptSanitizerService } from './application/receipt-sanitizer.service
 import { ReceiptRecordRepository } from './infrastructure/receipt-record.repository';
 
 @Module({
-  imports: [CatalogModule, StoresModule, ProcessingModule],
+  imports: [
+    CatalogModule,
+    QueueModule,
+    StoresModule,
+    ProcessingModule,
+    UsersModule,
+  ],
   controllers: [ReceiptsController],
   providers: [
     ReceiptParserService,

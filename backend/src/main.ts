@@ -3,10 +3,49 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 
 import { HttpExceptionFilter } from './common/errors/http-exception.filter';
+import { IncidentNotifierService } from './common/logging/incident-notifier.service';
 import { AppValidationPipe } from './common/validation/validation.pipe';
 import { AppModule } from './app.module';
 
 loadEnv();
+
+const localWebOrigins = [
+  'http://localhost:4174',
+  'http://127.0.0.1:4174',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+];
+
+function getCorsOrigins(): string[] {
+  const configuredOrigins = [
+    ...(process.env.CORS_ALLOWED_ORIGINS ?? '').split(','),
+    process.env.WEB_APP_URL,
+  ];
+
+  return Array.from(
+    new Set(
+      [...configuredOrigins, ...localWebOrigins]
+        .map((origin) => normalizeCorsOrigin(origin))
+        .filter((origin): origin is string => Boolean(origin)),
+    ),
+  );
+}
+
+function normalizeCorsOrigin(origin?: string): string | undefined {
+  const trimmed = origin?.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return trimmed.replace(/\/+$/, '');
+  }
+}
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
@@ -14,22 +53,17 @@ async function bootstrap(): Promise<void> {
   });
 
   app.enableCors({
-    origin: [
-      'http://localhost:4174',
-      'http://127.0.0.1:4174',
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-    ],
+    origin: getCorsOrigins(),
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: false,
+    credentials: true,
   });
 
   app.useLogger(app.get(Logger));
   app.useGlobalPipes(new AppValidationPipe());
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(
+    new HttpExceptionFilter(app.get(IncidentNotifierService)),
+  );
 
   await app.listen(
     Number(process.env.PORT || 3000),

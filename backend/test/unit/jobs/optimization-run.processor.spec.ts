@@ -16,6 +16,7 @@ describe('OptimizationRunProcessor', () => {
       storeOfferRepository as never,
       multiMarketOptimizerService as never,
       optimizationRunRepository as never,
+      { consumeOptimizationToken: jest.fn() } as never,
     );
 
     await expect(processor.process('missing-run')).resolves.toBeUndefined();
@@ -100,7 +101,11 @@ describe('OptimizationRunProcessor', () => {
         userId: 'user-1',
         shoppingListId: 'list-1',
         mode: 'global_full',
+        regionId: 'region-1',
       }),
+    };
+    const entitlementsService = {
+      consumeOptimizationToken: jest.fn().mockResolvedValue(undefined),
     };
 
     const processor = new OptimizationRunProcessor(
@@ -109,20 +114,30 @@ describe('OptimizationRunProcessor', () => {
       storeOfferRepository as never,
       multiMarketOptimizerService as never,
       optimizationRunRepository as never,
+      entitlementsService as never,
     );
 
     await processor.process('run-1');
 
-    expect(storeOfferRepository.findByListItems).toHaveBeenCalledWith([
-      expect.objectContaining({
-        id: 'item-1',
-        normalizedName: 'cafe-torrado-500g',
-      }),
-    ]);
+    expect(storeOfferRepository.findByListItems).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          id: 'item-1',
+          normalizedName: 'cafe-torrado-500g',
+        }),
+      ],
+      {
+        regionId: 'region-1',
+        establishmentIds: undefined,
+      },
+    );
     expect(multiMarketOptimizerService.optimize).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'list-1' }),
       [{ id: 'offer-1' }],
       'global_full',
+      {
+        candidateEstablishmentCount: 1,
+      },
     );
     expect(prisma.optimizationSelection.deleteMany).toHaveBeenCalledWith({
       where: { optimizationRunId: 'run-1' },
@@ -151,6 +166,68 @@ describe('OptimizationRunProcessor', () => {
       data: { status: 'ready' },
     });
     expect(transaction).toHaveBeenCalledTimes(1);
+    expect(entitlementsService.consumeOptimizationToken).toHaveBeenCalledWith({
+      userId: 'user-1',
+      optimizationRunId: 'run-1',
+    });
+  });
+
+  it('does not consume an optimization token when computation fails before completion', async () => {
+    const transaction = jest.fn().mockResolvedValue([]);
+    const prisma = {
+      optimizationRun: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      optimizationSelection: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        createMany: jest.fn().mockResolvedValue(undefined),
+      },
+      shoppingList: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      $transaction: transaction,
+    };
+    const shoppingListsService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'list-1',
+        items: [{ id: 'item-1', normalizedName: 'arroz' }],
+      }),
+    };
+    const storeOfferRepository = {
+      findByListItems: jest.fn().mockResolvedValue([]),
+    };
+    const multiMarketOptimizerService = {
+      optimize: jest.fn().mockImplementation(() => {
+        throw new Error('No active establishments with coordinates are available');
+      }),
+    };
+    const optimizationRunRepository = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'run-1',
+        userId: 'user-1',
+        shoppingListId: 'list-1',
+        mode: 'global_multi',
+        regionId: 'region-1',
+      }),
+    };
+    const entitlementsService = {
+      consumeOptimizationToken: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const processor = new OptimizationRunProcessor(
+      prisma as never,
+      shoppingListsService as never,
+      storeOfferRepository as never,
+      multiMarketOptimizerService as never,
+      optimizationRunRepository as never,
+      entitlementsService as never,
+    );
+
+    await expect(processor.process('run-1')).rejects.toThrow(
+      'No active establishments with coordinates are available',
+    );
+    expect(transaction).not.toHaveBeenCalled();
+    expect(entitlementsService.consumeOptimizationToken).not.toHaveBeenCalled();
   });
 
   it('uses catalog-backed list items to load offers even when normalizedName is broader than the product canonical name', async () => {
@@ -183,7 +260,9 @@ describe('OptimizationRunProcessor', () => {
       }),
     };
     const storeOfferRepository = {
-      findByListItems: jest.fn().mockResolvedValue([{ id: 'offer-1', catalogProductId: 'product-1' }]),
+      findByListItems: jest
+        .fn()
+        .mockResolvedValue([{ id: 'offer-1', catalogProductId: 'product-1' }]),
     };
     const multiMarketOptimizerService = {
       optimize: jest.fn().mockReturnValue({
@@ -207,6 +286,7 @@ describe('OptimizationRunProcessor', () => {
         userId: 'user-1',
         shoppingListId: 'list-1',
         mode: 'global_full',
+        regionId: 'region-1',
       }),
     };
 
@@ -216,21 +296,253 @@ describe('OptimizationRunProcessor', () => {
       storeOfferRepository as never,
       multiMarketOptimizerService as never,
       optimizationRunRepository as never,
+      { consumeOptimizationToken: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     await processor.process('run-1');
 
-    expect(storeOfferRepository.findByListItems).toHaveBeenCalledWith([
-      expect.objectContaining({
-        requestedName: 'Arroz',
-        normalizedName: 'arroz',
-        catalogProductId: 'product-1',
-      }),
-    ]);
+    expect(storeOfferRepository.findByListItems).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          requestedName: 'Arroz',
+          normalizedName: 'arroz',
+          catalogProductId: 'product-1',
+        }),
+      ],
+      {
+        regionId: 'region-1',
+        establishmentIds: undefined,
+      },
+    );
     expect(multiMarketOptimizerService.optimize).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'list-1' }),
-      [expect.objectContaining({ id: 'offer-1', catalogProductId: 'product-1' })],
+      [
+        expect.objectContaining({
+          id: 'offer-1',
+          catalogProductId: 'product-1',
+        }),
+      ],
       'global_full',
+      {
+        candidateEstablishmentCount: 1,
+      },
+    );
+  });
+
+  it('persists optimized variants without locking future any-variant optimizations', async () => {
+    const transaction = jest.fn().mockResolvedValue([]);
+    const optimizedItemUpdate = jest.fn().mockResolvedValue(undefined);
+    const prisma = {
+      optimizationRun: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      optimizationSelection: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        createMany: jest.fn().mockResolvedValue(undefined),
+      },
+      shoppingList: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      shoppingListItem: {
+        update: optimizedItemUpdate,
+      },
+      $transaction: transaction,
+    };
+
+    const shoppingListsService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'list-1',
+        items: [
+          {
+            id: 'item-1',
+            requestedName: 'Arroz',
+            normalizedName: 'arroz',
+            brandPreferenceMode: 'any',
+          },
+        ],
+      }),
+    };
+    const storeOfferRepository = {
+      findByListItems: jest.fn().mockResolvedValue([
+        {
+          id: 'offer-1',
+          productVariantId: 'variant-camil',
+          storeId: 'store-1',
+        },
+      ]),
+    };
+    const multiMarketOptimizerService = {
+      optimize: jest.fn().mockReturnValue({
+        totalEstimatedCost: 21.9,
+        estimatedSavings: 1,
+        coverageStatus: 'complete',
+        explanationSummary: '1 item encontrado.',
+        selections: [
+          {
+            shoppingListItemId: 'item-1',
+            productOfferId: 'offer-1',
+            selectionStatus: 'selected',
+            estimatedCost: 21.9,
+          },
+        ],
+      }),
+    };
+    const optimizationRunRepository = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'run-1',
+        userId: 'user-1',
+        shoppingListId: 'list-1',
+        mode: 'global_multi',
+        regionId: 'region-1',
+      }),
+    };
+
+    const processor = new OptimizationRunProcessor(
+      prisma as never,
+      shoppingListsService as never,
+      storeOfferRepository as never,
+      multiMarketOptimizerService as never,
+      optimizationRunRepository as never,
+      { consumeOptimizationToken: jest.fn().mockResolvedValue(undefined) } as never,
+    );
+
+    await processor.process('run-1');
+
+    expect(optimizedItemUpdate).toHaveBeenCalledWith({
+      where: { id: 'item-1' },
+      data: {
+        optimizedProductVariantId: 'variant-camil',
+        optimizedFromBrandPreferenceMode: 'any',
+        optimizedAt: expect.any(Date),
+      },
+    });
+    expect(optimizedItemUpdate.mock.calls[0][0].data).not.toHaveProperty(
+      'lockedProductVariantId',
+    );
+    expect(transaction.mock.calls[0][0]).toContain(
+      optimizedItemUpdate.mock.results[0].value,
+    );
+  });
+
+  it('filters local optimization offers to establishments inside the saved radius', async () => {
+    const transaction = jest.fn().mockResolvedValue([]);
+    const prisma = {
+      userLocationPreference: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'location-1',
+          latitude: { toString: () => '-23.566000' },
+          longitude: { toString: () => '-46.684000' },
+          coverageRadiusKm: { toString: () => '5' },
+        }),
+      },
+      establishment: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'store-near',
+            latitude: { toString: () => '-23.566200' },
+            longitude: { toString: () => '-46.684200' },
+          },
+          {
+            id: 'store-far',
+            latitude: { toString: () => '-23.650000' },
+            longitude: { toString: () => '-46.720000' },
+          },
+        ]),
+      },
+      optimizationRun: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      optimizationSelection: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        createMany: jest.fn().mockResolvedValue(undefined),
+      },
+      shoppingList: {
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+      $transaction: transaction,
+    };
+    const shoppingListsService = {
+      getById: jest.fn().mockResolvedValue({
+        id: 'list-1',
+        items: [{ id: 'item-1', catalogProductId: 'product-1' }],
+      }),
+    };
+    const storeOfferRepository = {
+      findByListItems: jest.fn().mockResolvedValue([
+        {
+          id: 'offer-near',
+          storeId: 'store-near',
+          catalogProductId: 'product-1',
+        },
+      ]),
+    };
+    const multiMarketOptimizerService = {
+      optimize: jest.fn().mockReturnValue({
+        totalEstimatedCost: 10,
+        estimatedSavings: 0,
+        coverageStatus: 'complete',
+        explanationSummary: 'ok',
+        explanationPayload: {
+          version: 1,
+          constraints: {
+            mode: 'local_multi',
+            singleStoreRequired: false,
+            candidateEstablishmentCount: 1,
+            exactVariantItemIds: [],
+            unresolvedItemPolicy: 'flag_missing_or_review',
+          },
+          selectedOffers: [],
+          rejectedAlternatives: [],
+          savingsComparisons: [],
+          dataQualityWarnings: [],
+        },
+        selections: [],
+      }),
+    };
+    const optimizationRunRepository = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'run-1',
+        userId: 'user-1',
+        shoppingListId: 'list-1',
+        mode: 'local_multi',
+        regionId: 'region-1',
+        userLocationPreferenceId: 'location-1',
+        coverageRadiusKm: 5,
+      }),
+    };
+
+    const processor = new OptimizationRunProcessor(
+      prisma as never,
+      shoppingListsService as never,
+      storeOfferRepository as never,
+      multiMarketOptimizerService as never,
+      optimizationRunRepository as never,
+      { consumeOptimizationToken: jest.fn().mockResolvedValue(undefined) } as never,
+    );
+
+    await processor.process('run-1');
+
+    expect(storeOfferRepository.findByListItems).toHaveBeenCalledWith(
+      [expect.objectContaining({ catalogProductId: 'product-1' })],
+      {
+        regionId: 'region-1',
+        establishmentIds: ['store-near'],
+      },
+    );
+    expect(multiMarketOptimizerService.optimize).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'list-1' }),
+      [
+        expect.objectContaining({
+          id: 'offer-near',
+          distanceKm: expect.any(Number),
+        }),
+      ],
+      'local_multi',
+      {
+        userLocationPreferenceId: 'location-1',
+        coverageRadiusKm: 5,
+        candidateEstablishmentCount: 1,
+      },
     );
   });
 });

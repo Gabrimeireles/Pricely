@@ -7,12 +7,17 @@ import {
   AdminOverviewPage,
   AdminQueueDetailPage,
   AdminQueuePage,
+  AdminReceiptAuditPage,
+  AdminReceiptsPage,
   AdminRegionsPage,
+  AdminUsersPage,
 } from '@/dashboard/dashboard-pages';
+import { RouteErrorPage } from './route-error';
 
 export const dashboardRoute = {
   path: '/dashboard',
   element: <AdminLayout />,
+  errorElement: <RouteErrorPage />,
   children: [
     {
       index: true,
@@ -39,6 +44,18 @@ export const dashboardRoute = {
       element: <AdminListsPage />,
     },
     {
+      path: 'usuarios',
+      element: <AdminUsersPage />,
+    },
+    {
+      path: 'notas',
+      element: <AdminReceiptsPage />,
+    },
+    {
+      path: 'nota/:receiptId',
+      element: <AdminReceiptAuditPage />,
+    },
+    {
       path: 'fila',
       element: <AdminQueuePage />,
     },
@@ -53,6 +70,10 @@ export const dashboardRoute = {
     {
       path: 'catalogo',
       element: <AdminCatalogPage />,
+    },
+    {
+      path: '*',
+      element: <RouteErrorPage />,
     },
   ],
 };

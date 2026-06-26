@@ -90,9 +90,13 @@ export class ReceiptContributionQualityService {
       duplicateKey,
       trustLevel: 'trusted',
       moderationStatus: 'accepted',
-      rewardEligibilityStatus: 'disabled',
-      reviewReason: 'receipt_rewards_disabled',
-      logs: ['quality:trusted_receipt', 'reward:disabled_for_mvp'],
+      rewardEligibilityStatus: 'eligible_pending',
+      reviewReason: 'receipt_reward_ready',
+      logs: [
+        'quality:trusted_receipt',
+        'reward:points_pending:100',
+        'reward:optimization_token_pending:1',
+      ],
     };
   }
 

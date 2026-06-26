@@ -17,6 +17,11 @@ describe('PublicRegionsService', () => {
             implantationStatus: 'active',
             establishments: [
               {
+                id: 'est-1',
+                brandName: 'Mercado',
+                unitName: 'Mercado Centro',
+                neighborhood: 'Centro',
+                cityName: 'Sao Paulo',
                 productOffers: [{ id: 'offer-1' }, { id: 'offer-2' }],
               },
             ],
@@ -44,6 +49,16 @@ describe('PublicRegionsService', () => {
         implantationStatus: 'active',
         activeEstablishmentCount: 1,
         offerCoverageStatus: 'live',
+        establishments: [
+          {
+            id: 'est-1',
+            brandName: 'Mercado',
+            unitName: 'Mercado Centro',
+            neighborhood: 'Centro',
+            cityName: 'Sao Paulo',
+            offerCount: 2,
+          },
+        ],
       },
       {
         id: 'region-2',
@@ -53,6 +68,7 @@ describe('PublicRegionsService', () => {
         implantationStatus: 'activating',
         activeEstablishmentCount: 0,
         offerCoverageStatus: 'collecting_data',
+        establishments: [],
       },
     ]);
 

@@ -47,6 +47,11 @@ describe('EstablishmentsService', () => {
 
   it('creates and updates establishments with explicit active-state handling', async () => {
     const prisma = {
+      region: {
+        findUnique: jest.fn().mockResolvedValue({
+          name: 'Campinas',
+        }),
+      },
       establishment: {
         create: jest.fn().mockResolvedValue({
           id: 'est-1',
@@ -79,8 +84,13 @@ describe('EstablishmentsService', () => {
 
     expect(prisma.establishment.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        cityName: 'Campinas',
         isActive: true,
       }),
+    });
+    expect(prisma.region.findUnique).toHaveBeenCalledWith({
+      where: { id: 'region-1' },
+      select: { name: true },
     });
     expect(prisma.establishment.update).toHaveBeenCalledWith({
       where: { id: 'est-1' },

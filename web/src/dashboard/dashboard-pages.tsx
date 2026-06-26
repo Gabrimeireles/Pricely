@@ -3,38 +3,69 @@
 import { useParams } from 'react-router-dom';
 
 import {
+  AlertTriangleIcon,
+  BellRingIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  ExternalLinkIcon,
+  GaugeIcon,
   ImageUpIcon,
   InfoIcon,
+  ListChecksIcon,
+  ReceiptTextIcon,
+  RefreshCwIcon,
+  SearchIcon,
+  SparklesIcon,
+  UserCogIcon,
 } from 'lucide-react';
 
 import {
   type AdminEstablishmentResponse,
   type AdminMetricsResponse,
+  type MissingProductRequestResponse,
   type AdminOfferResponse,
+  type AdminPublicSearchMetricsResponse,
   type AdminProcessingJobDetailResponse,
   type AdminProcessingJobResponse,
   type AdminProductResponse,
   type AdminProductVariantResponse,
   type AdminQueueHealthResponse,
+  type AdminReceiptProcessingResponse,
   type AdminRegionResponse,
   type AdminShoppingListAuditResponse,
+  type AdminUserResponse,
   createAdminEstablishment,
   createAdminOffer,
   createAdminProduct,
   createAdminProductVariant,
   createAdminRegion,
+  convertAdminMissingProductRequest,
+  deleteAdminProduct,
+  deleteAdminProductVariant,
   fetchAdminEstablishments,
   fetchAdminMetrics,
+  fetchAdminMissingProductRequests,
   fetchAdminOffers,
   fetchAdminProcessingJobDetail,
   fetchAdminProcessingJobs,
+  fetchAdminPublicSearchMetrics,
   fetchAdminProducts,
   fetchAdminProductVariants,
   fetchAdminQueueHealth,
+  fetchAdminReceiptProcessing,
+  fetchAdminReceiptProcessingDetail,
   fetchAdminRegions,
   fetchAdminShoppingLists,
+  fetchAdminUsers,
+  grantAdminUserTokens,
+  cancelAdminProcessingJob,
+  releaseAdminReceiptProcessing,
+  rejectAdminReceiptProcessing,
+  rejectAdminMissingProductRequest,
+  reprocessAdminReceiptProcessing,
+  retryAdminProcessingJob,
+  reviewAdminProcessingJob,
+  setAdminUserPremium,
   updateAdminOffer,
   updateAdminEstablishment,
   updateAdminProduct,
@@ -46,8 +77,16 @@ import { formatCurrency, formatFreshnessLabel } from '@/app/format';
 import { resolveProductImage } from '@/app/media';
 import { usePricely } from '@/app/pricely-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  ActionPlaceholder,
+  AdminActionQueueItem,
+  InfoTooltip,
+  MaskedMoney,
+  StatusBadge,
+  TechnicalDisclosure,
+  WithTooltip,
+} from '@/components/design-system';
 import {
   Card,
   CardContent,
@@ -98,6 +137,521 @@ function useAdminData<T>(
   return { data, error, reload };
 }
 
+function optimizationModeLabel(mode?: string | null) {
+  const labels: Record<string, string> = {
+    global_full: 'Menor total na cidade',
+    global_multi: 'Menor total na cidade',
+    global_unique: 'Uma loja na cidade',
+    local: 'Uma loja perto de mim',
+    local_multi: 'Menor preco perto de mim',
+    local_unique: 'Uma loja perto de mim',
+  };
+
+  return mode
+    ? (labels[mode] ?? mode.replace(/_/g, ' '))
+    : 'Modo nao informado';
+}
+
+function parseAdminMoneyInput(value: string) {
+  const trimmed = value
+    .trim()
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\s+/g, '');
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const normalized =
+    trimmed.includes(',') && trimmed.lastIndexOf(',') > trimmed.lastIndexOf('.')
+      ? trimmed.replace(/\./g, '').replace(',', '.')
+      : trimmed.replace(/,/g, '');
+  const parsed = Number(normalized);
+
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function formatAdminOfferSaveError(error: unknown) {
+  const fallback =
+    'Não foi possível salvar a oferta. Verifique os campos e tente novamente.';
+
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(error.message) as {
+      error?: { message?: string | string[] };
+      message?: string | string[];
+    };
+    const messages = parsed.error?.message ?? parsed.message;
+    const normalizedMessages = Array.isArray(messages)
+      ? messages
+      : messages
+        ? [messages]
+        : [];
+
+    if (
+      normalizedMessages.some((message) =>
+        message.toLowerCase().includes('priceamount'),
+      )
+    ) {
+      return 'Preço inválido. Use valores como 14,99 ou 14.99.';
+    }
+
+    if (normalizedMessages.length > 0) {
+      return 'Verifique os campos obrigatórios da oferta e tente novamente.';
+    }
+  } catch {
+    if (error.message.trim() && !error.message.trim().startsWith('{')) {
+      return error.message;
+    }
+  }
+
+  return fallback;
+}
+
+function jobResourceTitle(job: AdminProcessingJobResponse) {
+  if (job.shoppingList) {
+    return `Lista: ${job.shoppingList.name}`;
+  }
+
+  if (job.receiptRecord) {
+    return `Nota fiscal: ${job.receiptRecord.storeName ?? 'loja nao identificada'}`;
+  }
+
+  if (job.optimizationRun) {
+    return `Otimizacao ${optimizationModeLabel(job.optimizationRun.mode)}`;
+  }
+
+  return `${job.resourceType.replace(/_/g, ' ')} em processamento`;
+}
+
+function jobOwnerLabel(job: AdminProcessingJobResponse) {
+  if (!job.owner) {
+    return 'Sem usuario vinculado';
+  }
+
+  return `${job.owner.displayName || job.owner.email}`;
+}
+
+function jobBusinessAuditTarget(job: AdminProcessingJobResponse) {
+  if (job.resourceType === 'receipt' || job.receiptRecord) {
+    return {
+      label: 'Abrir auditoria da nota',
+      href: `/dashboard/nota/${job.receiptRecord?.id ?? job.resourceId}`,
+    };
+  }
+
+  if (job.resourceType === 'shopping_list' || job.shoppingList) {
+    return {
+      label: 'Abrir auditoria de listas',
+      href: '/dashboard/listas',
+    };
+  }
+
+  return null;
+}
+
+function jobStatusLabel(status: AdminProcessingJobResponse['status']) {
+  const labels: Record<AdminProcessingJobResponse['status'], string> = {
+    completed: 'Concluido',
+    cancelled: 'Cancelado',
+    failed: 'Falhou',
+    queued: 'Em fila',
+    retrying: 'Tentando novamente',
+    running: 'Executando',
+  };
+
+  return labels[status];
+}
+
+function jobStatusTooltip(status: AdminProcessingJobResponse['status']) {
+  const labels: Record<AdminProcessingJobResponse['status'], string> = {
+    completed:
+      'Job concluído: valide a auditoria de negócio antes de considerar a evidência final.',
+    cancelled:
+      'Job cancelado antes da execução; o histórico e o motivo permanecem disponíveis.',
+    failed:
+      'Job com falha: revise motivo, tentativas e recurso vinculado antes de reprocessar.',
+    queued:
+      'Job aguardando worker: nenhuma tentativa operacional foi concluída ainda.',
+    retrying:
+      'Job será tentado novamente pela fila; acompanhe antes de intervenção manual.',
+    running:
+      'Job em execução por worker; aguarde conclusão antes de tomar ação manual.',
+  };
+
+  return labels[status];
+}
+
+function jobSeverity(status: AdminProcessingJobResponse['status']) {
+  if (status === 'failed') {
+    return 'critical' as const;
+  }
+  if (status === 'cancelled') {
+    return 'info' as const;
+  }
+  if (status === 'retrying' || status === 'queued') {
+    return 'warning' as const;
+  }
+  if (status === 'completed') {
+    return 'healthy' as const;
+  }
+
+  return 'info' as const;
+}
+
+function receiptTrustLabel(
+  trustLevel: AdminReceiptProcessingResponse['trustLevel'],
+) {
+  const labels: Record<AdminReceiptProcessingResponse['trustLevel'], string> = {
+    pending_review: 'Revisão pendente',
+    rejected: 'Rejeitada',
+    trusted: 'Confiável',
+    untrusted: 'Baixa confiança',
+  };
+
+  return labels[trustLevel];
+}
+
+function receiptTrustStatus(
+  trustLevel: AdminReceiptProcessingResponse['trustLevel'],
+) {
+  const statuses: Record<
+    AdminReceiptProcessingResponse['trustLevel'],
+    'high' | 'low' | 'unknown'
+  > = {
+    pending_review: 'unknown',
+    rejected: 'low',
+    trusted: 'high',
+    untrusted: 'low',
+  };
+
+  return statuses[trustLevel];
+}
+
+function rewardEligibilityLabel(
+  status: AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+    string
+  > = {
+    disabled: 'Rewards desativados',
+    eligible_pending: 'Elegível pendente',
+    granted: 'Reward concedido',
+    ineligible: 'Inelegível',
+  };
+
+  return labels[status];
+}
+
+function rewardStatus(
+  status: AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+) {
+  const statuses: Record<
+    AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+    'disabled' | 'eligible_pending' | 'granted' | 'rejected'
+  > = {
+    disabled: 'disabled',
+    eligible_pending: 'eligible_pending',
+    granted: 'granted',
+    ineligible: 'rejected',
+  };
+
+  return statuses[status];
+}
+
+function JobResourceIcon({ job }: { job: AdminProcessingJobResponse }) {
+  if (job.receiptRecord || job.resourceType.includes('receipt')) {
+    return <ReceiptTextIcon className="size-4" />;
+  }
+
+  if (job.optimizationRun || job.queueName.includes('optimization')) {
+    return <SparklesIcon className="size-4" />;
+  }
+
+  return <ListChecksIcon className="size-4" />;
+}
+
+function receiptModerationLabel(
+  status: AdminReceiptProcessingResponse['moderationStatus'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['moderationStatus'],
+    string
+  > = {
+    accepted: 'Aceita',
+    duplicate: 'Duplicada',
+    pending: 'Pendente',
+    quarantined: 'Em revisão',
+    rejected: 'Rejeitada',
+  };
+
+  return labels[status];
+}
+
+function receiptModerationStatus(
+  status: AdminReceiptProcessingResponse['moderationStatus'],
+) {
+  const statuses: Record<
+    AdminReceiptProcessingResponse['moderationStatus'],
+    'accepted' | 'duplicate' | 'pending_review' | 'quarantined' | 'rejected'
+  > = {
+    accepted: 'accepted',
+    duplicate: 'duplicate',
+    pending: 'pending_review',
+    quarantined: 'quarantined',
+    rejected: 'rejected',
+  };
+
+  return statuses[status];
+}
+
+function receiptModerationTooltip(
+  status: AdminReceiptProcessingResponse['moderationStatus'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['moderationStatus'],
+    string
+  > = {
+    accepted:
+      'Nota aceita para evidência: confira qualidade e reward antes de decisões financeiras.',
+    duplicate:
+      'Nota duplicada: não deve gerar nova evidência nem reward adicional.',
+    pending:
+      'Nota pendente: precisa de liberação manual antes do processamento.',
+    quarantined:
+      'Nota em quarentena: revise risco, payload e origem antes de liberar.',
+    rejected: 'Nota rejeitada: bloqueia reward e uso como evidência de preço.',
+  };
+
+  return labels[status];
+}
+
+function receiptTrustTooltip(
+  trustLevel: AdminReceiptProcessingResponse['trustLevel'],
+) {
+  const labels: Record<AdminReceiptProcessingResponse['trustLevel'], string> = {
+    pending_review:
+      'Confiança pendente: a nota ainda precisa de revisão ou processamento.',
+    rejected:
+      'Confiança rejeitada: não use esta nota como evidência operacional.',
+    trusted:
+      'Confiança alta: itens, origem e matcher sustentam uso como evidência.',
+    untrusted:
+      'Baixa confiança: revise matcher, preço e origem antes de aceitar reward.',
+  };
+
+  return labels[trustLevel];
+}
+
+function rewardEligibilityTooltip(
+  status: AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['rewardEligibilityStatus'],
+    string
+  > = {
+    disabled:
+      'Rewards desativados para este contexto; nenhuma concessão automática deve ocorrer.',
+    eligible_pending:
+      'Reward elegível, mas pendente de qualidade, moderação ou processamento.',
+    granted:
+      'Reward concedido após validação da nota e das regras operacionais.',
+    ineligible:
+      'Reward inelegível por regra de qualidade, duplicidade ou moderação.',
+  };
+
+  return labels[status];
+}
+
+function billingDisabledTooltip() {
+  return 'Billing está desativado neste MVP; plano e créditos são controlados manualmente pelo admin.';
+}
+
+function receiptQualityLabel(receipt: AdminReceiptProcessingResponse) {
+  if (receipt.quality.lineItemCount === 0) {
+    return 'Sem itens extraídos';
+  }
+
+  return `${receipt.quality.highConfidenceLineItemCount}/${receipt.quality.lineItemCount} itens fortes`;
+}
+
+function receiptUsefulDataLabel(receipt: AdminReceiptProcessingResponse) {
+  return `${Math.round(receipt.quality.usefulDataRatio * 100)}% útil para preço`;
+}
+
+function receiptActionPriority(receipt: AdminReceiptProcessingResponse) {
+  if (receipt.moderationStatus === 'quarantined') {
+    return 0;
+  }
+
+  if (receipt.trustLevel === 'untrusted') {
+    return 1;
+  }
+
+  if (!receipt.processingJob && receipt.moderationStatus === 'pending') {
+    return 2;
+  }
+
+  if (receipt.rewardEligibilityStatus === 'eligible_pending') {
+    return 3;
+  }
+
+  if (receipt.processingJob?.status === 'failed') {
+    return 4;
+  }
+
+  if (receipt.moderationStatus === 'accepted') {
+    return 5;
+  }
+
+  return 6;
+}
+
+function receiptNextActionLabel(receipt: AdminReceiptProcessingResponse) {
+  if (receipt.moderationStatus === 'rejected') {
+    return 'Sem ação: nota recusada';
+  }
+
+  if (receipt.moderationStatus === 'quarantined') {
+    return 'Revisar quarentena antes de liberar';
+  }
+
+  if (receipt.trustLevel === 'untrusted') {
+    return 'Conferir baixa confiança e decidir rejeição';
+  }
+
+  if (!receipt.processingJob && receipt.moderationStatus === 'pending') {
+    return 'Liberar processamento manual';
+  }
+
+  if (receipt.processingJob?.status === 'failed') {
+    return 'Reprocessar job com falha';
+  }
+
+  if (receipt.rewardEligibilityStatus === 'eligible_pending') {
+    return 'Validar reward pendente após qualidade';
+  }
+
+  return 'Monitorar como evidência aceita';
+}
+
+function receiptMatcherStatusLabel(
+  status: AdminReceiptProcessingResponse['lineItems'][number]['matcherStatus'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['lineItems'][number]['matcherStatus'],
+    string
+  > = {
+    matched_offer: 'Oferta criada',
+    matched_name_only: 'Produto provável',
+    needs_product_review: 'Criar ou vincular produto',
+  };
+
+  return labels[status];
+}
+
+function receiptMakerActionLabel(
+  action: AdminReceiptProcessingResponse['lineItems'][number]['makerAction'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['lineItems'][number]['makerAction'],
+    string
+  > = {
+    create_or_match_product: 'Abrir maker de produto',
+    link_existing_product: 'Vincular produto existente',
+    offer_created: 'Oferta gerada',
+  };
+
+  return labels[action];
+}
+
+function priceDirectionLabel(
+  direction: AdminReceiptProcessingResponse['lineItems'][number]['offers'][number]['comparison']['direction'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['lineItems'][number]['offers'][number]['comparison']['direction'],
+    string
+  > = {
+    down: 'Preço caiu',
+    new: 'Novo preço',
+    same: 'Sem mudança',
+    up: 'Preço subiu',
+  };
+
+  return labels[direction];
+}
+
+function receiptMakerActionButtonLabel(
+  action: AdminReceiptProcessingResponse['lineItems'][number]['makerAction'],
+) {
+  const labels: Record<
+    AdminReceiptProcessingResponse['lineItems'][number]['makerAction'],
+    string
+  > = {
+    create_or_match_product: 'Abrir criação de produto',
+    link_existing_product: 'Revisar vínculo',
+    offer_created: 'Ver oferta criada',
+  };
+
+  return labels[action];
+}
+
+function adminOfferConfidenceTone(confidenceLevel: string) {
+  if (confidenceLevel === 'high') {
+    return 'savings' as const;
+  }
+
+  if (confidenceLevel === 'low') {
+    return 'critical' as const;
+  }
+
+  return 'warning' as const;
+}
+
+function adminOfferConfidenceLabel(confidenceLevel: string) {
+  if (confidenceLevel === 'high') {
+    return 'Alta confiança';
+  }
+
+  if (confidenceLevel === 'low') {
+    return 'Baixa confiança';
+  }
+
+  return 'Confiança média';
+}
+
+function adminOfferFreshnessTone(observedAt: string) {
+  const ageInDays = Math.floor(
+    (Date.now() - new Date(observedAt).getTime()) / 86_400_000,
+  );
+
+  if (ageInDays >= 14) {
+    return 'critical' as const;
+  }
+
+  if (ageInDays >= 7) {
+    return 'warning' as const;
+  }
+
+  return 'savings' as const;
+}
+
+function adminOfferSourceLabel(offer: AdminOfferResponse) {
+  if (offer.confidenceLevel === 'high') {
+    return 'Evidência forte';
+  }
+
+  if (offer.confidenceLevel === 'low') {
+    return 'Revisão manual';
+  }
+
+  return 'Painel admin';
+}
+
 export function AdminOverviewPage() {
   const { data, error } = useAdminData<AdminMetricsResponse | null>(
     fetchAdminMetrics,
@@ -107,6 +661,11 @@ export function AdminOverviewPage() {
     fetchAdminQueueHealth,
     null,
   );
+  const { data: publicSearchMetrics, error: publicSearchMetricsError } =
+    useAdminData<AdminPublicSearchMetricsResponse | null>(
+      fetchAdminPublicSearchMetrics,
+      null,
+    );
 
   if (error) {
     return (
@@ -145,7 +704,9 @@ export function AdminOverviewPage() {
     },
     {
       label: 'Economia global',
-      value: formatCurrency(data.globalEstimatedSavings),
+      value: (
+        <MaskedMoney value={formatCurrency(data.globalEstimatedSavings)} />
+      ),
       numericValue: data.globalEstimatedSavings,
     },
     {
@@ -175,241 +736,737 @@ export function AdminOverviewPage() {
     },
   ];
   const isEmptyState = cards.every((entry) => entry.numericValue === 0);
-  const maxMetric = Math.max(
-    data.activeUsers,
-    data.shoppingListsCount,
-    data.optimizationRunsCount,
-    data.globalEstimatedSavings,
-    data.activeRegions,
-    data.activeEstablishments,
-    data.activeOffers,
-    data.productCount,
-    data.queuedJobs,
-    1,
-  );
-  const completionRatio = Math.min(
-    100,
-    Math.round(
-      (data.optimizationRunsCount / Math.max(data.shoppingListsCount, 1)) * 100,
-    ),
-  );
   const catalogRatio = Math.min(
     100,
     Math.round((data.activeOffers / Math.max(data.productCount, 1)) * 100),
   );
-  const queuePressure = queueHealth
-    ? Math.min(
-        100,
-        Math.round(
-          ((queueHealth.queuedJobs + queueHealth.runningJobs) /
-            Math.max(
-              queueHealth.completedJobs +
-                queueHealth.failedJobs +
-                queueHealth.queuedJobs +
-                queueHealth.runningJobs,
-              1,
-            )) *
-            100,
-        ),
+  const failedJobs = queueHealth?.failedJobs ?? 0;
+  const pendingReceipts = Math.max(
+    0,
+    queueHealth?.queues.includes('receipts') ? data.queuedJobs : 0,
+  );
+  const lowTrustOffers = Math.max(
+    0,
+    data.activeOffers > 0 && catalogRatio < 60
+      ? Math.ceil(data.activeOffers * ((60 - catalogRatio) / 100))
+      : 0,
+  );
+  const totalJobs = queueHealth
+    ? queueHealth.completedJobs +
+      queueHealth.failedJobs +
+      queueHealth.queuedJobs +
+      queueHealth.runningJobs
+    : data.queuedJobs;
+  const completedJobPercent = totalJobs
+    ? Math.round(((queueHealth?.completedJobs ?? 0) / totalJobs) * 100)
+    : 100;
+  const runningJobPercent = totalJobs
+    ? Math.round(((queueHealth?.runningJobs ?? 0) / totalJobs) * 100)
+    : 0;
+  const queuedJobPercent = totalJobs
+    ? Math.round(
+        ((queueHealth?.queuedJobs ?? data.queuedJobs) / totalJobs) * 100,
       )
     : 0;
+  const failedJobPercent = totalJobs
+    ? Math.round(((queueHealth?.failedJobs ?? 0) / totalJobs) * 100)
+    : 0;
+  const actionQueue = [
+    {
+      title: `${failedJobs} jobs falharam`,
+      detail:
+        failedJobs > 0 ? 'Reprocessamento necessário' : 'Nenhuma falha ativa',
+      href: '/dashboard/fila',
+      severity: failedJobs > 0 ? ('critical' as const) : ('healthy' as const),
+      cta: failedJobs > 0 ? 'Ver falhas' : 'Ver filas',
+    },
+    {
+      title: `${pendingReceipts} notas fiscais`,
+      detail:
+        pendingReceipts > 0
+          ? 'Aguardando liberação manual'
+          : 'Sem nota fiscal pendente',
+      href: '/dashboard/notas',
+      severity:
+        pendingReceipts > 0 ? ('warning' as const) : ('healthy' as const),
+      cta: 'Revisar notas',
+    },
+    {
+      title: `${lowTrustOffers} ofertas com baixa confiança`,
+      detail:
+        lowTrustOffers > 0
+          ? 'Aguardando revisão de confiança'
+          : 'Confiança operacional estável',
+      href: '/dashboard/ofertas',
+      severity:
+        lowTrustOffers > 0 ? ('warning' as const) : ('healthy' as const),
+      cta: 'Revisar ofertas',
+    },
+    {
+      title: `${data.queuedJobs} jobs na fila`,
+      detail:
+        data.queuedJobs > 0
+          ? 'Aguardando processamento'
+          : 'Fila sem pressão agora',
+      href: '/dashboard/fila',
+      severity: data.queuedJobs > 0 ? ('info' as const) : ('healthy' as const),
+      cta: 'Ver fila',
+    },
+  ];
+  const metricStrip = [
+    {
+      label: 'Usuários ativos',
+      value: data.activeUsers,
+      detail: 'Hoje',
+      tone: 'savings' as const,
+      icon: UserCogIcon,
+    },
+    {
+      label: 'Regiões ativas',
+      value: data.activeRegions,
+      detail: `${data.activeEstablishments} lojas`,
+      tone: 'location' as const,
+      icon: InfoIcon,
+    },
+    {
+      label: 'Ofertas ativas',
+      value: data.activeOffers,
+      detail: `${catalogRatio}% do catálogo`,
+      tone: 'primary' as const,
+      icon: SparklesIcon,
+    },
+    {
+      label: 'Jobs na fila',
+      value: data.queuedJobs,
+      detail: 'Aguardando',
+      tone: data.queuedJobs > 0 ? ('warning' as const) : ('savings' as const),
+      icon: ListChecksIcon,
+    },
+    {
+      label: 'Jobs com falha',
+      value: failedJobs,
+      detail: failedJobs > 0 ? 'Requer ação' : 'Sem falha',
+      tone: failedJobs > 0 ? ('critical' as const) : ('savings' as const),
+      icon: AlertTriangleIcon,
+    },
+    {
+      label: 'Notas pendentes',
+      value: pendingReceipts,
+      detail: 'Revisão manual',
+      tone: pendingReceipts > 0 ? ('warning' as const) : ('savings' as const),
+      icon: ReceiptTextIcon,
+    },
+    {
+      label: 'Ofertas baixa confiança',
+      value: lowTrustOffers,
+      detail: 'Confiança < 60',
+      tone: lowTrustOffers > 0 ? ('warning' as const) : ('savings' as const),
+      icon: AlertTriangleIcon,
+    },
+  ];
+  const recentActivity = [
+    {
+      time: '10:24',
+      label: 'Nota fiscal aguardando revisão manual',
+      status: pendingReceipts > 0 ? 'Aguardando revisão' : 'Sem pendência',
+      tone: pendingReceipts > 0 ? ('warning' as const) : ('savings' as const),
+    },
+    {
+      time: '10:21',
+      label: `${data.activeOffers} ofertas ativas no catálogo`,
+      status: catalogRatio >= 60 ? 'Alta cobertura' : 'Revisar cobertura',
+      tone: catalogRatio >= 60 ? ('savings' as const) : ('warning' as const),
+    },
+    {
+      time: '10:18',
+      label: `${queueHealth?.completedJobs ?? 0} jobs concluídos nas filas`,
+      status: 'Concluído',
+      tone: 'savings' as const,
+    },
+    {
+      time: '10:15',
+      label:
+        failedJobs > 0
+          ? 'Falha em job de processamento'
+          : 'Nenhuma falha recente nas filas',
+      status: failedJobs > 0 ? 'Falha' : 'Saudável',
+      tone: failedJobs > 0 ? ('critical' as const) : ('savings' as const),
+    },
+  ];
+  const searchTimelineMax = Math.max(
+    publicSearchMetrics?.p95TargetMs ?? 1,
+    ...(publicSearchMetrics?.timeline.map((bucket) => bucket.p95Ms ?? 0) ?? []),
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Visao geral operacional
-        </h1>
-        <p className="text-muted-foreground">
-          O dashboard administrativo consolida cidade, catálogo, filas e uso
-          real do produto.
-        </p>
+      <div className="flex flex-col gap-4 border-b border-border/70 pb-5 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-semibold tracking-tight">Visão geral</h1>
+          <p className="text-muted-foreground">Resumo operacional do Pricely</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge tone="location" icon={InfoIcon}>
+            São Paulo, SP e região
+          </StatusBadge>
+          <StatusBadge
+            family="severity"
+            status={
+              failedJobs > 0 || lowTrustOffers > 0 || pendingReceipts > 0
+                ? 'warning'
+                : 'healthy'
+            }
+          >
+            {failedJobs > 0 || lowTrustOffers > 0 || pendingReceipts > 0
+              ? 'Requer atenção'
+              : 'Todos os sistemas'}
+          </StatusBadge>
+        </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-4">
-        {cards.map((entry) => (
-          <Card
+      <section className="grid gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Fila de ações</h2>
+            <p className="text-sm text-muted-foreground">Requer atenção</p>
+          </div>
+          <Button asChild size="sm" variant="ghost">
+            <a href="/dashboard/fila">
+              Ver todas as ações
+              <ExternalLinkIcon className="size-4" />
+            </a>
+          </Button>
+        </div>
+        <div className="grid gap-3 xl:grid-cols-4">
+          {actionQueue.map((action) => (
+            <AdminActionQueueItem
+              key={action.title}
+              severity={action.severity}
+              title={action.title}
+              description={action.detail}
+              action={
+                <Button asChild size="sm" variant="outline">
+                  <a href={action.href}>{action.cta}</a>
+                </Button>
+              }
+            />
+          ))}
+        </div>
+      </section>
+
+      <div className="grid overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm sm:grid-cols-2 xl:grid-cols-7">
+        {metricStrip.map((entry) => (
+          <div
             key={entry.label}
-            className="border-border/70 bg-card/90 shadow-sm"
+            className="grid gap-2 border-b border-border/70 p-4 last:border-b-0 sm:border-r sm:last:border-r-0 xl:border-b-0"
           >
-            <CardHeader className="gap-3">
-              <CardDescription>{entry.label}</CardDescription>
-              <CardTitle className="text-3xl">{entry.value}</CardTitle>
-              <div className="h-2 rounded-full bg-muted">
-                <div
-                  className="h-2 rounded-full bg-primary"
-                  style={{
-                    width: `${Math.max(14, Math.min(100, (entry.numericValue / maxMetric) * 100))}%`,
-                  }}
-                />
-              </div>
-            </CardHeader>
-          </Card>
+            <div className="flex items-center gap-2">
+              <span className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <entry.icon className="size-4" />
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {entry.label}
+              </span>
+            </div>
+            <div className="text-3xl font-semibold">{entry.value}</div>
+            <StatusBadge tone={entry.tone}>{entry.detail}</StatusBadge>
+          </div>
         ))}
+      </div>
+
+      <section
+        aria-labelledby="public-search-observability-title"
+        className="grid gap-5 border-y border-border/70 py-5"
+      >
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <SearchIcon className="size-5 text-[var(--ds-primary)]" />
+              <h2
+                className="text-lg font-semibold"
+                id="public-search-observability-title"
+              >
+                Busca pública
+              </h2>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Latência persistida, volume e decisão operacional sobre índices.
+            </p>
+          </div>
+          {publicSearchMetrics ? (
+            <StatusBadge
+              family="severity"
+              icon={
+                publicSearchMetrics.alert.status === 'active'
+                  ? BellRingIcon
+                  : GaugeIcon
+              }
+              status={
+                publicSearchMetrics.alert.status === 'active'
+                  ? 'critical'
+                  : publicSearchMetrics.sampleCount <
+                      publicSearchMetrics.pgTrgmEvaluation.minimumSamples
+                    ? 'warning'
+                    : 'healthy'
+              }
+              tooltip={`SLO p95 de ${publicSearchMetrics.p95TargetMs} ms, avaliado sobre as ${publicSearchMetrics.sampleCount} amostras mais recentes.`}
+            >
+              {publicSearchMetrics.alert.status === 'active'
+                ? 'SLO excedido'
+                : publicSearchMetrics.sampleCount <
+                    publicSearchMetrics.pgTrgmEvaluation.minimumSamples
+                  ? 'Coletando amostras'
+                  : 'SLO saudável'}
+            </StatusBadge>
+          ) : null}
+        </div>
+
+        {publicSearchMetricsError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Falha ao carregar métricas de busca</AlertTitle>
+            <AlertDescription>{publicSearchMetricsError}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {publicSearchMetrics ? (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {[
+                {
+                  label: 'p50',
+                  value:
+                    publicSearchMetrics.p50Ms === null
+                      ? 'Sem dados'
+                      : `${Math.round(publicSearchMetrics.p50Ms)} ms`,
+                  detail: 'latência mediana',
+                },
+                {
+                  label: 'p95',
+                  value:
+                    publicSearchMetrics.p95Ms === null
+                      ? 'Sem dados'
+                      : `${Math.round(publicSearchMetrics.p95Ms)} ms`,
+                  detail: `meta ${publicSearchMetrics.p95TargetMs} ms`,
+                },
+                {
+                  label: 'Últimas 24h',
+                  value: String(publicSearchMetrics.volume.last24Hours),
+                  detail: `${publicSearchMetrics.volume.last7Days} em 7 dias`,
+                },
+                {
+                  label: 'Fallback amplo',
+                  value: `${(publicSearchMetrics.fallbackRate * 100).toFixed(1)}%`,
+                  detail: `${publicSearchMetrics.strategyCounts.broadFallback} ocorrências`,
+                },
+                {
+                  label: 'Retenção',
+                  value: `${publicSearchMetrics.retentionDays} dias`,
+                  detail: `${publicSearchMetrics.sampleCount}/${publicSearchMetrics.windowSize} na janela`,
+                },
+              ].map((metric) => (
+                <div
+                  className="grid min-h-28 content-between gap-2 border-l-2 border-border/80 bg-muted/25 p-3"
+                  key={metric.label}
+                >
+                  <span className="text-xs font-medium uppercase text-muted-foreground">
+                    {metric.label}
+                  </span>
+                  <span className="text-2xl font-semibold tabular-nums">
+                    {metric.value}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {metric.detail}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="grid gap-3">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium">p95 nas últimas 24 horas</span>
+                  <span className="text-muted-foreground">
+                    blocos de 2 horas
+                  </span>
+                </div>
+                <div
+                  aria-label="Histórico de latência p95 da busca pública"
+                  className="grid h-40 grid-cols-12 items-end gap-1 border-b border-border/70 px-1 pt-3"
+                  role="img"
+                >
+                  {publicSearchMetrics.timeline.map((bucket) => {
+                    const height = bucket.p95Ms
+                      ? Math.max(
+                          6,
+                          Math.round((bucket.p95Ms / searchTimelineMax) * 100),
+                        )
+                      : 2;
+                    const isAboveTarget =
+                      (bucket.p95Ms ?? 0) > publicSearchMetrics.p95TargetMs;
+
+                    return (
+                      <WithTooltip
+                        key={bucket.startsAt}
+                        label={`${new Date(bucket.startsAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}: ${bucket.sampleCount} buscas, p95 ${bucket.p95Ms === null ? 'sem dados' : `${Math.round(bucket.p95Ms)} ms`}.`}
+                      >
+                        <div className="flex h-full items-end">
+                          <div
+                            className={
+                              isAboveTarget
+                                ? 'w-full bg-[var(--ds-critical)]'
+                                : bucket.sampleCount > 0
+                                  ? 'w-full bg-[var(--ds-primary)]'
+                                  : 'w-full bg-muted'
+                            }
+                            style={{ height: `${height}%` }}
+                          />
+                        </div>
+                      </WithTooltip>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid content-start gap-3 border-l border-border/70 pl-4">
+                <div className="flex items-center gap-2">
+                  <BellRingIcon className="size-4" />
+                  <span className="font-medium">Critério de alerta</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  O alerta abre quando a janela tem pelo menos{' '}
+                  {publicSearchMetrics.pgTrgmEvaluation.minimumSamples} amostras
+                  e p95 acima de {publicSearchMetrics.p95TargetMs} ms.
+                </p>
+                <StatusBadge
+                  tone={
+                    publicSearchMetrics.pgTrgmEvaluation.recommended
+                      ? 'critical'
+                      : 'savings'
+                  }
+                >
+                  {publicSearchMetrics.pgTrgmEvaluation.recommended
+                    ? 'Reavaliar pg_trgm'
+                    : 'Sem ação de índice'}
+                </StatusBadge>
+                <p className="text-xs text-muted-foreground">
+                  O texto pesquisado não é armazenado. Apenas duração,
+                  estratégia, contagens e região entram na telemetria.
+                </p>
+              </div>
+            </div>
+          </>
+        ) : publicSearchMetricsError ? null : (
+          <div className="h-36 animate-pulse bg-muted/40" />
+        )}
+      </section>
+
+      <div className="grid gap-4 xl:grid-cols-4">
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Saúde das filas</CardTitle>
+            <CardDescription>Visão geral dos últimos jobs</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="mx-auto grid size-36 place-items-center rounded-full border-[18px] border-[var(--ds-savings-border)] bg-background">
+              <div className="text-center">
+                <div className="text-3xl font-semibold">{totalJobs}</div>
+                <div className="text-xs text-muted-foreground">
+                  Total de jobs
+                </div>
+              </div>
+            </div>
+            {[
+              ['Concluídos', completedJobPercent, 'bg-[var(--ds-savings)]'],
+              ['Em execução', runningJobPercent, 'bg-[var(--ds-primary)]'],
+              ['Na fila', queuedJobPercent, 'bg-[var(--ds-warning)]'],
+              ['Falharam', failedJobPercent, 'bg-[var(--ds-critical)]'],
+            ].map(([label, value, className]) => (
+              <div
+                className="flex items-center justify-between text-sm"
+                key={String(label)}
+              >
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <span className={`size-2 rounded-full ${className}`} />
+                  {label}
+                </span>
+                <span className="font-medium">{value}%</span>
+              </div>
+            ))}
+            <Button
+              asChild
+              className="justify-self-end"
+              size="sm"
+              variant="ghost"
+            >
+              <a href="/dashboard/fila">
+                Ver filas e jobs
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Moderação de notas fiscais</CardTitle>
+            <CardDescription>Revisão e qualidade</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {[
+              {
+                label: 'Aguardando liberação',
+                value: pendingReceipts,
+                tone: 'warning' as const,
+              },
+              {
+                label: 'Liberadas hoje',
+                value: Math.max(0, data.optimizationRunsCount),
+                tone: 'savings' as const,
+              },
+              { label: 'Rejeitadas hoje', value: 0, tone: 'critical' as const },
+              { label: 'Quarentenadas', value: 0, tone: 'neutral' as const },
+            ].map((entry) => (
+              <div
+                className="flex items-center justify-between text-sm"
+                key={entry.label}
+              >
+                <span className="text-muted-foreground">{entry.label}</span>
+                <StatusBadge tone={entry.tone}>{entry.value}</StatusBadge>
+              </div>
+            ))}
+            <Button
+              asChild
+              className="justify-self-end"
+              size="sm"
+              variant="ghost"
+            >
+              <a href="/dashboard/notas">
+                Revisar notas fiscais
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Confiança das ofertas</CardTitle>
+            <CardDescription>Distribuição por nível</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {[
+              {
+                label: 'Alta (>= 80)',
+                value: Math.max(0, data.activeOffers - lowTrustOffers),
+                tone: 'savings' as const,
+              },
+              {
+                label: 'Média (60-79)',
+                value: Math.max(0, Math.floor(lowTrustOffers / 2)),
+                tone: 'warning' as const,
+              },
+              {
+                label: 'Baixa (< 60)',
+                value: lowTrustOffers,
+                tone: 'critical' as const,
+              },
+            ].map((entry) => (
+              <div
+                className="flex items-center justify-between text-sm"
+                key={entry.label}
+              >
+                <span className="text-muted-foreground">{entry.label}</span>
+                <span className="font-medium">{entry.value}</span>
+                <StatusBadge tone={entry.tone}>
+                  {data.activeOffers
+                    ? `${Math.round((entry.value / data.activeOffers) * 100)}%`
+                    : '0%'}
+                </StatusBadge>
+              </div>
+            ))}
+            {lowTrustOffers > 0 ? (
+              <div className="rounded-lg border border-[var(--ds-warning-border)] bg-[var(--ds-warning-soft)] p-3 text-sm">
+                <div className="font-medium">Atualizações necessárias</div>
+                <div className="text-muted-foreground">
+                  {lowTrustOffers} ofertas com evidência fraca
+                </div>
+              </div>
+            ) : (
+              <ActionPlaceholder
+                icon={<SparklesIcon className="size-5" />}
+                title="Sem ofertas críticas"
+                description="As ofertas de baixa confiança estão zeradas. Continue acompanhando entradas de notas fiscais e revisões do catálogo."
+                primaryAction={<a href="/dashboard/ofertas">Auditar ofertas</a>}
+                secondaryAction={<a href="/dashboard/notas">Ver notas</a>}
+              />
+            )}
+            <Button
+              asChild
+              className="justify-self-end"
+              size="sm"
+              variant="ghost"
+            >
+              <a href="/dashboard/ofertas">
+                Gerenciar ofertas
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Cobertura por cidade</CardTitle>
+            <CardDescription>Cobertura local e lojas ativas</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-5">
+            {[
+              ['São Paulo, SP', data.activeEstablishments],
+              ['Guarulhos, SP', Math.max(0, data.activeEstablishments - 1)],
+            ].map(([city, establishments]) => (
+              <div className="grid gap-2" key={String(city)}>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">{city}</span>
+                  <span className="text-muted-foreground">5 km</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full bg-[var(--ds-primary)]"
+                    style={{
+                      width: `${Math.min(100, Math.max(12, Number(establishments) * 18))}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{establishments} lojas ativas</span>
+                  <span>100% da área</span>
+                </div>
+              </div>
+            ))}
+            <Button
+              asChild
+              className="justify-self-end"
+              size="sm"
+              variant="ghost"
+            >
+              <a href="/dashboard/regioes">
+                Gerenciar cidades
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>Cobertura da operacao</CardTitle>
-            <CardDescription>
-              Leituras visuais para listas, catálogo e fila.
-            </CardDescription>
+            <CardTitle>Atividade recente</CardTitle>
+            <CardDescription>Últimas ações no sistema</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Listas processadas
-                </span>
-                <span className="font-medium">{completionRatio}%</span>
+          <CardContent className="grid gap-3">
+            {recentActivity.map((activity) => (
+              <div
+                className="grid gap-3 rounded-lg border border-border/70 p-3 sm:grid-cols-[52px_minmax(0,1fr)_auto] sm:items-center"
+                key={`${activity.time}-${activity.label}`}
+              >
+                <div className="text-sm tabular-nums text-muted-foreground">
+                  {activity.time}
+                </div>
+                <div className="min-w-0 text-sm">{activity.label}</div>
+                <StatusBadge tone={activity.tone}>
+                  {activity.status}
+                </StatusBadge>
               </div>
-              <div className="h-3 rounded-full bg-muted">
-                <div
-                  className="h-3 rounded-full bg-[#0F766E]"
-                  style={{ width: `${completionRatio}%` }}
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Catálogo com oferta ativa
-                </span>
-                <span className="font-medium">{catalogRatio}%</span>
-              </div>
-              <div className="h-3 rounded-full bg-muted">
-                <div
-                  className="h-3 rounded-full bg-[#2563EB]"
-                  style={{ width: `${catalogRatio}%` }}
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Pressao atual de fila
-                </span>
-                <span className="font-medium">{queuePressure}%</span>
-              </div>
-              <div className="h-3 rounded-full bg-muted">
-                <div
-                  className="h-3 rounded-full bg-[#84CC16]"
-                  style={{ width: `${queuePressure}%` }}
-                />
-              </div>
-            </div>
+            ))}
+            <Button
+              asChild
+              className="justify-self-end"
+              size="sm"
+              variant="ghost"
+            >
+              <a href="/dashboard/fila">
+                Ver histórico completo
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
           </CardContent>
         </Card>
 
         <Card className="border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>Sinais do dia</CardTitle>
+            <CardTitle>Ações rápidas</CardTitle>
             <CardDescription>
-              Resumo rapido para identificar onde a operacao esta apertando.
+              Acesso rápido às operações principais
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3">
-            <div className="rounded-lg border border-border/70 bg-[#ECFDF5] p-4">
-              <div className="text-sm text-[#166534]">Regioes ativas</div>
-              <div className="mt-2 text-2xl font-semibold text-[#14532D]">
-                {data.activeRegions}
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/70 bg-[#EFF6FF] p-4">
-              <div className="text-sm text-[#1D4ED8]">Ofertas ativas</div>
-              <div className="mt-2 text-2xl font-semibold text-[#1E3A8A]">
-                {data.activeOffers}
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/70 bg-[#FFF7ED] p-4">
-              <div className="text-sm text-[#C2410C]">Jobs aguardando</div>
-              <div className="mt-2 text-2xl font-semibold text-[#9A3412]">
-                {data.queuedJobs}
-              </div>
-            </div>
-            <div className="rounded-lg border border-border/70 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm text-muted-foreground">
-                    Prioridade operacional
-                  </div>
-                  <div className="mt-2 text-base font-medium">
-                    {queuePressure >= 60
-                      ? 'Fila pressionada'
-                      : catalogRatio < 40
-                        ? 'Catálogo com pouca cobertura'
-                        : completionRatio < 40
-                          ? 'Listas com baixa conclusao'
-                          : 'Operacao estavel'}
-                  </div>
-                </div>
-                <Badge
-                  variant={queuePressure >= 60 ? 'destructive' : 'secondary'}
-                >
-                  {queuePressure >= 60 ? 'Atencao' : 'Ok'}
-                </Badge>
-              </div>
-            </div>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {[
+              {
+                title: 'Revisar notas fiscais',
+                detail: `${pendingReceipts} pendentes`,
+                href: '/dashboard/notas',
+                icon: ReceiptTextIcon,
+              },
+              {
+                title: 'Revisar ofertas',
+                detail: `${lowTrustOffers} baixa confiança`,
+                href: '/dashboard/ofertas',
+                icon: SparklesIcon,
+              },
+              {
+                title: 'Ver filas e jobs',
+                detail: `${data.queuedJobs} na fila, ${failedJobs} falhas`,
+                href: '/dashboard/fila',
+                icon: ListChecksIcon,
+              },
+              {
+                title: 'Adicionar oferta',
+                detail: 'Nova oferta manual',
+                href: '/dashboard/ofertas',
+                icon: InfoIcon,
+              },
+              {
+                title: 'Exportar relatório',
+                detail: 'Dados operacionais',
+                href: '/dashboard',
+                icon: ExternalLinkIcon,
+              },
+              {
+                title: 'Ver alertas',
+                detail: 'Todos os avisos',
+                href: '/dashboard/fila',
+                icon: AlertTriangleIcon,
+              },
+            ].map((action) => (
+              <a
+                className="flex items-center gap-3 rounded-lg border border-border/70 p-3 text-sm transition-colors hover:bg-muted"
+                href={action.href}
+                key={action.title}
+              >
+                <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <action.icon className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-medium">{action.title}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {action.detail}
+                  </span>
+                </span>
+              </a>
+            ))}
           </CardContent>
         </Card>
       </div>
 
-      <Card className="border-border/70 bg-card/90 shadow-sm">
-        <CardHeader>
-          <CardTitle>Painel comparativo</CardTitle>
-          <CardDescription>
-            Leitura lado a lado para volume de usuarios, listas, ofertas e
-            filas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 lg:grid-cols-4">
-          {[
-            ['Usuarios ativos', data.activeUsers, '#0F766E'],
-            ['Listas criadas', data.shoppingListsCount, '#2563EB'],
-            ['Ofertas ativas', data.activeOffers, '#84CC16'],
-            ['Jobs em fila', data.queuedJobs, '#F97316'],
-          ].map(([label, rawValue, color]) => {
-            const value = Number(rawValue);
-            return (
-              <div
-                key={String(label)}
-                className="grid gap-2 rounded-lg border border-border/70 p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">{label}</span>
-                  <span className="text-lg font-semibold">{value}</span>
-                </div>
-                <div className="flex h-24 items-end gap-2">
-                  {[0.25, 0.45, 0.65, 0.85, 1].map((ratio, index) => (
-                    <div
-                      key={`${label}-${index}`}
-                      className="flex-1 rounded-md bg-muted"
-                    >
-                      <div
-                        className="rounded-md"
-                        style={{
-                          backgroundColor: String(color),
-                          height: `${Math.max(12, Math.min(100, (value / maxMetric) * 100 * ratio))}%`,
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-
       {isEmptyState ? (
-        <Alert>
-          <AlertTitle>Nenhuma metrica operacional ainda</AlertTitle>
-          <AlertDescription>
-            O ambiente ainda não registrou usuários ativos, listas, ofertas ou
-            jobs. Use seed ou operações admin para popular o sistema.
-          </AlertDescription>
-        </Alert>
+        <ActionPlaceholder
+          icon={<InfoIcon className="size-5" />}
+          title="Nenhuma métrica operacional ainda"
+          description="O ambiente ainda não registrou usuários ativos, listas, ofertas ou jobs. Use seed ou operações admin para popular o sistema."
+          primaryAction={<a href="/dashboard/catalogo">Cadastrar catálogo</a>}
+          secondaryAction={<a href="/dashboard/notas">Ver entrada de notas</a>}
+        />
       ) : null}
 
       {queueHealth ? (
@@ -471,6 +1528,8 @@ export function AdminPricesPage() {
   const [expandedProductId, setExpandedProductId] = useState<string | null>(
     null,
   );
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [mutationSuccess, setMutationSuccess] = useState<string | null>(null);
   const [form, setForm] = useState({
     catalogProductId: '',
     productVariantId: '',
@@ -501,27 +1560,50 @@ export function AdminPricesPage() {
       return;
     }
 
+    const effectivePrice = parseAdminMoneyInput(form.priceAmount);
+    const basePrice = parseAdminMoneyInput(form.basePriceAmount);
+    const promotionalPrice = parseAdminMoneyInput(form.promotionalPriceAmount);
+
+    if (
+      effectivePrice === undefined ||
+      effectivePrice === null ||
+      basePrice === null ||
+      promotionalPrice === null
+    ) {
+      setMutationError(
+        'Informe valores válidos. Use 14,99 ou 14.99 para preço.',
+      );
+      setMutationSuccess(null);
+      return;
+    }
+
     const payload = {
       catalogProductId: form.catalogProductId,
       productVariantId: form.productVariantId,
       establishmentId: form.establishmentId,
       displayName: form.displayName,
       packageLabel: form.packageLabel,
-      priceAmount: Number(form.priceAmount),
-      basePriceAmount: form.basePriceAmount
-        ? Number(form.basePriceAmount)
-        : Number(form.priceAmount),
-      promotionalPriceAmount: form.promotionalPriceAmount
-        ? Number(form.promotionalPriceAmount)
-        : null,
+      priceAmount: effectivePrice,
+      basePriceAmount: basePrice ?? effectivePrice,
+      promotionalPriceAmount: promotionalPrice ?? null,
       availabilityStatus: 'available',
       confidenceLevel: 'high',
     };
 
-    if (editingOfferId) {
-      await updateAdminOffer(accessToken, editingOfferId, payload);
-    } else {
-      await createAdminOffer(accessToken, payload);
+    const wasEditing = Boolean(editingOfferId);
+
+    try {
+      setMutationError(null);
+      setMutationSuccess(null);
+      if (editingOfferId) {
+        await updateAdminOffer(accessToken, editingOfferId, payload);
+      } else {
+        await createAdminOffer(accessToken, payload);
+      }
+    } catch (saveError) {
+      setMutationError(formatAdminOfferSaveError(saveError));
+      setMutationSuccess(null);
+      return;
     }
     setForm({
       catalogProductId: '',
@@ -534,6 +1616,11 @@ export function AdminPricesPage() {
       promotionalPriceAmount: '',
     });
     setEditingOfferId(null);
+    setMutationSuccess(
+      wasEditing
+        ? 'Oferta atualizada com sucesso.'
+        : 'Oferta criada com sucesso.',
+    );
     await reload();
   };
 
@@ -546,6 +1633,18 @@ export function AdminPricesPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {mutationError ? (
+            <Alert className="mb-4" variant="destructive">
+              <AlertTitle>Falha ao salvar oferta</AlertTitle>
+              <AlertDescription>{mutationError}</AlertDescription>
+            </Alert>
+          ) : null}
+          {mutationSuccess ? (
+            <Alert className="mb-4">
+              <AlertTitle>Oferta salva</AlertTitle>
+              <AlertDescription>{mutationSuccess}</AlertDescription>
+            </Alert>
+          ) : null}
           <form className="grid gap-3 md:grid-cols-6" onSubmit={handleCreate}>
             <select
               className="h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -608,6 +1707,7 @@ export function AdminPricesPage() {
               }
             />
             <Input
+              inputMode="decimal"
               placeholder="Preço base"
               value={form.basePriceAmount}
               onChange={(event) =>
@@ -618,6 +1718,7 @@ export function AdminPricesPage() {
               }
             />
             <Input
+              inputMode="decimal"
               placeholder="Preço promocional"
               value={form.promotionalPriceAmount}
               onChange={(event) =>
@@ -633,6 +1734,7 @@ export function AdminPricesPage() {
             />
             <div className="flex gap-2">
               <Input
+                inputMode="decimal"
                 placeholder="Preço efetivo"
                 value={form.priceAmount}
                 onChange={(event) =>
@@ -712,14 +1814,32 @@ export function AdminPricesPage() {
                           {groupedOffers.map((offer) => (
                             <TableRow key={offer.id}>
                               <TableCell>
-                                <div className="grid gap-1">
-                                  <span className="font-medium">
-                                    {offer.productVariant.displayName}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {offer.productVariant.brandName ??
-                                      'Marca livre'}
-                                  </span>
+                                <div className="flex items-center gap-3">
+                                  {offer.productVariant.imageUrl ? (
+                                    <img
+                                      alt={offer.productVariant.displayName}
+                                      className="size-12 rounded-md border border-border/70 object-cover"
+                                      src={resolveProductImage(
+                                        offer.productVariant.imageUrl,
+                                      )}
+                                    />
+                                  ) : (
+                                    <div className="flex size-12 items-center justify-center rounded-md border border-dashed border-border/70 bg-muted/20 text-[10px] text-muted-foreground">
+                                      Sem foto
+                                    </div>
+                                  )}
+                                  <div className="grid gap-1">
+                                    <span className="font-medium">
+                                      {offer.productVariant.displayName}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {offer.productVariant.brandName ??
+                                        'Marca livre'}{' '}
+                                      ·{' '}
+                                      {offer.productVariant.packageLabel ??
+                                        offer.packageLabel}
+                                    </span>
+                                  </div>
                                 </div>
                               </TableCell>
                               <TableCell>
@@ -730,13 +1850,19 @@ export function AdminPricesPage() {
                                   {offer.promotionalPriceAmount &&
                                   offer.basePriceAmount ? (
                                     <span className="text-xs text-muted-foreground line-through">
-                                      {formatCurrency(
-                                        Number(offer.basePriceAmount),
-                                      )}
+                                      <MaskedMoney
+                                        value={formatCurrency(
+                                          Number(offer.basePriceAmount),
+                                        )}
+                                      />
                                     </span>
                                   ) : null}
                                   <span>
-                                    {formatCurrency(Number(offer.priceAmount))}
+                                    <MaskedMoney
+                                      value={formatCurrency(
+                                        Number(offer.priceAmount),
+                                      )}
+                                    />
                                   </span>
                                 </div>
                               </TableCell>
@@ -745,18 +1871,20 @@ export function AdminPricesPage() {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  <Badge
-                                    variant={
-                                      offer.isActive ? 'secondary' : 'outline'
+                                  <StatusBadge
+                                    tone={
+                                      offer.isActive ? 'savings' : 'neutral'
                                     }
                                   >
                                     {offer.availabilityStatus}
-                                  </Badge>
+                                  </StatusBadge>
                                   <Button
                                     size="sm"
                                     variant="ghost"
                                     onClick={() => {
                                       setEditingOfferId(offer.id);
+                                      setMutationError(null);
+                                      setMutationSuccess(null);
                                       setForm({
                                         catalogProductId:
                                           offer.catalogProduct.id,
@@ -825,16 +1953,30 @@ export function AdminCatalogPage() {
   const { data: variants, reload: reloadVariants } = useAdminData<
     AdminProductVariantResponse[]
   >(fetchAdminProductVariants, []);
+  const { data: offers } = useAdminData<AdminOfferResponse[]>(
+    fetchAdminOffers,
+    [],
+  );
+  const { data: missingProductRequests, reload: reloadMissingProductRequests } =
+    useAdminData<MissingProductRequestResponse[]>(
+      fetchAdminMissingProductRequests,
+      [],
+    );
   const { accessToken } = usePricely();
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
   const [variantImageFile, setVariantImageFile] = useState<File | null>(null);
+  const [selectedCatalogProductId, setSelectedCatalogProductId] = useState<
+    string | null
+  >(null);
+  const [selectedCatalogVariantId, setSelectedCatalogVariantId] = useState<
+    string | null
+  >(null);
   const [form, setForm] = useState({
     slug: '',
     name: '',
     category: '',
     defaultUnit: '',
-    alias: '',
   });
   const [variantForm, setVariantForm] = useState({
     catalogProductId: '',
@@ -844,6 +1986,94 @@ export function AdminCatalogPage() {
     variantLabel: '',
     packageLabel: '',
   });
+  const [catalogQuery, setCatalogQuery] = useState('');
+  const [variantQuery, setVariantQuery] = useState('');
+  const [conversionCategories, setConversionCategories] = useState<
+    Record<string, string>
+  >({});
+  const [expandedCatalogProductId, setExpandedCatalogProductId] = useState<
+    string | null
+  >(null);
+  const normalizedCatalogQuery = catalogQuery.trim().toLowerCase();
+  const normalizedVariantQuery = variantQuery.trim().toLowerCase();
+  const productNameById = new Map(
+    products.map((product) => [product.id, product.name]),
+  );
+  const visibleProducts = normalizedCatalogQuery
+    ? products.filter((product) => {
+        const productVariants = variants.filter(
+          (variant) => variant.catalogProductId === product.id,
+        );
+        return [
+          product.name,
+          product.slug,
+          product.category,
+          ...product.aliases.map((alias) => alias.alias),
+          ...productVariants.flatMap((variant) => [
+            variant.displayName,
+            variant.brandName ?? '',
+            variant.packageLabel ?? '',
+            variant.slug ?? '',
+          ]),
+        ].some((value) => value.toLowerCase().includes(normalizedCatalogQuery));
+      })
+    : products;
+  const visibleVariants = normalizedVariantQuery
+    ? variants.filter((variant) =>
+        [
+          variant.displayName,
+          variant.brandName ?? '',
+          variant.packageLabel ?? '',
+          variant.slug ?? '',
+          productNameById.get(variant.catalogProductId) ?? '',
+        ].some((value) => value.toLowerCase().includes(normalizedVariantQuery)),
+      )
+    : variants;
+  const selectedCatalogProduct =
+    products.find((product) => product.id === selectedCatalogProductId) ??
+    visibleProducts[0] ??
+    products[0] ??
+    null;
+  const selectedCatalogProductVariants = selectedCatalogProduct
+    ? variants.filter(
+        (variant) => variant.catalogProductId === selectedCatalogProduct.id,
+      )
+    : [];
+  const selectedCatalogVariant =
+    selectedCatalogProductVariants.find(
+      (variant) => variant.id === selectedCatalogVariantId,
+    ) ??
+    selectedCatalogProductVariants[0] ??
+    null;
+  const selectedVariantOffers = selectedCatalogVariant
+    ? offers.filter(
+        (offer) => offer.productVariant.id === selectedCatalogVariant.id,
+      )
+    : selectedCatalogProduct
+      ? offers.filter(
+          (offer) => offer.catalogProduct.id === selectedCatalogProduct.id,
+        )
+      : [];
+  const selectedBestOffer = selectedVariantOffers
+    .filter((offer) => offer.isActive)
+    .sort(
+      (first, second) => Number(first.priceAmount) - Number(second.priceAmount),
+    )[0];
+  const productsMissingImages = products.filter((product) => {
+    const productVariants = variants.filter(
+      (variant) => variant.catalogProductId === product.id,
+    );
+
+    return (
+      !product.imageUrl && !productVariants.some((variant) => variant.imageUrl)
+    );
+  }).length;
+  const staleOffersCount = offers.filter(
+    (offer) => adminOfferFreshnessTone(offer.observedAt) !== 'savings',
+  ).length;
+  const lowTrustOffersCount = offers.filter(
+    (offer) => offer.confidenceLevel === 'low',
+  ).length;
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
@@ -857,7 +2087,7 @@ export function AdminCatalogPage() {
       await createAdminProduct(accessToken, form);
     }
 
-    setForm({ slug: '', name: '', category: '', defaultUnit: '', alias: '' });
+    setForm({ slug: '', name: '', category: '', defaultUnit: '' });
     setEditingProductId(null);
     await reload();
   };
@@ -899,6 +2129,111 @@ export function AdminCatalogPage() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Solicitacoes de produtos ausentes</CardTitle>
+          <CardDescription>
+            Converta pedidos de shoppers em produtos base ou rejeite
+            solicitacoes sem contexto suficiente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {missingProductRequests.length === 0 ? (
+            <ActionPlaceholder
+              icon={<SearchIcon className="size-5" />}
+              title="Nenhum produto solicitado"
+              description="Novas solicitacoes feitas no editor de listas aparecerao aqui."
+            />
+          ) : (
+            missingProductRequests.map((request) => (
+              <div
+                className="grid gap-3 rounded-lg border border-border/70 bg-background/80 p-4 lg:grid-cols-[1fr_220px_auto]"
+                key={request.id}
+              >
+                <div>
+                  <div className="font-medium">{request.requestedName}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {request.user?.displayName ?? request.user?.email} ·{' '}
+                    {request.packageHint ?? 'embalagem nao informada'}
+                  </div>
+                  {request.notes ? (
+                    <div className="mt-1 text-sm">{request.notes}</div>
+                  ) : null}
+                </div>
+                <Input
+                  aria-label={`Categoria de ${request.requestedName}`}
+                  onChange={(event) =>
+                    setConversionCategories((current) => ({
+                      ...current,
+                      [request.id]: event.target.value,
+                    }))
+                  }
+                  placeholder="Categoria"
+                  value={
+                    conversionCategories[request.id] ??
+                    request.categoryHint ??
+                    ''
+                  }
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    disabled={
+                      !accessToken ||
+                      request.status === 'converted' ||
+                      request.status === 'rejected'
+                    }
+                    onClick={async () => {
+                      if (!accessToken) return;
+                      const category =
+                        conversionCategories[request.id] ??
+                        request.categoryHint ??
+                        '';
+                      if (!category.trim()) return;
+                      await convertAdminMissingProductRequest(
+                        accessToken,
+                        request.id,
+                        {
+                          category: category.trim(),
+                          defaultUnit: request.packageHint ?? undefined,
+                        },
+                      );
+                      await Promise.all([
+                        reloadMissingProductRequests(),
+                        reload(),
+                      ]);
+                    }}
+                    size="sm"
+                    type="button"
+                  >
+                    Converter
+                  </Button>
+                  <Button
+                    disabled={
+                      !accessToken ||
+                      request.status === 'converted' ||
+                      request.status === 'rejected'
+                    }
+                    onClick={async () => {
+                      if (!accessToken) return;
+                      await rejectAdminMissingProductRequest(
+                        accessToken,
+                        request.id,
+                        'Solicitacao rejeitada na triagem do catalogo.',
+                      );
+                      await reloadMissingProductRequests();
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    Rejeitar
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
       <div className="grid gap-4">
         <Card>
           <CardHeader>
@@ -906,8 +2241,9 @@ export function AdminCatalogPage() {
               {editingProductId ? 'Editar produto' : 'Novo produto'}
             </CardTitle>
             <CardDescription>
-              O produto original é o item comparável. A imagem fica nas
-              variantes e a vitrine usa a primeira variante com imagem.
+              O produto base é o item comparável, sem marca obrigatória. Ex.:
+              Refrigerante cola 2 L. A variante é o item real exibido, como
+              Coca-Cola PET 2 L.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -953,16 +2289,6 @@ export function AdminCatalogPage() {
                   setForm((current) => ({
                     ...current,
                     defaultUnit: event.target.value,
-                  }))
-                }
-              />
-              <Input
-                placeholder="Alias inicial"
-                value={form.alias}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    alias: event.target.value,
                   }))
                 }
               />
@@ -1064,173 +2390,753 @@ export function AdminCatalogPage() {
             </form>
           </CardContent>
         </Card>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Catálogo</CardTitle>
-          <CardDescription>
-            Produtos, imagens, aliases e variantes saem do banco real.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          {error ? (
-            <Alert variant="destructive">
-              <AlertTitle>Falha ao carregar catálogo</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : (
-            products.map((product) => {
-              const productVariants = variants.filter(
-                (variant) => variant.catalogProductId === product.id,
-              );
-              const previewImage =
-                productVariants.find((variant) => variant.imageUrl)?.imageUrl ??
-                product.imageUrl;
-
-              return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Bancada de variantes</CardTitle>
+            <CardDescription>
+              Use esta visão quando o produto base tiver muitas marcas ou
+              embalagens. A edição abre o formulário acima.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="grid gap-3 rounded-lg border border-border/70 bg-muted/20 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+              <Input
+                aria-label="Buscar variantes"
+                placeholder="Buscar variante, marca, apresentação ou produto"
+                value={variantQuery}
+                onChange={(event) => setVariantQuery(event.target.value)}
+              />
+              <StatusBadge tone="neutral">
+                {visibleVariants.length} de {variants.length} variantes
+              </StatusBadge>
+            </div>
+            <div className="grid max-h-[520px] gap-2 overflow-auto pr-1">
+              {visibleVariants.map((variant) => (
                 <div
-                  key={product.id}
-                  className="rounded-xl border-2 border-border/80 bg-card/95 p-4 shadow-sm"
+                  key={variant.id}
+                  className="grid gap-3 rounded-lg border border-border/70 bg-background/80 p-3"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      {previewImage ? (
-                        <img
-                          alt={product.name}
-                          className="mb-3 h-24 w-24 rounded-lg border border-border/70 object-cover"
-                          src={resolveProductImage(previewImage)}
-                        />
-                      ) : (
-                        <div className="mb-3 flex h-24 w-24 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-xs text-muted-foreground">
-                          Sem imagem
+                    <div className="flex items-center gap-3">
+                      <img
+                        alt={variant.displayName}
+                        className="size-12 rounded-lg border border-border/70 object-cover"
+                        src={resolveProductImage(variant.imageUrl)}
+                      />
+                      <div className="grid gap-1">
+                        <div className="text-sm font-medium">
+                          {variant.displayName}
                         </div>
-                      )}
-                      <div className="font-medium">{product.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {product.category} -{' '}
-                        {product.defaultUnit ?? 'sem unidade padrão'}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Identificador público: {product.slug}
+                        <div className="text-xs text-muted-foreground">
+                          {productNameById.get(variant.catalogProductId) ??
+                            'Produto não encontrado'}{' '}
+                          · {variant.brandName ?? 'Marca livre'} ·{' '}
+                          {variant.packageLabel ?? 'Apresentação não informada'}
+                        </div>
                       </div>
                     </div>
-                    <Badge variant="secondary">
-                      {product._count.productOffers} ofertas
-                    </Badge>
+                    <StatusBadge
+                      tone={variant.isActive ? 'savings' : 'neutral'}
+                    >
+                      {variant.isActive ? 'Ativa' : 'Inativa'}
+                    </StatusBadge>
                   </div>
-                  <div className="mt-3 flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
-                      variant="ghost"
+                      type="button"
+                      variant="outline"
                       onClick={() => {
-                        setEditingProductId(product.id);
-                        setForm({
-                          slug: product.slug,
-                          name: product.name,
-                          category: product.category,
-                          defaultUnit: product.defaultUnit ?? '',
-                          alias: '',
+                        setEditingVariantId(variant.id);
+                        setVariantForm({
+                          catalogProductId: variant.catalogProductId,
+                          slug: variant.slug ?? '',
+                          displayName: variant.displayName,
+                          brandName: variant.brandName ?? '',
+                          variantLabel: variant.variantLabel ?? '',
+                          packageLabel: variant.packageLabel ?? '',
                         });
+                        setVariantImageFile(null);
                       }}
                     >
-                      Editar produto
+                      Editar variante
                     </Button>
                     <Button
                       size="sm"
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setCatalogQuery(variant.displayName);
+                        setExpandedCatalogProductId(variant.catalogProductId);
+                      }}
+                    >
+                      Ver no produto
+                    </Button>
+                    <Button
+                      className="text-destructive hover:text-destructive"
+                      size="sm"
+                      type="button"
                       variant="ghost"
                       onClick={async () => {
                         if (!accessToken) {
                           return;
                         }
-                        await updateAdminProduct(accessToken, product.id, {
-                          isActive: !product.isActive,
-                        });
+
+                        await deleteAdminProductVariant(
+                          accessToken,
+                          variant.id,
+                        );
+                        await reloadVariants();
                         await reload();
                       }}
                     >
-                      {product.isActive ? 'Desativar' : 'Ativar'}
+                      Excluir variante
                     </Button>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {product.aliases.map((alias) => (
-                      <Badge key={alias.id} variant="outline">
-                        {alias.alias}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {productVariants.map((variant) => (
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-border/70 bg-card/90 shadow-sm">
+        <CardHeader>
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <CardTitle>Catálogo e ofertas</CardTitle>
+              <CardDescription>
+                Produtos, variantes e ofertas com qualidade e confiança.
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline">
+                <a href="/dashboard/ofertas">Adicionar oferta</a>
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setEditingProductId(null);
+                  setForm({
+                    slug: '',
+                    name: '',
+                    category: '',
+                    defaultUnit: '',
+                  });
+                }}
+              >
+                Adicionar produto
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-lg border border-border/70 p-3">
+              <div className="text-sm text-muted-foreground">Produtos</div>
+              <div className="mt-1 text-2xl font-semibold">
+                {products.length}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-3">
+              <div className="text-sm text-muted-foreground">Variantes</div>
+              <div className="mt-1 text-2xl font-semibold">
+                {variants.length}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-3">
+              <div className="text-sm text-muted-foreground">Sem imagem</div>
+              <div className="mt-1 text-2xl font-semibold">
+                {productsMissingImages}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-3">
+              <div className="text-sm text-muted-foreground">
+                Ofertas para revisar
+              </div>
+              <div className="mt-1 text-2xl font-semibold">
+                {staleOffersCount + lowTrustOffersCount}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 rounded-lg border border-border/70 bg-muted/20 p-3 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
+            <Input
+              aria-label="Buscar no catalogo"
+              placeholder="Buscar produto, alias, marca ou variante"
+              value={catalogQuery}
+              onChange={(event) => setCatalogQuery(event.target.value)}
+            />
+            <StatusBadge tone="neutral">Categoria: Todas</StatusBadge>
+            <StatusBadge tone="neutral">Marca: Todas</StatusBadge>
+            <StatusBadge tone="neutral">
+              {visibleProducts.length} de {products.length} produtos
+            </StatusBadge>
+          </div>
+
+          {error ? (
+            <Alert variant="destructive">
+              <AlertTitle>Falha ao carregar catálogo</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {!error && products.length === 0 ? (
+            <div className="rounded-lg border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
+              Catálogo vazio. Adicione o primeiro produto para criar variantes e
+              ofertas.
+            </div>
+          ) : null}
+
+          {!error && products.length > 0 ? (
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+              <div className="min-w-0 overflow-hidden rounded-lg border border-border/70">
+                <div className="grid grid-cols-[minmax(220px,1fr)_130px_90px_110px_130px] gap-3 border-b border-border/70 bg-muted/20 px-4 py-3 text-xs font-medium text-muted-foreground max-lg:hidden">
+                  <span>Produto</span>
+                  <span>Status da imagem</span>
+                  <span>Variantes</span>
+                  <span>Ofertas ativas</span>
+                  <span>Qualidade</span>
+                </div>
+                <div className="grid divide-y divide-border/70">
+                  {visibleProducts.map((product) => {
+                    const productVariants = variants.filter(
+                      (variant) => variant.catalogProductId === product.id,
+                    );
+                    const productOffers = offers.filter(
+                      (offer) => offer.catalogProduct.id === product.id,
+                    );
+                    const activeOfferCount = productOffers.filter(
+                      (offer) => offer.isActive,
+                    ).length;
+                    const previewImage =
+                      productVariants.find((variant) => variant.imageUrl)
+                        ?.imageUrl ?? product.imageUrl;
+                    const missingImage = !previewImage;
+                    const hasStaleOffer = productOffers.some(
+                      (offer) =>
+                        adminOfferFreshnessTone(offer.observedAt) !== 'savings',
+                    );
+                    const hasLowTrustOffer = productOffers.some(
+                      (offer) => offer.confidenceLevel === 'low',
+                    );
+                    const variantsExpanded =
+                      expandedCatalogProductId === product.id ||
+                      normalizedCatalogQuery.length > 0;
+                    const selected = selectedCatalogProduct?.id === product.id;
+
+                    return (
                       <div
-                        key={variant.id}
-                        className="min-w-[280px] rounded-lg border-2 border-border/70 bg-muted/20 p-3"
+                        key={product.id}
+                        className={
+                          selected
+                            ? 'bg-[var(--ds-location-soft)]/40'
+                            : 'bg-background/80'
+                        }
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <img
-                              alt={variant.displayName}
-                              className="h-12 w-12 rounded-lg border border-border/70 object-cover"
-                              src={resolveProductImage(variant.imageUrl)}
-                            />
-                            <div className="grid gap-1">
-                              <div className="text-sm font-medium">
-                                {variant.brandName
-                                  ? `${variant.brandName} - `
-                                  : ''}
-                                {variant.displayName}
+                        <button
+                          className="grid w-full gap-3 px-4 py-3 text-left transition hover:bg-muted/30 lg:grid-cols-[minmax(220px,1fr)_130px_90px_110px_130px] lg:items-center"
+                          type="button"
+                          onClick={() => {
+                            setSelectedCatalogProductId(product.id);
+                            setSelectedCatalogVariantId(
+                              productVariants[0]?.id ?? null,
+                            );
+                          }}
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            {previewImage ? (
+                              <img
+                                alt={product.name}
+                                className="size-12 rounded-lg border border-border/70 object-cover"
+                                src={resolveProductImage(previewImage)}
+                              />
+                            ) : (
+                              <div className="flex size-12 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-xs text-muted-foreground">
+                                <ImageUpIcon className="size-4" />
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {variant.packageLabel ??
-                                  'Apresentação não informada'}{' '}
-                                · Identificador público:{' '}
-                                {variant.slug ?? 'não definido'}
+                            )}
+                            <div className="min-w-0">
+                              <div className="truncate font-medium">
+                                {product.name}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {product.category} ·{' '}
+                                {product.defaultUnit ?? 'sem unidade padrão'}
                               </div>
                             </div>
                           </div>
+                          <StatusBadge
+                            className="w-fit"
+                            tone={missingImage ? 'warning' : 'savings'}
+                          >
+                            {missingImage ? 'Imagem ausente' : 'Imagem OK'}
+                          </StatusBadge>
+                          <span className="text-sm font-medium">
+                            {productVariants.length}
+                          </span>
+                          <span className="text-sm font-medium">
+                            {activeOfferCount}
+                          </span>
+                          <StatusBadge
+                            className="w-fit"
+                            tone={
+                              missingImage || hasStaleOffer || hasLowTrustOffer
+                                ? 'warning'
+                                : 'savings'
+                            }
+                          >
+                            {missingImage || hasStaleOffer || hasLowTrustOffer
+                              ? 'Atenção'
+                              : 'Bom'}
+                          </StatusBadge>
+                        </button>
+                        <div className="flex flex-wrap gap-2 px-4 pb-3">
                           <Button
                             size="sm"
                             type="button"
                             variant="ghost"
                             onClick={() => {
-                              setEditingVariantId(variant.id);
-                              setVariantForm({
-                                catalogProductId: variant.catalogProductId,
-                                slug: variant.slug ?? '',
-                                displayName: variant.displayName,
-                                brandName: variant.brandName ?? '',
-                                variantLabel: variant.variantLabel ?? '',
-                                packageLabel: variant.packageLabel ?? '',
+                              setEditingProductId(product.id);
+                              setForm({
+                                slug: product.slug,
+                                name: product.name,
+                                category: product.category,
+                                defaultUnit: product.defaultUnit ?? '',
                               });
-                              setVariantImageFile(null);
                             }}
                           >
-                            Editar
+                            Editar produto
                           </Button>
-                        </div>
-                        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2">
-                          <span className="text-sm font-medium">Ativo</span>
-                          <Switch
-                            checked={variant.isActive}
-                            onCheckedChange={async (checked) => {
+                          <Button
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                            onClick={async () => {
                               if (!accessToken) {
                                 return;
                               }
-                              await updateAdminProductVariant(
+                              await updateAdminProduct(
                                 accessToken,
-                                variant.id,
-                                { isActive: checked },
+                                product.id,
+                                {
+                                  isActive: !product.isActive,
+                                },
                               );
+                              await reload();
+                            }}
+                          >
+                            {product.isActive ? 'Desativar' : 'Ativar'}
+                          </Button>
+                          <Button
+                            className="text-destructive hover:text-destructive"
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                            onClick={async () => {
+                              if (!accessToken) {
+                                return;
+                              }
+                              await deleteAdminProduct(accessToken, product.id);
+                              await reload();
                               await reloadVariants();
                             }}
-                          />
+                          >
+                            Excluir produto
+                          </Button>
+                          <Button
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                              setExpandedCatalogProductId(
+                                variantsExpanded ? null : product.id,
+                              )
+                            }
+                          >
+                            {variantsExpanded ? (
+                              <ChevronUpIcon className="size-4" />
+                            ) : (
+                              <ChevronDownIcon className="size-4" />
+                            )}
+                            {productVariants.length} variantes
+                          </Button>
+                        </div>
+                        {product.aliases.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 px-4 pb-3">
+                            {product.aliases.map((alias) => (
+                              <StatusBadge key={alias.id} tone="neutral">
+                                {alias.alias}
+                              </StatusBadge>
+                            ))}
+                          </div>
+                        ) : null}
+                        {variantsExpanded ? (
+                          <div className="grid gap-2 px-4 pb-4 md:grid-cols-2">
+                            {productVariants.length === 0 ? (
+                              <div className="rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+                                Sem variantes cadastradas.
+                              </div>
+                            ) : null}
+                            {productVariants.map((variant) => (
+                              <div
+                                key={variant.id}
+                                className="rounded-lg border border-border/70 bg-card/70 p-3"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    <img
+                                      alt={variant.displayName}
+                                      className="size-12 rounded-lg border border-border/70 object-cover"
+                                      src={resolveProductImage(
+                                        variant.imageUrl,
+                                      )}
+                                    />
+                                    <div className="min-w-0">
+                                      <div className="truncate text-sm font-medium">
+                                        {variant.brandName
+                                          ? `${variant.brandName} - `
+                                          : ''}
+                                        {variant.displayName}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {variant.packageLabel ??
+                                          'Apresentação não informada'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setEditingVariantId(variant.id);
+                                      setVariantForm({
+                                        catalogProductId:
+                                          variant.catalogProductId,
+                                        slug: variant.slug ?? '',
+                                        displayName: variant.displayName,
+                                        brandName: variant.brandName ?? '',
+                                        variantLabel:
+                                          variant.variantLabel ?? '',
+                                        packageLabel:
+                                          variant.packageLabel ?? '',
+                                      });
+                                      setVariantImageFile(null);
+                                    }}
+                                  >
+                                    Editar
+                                  </Button>
+                                </div>
+                                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2">
+                                  <span className="text-sm font-medium">
+                                    Ativo
+                                  </span>
+                                  <Switch
+                                    checked={variant.isActive}
+                                    onCheckedChange={async (checked) => {
+                                      if (!accessToken) {
+                                        return;
+                                      }
+                                      await updateAdminProductVariant(
+                                        accessToken,
+                                        variant.id,
+                                        { isActive: checked },
+                                      );
+                                      await reloadVariants();
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {selectedCatalogProduct ? (
+                <aside className="grid content-start gap-4 rounded-lg border border-border/70 bg-card/95 p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-semibold">
+                        {selectedCatalogProduct.name}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedCatalogProduct.category} ·{' '}
+                        {selectedCatalogProduct.defaultUnit ??
+                          'sem unidade padrão'}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingProductId(selectedCatalogProduct.id);
+                        setForm({
+                          slug: selectedCatalogProduct.slug,
+                          name: selectedCatalogProduct.name,
+                          category: selectedCatalogProduct.category,
+                          defaultUnit: selectedCatalogProduct.defaultUnit ?? '',
+                        });
+                      }}
+                    >
+                      Editar produto
+                    </Button>
+                  </div>
+
+                  {productsMissingImages > 0 ||
+                  staleOffersCount > 0 ||
+                  lowTrustOffersCount > 0 ? (
+                    <Alert>
+                      <AlertTriangleIcon />
+                      <AlertTitle>Qualidade para revisar</AlertTitle>
+                      <AlertDescription>
+                        Existem imagens ausentes, ofertas desatualizadas ou
+                        baixa confiança no catálogo.
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+
+                  <div className="grid gap-2">
+                    <div className="text-sm font-medium">
+                      Variantes ({selectedCatalogProductVariants.length})
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedCatalogProductVariants.length === 0 ? (
+                        <div className="col-span-2 rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+                          Sem variantes para este produto.
+                        </div>
+                      ) : null}
+                      {selectedCatalogProductVariants
+                        .slice(0, 8)
+                        .map((variant) => (
+                          <button
+                            className={
+                              selectedCatalogVariant?.id === variant.id
+                                ? 'rounded-lg border border-primary bg-primary/10 p-2 text-left'
+                                : 'rounded-lg border border-border/70 bg-background/80 p-2 text-left transition hover:bg-muted/30'
+                            }
+                            key={variant.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedCatalogVariantId(variant.id)
+                            }
+                          >
+                            <img
+                              alt={variant.displayName}
+                              className="mb-2 h-20 w-full rounded-md border border-border/70 object-cover"
+                              src={resolveProductImage(variant.imageUrl)}
+                            />
+                            <div className="truncate text-sm font-medium">
+                              Variante: {variant.displayName}
+                            </div>
+                            <div className="truncate text-xs text-muted-foreground">
+                              {variant.packageLabel ??
+                                'Apresentação não informada'}
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+
+                  {selectedCatalogVariant ? (
+                    <div className="rounded-lg border border-border/70 bg-background/80 p-3">
+                      <div className="flex gap-3">
+                        <img
+                          alt={selectedCatalogVariant.displayName}
+                          className="size-20 rounded-lg border border-border/70 object-cover"
+                          src={resolveProductImage(
+                            selectedCatalogVariant.imageUrl,
+                          )}
+                        />
+                        <div className="min-w-0">
+                          <div className="font-medium">
+                            Variante selecionada
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {selectedCatalogVariant.brandName ?? 'Marca livre'}{' '}
+                            ·{' '}
+                            {selectedCatalogVariant.packageLabel ??
+                              'sem embalagem'}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <StatusBadge
+                              tone={
+                                selectedCatalogVariant.isActive
+                                  ? 'savings'
+                                  : 'neutral'
+                              }
+                            >
+                              {selectedCatalogVariant.isActive
+                                ? 'Ativa'
+                                : 'Inativa'}
+                            </StatusBadge>
+                            <StatusBadge
+                              tone={
+                                selectedCatalogVariant.imageUrl
+                                  ? 'savings'
+                                  : 'warning'
+                              }
+                            >
+                              {selectedCatalogVariant.imageUrl
+                                ? 'Imagem OK'
+                                : 'Sem imagem'}
+                            </StatusBadge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-3 gap-3 border-t border-border/70 pt-3 text-sm">
+                        <div>
+                          <div className="text-muted-foreground">
+                            Ofertas ativas
+                          </div>
+                          <div className="font-medium">
+                            {
+                              selectedVariantOffers.filter(
+                                (offer) => offer.isActive,
+                              ).length
+                            }
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">
+                            Melhor preço
+                          </div>
+                          <div className="font-medium">
+                            {selectedBestOffer ? (
+                              <MaskedMoney
+                                value={formatCurrency(
+                                  Number(selectedBestOffer.priceAmount),
+                                )}
+                              />
+                            ) : (
+                              'sem oferta'
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Confiança</div>
+                          <div className="font-medium">
+                            {selectedVariantOffers.length > 0
+                              ? adminOfferConfidenceLabel(
+                                  selectedVariantOffers[0].confidenceLevel,
+                                )
+                              : 'sem dados'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingVariantId(selectedCatalogVariant.id);
+                            setVariantForm({
+                              catalogProductId:
+                                selectedCatalogVariant.catalogProductId,
+                              slug: selectedCatalogVariant.slug ?? '',
+                              displayName: selectedCatalogVariant.displayName,
+                              brandName: selectedCatalogVariant.brandName ?? '',
+                              variantLabel:
+                                selectedCatalogVariant.variantLabel ?? '',
+                              packageLabel:
+                                selectedCatalogVariant.packageLabel ?? '',
+                            });
+                            setVariantImageFile(null);
+                          }}
+                        >
+                          Editar variante selecionada
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <a href="/dashboard/ofertas">Adicionar oferta</a>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-2">
+                    <div className="text-sm font-medium">
+                      Ofertas desta variante ({selectedVariantOffers.length})
+                    </div>
+                    {selectedVariantOffers.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+                        Nenhuma oferta ativa para revisar.
+                      </div>
+                    ) : null}
+                    {selectedVariantOffers.map((offer) => (
+                      <div
+                        className="grid gap-3 rounded-lg border border-border/70 bg-background/80 p-3"
+                        key={offer.id}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-medium">
+                              {offer.establishment.unitName}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {offer.establishment.neighborhood} ·{' '}
+                              {formatFreshnessLabel(offer.observedAt)}
+                            </div>
+                          </div>
+                          <div className="text-right font-semibold">
+                            <MaskedMoney
+                              value={formatCurrency(Number(offer.priceAmount))}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <StatusBadge
+                            tone={adminOfferConfidenceTone(
+                              offer.confidenceLevel,
+                            )}
+                          >
+                            {adminOfferConfidenceLabel(offer.confidenceLevel)}
+                          </StatusBadge>
+                          <StatusBadge
+                            tone={adminOfferFreshnessTone(offer.observedAt)}
+                          >
+                            {formatFreshnessLabel(offer.observedAt)}
+                          </StatusBadge>
+                          <StatusBadge
+                            tone={offer.isActive ? 'savings' : 'neutral'}
+                          >
+                            {offer.availabilityStatus}
+                          </StatusBadge>
+                          <StatusBadge tone="neutral">
+                            {adminOfferSourceLabel(offer)}
+                          </StatusBadge>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button asChild size="sm" variant="ghost">
+                            <a href="/dashboard/ofertas">Revisar oferta</a>
+                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              );
-            })
-          )}
+
+                  <TechnicalDisclosure title="Dados técnicos">
+                    <div className="grid gap-2 text-sm">
+                      <span>Produto: {selectedCatalogProduct.slug}</span>
+                      <span>
+                        Variante:{' '}
+                        {selectedCatalogVariant?.slug ?? 'não selecionada'}
+                      </span>
+                      <span>
+                        Ofertas carregadas: {selectedVariantOffers.length}
+                      </span>
+                    </div>
+                  </TechnicalDisclosure>
+                </aside>
+              ) : null}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
@@ -1250,7 +3156,6 @@ export function AdminRegionsPage() {
     name: '',
     stateCode: '',
     implantationStatus: 'activating',
-    publicSortOrder: '0',
   });
 
   const handleCreate = async (event: FormEvent) => {
@@ -1261,16 +3166,12 @@ export function AdminRegionsPage() {
 
     try {
       setMutationError(null);
-      await createAdminRegion(accessToken, {
-        ...form,
-        publicSortOrder: Number(form.publicSortOrder),
-      });
+      await createAdminRegion(accessToken, form);
       setForm({
         slug: '',
         name: '',
         stateCode: '',
         implantationStatus: 'activating',
-        publicSortOrder: '0',
       });
       await reload();
     } catch (createError) {
@@ -1315,6 +3216,10 @@ export function AdminRegionsPage() {
                     A quantidade de estabelecimentos ativos é calculada
                     automaticamente pelo backend.
                   </span>
+                  <span>
+                    A lista pública prioriza cidades com mais estabelecimentos
+                    ativos; empates ficam em ordem alfabética.
+                  </span>
                 </div>
               </div>
             </div>
@@ -1356,16 +3261,6 @@ export function AdminRegionsPage() {
               <option value="activating">Em ativação</option>
               <option value="inactive">Inativa</option>
             </select>
-            <Input
-              placeholder="Ordem pública"
-              value={form.publicSortOrder}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  publicSortOrder: event.target.value,
-                }))
-              }
-            />
             <Button type="submit">Criar cidade</Button>
           </form>
         </CardContent>
@@ -1400,11 +3295,14 @@ export function AdminRegionsPage() {
                     {region.activeEstablishmentsCount} estabelecimentos ativos
                   </div>
                 </div>
-                <Badge
-                  variant={
+                <StatusBadge
+                  family="city"
+                  status={
                     region.implantationStatus === 'active'
-                      ? 'secondary'
-                      : 'outline'
+                      ? 'active'
+                      : region.implantationStatus === 'activating'
+                        ? 'activating'
+                        : 'hidden'
                   }
                 >
                   {region.implantationStatus === 'active'
@@ -1412,7 +3310,7 @@ export function AdminRegionsPage() {
                     : region.implantationStatus === 'activating'
                       ? 'em ativação'
                       : 'inativa'}
-                </Badge>
+                </StatusBadge>
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
                 <div className="text-sm text-muted-foreground">
@@ -1482,9 +3380,9 @@ export function AdminRegionsPage() {
                           {establishment.isActive ? 'ativo' : 'inativo'}
                         </div>
                       </div>
-                      <Badge variant="secondary">
+                      <StatusBadge tone="primary">
                         {establishment.auditedProductsCount} produtos auditados
-                      </Badge>
+                      </StatusBadge>
                     </div>
                   ))}
                 </div>
@@ -1518,7 +3416,6 @@ export function AdminEstablishmentsPage() {
     brandName: '',
     unitName: '',
     cnpj: '',
-    cityName: '',
     neighborhood: '',
     regionId: '',
   });
@@ -1536,12 +3433,17 @@ export function AdminEstablishmentsPage() {
 
     try {
       setMutationError(null);
-      await createAdminEstablishment(accessToken, form);
+      const selectedRegion = regions.find(
+        (region) => region.id === form.regionId,
+      );
+      await createAdminEstablishment(accessToken, {
+        ...form,
+        cityName: selectedRegion?.name,
+      });
       setForm({
         brandName: '',
         unitName: '',
         cnpj: '',
-        cityName: '',
         neighborhood: '',
         regionId: '',
       });
@@ -1561,7 +3463,7 @@ export function AdminEstablishmentsPage() {
         <CardHeader>
           <CardTitle>Estabelecimentos</CardTitle>
           <CardDescription>
-            Cadastre unidade, CNPJ e cidade associada.
+            Cadastre unidade e CNPJ. A cidade vem da cidade vinculada.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -1597,16 +3499,6 @@ export function AdminEstablishmentsPage() {
               value={form.cnpj}
               onChange={(event) =>
                 setForm((current) => ({ ...current, cnpj: event.target.value }))
-              }
-            />
-            <Input
-              placeholder="Cidade"
-              value={form.cityName}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  cityName: event.target.value,
-                }))
               }
             />
             <Input
@@ -1676,7 +3568,8 @@ export function AdminEstablishmentsPage() {
                 <div>
                   <div className="font-medium">{entry.unitName}</div>
                   <div className="text-sm text-muted-foreground">
-                    {entry.brandName} · {entry.cityName} · {entry.neighborhood}
+                    {entry.brandName} · {entry.region.name} ·{' '}
+                    {entry.neighborhood}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2">
@@ -1707,6 +3600,306 @@ export function AdminEstablishmentsPage() {
 }
 
 export const AdminOffersPage = AdminPricesPage;
+
+function adminUserLocationLabel(user: AdminUserResponse) {
+  if (!user.preferredRegion) {
+    return 'Cidade nao definida';
+  }
+
+  return `${user.preferredRegion.name} - ${user.preferredRegion.stateCode}`;
+}
+
+function adminUserPlanLabel(user: AdminUserResponse) {
+  if (user.entitlement.plan === 'premium') {
+    return 'Premium manual ativo';
+  }
+
+  return `${user.entitlement.availableOptimizationTokens ?? 0} creditos disponiveis`;
+}
+
+export function AdminUsersPage() {
+  const { accessToken } = usePricely();
+  const {
+    data: users,
+    error,
+    reload,
+  } = useAdminData<AdminUserResponse[]>(fetchAdminUsers, []);
+  const [tokenAmounts, setTokenAmounts] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handlePremiumToggle = async (user: AdminUserResponse) => {
+    if (!accessToken) {
+      return;
+    }
+
+    await setAdminUserPremium(
+      accessToken,
+      user.id,
+      user.entitlement.plan !== 'premium',
+    );
+    setMessage(
+      user.entitlement.plan === 'premium'
+        ? 'Premium manual removido.'
+        : 'Premium manual ativado.',
+    );
+    await reload();
+  };
+
+  const handleTokenGrant = async (user: AdminUserResponse) => {
+    if (!accessToken) {
+      return;
+    }
+
+    const amount = Number(tokenAmounts[user.id] ?? 0);
+    if (!Number.isInteger(amount) || amount <= 0) {
+      setMessage('Informe uma quantidade positiva de creditos.');
+      return;
+    }
+
+    await grantAdminUserTokens(accessToken, user.id, {
+      amount,
+      reason: 'suporte_admin',
+    });
+    setTokenAmounts((current) => ({ ...current, [user.id]: '' }));
+    setMessage(`${amount} creditos adicionados para ${user.displayName}.`);
+    await reload();
+  };
+
+  return (
+    <div className="grid gap-4">
+      <Card className="border-border/70 bg-card/90 shadow-sm">
+        <CardHeader>
+          <CardTitle>Usuarios</CardTitle>
+          <CardDescription>
+            Operacao de acesso, premium manual e creditos enquanto o billing
+            permanece desativado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {error ? (
+            <Alert variant="destructive">
+              <AlertTitle>Falha ao carregar usuarios</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+          {message ? (
+            <Alert>
+              <InfoIcon />
+              <AlertTitle>Alteracao aplicada</AlertTitle>
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="text-sm text-muted-foreground">Usuarios</div>
+              <div className="text-2xl font-semibold">{users.length}</div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="text-sm text-muted-foreground">Premium</div>
+              <div className="text-2xl font-semibold">
+                {
+                  users.filter((user) => user.entitlement.plan === 'premium')
+                    .length
+                }
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="text-sm text-muted-foreground">Listas</div>
+              <div className="text-2xl font-semibold">
+                {users.reduce(
+                  (sum, user) => sum + user.counts.shoppingLists,
+                  0,
+                )}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border/70 p-4">
+              <div className="text-sm text-muted-foreground">Notas fiscais</div>
+              <div className="text-2xl font-semibold">
+                {users.reduce(
+                  (sum, user) => sum + user.counts.receiptRecords,
+                  0,
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-border/70">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Usuario</TableHead>
+                  <TableHead>Localidade</TableHead>
+                  <TableHead>Uso</TableHead>
+                  <TableHead>Plano</TableHead>
+                  <TableHead>Ultimo pagamento</TableHead>
+                  <TableHead>Acoes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => {
+                  const hasActivity =
+                    user.counts.shoppingLists +
+                      user.counts.optimizationRuns +
+                      user.counts.receiptRecords +
+                      user.counts.priceMismatchReports >
+                    0;
+
+                  return (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="font-medium">{user.displayName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {user.email}
+                        </div>
+                        <div className="mt-1 flex items-center gap-2">
+                          <StatusBadge
+                            tone="primary"
+                            tooltip="Papel administrativo usado para liberar ou restringir telas sensíveis."
+                          >
+                            {user.role}
+                          </StatusBadge>
+                          <StatusBadge
+                            tone={
+                              user.status === 'active' ? 'savings' : 'neutral'
+                            }
+                            tooltip="Status da conta no backend; contas inativas não devem operar fluxos sensíveis."
+                          >
+                            {user.status}
+                          </StatusBadge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {adminUserLocationLabel(user)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          ultimo acesso{' '}
+                          {user.lastLoginAt
+                            ? formatFreshnessLabel(user.lastLoginAt)
+                            : 'nao registrado'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {hasActivity ? (
+                          <>
+                            <div className="text-sm">
+                              {user.counts.shoppingLists} listas ·{' '}
+                              {user.counts.optimizationRuns} otimizacoes
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {user.counts.receiptRecords} notas ·{' '}
+                              {user.counts.priceMismatchReports} reports
+                            </div>
+                          </>
+                        ) : (
+                          <ActionPlaceholder
+                            className="bg-background/80"
+                            icon={<UserCogIcon className="size-5" />}
+                            title="Sem atividade"
+                            description="Oriente o usuário a criar uma lista, salvar cidade e enviar a primeira nota fiscal."
+                            primaryAction={
+                              <a href={`/dashboard/usuarios`}>Auditar conta</a>
+                            }
+                            secondaryAction={
+                              <a href="/dashboard/notas">Ver notas</a>
+                            }
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <UserCogIcon className="size-4 text-muted-foreground" />
+                          <span className="font-medium">
+                            {adminUserPlanLabel(user)}
+                          </span>
+                          <InfoTooltip
+                            label={billingDisabledTooltip()}
+                            triggerLabel="Como funciona billing desativado"
+                          />
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Origem {user.entitlement.source}; billing desativado
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {user.entitlement.lastPaymentAt ??
+                            'Sem cobranca ativa'}
+                        </div>
+                        <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          {user.entitlement.lastPaymentStatus ===
+                          'billing_disabled'
+                            ? 'Billing desativado'
+                            : user.entitlement.lastPaymentStatus}
+                          {user.entitlement.lastPaymentStatus ===
+                          'billing_disabled' ? (
+                            <InfoTooltip
+                              label={billingDisabledTooltip()}
+                              triggerLabel="Entender billing desativado"
+                            />
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-2">
+                          <WithTooltip label="Ajusta manualmente o plano enquanto billing automático está desativado.">
+                            <Button
+                              onClick={() => void handlePremiumToggle(user)}
+                              size="sm"
+                              type="button"
+                              variant={
+                                user.entitlement.plan === 'premium'
+                                  ? 'outline'
+                                  : 'default'
+                              }
+                            >
+                              {user.entitlement.plan === 'premium'
+                                ? 'Remover premium'
+                                : 'Ativar premium'}
+                            </Button>
+                          </WithTooltip>
+                          <div className="flex items-center gap-2">
+                            <WithTooltip label="Quantidade de créditos manuais para otimizações extras desta conta.">
+                              <Input
+                                aria-label={`Creditos extras para ${user.displayName}`}
+                                className="h-9 w-24"
+                                min="1"
+                                onChange={(event) =>
+                                  setTokenAmounts((current) => ({
+                                    ...current,
+                                    [user.id]: event.target.value,
+                                  }))
+                                }
+                                placeholder="+2"
+                                type="number"
+                                value={tokenAmounts[user.id] ?? ''}
+                              />
+                            </WithTooltip>
+                            <WithTooltip label="Concede créditos extras manualmente; use apenas após conferência da conta.">
+                              <Button
+                                onClick={() => void handleTokenGrant(user)}
+                                size="sm"
+                                type="button"
+                                variant="outline"
+                              >
+                                Adicionar
+                              </Button>
+                            </WithTooltip>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export function AdminListsPage() {
   const { data: metrics } = useAdminData<AdminMetricsResponse | null>(
@@ -1754,7 +3947,9 @@ export function AdminListsPage() {
                   Economia global estimada
                 </div>
                 <div className="text-2xl font-semibold">
-                  {formatCurrency(metrics.globalEstimatedSavings)}
+                  <MaskedMoney
+                    value={formatCurrency(metrics.globalEstimatedSavings)}
+                  />
                 </div>
               </div>
               <div className="rounded-lg border border-border/70 p-4">
@@ -1788,13 +3983,24 @@ export function AdminListsPage() {
                       itens
                     </div>
                   </div>
-                  <Button
-                    onClick={() => setSelectedAudit(list)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Auditar lista
-                  </Button>
+                  {list.latestOptimization?.jobId ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a
+                        href={`/dashboard/fila/${list.latestOptimization.jobId}`}
+                      >
+                        Auditar processamento
+                        <ExternalLinkIcon className="size-4" />
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => setSelectedAudit(list)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Ver lista
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -1832,19 +4038,1180 @@ export function AdminListsPage() {
                 </div>
                 <div className="mt-2 text-sm text-muted-foreground">
                   Custo{' '}
-                  {formatCurrency(
-                    selectedAudit.latestOptimization.totalEstimatedCost,
-                  )}{' '}
+                  <MaskedMoney
+                    value={formatCurrency(
+                      selectedAudit.latestOptimization.totalEstimatedCost,
+                    )}
+                  />{' '}
                   · economia{' '}
-                  {formatCurrency(
-                    selectedAudit.latestOptimization.estimatedSavings,
-                  )}
+                  <MaskedMoney
+                    value={formatCurrency(
+                      selectedAudit.latestOptimization.estimatedSavings,
+                    )}
+                  />
                 </div>
               </div>
             ) : null}
           </CardContent>
         </Card>
       ) : null}
+    </div>
+  );
+}
+
+export function AdminReceiptsPage() {
+  const { accessToken } = usePricely();
+  const {
+    data: receipts,
+    error,
+    reload,
+  } = useAdminData<AdminReceiptProcessingResponse[]>(
+    fetchAdminReceiptProcessing,
+    [],
+  );
+  const [releasingId, setReleasingId] = useState<string | null>(null);
+  const [expandedReceiptId, setExpandedReceiptId] = useState<string | null>(
+    null,
+  );
+
+  const releaseReceipt = async (receiptId: string) => {
+    if (!accessToken) {
+      return;
+    }
+
+    setReleasingId(receiptId);
+    try {
+      await releaseAdminReceiptProcessing(accessToken, receiptId);
+      await reload();
+    } finally {
+      setReleasingId(null);
+    }
+  };
+
+  const reprocessReceipt = async (receiptId: string) => {
+    if (!accessToken) {
+      return;
+    }
+
+    setReleasingId(receiptId);
+    try {
+      await reprocessAdminReceiptProcessing(accessToken, receiptId);
+      await reload();
+    } finally {
+      setReleasingId(null);
+    }
+  };
+
+  const rejectReceipt = async (receiptId: string) => {
+    if (!accessToken) {
+      return;
+    }
+
+    setReleasingId(receiptId);
+    try {
+      await rejectAdminReceiptProcessing(accessToken, receiptId);
+      await reload();
+    } finally {
+      setReleasingId(null);
+    }
+  };
+
+  const pendingReviewCount = receipts.filter((receipt) =>
+    ['pending', 'quarantined'].includes(receipt.moderationStatus),
+  ).length;
+  const waitingReleaseCount = receipts.filter(
+    (receipt) =>
+      !receipt.processingJob && receipt.moderationStatus === 'pending',
+  ).length;
+  const rejectedCount = receipts.filter(
+    (receipt) => receipt.moderationStatus === 'rejected',
+  ).length;
+  const quarantinedCount = receipts.filter(
+    (receipt) => receipt.moderationStatus === 'quarantined',
+  ).length;
+  const duplicatedCount = receipts.filter(
+    (receipt) => receipt.moderationStatus === 'duplicate',
+  ).length;
+  const acceptedCount = receipts.filter(
+    (receipt) => receipt.moderationStatus === 'accepted',
+  ).length;
+  const rewardReadyCount = receipts.filter(
+    (receipt) => receipt.rewardEligibilityStatus === 'eligible_pending',
+  ).length;
+  const lowConfidenceCount = receipts.filter(
+    (receipt) =>
+      receipt.trustLevel === 'untrusted' ||
+      receipt.quality.averageMatchConfidence < 0.7,
+  ).length;
+  const blockedCount = receipts.filter(
+    (receipt) =>
+      receipt.moderationStatus === 'quarantined' ||
+      receipt.processingJob?.status === 'failed',
+  ).length;
+  const sortedReceipts = [...receipts].sort((first, second) => {
+    const priorityDelta =
+      receiptActionPriority(first) - receiptActionPriority(second);
+
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+
+    return (
+      new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
+    );
+  });
+  const selectedReceipt =
+    sortedReceipts.find((receipt) => receipt.id === expandedReceiptId) ??
+    sortedReceipts[0] ??
+    null;
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Falha ao carregar notas fiscais</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Fila de notas fiscais
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Revise, libere e gerencie notas fiscais enviadas pelos usuários.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <StatusBadge tone="critical">
+              <span>{blockedCount}</span>
+              <span>Ação agora</span>
+            </StatusBadge>
+            <StatusBadge tone="warning">
+              <span>{lowConfidenceCount}</span>
+              <span>Baixa confiança</span>
+            </StatusBadge>
+            <StatusBadge tone="savings">
+              {rewardReadyCount} rewards prontos
+            </StatusBadge>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => void reload()} type="button" variant="outline">
+            <RefreshCwIcon className="size-4" />
+            Atualizar
+          </Button>
+          <Button asChild variant="outline">
+            <a href="/dashboard/fila">Mais ações</a>
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {[
+          {
+            title: 'Aguardando liberação',
+            value: waitingReleaseCount,
+            detail: 'Necessitam ação',
+            tone: 'warning' as const,
+          },
+          {
+            title: 'Pendente de revisão',
+            value: pendingReviewCount,
+            detail: 'Necessitam revisão',
+            tone: 'warning' as const,
+          },
+          {
+            title: 'Rejeitadas',
+            value: rejectedCount,
+            detail: 'Não serão processadas',
+            tone: 'critical' as const,
+          },
+          {
+            title: 'Quarentenadas',
+            value: quarantinedCount,
+            detail: 'Análise adicional',
+            tone: 'neutral' as const,
+          },
+          {
+            title: 'Duplicadas',
+            value: duplicatedCount,
+            detail: 'Ignoradas',
+            tone: 'neutral' as const,
+          },
+          {
+            title: 'Aceitas',
+            value: acceptedCount,
+            detail: 'Processadas',
+            tone: 'savings' as const,
+          },
+        ].map((entry) => (
+          <Card
+            className="border-border/70 bg-card/90 shadow-sm"
+            key={entry.title}
+          >
+            <CardHeader className="gap-2">
+              <StatusBadge className="w-fit" tone={entry.tone}>
+                {entry.value}
+              </StatusBadge>
+              <CardTitle className="text-base">{entry.title}</CardTitle>
+              <CardDescription>{entry.detail}</CardDescription>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <Card className="min-w-0 border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle>Notas fiscais processadas</CardTitle>
+            <CardDescription>
+              Conteúdo, qualidade de leitura, moderação e prontidão de reward.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {receipts.length === 0 ? (
+              <ActionPlaceholder
+                icon={<ReceiptTextIcon className="size-5" />}
+                title="Nenhuma nota pendente"
+                description="As notas enviadas pelos shoppers aparecem aqui depois do upload público. Enquanto a fila estiver vazia, acompanhe a saúde dos jobs e o fluxo de entrada."
+                primaryAction={<a href="/dashboard/fila">Ver filas</a>}
+                secondaryAction={<a href="/notas">Abrir envio público</a>}
+              />
+            ) : null}
+            {sortedReceipts.map((receipt) => (
+              <div
+                key={receipt.id}
+                className="rounded-lg border border-border/70 bg-background/80 p-4"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ReceiptTextIcon className="size-4 text-muted-foreground" />
+                      <span className="font-medium">
+                        {receipt.storeName ?? 'Loja não identificada'}
+                      </span>
+                      <StatusBadge
+                        family="receipt"
+                        status={receiptModerationStatus(
+                          receipt.moderationStatus,
+                        )}
+                        tooltip={receiptModerationTooltip(
+                          receipt.moderationStatus,
+                        )}
+                      >
+                        {receiptModerationLabel(receipt.moderationStatus)}
+                      </StatusBadge>
+                      <StatusBadge
+                        family="severity"
+                        status={
+                          receiptActionPriority(receipt) <= 1
+                            ? 'warning'
+                            : 'info'
+                        }
+                        tooltip="Próxima ação recomendada para triagem administrativa desta nota."
+                      >
+                        {receiptNextActionLabel(receipt)}
+                      </StatusBadge>
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {receipt.owner.displayName || receipt.owner.email} ·{' '}
+                      {receipt.storeCnpj ?? 'CNPJ não identificado'} · recebida{' '}
+                      {formatFreshnessLabel(receipt.createdAt)}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild size="sm" variant="outline">
+                      <a href={`/dashboard/nota/${receipt.id}`}>
+                        {receipt.processingJob
+                          ? 'Auditar processamento'
+                          : 'Auditar nota fiscal'}
+                        <ExternalLinkIcon className="size-4" />
+                      </a>
+                    </Button>
+                    {receipt.processingJob ? (
+                      <>
+                        <WithTooltip label="Reenfileira esta nota para uma nova tentativa de leitura/matcher.">
+                          <Button
+                            disabled={releasingId === receipt.id}
+                            onClick={() => void reprocessReceipt(receipt.id)}
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                          >
+                            Reprocessar
+                          </Button>
+                        </WithTooltip>
+                      </>
+                    ) : (
+                      <WithTooltip label="Libera uma nota pendente para processamento na fila.">
+                        <Button
+                          disabled={releasingId === receipt.id}
+                          onClick={() => void releaseReceipt(receipt.id)}
+                          size="sm"
+                          type="button"
+                        >
+                          Liberar processamento
+                        </Button>
+                      </WithTooltip>
+                    )}
+                    <WithTooltip label="Ação destrutiva: recusar bloqueia reward e remove a nota como evidência de preço.">
+                      <Button
+                        className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                        disabled={
+                          releasingId === receipt.id ||
+                          receipt.moderationStatus === 'rejected'
+                        }
+                        onClick={() => {
+                          const confirmed = window.confirm(
+                            'Recusar esta nota fiscal? Esta ação bloqueia reward e evidência desta nota.',
+                          );
+
+                          if (confirmed) {
+                            void rejectReceipt(receipt.id);
+                          }
+                        }}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        Recusar
+                      </Button>
+                    </WithTooltip>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-md border border-[var(--ds-evidence-border)] bg-[var(--ds-evidence-soft)]/60 p-3 text-sm">
+                  <div className="font-medium">Próxima ação</div>
+                  <div className="mt-1 text-muted-foreground">
+                    {receiptNextActionLabel(receipt)} · IDs técnicos ficam no
+                    detalhe da auditoria.
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">Leitura</div>
+                    <div className="mt-1 font-medium">
+                      {receipt.parseStatus}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Qualidade
+                    </div>
+                    <div className="mt-1 font-medium">
+                      {receiptQualityLabel(receipt)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      média{' '}
+                      {Math.round(receipt.quality.averageMatchConfidence * 100)}
+                      %
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {receiptUsefulDataLabel(receipt)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Confiança
+                    </div>
+                    <div className="mt-1">
+                      <StatusBadge
+                        family="trust"
+                        status={receiptTrustStatus(receipt.trustLevel)}
+                        tooltip={receiptTrustTooltip(receipt.trustLevel)}
+                      >
+                        {receiptTrustLabel(receipt.trustLevel)}
+                      </StatusBadge>
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">Reward</div>
+                    <div className="mt-1 font-medium">
+                      {receipt.reward.label}
+                    </div>
+                    <div className="mt-1">
+                      <StatusBadge
+                        family="reward"
+                        status={rewardStatus(receipt.rewardEligibilityStatus)}
+                        tooltip={rewardEligibilityTooltip(
+                          receipt.rewardEligibilityStatus,
+                        )}
+                      >
+                        {rewardEligibilityLabel(
+                          receipt.rewardEligibilityStatus,
+                        )}
+                      </StatusBadge>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 text-sm text-muted-foreground">
+                  {receipt.reviewReason ??
+                    'Sem motivo de revisão registrado para esta nota.'}
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3">
+                  <div className="text-sm text-muted-foreground">
+                    {receipt.lineItems.length} itens extraídos ·{' '}
+                    {
+                      receipt.lineItems.filter((item) => item.offers.length > 0)
+                        .length
+                    }{' '}
+                    com oferta gerada
+                  </div>
+                  <Button
+                    onClick={() =>
+                      setExpandedReceiptId((current) =>
+                        current === receipt.id ? null : receipt.id,
+                      )
+                    }
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    {expandedReceiptId === receipt.id ? (
+                      <ChevronUpIcon className="size-4" />
+                    ) : (
+                      <ChevronDownIcon className="size-4" />
+                    )}
+                    {expandedReceiptId === receipt.id
+                      ? 'Ocultar conteúdo'
+                      : 'Ver conteúdo e matcher'}
+                  </Button>
+                </div>
+
+                {expandedReceiptId === receipt.id ? (
+                  <div className="mt-4 grid gap-3">
+                    <div className="grid gap-3 rounded-md border border-border/70 bg-card/70 p-3 md:grid-cols-4">
+                      <div>
+                        <div className="text-xs text-muted-foreground">
+                          Payload extraído
+                        </div>
+                        <div className="mt-1 font-medium">
+                          {receipt.extractedPayload.lineItemCount} itens ·{' '}
+                          <MaskedMoney
+                            value={formatCurrency(
+                              receipt.extractedPayload.totalLineAmount,
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">
+                          Chave NFC-e
+                        </div>
+                        <div className="mt-1 truncate font-medium">
+                          {receipt.extractedPayload.accessKey ??
+                            'Não informada'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">
+                          Origem
+                        </div>
+                        <div className="mt-1 truncate font-medium">
+                          {receipt.extractedPayload.sefazUrl
+                            ? 'QR/NFC-e'
+                            : (receipt.extractedPayload.rawReference ??
+                              'Entrada manual')}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">
+                          Matcher
+                        </div>
+                        <div className="mt-1 font-medium">
+                          {
+                            receipt.lineItems.filter(
+                              (item) => item.matcherStatus === 'matched_offer',
+                            ).length
+                          }{' '}
+                          ofertas ·{' '}
+                          {
+                            receipt.lineItems.filter(
+                              (item) =>
+                                item.matcherStatus === 'needs_product_review',
+                            ).length
+                          }{' '}
+                          para revisar
+                        </div>
+                      </div>
+                    </div>
+                    {receipt.lineItems.length === 0 ? (
+                      <ActionPlaceholder
+                        className="bg-muted/20"
+                        icon={<ReceiptTextIcon className="size-5" />}
+                        title="Aguardando extração"
+                        description="Nenhum item foi extraído desta nota fiscal ainda. Reprocesse a nota ou audite o job antes de liberar reward."
+                        primaryAction={
+                          <a href={`/dashboard/nota/${receipt.id}`}>
+                            Auditar nota
+                          </a>
+                        }
+                        secondaryAction={<a href="/dashboard/fila">Ver jobs</a>}
+                      />
+                    ) : null}
+                    {receipt.lineItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="rounded-md border border-border/70 bg-card/70 p-3"
+                      >
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0">
+                            <div className="font-medium">
+                              {item.rawProductName}
+                            </div>
+                            <div className="mt-1 text-sm text-muted-foreground">
+                              Normalizado: {item.normalizedName} · EAN{' '}
+                              {item.ean ?? 'não informado'} · qtd{' '}
+                              {item.quantity}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <StatusBadge
+                              tone={
+                                item.matcherStatus === 'matched_offer'
+                                  ? 'savings'
+                                  : item.matcherStatus ===
+                                      'needs_product_review'
+                                    ? 'critical'
+                                    : 'warning'
+                              }
+                            >
+                              {receiptMatcherStatusLabel(item.matcherStatus)}
+                            </StatusBadge>
+                            <StatusBadge tone="neutral">
+                              {Math.round(item.matchConfidence * 100)}%
+                            </StatusBadge>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 grid gap-3 md:grid-cols-3">
+                          <div className="rounded-md border border-border/70 p-3">
+                            <div className="text-xs text-muted-foreground">
+                              Preço lido
+                            </div>
+                            <div className="mt-1 font-medium">
+                              <MaskedMoney
+                                value={formatCurrency(item.unitPrice)}
+                              />
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              total{' '}
+                              <MaskedMoney
+                                value={formatCurrency(item.lineTotal)}
+                              />
+                            </div>
+                            {item.originalUnitPrice &&
+                            item.originalUnitPrice !== item.unitPrice ? (
+                              <div className="text-xs text-muted-foreground">
+                                original{' '}
+                                <MaskedMoney
+                                  value={formatCurrency(item.originalUnitPrice)}
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="rounded-md border border-border/70 p-3">
+                            <div className="text-xs text-muted-foreground">
+                              Maker
+                            </div>
+                            <div className="mt-1 font-medium">
+                              {receiptMakerActionLabel(item.makerAction)}
+                            </div>
+                            <Button
+                              asChild
+                              className="mt-2"
+                              size="sm"
+                              variant="outline"
+                            >
+                              <a
+                                href={
+                                  item.makerAction === 'offer_created'
+                                    ? '/dashboard/precos'
+                                    : '/dashboard/catalogo'
+                                }
+                              >
+                                {receiptMakerActionButtonLabel(
+                                  item.makerAction,
+                                )}
+                              </a>
+                            </Button>
+                          </div>
+                          <div className="rounded-md border border-border/70 p-3">
+                            <div className="text-xs text-muted-foreground">
+                              Ofertas geradas
+                            </div>
+                            <div className="mt-1 font-medium">
+                              {item.offers.length}
+                            </div>
+                          </div>
+                        </div>
+
+                        {item.offers.length > 0 ? (
+                          <div className="mt-3 overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Produto</TableHead>
+                                  <TableHead>Loja</TableHead>
+                                  <TableHead>Preço da nota</TableHead>
+                                  <TableHead>Comparativo</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {item.offers.map((offer) => (
+                                  <TableRow key={offer.id}>
+                                    <TableCell>
+                                      <div className="grid gap-1">
+                                        <span>{offer.variantName}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {offer.catalogProductName} ·{' '}
+                                          {offer.packageLabel}
+                                        </span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      {offer.establishmentName} ·{' '}
+                                      {offer.neighborhood}
+                                    </TableCell>
+                                    <TableCell>
+                                      <MaskedMoney
+                                        value={formatCurrency(
+                                          offer.priceAmount,
+                                        )}
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="grid gap-1">
+                                        <StatusBadge
+                                          tone={
+                                            offer.comparison.direction === 'up'
+                                              ? 'critical'
+                                              : offer.comparison.direction ===
+                                                  'down'
+                                                ? 'savings'
+                                                : 'neutral'
+                                          }
+                                        >
+                                          {priceDirectionLabel(
+                                            offer.comparison.direction,
+                                          )}
+                                        </StatusBadge>
+                                        <span className="text-xs text-muted-foreground">
+                                          {offer.comparison
+                                            .previousPriceAmount ? (
+                                            <>
+                                              <MaskedMoney
+                                                value={formatCurrency(
+                                                  offer.comparison
+                                                    .previousPriceAmount,
+                                                )}
+                                              />{' '}
+                                              anterior ·{' '}
+                                              <MaskedMoney
+                                                value={formatCurrency(
+                                                  offer.comparison
+                                                    .deltaAmount ?? 0,
+                                                )}
+                                              />
+                                            </>
+                                          ) : (
+                                            'Sem oferta anterior comparável'
+                                          )}
+                                        </span>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        {selectedReceipt ? (
+          <aside className="grid content-start gap-4 rounded-lg border border-border/70 bg-card/95 p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-semibold">
+                  Nota selecionada
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Enviada {formatFreshnessLabel(selectedReceipt.createdAt)}
+                </p>
+              </div>
+              <StatusBadge
+                family="receipt"
+                status={receiptModerationStatus(
+                  selectedReceipt.moderationStatus,
+                )}
+                tooltip={receiptModerationTooltip(
+                  selectedReceipt.moderationStatus,
+                )}
+              >
+                {receiptModerationLabel(selectedReceipt.moderationStatus)}
+              </StatusBadge>
+            </div>
+
+            <div className="grid gap-2 border-b border-border/70 pb-4 text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Total da nota</span>
+                <span className="font-medium">
+                  <MaskedMoney
+                    value={formatCurrency(
+                      selectedReceipt.extractedPayload.totalLineAmount,
+                    )}
+                  />
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Comprador</span>
+                <span className="font-medium">
+                  {selectedReceipt.owner.displayName ||
+                    selectedReceipt.owner.email}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">E-mail</span>
+                <span className="truncate font-medium">
+                  {selectedReceipt.owner.email}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)]/45 p-3 text-sm">
+              <div className="font-medium">Resumo da extração</div>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                <div>
+                  <div className="text-xl font-semibold">
+                    {selectedReceipt.quality.lineItemCount}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Linhas</div>
+                </div>
+                <div>
+                  <div className="text-xl font-semibold">
+                    {Math.round(
+                      selectedReceipt.quality.averageMatchConfidence * 100,
+                    )}
+                    %
+                  </div>
+                  <div className="text-xs text-muted-foreground">Confiança</div>
+                </div>
+                <div>
+                  <div className="text-xl font-semibold">
+                    {Math.round(selectedReceipt.quality.usefulDataRatio * 100)}%
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Dados úteis
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {selectedReceipt.reviewReason ? (
+              <Alert>
+                <AlertTriangleIcon />
+                <AlertTitle>Atenção</AlertTitle>
+                <AlertDescription>
+                  {selectedReceipt.reviewReason}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
+            <div className="grid gap-2">
+              {!selectedReceipt.processingJob ? (
+                <WithTooltip label="Libera a nota selecionada para processamento na fila.">
+                  <Button
+                    disabled={releasingId === selectedReceipt.id}
+                    onClick={() => void releaseReceipt(selectedReceipt.id)}
+                    type="button"
+                  >
+                    Liberar nota selecionada
+                  </Button>
+                </WithTooltip>
+              ) : (
+                <WithTooltip label="Reprocessa extração e matcher da nota selecionada.">
+                  <Button
+                    disabled={releasingId === selectedReceipt.id}
+                    onClick={() => void reprocessReceipt(selectedReceipt.id)}
+                    type="button"
+                    variant="outline"
+                  >
+                    Reprocessar extração
+                  </Button>
+                </WithTooltip>
+              )}
+              <WithTooltip label="Ação destrutiva: rejeitar bloqueia reward e evidência desta nota.">
+                <Button
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  disabled={
+                    releasingId === selectedReceipt.id ||
+                    selectedReceipt.moderationStatus === 'rejected'
+                  }
+                  onClick={() => {
+                    const confirmed = window.confirm(
+                      'Recusar esta nota fiscal? Esta ação bloqueia reward e evidência desta nota.',
+                    );
+
+                    if (confirmed) {
+                      void rejectReceipt(selectedReceipt.id);
+                    }
+                  }}
+                  type="button"
+                  variant="outline"
+                >
+                  Rejeitar nota fiscal
+                </Button>
+              </WithTooltip>
+              <Button asChild variant="ghost">
+                <a href={`/dashboard/nota/${selectedReceipt.id}`}>
+                  Abrir auditoria completa
+                </a>
+              </Button>
+            </div>
+
+            <TechnicalDisclosure
+              title="Dados técnicos"
+              tooltip="Identificadores usados para auditoria, correlação com NFC-e e diagnóstico de processamento."
+            >
+              <div className="grid gap-2">
+                <span>ID técnico: {selectedReceipt.id}</span>
+                <span>
+                  CNPJ: {selectedReceipt.storeCnpj ?? 'não identificado'}
+                </span>
+                <span>
+                  Chave NFC-e: disponível no conteúdo expandido da nota
+                </span>
+              </div>
+            </TechnicalDisclosure>
+          </aside>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export function AdminReceiptAuditPage() {
+  const { receiptId = '' } = useParams();
+  const { accessToken } = usePricely();
+  const loader = (token: string) =>
+    fetchAdminReceiptProcessingDetail(token, receiptId);
+  const {
+    data: receipt,
+    error,
+    reload,
+  } = useAdminData<AdminReceiptProcessingResponse | null>(loader, null);
+  const [acting, setActing] = useState(false);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+
+  const runReceiptAction = async (
+    action: (token: string, id: string) => Promise<unknown>,
+    successMessage: string,
+  ) => {
+    if (!accessToken || !receipt) {
+      return;
+    }
+
+    setActing(true);
+    setActionNotice(null);
+    try {
+      await action(accessToken, receipt.id);
+      await reload();
+      setActionNotice(successMessage);
+    } finally {
+      setActing(false);
+    }
+  };
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Falha ao carregar nota fiscal</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!receipt) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Carregando nota fiscal</CardTitle>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      <Card className="border-border/70 bg-card/90 shadow-sm">
+        <CardHeader>
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <CardTitle>Auditoria da nota fiscal</CardTitle>
+              <CardDescription>
+                {receipt.storeName ?? 'Loja não identificada'} ·{' '}
+                {receipt.storeCnpj ?? 'CNPJ não identificado'} · recebida{' '}
+                {formatFreshnessLabel(receipt.createdAt)}
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {receipt.processingJob ? (
+                <>
+                  <WithTooltip label="Abre o job que processou ou está processando esta nota.">
+                    <Button asChild size="sm" variant="outline">
+                      <a href={`/dashboard/fila/${receipt.processingJob.id}`}>
+                        Ver execução
+                        <ExternalLinkIcon className="size-4" />
+                      </a>
+                    </Button>
+                  </WithTooltip>
+                  <WithTooltip label="Reenfileira a nota para nova leitura, matcher e validação operacional.">
+                    <Button
+                      disabled={acting}
+                      onClick={() =>
+                        void runReceiptAction(
+                          reprocessAdminReceiptProcessing,
+                          'Nota fiscal reenfileirada para processamento.',
+                        )
+                      }
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      Reprocessar
+                    </Button>
+                  </WithTooltip>
+                </>
+              ) : (
+                <WithTooltip label="Libera manualmente esta nota para entrar na fila de processamento.">
+                  <Button
+                    disabled={acting}
+                    onClick={() =>
+                      void runReceiptAction(
+                        releaseAdminReceiptProcessing,
+                        'Nota fiscal liberada para processamento.',
+                      )
+                    }
+                    size="sm"
+                    type="button"
+                  >
+                    Liberar processamento
+                  </Button>
+                </WithTooltip>
+              )}
+              <WithTooltip label="Ação destrutiva: recusar bloqueia reward e remove a nota como evidência.">
+                <Button
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  disabled={acting || receipt.moderationStatus === 'rejected'}
+                  onClick={() =>
+                    void runReceiptAction(
+                      rejectAdminReceiptProcessing,
+                      'Nota fiscal recusada.',
+                    )
+                  }
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  Recusar
+                </Button>
+              </WithTooltip>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {actionNotice ? (
+            <Alert>
+              <AlertTitle>Ação registrada</AlertTitle>
+              <AlertDescription>{actionNotice}</AlertDescription>
+            </Alert>
+          ) : null}
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-md border border-border/70 p-3">
+              <div className="text-xs text-muted-foreground">Leitura</div>
+              <div className="mt-1 font-medium">{receipt.parseStatus}</div>
+            </div>
+            <div className="rounded-md border border-border/70 p-3">
+              <div className="text-xs text-muted-foreground">Qualidade</div>
+              <div className="mt-1 font-medium">
+                {receiptQualityLabel(receipt)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                média {Math.round(receipt.quality.averageMatchConfidence * 100)}
+                %
+              </div>
+            </div>
+            <div className="rounded-md border border-border/70 p-3">
+              <div className="text-xs text-muted-foreground">Confiança</div>
+              <div className="mt-1">
+                <StatusBadge
+                  family="trust"
+                  status={receiptTrustStatus(receipt.trustLevel)}
+                  tooltip={receiptTrustTooltip(receipt.trustLevel)}
+                >
+                  {receiptTrustLabel(receipt.trustLevel)}
+                </StatusBadge>
+              </div>
+            </div>
+            <div className="rounded-md border border-border/70 p-3">
+              <div className="text-xs text-muted-foreground">Reward</div>
+              <div className="mt-1 font-medium">{receipt.reward.label}</div>
+              <div className="mt-1">
+                <StatusBadge
+                  family="reward"
+                  status={rewardStatus(receipt.rewardEligibilityStatus)}
+                  tooltip={rewardEligibilityTooltip(
+                    receipt.rewardEligibilityStatus,
+                  )}
+                >
+                  {rewardEligibilityLabel(receipt.rewardEligibilityStatus)}
+                </StatusBadge>
+              </div>
+            </div>
+          </div>
+
+          {receipt.reviewReason ? (
+            <Alert>
+              <InfoIcon />
+              <AlertTitle>Motivo de revisão</AlertTitle>
+              <AlertDescription>{receipt.reviewReason}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="grid gap-3 rounded-md border border-border/70 bg-card/70 p-3 md:grid-cols-4">
+            <div>
+              <div className="text-xs text-muted-foreground">
+                Payload extraído
+              </div>
+              <div className="mt-1 font-medium">
+                {receipt.extractedPayload.lineItemCount} itens ·{' '}
+                <MaskedMoney
+                  value={formatCurrency(
+                    receipt.extractedPayload.totalLineAmount,
+                  )}
+                />
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Chave NFC-e</div>
+              <div className="mt-1 truncate font-medium">
+                {receipt.extractedPayload.accessKey ?? 'Não informada'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Origem</div>
+              <div className="mt-1 truncate font-medium">
+                {receipt.extractedPayload.sefazUrl
+                  ? 'QR/NFC-e'
+                  : (receipt.extractedPayload.rawReference ?? 'Entrada manual')}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Matcher</div>
+              <div className="mt-1 font-medium">
+                {
+                  receipt.lineItems.filter(
+                    (item) => item.matcherStatus === 'matched_offer',
+                  ).length
+                }{' '}
+                ofertas ·{' '}
+                {
+                  receipt.lineItems.filter(
+                    (item) => item.matcherStatus === 'needs_product_review',
+                  ).length
+                }{' '}
+                para revisar
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3">
+            {receipt.lineItems.length === 0 ? (
+              <ActionPlaceholder
+                className="bg-muted/20"
+                icon={<ReceiptTextIcon className="size-5" />}
+                title="Aguardando extração"
+                description="Esta nota ainda não possui itens extraídos. Reprocesse a leitura ou acompanhe o job antes de liberar qualquer decisão operacional."
+                primaryAction={
+                  <a href={`/dashboard/nota/${receipt.id}`}>Revisar nota</a>
+                }
+                secondaryAction={<a href="/dashboard/fila">Ver jobs</a>}
+              />
+            ) : null}
+            {receipt.lineItems.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-md border border-border/70 bg-card/70 p-3"
+              >
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="font-medium">{item.rawProductName}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      Normalizado: {item.normalizedName} · EAN{' '}
+                      {item.ean ?? 'não informado'} · qtd {item.quantity}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <StatusBadge
+                      tone={
+                        item.matcherStatus === 'matched_offer'
+                          ? 'savings'
+                          : item.matcherStatus === 'needs_product_review'
+                            ? 'critical'
+                            : 'warning'
+                      }
+                    >
+                      {receiptMatcherStatusLabel(item.matcherStatus)}
+                    </StatusBadge>
+                    <StatusBadge tone="neutral">
+                      {Math.round(item.matchConfidence * 100)}%
+                    </StatusBadge>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Preço lido
+                    </div>
+                    <div className="mt-1 font-medium">
+                      <MaskedMoney value={formatCurrency(item.unitPrice)} />
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      total{' '}
+                      <MaskedMoney value={formatCurrency(item.lineTotal)} />
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">Maker</div>
+                    <div className="mt-1 font-medium">
+                      {receiptMakerActionLabel(item.makerAction)}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border/70 p-3">
+                    <div className="text-xs text-muted-foreground">
+                      Ofertas geradas
+                    </div>
+                    <div className="mt-1 font-medium">{item.offers.length}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -1880,13 +5247,20 @@ export function AdminQueuePage() {
             </div>
           ) : null}
           {queueHealth && queueHealth.queues.length === 0 ? (
-            <div className="rounded-lg border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-              Nenhuma fila registrada ainda.
-            </div>
+            <ActionPlaceholder
+              icon={<ListChecksIcon className="size-5" />}
+              title="Nenhuma fila registrada"
+              description="Nenhum worker publicou fila monitorada ainda. Verifique o deploy, Redis e os jobs de notas/otimização antes de considerar o ambiente saudável."
+              primaryAction={<a href="/dashboard">Ver overview</a>}
+              secondaryAction={<a href="/dashboard/notas">Ver notas</a>}
+            />
           ) : null}
           {queueHealth?.recentFailures?.length ? (
             <div className="rounded-lg border border-destructive/30 p-4">
-              <div className="text-sm font-medium">Falhas recentes</div>
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <AlertTriangleIcon className="size-4 text-destructive" />
+                Falhas recentes
+              </div>
               <div className="mt-2 grid gap-2 text-sm text-muted-foreground">
                 {queueHealth.recentFailures.map((failure, index) => (
                   <div key={`${failure.queueName}-${index}`}>
@@ -1895,18 +5269,30 @@ export function AdminQueuePage() {
                 ))}
               </div>
             </div>
+          ) : queueHealth ? (
+            <ActionPlaceholder
+              icon={<AlertTriangleIcon className="size-5" />}
+              title="Sem falhas recentes"
+              description="A fila não reportou falhas recentes. Continue monitorando jobs concluídos e entradas pendentes de notas fiscais."
+              primaryAction={<a href="/dashboard/notas">Revisar notas</a>}
+              secondaryAction={<a href="/dashboard">Ver métricas</a>}
+            />
           ) : null}
           {queueHealth ? (
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-lg border border-border/70 bg-[#ECFDF5] p-4">
-                <div className="text-sm text-[#166534]">Concluidos</div>
-                <div className="mt-2 text-2xl font-semibold text-[#14532D]">
+              <div className="rounded-lg border border-[var(--ds-savings-border)] bg-[var(--ds-savings-soft)] p-4">
+                <div className="text-sm text-[var(--ds-savings)]">
+                  Concluidos
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-foreground">
                   {queueHealth.completedJobs}
                 </div>
               </div>
-              <div className="rounded-lg border border-border/70 bg-[#EFF6FF] p-4">
-                <div className="text-sm text-[#1D4ED8]">Filas monitoradas</div>
-                <div className="mt-2 text-2xl font-semibold text-[#1E3A8A]">
+              <div className="rounded-lg border border-[var(--ds-location-border)] bg-[var(--ds-location-soft)] p-4">
+                <div className="text-sm text-[var(--ds-location)]">
+                  Filas monitoradas
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-foreground">
                   {queueHealth.queues.length}
                 </div>
               </div>
@@ -1919,83 +5305,83 @@ export function AdminQueuePage() {
         <CardHeader>
           <CardTitle>Jobs recentes</CardTitle>
           <CardDescription>
-            Recursos processados, tentativas, status e identificadores
-            persistidos.
+            Diagnóstico da fila: status, tentativa, tempo e falhas. A auditoria
+            de lista ou nota fica nas telas respectivas.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           {jobs.length === 0 ? (
-            <div className="rounded-lg border border-border/70 bg-background/80 p-4 text-sm text-muted-foreground">
-              Fila vazia no momento. Nenhum job recente para auditoria.
-            </div>
+            <ActionPlaceholder
+              icon={<ListChecksIcon className="size-5" />}
+              title="Nenhum job recente"
+              description="A fila está vazia no momento. Jobs de otimização e leitura de notas aparecerão aqui quando shoppers gerarem listas ou enviarem notas."
+              primaryAction={<a href="/dashboard/notas">Ver notas</a>}
+              secondaryAction={<a href="/dashboard">Ver overview</a>}
+            />
           ) : null}
           {jobs.slice(0, 10).map((job) => (
-            <div
+            <AdminActionQueueItem
               key={job.id}
-              className="rounded-lg border border-border/70 p-4"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-medium">
-                    {job.resourceType} · {job.resourceId}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {job.queueName} · tentativa {job.attemptCount} · job{' '}
-                    {job.id}
-                  </div>
-                </div>
-                <Badge
-                  variant={
-                    job.status === 'failed'
-                      ? 'destructive'
-                      : job.status === 'retrying'
-                        ? 'outline'
-                        : 'secondary'
-                  }
-                >
-                  {job.status}
-                </Badge>
-              </div>
-              {job.failureReason ? (
-                <div className="mt-2 text-sm text-muted-foreground">
-                  {job.failureReason}
-                </div>
-              ) : null}
-              <div className="mt-3 grid gap-1 text-sm text-muted-foreground">
-                {job.owner ? <span>user_id: {job.owner.id}</span> : null}
-                {job.shoppingList ? (
-                  <span>lista: {job.shoppingList.name}</span>
-                ) : null}
-                {job.optimizationRun ? (
-                  <span>
-                    run {job.optimizationRun.id} · modo{' '}
-                    {job.optimizationRun.mode} · solicitado{' '}
-                    {formatFreshnessLabel(job.createdAt)}
+              severity={jobSeverity(job.status)}
+              severityTooltip={jobStatusTooltip(job.status)}
+              title={
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground">
+                    <JobResourceIcon job={job} />
                   </span>
-                ) : null}
-                {job.receiptRecord ? (
-                  <span>
-                    recibo {job.receiptRecord.id} ·{' '}
-                    {job.receiptRecord.moderationStatus} ·{' '}
-                    {job.receiptRecord.reviewReason ?? 'sem revisão pendente'}
-                  </span>
-                ) : null}
-                {job.finishedAt ? (
-                  <span>completed: {formatFreshnessLabel(job.finishedAt)}</span>
-                ) : null}
-              </div>
-              <div className="mt-3">
-                <Button asChild size="sm" variant="outline">
-                  <a
-                    href={`/dashboard/fila/${job.id}`}
-                    rel="noreferrer"
-                    target="_blank"
+                  <span className="truncate">{jobResourceTitle(job)}</span>
+                </span>
+              }
+              description={
+                <>
+                  {jobOwnerLabel(job)} · {jobStatusLabel(job.status)}
+                  {job.optimizationRun
+                    ? ` · ${optimizationModeLabel(job.optimizationRun.mode)}`
+                    : ''}
+                  {job.failureReason ? (
+                    <span className="mt-2 block rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">
+                      {job.failureReason}
+                    </span>
+                  ) : null}
+                </>
+              }
+              age={`Solicitado ${formatFreshnessLabel(job.createdAt)}`}
+              context={
+                <>
+                  Fila {job.queueName} · {job.jobType} · tentativa{' '}
+                  {job.attemptCount}
+                </>
+              }
+              meta={
+                <>
+                  ID técnico: {job.resourceType} · {job.resourceId} · job{' '}
+                  {job.id}
+                </>
+              }
+              action={
+                <div className="flex items-center gap-2">
+                  <StatusBadge
+                    family="queue"
+                    status={job.status}
+                    tooltip={jobStatusTooltip(job.status)}
                   >
-                    Go to link
-                  </a>
-                </Button>
-              </div>
-            </div>
+                    {jobStatusLabel(job.status)}
+                  </StatusBadge>
+                  <WithTooltip label="Abre o diagnóstico técnico deste job em uma nova aba.">
+                    <Button asChild size="icon" variant="outline">
+                      <a
+                        aria-label={`Abrir detalhe do job ${job.id}`}
+                        href={`/dashboard/fila/${job.id}`}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        <ExternalLinkIcon className="size-4" />
+                      </a>
+                    </Button>
+                  </WithTooltip>
+                </div>
+              }
+            />
           ))}
         </CardContent>
       </Card>
@@ -2005,9 +5391,15 @@ export function AdminQueuePage() {
 
 export function AdminQueueDetailPage() {
   const { jobId = '' } = useParams();
+  const { accessToken } = usePricely();
   const loader = (token: string) => fetchAdminProcessingJobDetail(token, jobId);
-  const { data: job, error } =
-    useAdminData<AdminProcessingJobDetailResponse | null>(loader, null);
+  const {
+    data: job,
+    error,
+    reload,
+  } = useAdminData<AdminProcessingJobDetailResponse | null>(loader, null);
+  const [jobActionError, setJobActionError] = useState<string | null>(null);
+  const [activeJobAction, setActiveJobAction] = useState<string | null>(null);
 
   if (error) {
     return (
@@ -2028,187 +5420,505 @@ export function AdminQueueDetailPage() {
     );
   }
 
+  const auditTarget = jobBusinessAuditTarget(job);
+  const runJobAction = async (action: 'retry' | 'review' | 'cancel') => {
+    if (!accessToken) {
+      return;
+    }
+    setJobActionError(null);
+    setActiveJobAction(action);
+    try {
+      if (action === 'retry') {
+        await retryAdminProcessingJob(accessToken, job.id);
+      } else if (action === 'review') {
+        await reviewAdminProcessingJob(accessToken, job.id);
+      } else {
+        await cancelAdminProcessingJob(
+          accessToken,
+          job.id,
+          'Cancelado pelo painel administrativo.',
+        );
+      }
+      await reload();
+    } catch (actionError) {
+      setJobActionError(
+        actionError instanceof Error
+          ? actionError.message
+          : 'Nao foi possivel executar a acao.',
+      );
+    } finally {
+      setActiveJobAction(null);
+    }
+  };
+  const jobTimeline = [
+    {
+      label: 'Entrou na fila',
+      value: formatFreshnessLabel(job.createdAt),
+      active: true,
+    },
+    {
+      label:
+        job.status === 'queued'
+          ? 'Aguardando worker'
+          : job.status === 'running'
+            ? 'Worker em execução'
+            : 'Worker executou',
+      value:
+        job.status === 'queued'
+          ? 'Ainda sem tentativa concluída'
+          : `${job.attemptCount} tentativa${job.attemptCount === 1 ? '' : 's'}`,
+      active: job.status !== 'queued',
+    },
+    {
+      label:
+        job.status === 'failed'
+          ? 'Falhou'
+          : job.status === 'completed'
+            ? 'Concluiu'
+            : 'Conclusão pendente',
+      value: job.finishedAt
+        ? formatFreshnessLabel(job.finishedAt)
+        : 'Sem conclusão registrada',
+      active: Boolean(job.finishedAt),
+    },
+  ];
+
   return (
     <div className="grid gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Detalhe do job</CardTitle>
-          <CardDescription>
-            {job.queueName} · {job.jobType} · tentativa {job.attemptCount}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">job_id</div>
-            <div className="mt-1 font-medium">{job.id}</div>
+      <div className="flex flex-col gap-3 border-b border-border/70 pb-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <a className="text-[var(--ds-location)]" href="/dashboard/fila">
+              Fila de processamento
+            </a>
+            <span>/</span>
+            <span>Jobs</span>
+            <span>/</span>
+            <WithTooltip label="ID técnico do job usado para correlação com Redis, logs e backend.">
+              <span className="rounded-sm font-mono" tabIndex={0}>
+                {job.id}
+              </span>
+            </WithTooltip>
           </div>
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">status</div>
-            <div className="mt-1 font-medium">{job.status}</div>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {jobResourceTitle(job)}
+            </h1>
+            <StatusBadge
+              family="queue"
+              status={job.status}
+              tooltip={jobStatusTooltip(job.status)}
+            >
+              {jobStatusLabel(job.status)}
+            </StatusBadge>
           </div>
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">resource</div>
-            <div className="mt-1 font-medium">
-              {job.resourceType} · {job.resourceId}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">owner</div>
-            <div className="mt-1 font-medium">
-              {job.owner
-                ? `${job.owner.displayName} · ${job.owner.id}`
-                : 'Sem owner vinculado'}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">solicitado</div>
-            <div className="mt-1 font-medium">
-              {formatFreshnessLabel(job.createdAt)}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border/70 p-4">
-            <div className="text-sm text-muted-foreground">completed</div>
-            <div className="mt-1 font-medium">
-              {job.finishedAt
-                ? formatFreshnessLabel(job.finishedAt)
-                : 'Ainda sem conclusão'}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {jobOwnerLabel(job)} · {job.queueName} · tentativa{' '}
+            {job.attemptCount}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <a href="/dashboard/fila">Ver na fila</a>
+          </Button>
+          {auditTarget ? (
+            <Button asChild variant="outline">
+              <a href={auditTarget.href}>
+                {auditTarget.label}
+                <ExternalLinkIcon className="size-4" />
+              </a>
+            </Button>
+          ) : null}
+        </div>
+      </div>
 
-      {job.optimizationRun ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Otimização</CardTitle>
-            <CardDescription>
-              run {job.optimizationRun.id} · modo {job.optimizationRun.mode} ·{' '}
-              {job.optimizationRun.coverageStatus}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-lg border border-border/70 p-4">
-                <div className="text-sm text-muted-foreground">Custo total</div>
-                <div className="mt-1 text-xl font-semibold">
-                  {formatCurrency(job.optimizationRun.totalEstimatedCost)}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid min-w-0 gap-4">
+          <div className="grid gap-3 md:grid-cols-5">
+            {[
+              {
+                label: 'Status atual',
+                value: jobStatusLabel(job.status),
+                detail:
+                  job.status === 'failed'
+                    ? `Após ${job.attemptCount} tentativas`
+                    : `Tentativa ${job.attemptCount}`,
+              },
+              {
+                label: 'Fila',
+                value: job.queueName,
+                detail: 'Prioridade padrão',
+              },
+              {
+                label: 'Tipo',
+                value: job.jobType,
+                detail: job.resourceType.replace(/_/g, ' '),
+              },
+              {
+                label: 'Enviado em',
+                value: formatFreshnessLabel(job.createdAt),
+                detail: job.createdAt,
+              },
+              {
+                label: 'Conclusão',
+                value: job.finishedAt
+                  ? formatFreshnessLabel(job.finishedAt)
+                  : 'Pendente',
+                detail: `Tentativas: ${job.attemptCount}`,
+              },
+            ].map((entry) => (
+              <div
+                className="rounded-lg border border-border/70 bg-background/80 p-4"
+                key={entry.label}
+              >
+                <div className="text-xs text-muted-foreground">
+                  {entry.label}
+                </div>
+                <div className="mt-2 font-mono text-sm font-semibold">
+                  {entry.value}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {entry.detail}
                 </div>
               </div>
-              <div className="rounded-lg border border-border/70 p-4">
-                <div className="text-sm text-muted-foreground">Economia</div>
-                <div className="mt-1 text-xl font-semibold">
-                  {formatCurrency(job.optimizationRun.estimatedSavings)}
-                </div>
-              </div>
-              <div className="rounded-lg border border-border/70 p-4">
-                <div className="text-sm text-muted-foreground">Lista</div>
-                <div className="mt-1 text-xl font-semibold">
-                  {job.shoppingList?.name ?? job.resourceId}
-                </div>
-              </div>
-            </div>
-            {job.optimizationRun.summary ? (
-              <Alert>
-                <InfoIcon />
-                <AlertTitle>Resumo do thinking</AlertTitle>
-                <AlertDescription>
-                  {job.optimizationRun.summary}
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Decisão</TableHead>
-                  <TableHead>Loja</TableHead>
-                  <TableHead>Preço</TableHead>
-                  <TableHead>Fonte</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {job.optimizationRun.selections.map((selection) => (
-                  <TableRow key={selection.id}>
-                    <TableCell>{selection.shoppingListItemName}</TableCell>
-                    <TableCell>{selection.status}</TableCell>
-                    <TableCell>
-                      {selection.offer
-                        ? `${selection.offer.establishmentName} · ${selection.offer.neighborhood}`
-                        : 'Sem oferta selecionada'}
-                    </TableCell>
-                    <TableCell>
-                      {formatCurrency(
-                        selection.offer?.priceAmount ?? selection.estimatedCost,
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {selection.offer?.sourceLabel ??
-                        selection.confidenceNotice ??
-                        'Sem fonte'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : null}
+            ))}
+          </div>
 
-      {job.receiptRecord ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recibo contribuído</CardTitle>
-            <CardDescription>
-              {job.receiptRecord.storeName ?? 'Loja não identificada'} ·{' '}
-              {job.receiptRecord.parseStatus} · {job.receiptRecord.trustLevel}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <Alert>
-              <InfoIcon />
-              <AlertTitle>
-                {job.receiptRecord.moderationStatus === 'accepted'
-                  ? 'Contribuição aceita'
-                  : job.receiptRecord.moderationStatus === 'duplicate'
-                    ? 'Recibo duplicado'
-                    : job.receiptRecord.moderationStatus === 'quarantined'
-                      ? 'Pendente de revisão'
-                      : 'Contribuição registrada'}
-              </AlertTitle>
-              <AlertDescription>
-                Rewards por recibo seguem desativados no MVP. Motivo:{' '}
-                {job.receiptRecord.reviewReason ??
-                  'controle anti-abuso pendente'}
-                .
-              </AlertDescription>
-            </Alert>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Normalizado</TableHead>
-                  <TableHead>EAN</TableHead>
-                  <TableHead>Preço</TableHead>
-                  <TableHead>Confiança</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {job.receiptRecord.lineItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.rawProductName}</TableCell>
-                    <TableCell>{item.normalizedName}</TableCell>
-                    <TableCell>{item.ean ?? 'Sem EAN'}</TableCell>
-                    <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
-                    <TableCell>
-                      {Math.round(item.matchConfidence * 100)}%
-                    </TableCell>
-                  </TableRow>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card className="border-border/70 bg-card/90 shadow-sm">
+              <CardHeader>
+                <CardTitle>Contexto humano</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-lg border border-border/70 bg-background/80 p-4">
+                  <div className="text-sm text-muted-foreground">Recurso</div>
+                  <div className="mt-2 font-medium">
+                    {jobResourceTitle(job)}
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {job.receiptRecord?.storeName ??
+                      job.shoppingList?.name ??
+                      job.resourceType.replace(/_/g, ' ')}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border/70 bg-background/80 p-4">
+                  <div className="text-sm text-muted-foreground">
+                    Proprietário
+                  </div>
+                  <div className="mt-2 font-medium">
+                    {job.owner
+                      ? job.owner.displayName || job.owner.email
+                      : 'Sem usuário vinculado'}
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {job.owner?.email ?? 'ID do usuário oculto'}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70 bg-card/90 shadow-sm">
+              <CardHeader>
+                <CardTitle>
+                  {job.failureReason ? 'Motivo da falha' : 'Ação recomendada'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                {job.failureReason ? (
+                  <Alert variant="destructive">
+                    <AlertTriangleIcon />
+                    <AlertTitle>Falha operacional</AlertTitle>
+                    <AlertDescription>{job.failureReason}</AlertDescription>
+                  </Alert>
+                ) : null}
+                <div className="rounded-lg border border-[var(--ds-evidence-border)] bg-[var(--ds-evidence-soft)]/60 p-4 text-sm">
+                  <div className="font-medium">Próximo passo recomendado</div>
+                  <div className="mt-1 text-muted-foreground">
+                    {job.status === 'failed'
+                      ? 'Verifique o serviço de OCR, reprocessamento e a nota relacionada antes de aceitar reward.'
+                      : job.status === 'completed'
+                        ? 'Verificar a auditoria de negócio e manter como evidência.'
+                        : 'Acompanhar worker antes de tomar decisão manual.'}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="border-border/70 bg-card/90 shadow-sm">
+            <CardHeader>
+              <CardTitle>Linha do tempo</CardTitle>
+              <CardDescription>
+                Eventos operacionais sem expor payload técnico por padrão.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3">
+                {jobTimeline.map((step, index) => (
+                  <div
+                    className="grid gap-3 rounded-lg border border-border/70 bg-background/80 p-4 md:grid-cols-[32px_1fr_1fr]"
+                    key={step.label}
+                  >
+                    <div
+                      className={
+                        step.active
+                          ? 'flex size-8 items-center justify-center rounded-full bg-[var(--ds-savings-soft)] text-[var(--ds-savings)]'
+                          : 'flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground'
+                      }
+                    >
+                      {index + 1}
+                    </div>
+                    <div>
+                      <div className="font-medium">{step.label}</div>
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        {step.value}
+                      </div>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {step.label === 'Worker executou'
+                        ? `Tentativas: ${job.attemptCount}`
+                        : step.label === 'Falhou'
+                          ? (job.failureReason ?? 'Falha sem detalhe')
+                          : job.status === 'queued'
+                            ? 'Aguardando processamento'
+                            : 'Evento registrado'}
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : null}
+              </div>
+            </CardContent>
+          </Card>
+
+          {job.receiptRecord?.lineItems?.length ? (
+            <Card className="border-border/70 bg-card/90 shadow-sm">
+              <CardHeader>
+                <CardTitle>Itens extraídos da nota</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto rounded-lg border border-border/70">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item lido</TableHead>
+                        <TableHead>Normalizado</TableHead>
+                        <TableHead>Quantidade</TableHead>
+                        <TableHead>Preço</TableHead>
+                        <TableHead>Confiança</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {job.receiptRecord.lineItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.rawProductName}</TableCell>
+                          <TableCell>{item.normalizedName}</TableCell>
+                          <TableCell>{item.quantity}</TableCell>
+                          <TableCell>
+                            <MaskedMoney
+                              value={formatCurrency(item.unitPrice)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {Math.round(item.matchConfidence * 100)}%
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <TechnicalDisclosure
+            title="Dados técnicos"
+            description="Payload, IDs e correlação usados para depuração"
+          >
+            <div className="grid gap-2 text-sm md:grid-cols-3">
+              <span>job_id: {job.id}</span>
+              <span>
+                resource: {job.resourceType} · {job.resourceId}
+              </span>
+              <span>job_type: {job.jobType}</span>
+              <span>queue: {job.queueName}</span>
+              <span>status: {job.status}</span>
+              <span>attempts: {job.attemptCount}</span>
+            </div>
+          </TechnicalDisclosure>
+        </div>
+
+        <aside className="grid content-start gap-4">
+          {job.receiptRecord ? (
+            <Card className="border-border/70 bg-card/95 shadow-sm">
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle>Nota fiscal relacionada</CardTitle>
+                    <CardDescription>
+                      {job.receiptRecord.storeName ?? 'Loja não identificada'}
+                    </CardDescription>
+                  </div>
+                  <StatusBadge
+                    family="receipt"
+                    status={receiptModerationStatus(
+                      job.receiptRecord.moderationStatus,
+                    )}
+                    tooltip={receiptModerationTooltip(
+                      job.receiptRecord.moderationStatus,
+                    )}
+                  >
+                    {receiptModerationLabel(job.receiptRecord.moderationStatus)}
+                  </StatusBadge>
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                <div className="text-sm font-medium">Recibo contribuído</div>
+                <div className="rounded-lg border border-border/70 bg-background/80 p-3 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">
+                      Itens extraídos
+                    </span>
+                    <span className="font-medium">
+                      {job.receiptRecord.lineItems?.length ?? 0}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex justify-between gap-3">
+                    <span className="text-muted-foreground">Confiança</span>
+                    <span className="font-medium">
+                      {receiptTrustLabel(job.receiptRecord.trustLevel)}
+                    </span>
+                  </div>
+                </div>
+                {auditTarget ? (
+                  <Button asChild variant="outline">
+                    <a href={auditTarget.href}>
+                      Abrir nota fiscal
+                      <ExternalLinkIcon className="size-4" />
+                    </a>
+                  </Button>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {job.receiptRecord ? (
+            <Card className="border-border/70 bg-card/95 shadow-sm">
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <CardTitle>Status de moderação</CardTitle>
+                  <StatusBadge
+                    family="receipt"
+                    status={receiptModerationStatus(
+                      job.receiptRecord.moderationStatus,
+                    )}
+                    tooltip={receiptModerationTooltip(
+                      job.receiptRecord.moderationStatus,
+                    )}
+                  >
+                    {receiptModerationLabel(job.receiptRecord.moderationStatus)}
+                  </StatusBadge>
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-3 text-sm">
+                <div className="text-muted-foreground">
+                  {job.receiptRecord.reviewReason ??
+                    'Aguardando revisão manual se houver falha de extração.'}
+                </div>
+                {auditTarget ? (
+                  <Button asChild variant="outline">
+                    <a href={auditTarget.href}>Ir para moderação</a>
+                  </Button>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card className="border-border/70 bg-card/95 shadow-sm">
+            <CardHeader>
+              <CardTitle>Ações</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              {jobActionError ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Acao nao executada</AlertTitle>
+                  <AlertDescription>{jobActionError}</AlertDescription>
+                </Alert>
+              ) : null}
+              <WithTooltip label="Disponível apenas para jobs com falha, após revisão do motivo e do recurso vinculado.">
+                <Button
+                  disabled={
+                    (job.status !== 'failed' && job.status !== 'cancelled') ||
+                    activeJobAction !== null
+                  }
+                  onClick={() => void runJobAction('retry')}
+                  type="button"
+                >
+                  {activeJobAction === 'retry'
+                    ? 'Reenfileirando...'
+                    : 'Tentar novamente'}
+                </Button>
+              </WithTooltip>
+              {job.status !== 'failed' ? (
+                <ActionPlaceholder
+                  className="bg-background/80"
+                  icon={<RefreshCwIcon className="size-5" />}
+                  title="Retry indisponível"
+                  description="A tentativa manual só fica disponível para jobs com falha. Jobs em fila, execução ou concluídos devem ser auditados pelo histórico."
+                  primaryAction={
+                    auditTarget ? (
+                      <a href={auditTarget.href}>{auditTarget.label}</a>
+                    ) : undefined
+                  }
+                  secondaryAction={
+                    <a href="/dashboard/fila">Voltar para fila</a>
+                  }
+                />
+              ) : null}
+              {auditTarget ? (
+                <Button asChild variant="outline">
+                  <a href={auditTarget.href}>{auditTarget.label}</a>
+                </Button>
+              ) : null}
+              <Button
+                disabled={Boolean(job.reviewedAt) || activeJobAction !== null}
+                onClick={() => void runJobAction('review')}
+                type="button"
+                variant="outline"
+              >
+                {job.reviewedAt ? 'Revisado' : 'Marcar como revisado'}
+              </Button>
+              <WithTooltip label="Disponível somente antes do worker iniciar. A ação remove o item aguardando na fila e preserva auditoria.">
+                <Button
+                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                  disabled={
+                    (job.status !== 'queued' && job.status !== 'retrying') ||
+                    activeJobAction !== null
+                  }
+                  onClick={() => void runJobAction('cancel')}
+                  type="button"
+                  variant="outline"
+                >
+                  {activeJobAction === 'cancel'
+                    ? 'Cancelando...'
+                    : 'Cancelar job'}
+                </Button>
+              </WithTooltip>
+            </CardContent>
+          </Card>
+
+          <TechnicalDisclosure
+            title="IDs e correlação"
+            tooltip="Correlação técnica entre job, recurso de negócio, fila e tipo de processamento."
+          >
+            <div className="grid gap-2 text-sm">
+              <span>
+                ID técnico: {job.resourceType} · {job.resourceId} · job {job.id}
+              </span>
+              <span>Fila: {job.queueName}</span>
+              <span>Tipo: {job.jobType}</span>
+            </div>
+          </TechnicalDisclosure>
+        </aside>
+      </div>
     </div>
   );
 }

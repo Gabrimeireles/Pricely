@@ -28,14 +28,20 @@ export class EstablishmentsService {
     brandName: string;
     unitName: string;
     cnpj: string;
-    cityName: string;
+    cityName?: string;
     neighborhood: string;
     regionId: string;
     isActive?: boolean;
   }) {
+    const region = await this.prisma.region.findUnique({
+      where: { id: input.regionId },
+      select: { name: true },
+    });
+
     return this.prisma.establishment.create({
       data: {
         ...input,
+        cityName: input.cityName ?? region?.name ?? '',
         isActive: input.isActive ?? true,
       },
     });
@@ -53,9 +59,19 @@ export class EstablishmentsService {
       isActive: boolean;
     }>,
   ) {
+    const region = input.regionId
+      ? await this.prisma.region.findUnique({
+          where: { id: input.regionId },
+          select: { name: true },
+        })
+      : null;
+
     return this.prisma.establishment.update({
       where: { id },
-      data: input,
+      data: {
+        ...input,
+        cityName: input.cityName ?? region?.name,
+      },
     });
   }
 }

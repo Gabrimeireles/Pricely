@@ -19,6 +19,30 @@ Receipt-derived offers remain the priority source for the current roadmap. All s
 must preserve offer provenance, observed timestamp, confidence level, and moderation
 state.
 
+## Establishment Location Data
+
+Distance-aware optimization needs establishment location data that is more precise than
+city name but still operationally maintainable.
+
+Required establishment fields:
+
+- street address
+- neighborhood
+- city/region
+- state
+- CEP
+- latitude and longitude
+- geocoding source
+- geocoding precision, such as exact address, CEP centroid, or manual coordinate
+- geocoding updated timestamp
+
+Initial implementation can store latitude/longitude directly in PostgreSQL and compute
+distance with Haversine in the backend domain layer. If volume or query complexity
+increases, move radius filtering to PostGIS while preserving the same API contract.
+
+Seed data should include realistic addresses or CEPs and coordinates for every active
+establishment used in location-aware tests.
+
 ## Final Optimization Modes
 
 ### Local unique

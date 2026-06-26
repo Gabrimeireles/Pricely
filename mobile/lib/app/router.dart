@@ -56,6 +56,7 @@ class AppRouter {
             shoppingListController: services.shoppingListController,
             optimizationController: services.optimizationController,
             receiptFlowController: services.receiptFlowController,
+            locationController: services.locationController,
           ),
         );
     }

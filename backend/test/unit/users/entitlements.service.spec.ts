@@ -124,6 +124,22 @@ describe('EntitlementsService', () => {
     await expect(service.getAvailableTokenBalance('user-1')).resolves.toBe(1);
   });
 
+  it('grants receipt bonus tokens idempotently by receipt', async () => {
+    const mock = createPrismaMock();
+    const service = new EntitlementsService(mock.prisma as never);
+
+    await service.grantReceiptBonusTokens({
+      userId: 'user-1',
+      receiptRecordId: 'receipt-1',
+    });
+    await service.grantReceiptBonusTokens({
+      userId: 'user-1',
+      receiptRecordId: 'receipt-1',
+    });
+
+    expect(mock.ledger.size).toBe(1);
+    await expect(service.getAvailableTokenBalance('user-1')).resolves.toBe(1);
+  });
 
   it('rejects optimization when the configured free grant is zero', async () => {
     process.env.FREE_OPTIMIZATION_TOKENS_PER_MONTH = '0';

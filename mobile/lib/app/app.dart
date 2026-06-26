@@ -35,7 +35,9 @@ class _PricelyAppState extends State<PricelyApp> {
         if (!snapshot.hasData) {
           return MaterialApp(
             title: 'Pricely',
-            theme: _buildTheme(),
+            theme: _buildTheme(Brightness.light),
+            darkTheme: _buildTheme(Brightness.dark),
+            themeMode: ThemeMode.system,
             home: const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             ),
@@ -45,46 +47,60 @@ class _PricelyAppState extends State<PricelyApp> {
         final services = snapshot.data!;
         final router = AppRouter(services);
 
-        return AppScope(
-          services: services,
-          child: MaterialApp(
-            title: 'Pricely',
-            theme: _buildTheme(),
-            onGenerateRoute: router.onGenerateRoute,
-            initialRoute: AppRouter.homeRoute,
+        return AnimatedBuilder(
+          animation: services.themeController,
+          builder: (context, _) => AppScope(
+            services: services,
+            child: MaterialApp(
+              title: 'Pricely',
+              theme: _buildTheme(Brightness.light),
+              darkTheme: _buildTheme(Brightness.dark),
+              themeMode: services.themeController.themeMode,
+              onGenerateRoute: router.onGenerateRoute,
+              initialRoute: AppRouter.homeRoute,
+            ),
           ),
         );
       },
     );
   }
 
-  ThemeData _buildTheme() {
+  ThemeData _buildTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
     final colorScheme = ColorScheme.fromSeed(
       seedColor: const Color(0xFF0F766E),
-      brightness: Brightness.light,
-      surface: const Color(0xFFF1FCF7),
+      brightness: brightness,
+      surface: isDark ? const Color(0xFF101915) : const Color(0xFFF1FCF7),
     ).copyWith(
-      primary: const Color(0xFF005C55),
-      onPrimary: Colors.white,
-      primaryContainer: const Color(0xFF0F766E),
+      primary: isDark ? const Color(0xFF80D5CB) : const Color(0xFF005C55),
+      onPrimary: isDark ? const Color(0xFF003733) : Colors.white,
+      primaryContainer:
+          isDark ? const Color(0xFF004F49) : const Color(0xFF0F766E),
       onPrimaryContainer: const Color(0xFFA3FAEF),
-      secondary: const Color(0xFF0051D5),
-      onSecondary: Colors.white,
-      secondaryContainer: const Color(0xFFDBE1FF),
-      onSecondaryContainer: const Color(0xFF00174B),
-      tertiary: const Color(0xFF375B00),
-      onTertiary: Colors.white,
-      tertiaryContainer: const Color(0xFF487500),
+      secondary: isDark ? const Color(0xFFB4C5FF) : const Color(0xFF0051D5),
+      onSecondary: isDark ? const Color(0xFF002B74) : Colors.white,
+      secondaryContainer:
+          isDark ? const Color(0xFF173F8C) : const Color(0xFFDBE1FF),
+      onSecondaryContainer:
+          isDark ? const Color(0xFFDCE2FF) : const Color(0xFF00174B),
+      tertiary: isDark ? const Color(0xFFB5E879) : const Color(0xFF375B00),
+      onTertiary: isDark ? const Color(0xFF1C3700) : Colors.white,
+      tertiaryContainer:
+          isDark ? const Color(0xFF2E5200) : const Color(0xFF487500),
       onTertiaryContainer: const Color(0xFFB5FF56),
       error: const Color(0xFFBA1A1A),
       onError: Colors.white,
-      errorContainer: const Color(0xFFFFDAD6),
-      onErrorContainer: const Color(0xFF93000A),
-      surface: const Color(0xFFF1FCF7),
-      onSurface: const Color(0xFF141E1B),
-      onSurfaceVariant: const Color(0xFF3E4947),
-      outline: const Color(0xFF6E7977),
-      outlineVariant: const Color(0xFFBDC9C6),
+      errorContainer:
+          isDark ? const Color(0xFF93000A) : const Color(0xFFFFDAD6),
+      onErrorContainer:
+          isDark ? const Color(0xFFFFDAD6) : const Color(0xFF93000A),
+      surface: isDark ? const Color(0xFF101915) : const Color(0xFFF1FCF7),
+      onSurface: isDark ? const Color(0xFFDDE6E1) : const Color(0xFF141E1B),
+      onSurfaceVariant:
+          isDark ? const Color(0xFFBEC9C5) : const Color(0xFF3E4947),
+      outline: isDark ? const Color(0xFF89938F) : const Color(0xFF6E7977),
+      outlineVariant:
+          isDark ? const Color(0xFF3F4946) : const Color(0xFFBDC9C6),
       inverseSurface: const Color(0xFF28332F),
       onInverseSurface: const Color(0xFFE8F3EE),
       inversePrimary: const Color(0xFF80D5CB),
@@ -94,16 +110,18 @@ class _PricelyAppState extends State<PricelyApp> {
 
     return ThemeData(
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: const Color(0xFFF1FCF7),
+      scaffoldBackgroundColor: colorScheme.surface,
       useMaterial3: true,
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
-        foregroundColor: Color(0xFF141E1B),
+        foregroundColor: colorScheme.onSurface,
         elevation: 0,
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFFE0F3EF),
+        backgroundColor:
+            isDark ? const Color(0xFF17211D) : Colors.white,
+        indicatorColor:
+            isDark ? const Color(0xFF004F49) : const Color(0xFFE0F3EF),
         labelTextStyle: WidgetStateProperty.resolveWith<TextStyle?>(
           (states) => TextStyle(
             fontWeight: states.contains(WidgetState.selected)
@@ -114,7 +132,7 @@ class _PricelyAppState extends State<PricelyApp> {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: isDark ? const Color(0xFF17211D) : Colors.white,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
@@ -134,15 +152,15 @@ class _PricelyAppState extends State<PricelyApp> {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF005C55),
-          foregroundColor: Colors.white,
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
           minimumSize: const Size(0, 52),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF005C55),
+          foregroundColor: colorScheme.primary,
           minimumSize: const Size(0, 52),
           side: BorderSide(
               color: colorScheme.outlineVariant.withValues(alpha: 0.4)),

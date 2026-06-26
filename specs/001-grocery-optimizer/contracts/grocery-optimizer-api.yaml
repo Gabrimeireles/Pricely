@@ -55,7 +55,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserAccount'
-  /location-preferences:
+  /locations:
     get:
       summary: List user-configured locations and coverage radius settings
       responses:
@@ -82,7 +82,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserLocationPreference'
-  /location-preferences/coverage-preview:
+  /locations/coverage-preview:
     post:
       summary: Preview active establishment coverage for a candidate location/radius
       requestBody:
@@ -233,6 +233,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ShoppingList'
+  /shopping-lists/{shoppingListId}/share:
+    post:
+      summary: Publish a shopper-owned shopping list behind an opaque share token
+      parameters:
+        - $ref: '#/components/parameters/ShoppingListId'
+      responses:
+        '200':
+          description: Shopping list share link state returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingList'
+        '400':
+          description: List has no items to share
+        '404':
+          description: Shopping list not found for authenticated owner
+  /shopping-lists/shared/{shareToken}:
+    get:
+      security: []
+      summary: Fetch a read-only shopping list through a public share token
+      parameters:
+        - $ref: '#/components/parameters/ShareToken'
+      responses:
+        '200':
+          description: Shared shopping list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingList'
+        '404':
+          description: Shared shopping list not found or no longer public
   /shopping-lists/{shoppingListId}/items:
     post:
       summary: Add items to a shopping list
@@ -295,6 +326,110 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessingJob'
+  /missing-product-requests:
+    get:
+      summary: List the authenticated shopper missing-product requests
+      responses:
+        '200':
+          description: Requests returned
+    post:
+      summary: Request catalog review for a product that was not found
+      responses:
+        '201':
+          description: Missing-product request created
+  /admin/processing-jobs/{jobId}/retry:
+    post:
+      summary: Requeue a failed or cancelled processing job
+      responses:
+        '201':
+          description: Job requeued with persisted business payload
+  /admin/processing-jobs/{jobId}/review:
+    post:
+      summary: Mark a processing job as operationally reviewed
+      responses:
+        '201':
+          description: Review audit timestamp recorded
+  /admin/processing-jobs/{jobId}/cancel:
+    post:
+      summary: Cancel a queued or retrying job before worker execution
+      responses:
+        '201':
+          description: Job removed from the waiting queue and audit retained
+  /admin/missing-product-requests:
+    get:
+      summary: List shopper missing-product requests for catalog triage
+      responses:
+        '200':
+          description: Requests returned
+  /admin/missing-product-requests/{requestId}/convert:
+    post:
+      summary: Convert a shopper request into a catalog product
+      responses:
+        '201':
+          description: Catalog product created and request linked
+  /admin/missing-product-requests/{requestId}/reject:
+    post:
+      summary: Reject a missing-product request with audit context
+      responses:
+        '201':
+          description: Request rejected
+  /notifications:
+    get:
+      summary: List authenticated in-app notifications
+      responses:
+        '200':
+          description: Notifications returned newest first
+  /notifications/{notificationId}/read:
+    patch:
+      summary: Mark one owned notification as read
+      responses:
+        '200':
+          description: Notification updated
+  /notifications/read-all:
+    post:
+      summary: Mark all authenticated user notifications as read
+      responses:
+        '201':
+          description: Unread notifications updated
+  /notification-preferences:
+    get:
+      summary: Fetch in-app notification category preferences
+      responses:
+        '200':
+          description: Preferences returned
+    patch:
+      summary: Update in-app notification category preferences
+      responses:
+        '200':
+          description: Preferences updated; email and push remain disabled
+  /receipts:
+    post:
+      summary: Submit a receipt contribution from manual items or an NFC-e QR URL
+      responses:
+        '202':
+          description: Receipt accepted for manual release or processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptSubmission'
+  /receipts/{receiptId}:
+    get:
+      summary: Fetch the authenticated shopper receipt processing and reward state
+      parameters:
+        - name: receiptId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Receipt state returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptSubmission'
+        '404':
+          description: Receipt does not exist or belongs to another account
   /admin/metrics/overview:
     get:
       summary: Return overview metrics for the admin dashboard
@@ -305,6 +440,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminOverview'
+  /admin/metrics/public-search:
+    get:
+      summary: Return persisted public offer search latency and SLO metrics
+      responses:
+        '200':
+          description: Sliding-window public search metrics returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicSearchMetrics'
   /admin/regions:
     get:
       summary: List all regions for admin management
@@ -571,6 +716,12 @@ components:
       required: true
       schema:
         type: string
+    ShareToken:
+      name: shareToken
+      in: path
+      required: true
+      schema:
+        type: string
     JobId:
       name: jobId
       in: path
@@ -675,42 +826,65 @@ components:
           type: string
         neighborhood:
           type: string
+        addressLine:
+          type: string
+        postalCode:
+          type: string
         latitude:
           type: number
         longitude:
           type: number
         locationSource:
           type: string
-          enum: [admin, geocoded_address, manual]
+          enum: [admin, geocoded_address, manual, seed]
         regionId:
           type: string
         isActive:
           type: boolean
     UserLocationPreference:
       type: object
-      required: [id, userId, regionId, label, latitude, longitude, coverageRadiusKm, activeEstablishmentCount, isDefault]
+      required: [id, regionId, regionSlug, regionName, label, coverageRadiusKm, activeEstablishmentCount, isDefault, locationSource, createdAt, updatedAt]
       properties:
         id:
           type: string
-        userId:
-          type: string
         regionId:
+          type: string
+        regionSlug:
+          type: string
+        regionName:
           type: string
         label:
           type: string
         latitude:
           type: number
+          nullable: true
         longitude:
           type: number
+          nullable: true
+        postalCode:
+          type: string
+          nullable: true
         coverageRadiusKm:
           type: number
+          default: 5
+          minimum: 1
+          maximum: 25
         activeEstablishmentCount:
           type: integer
         isDefault:
           type: boolean
+        locationSource:
+          type: string
+          enum: [manual, browser_geolocation, postal_code_fallback]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
     UpsertLocationPreferenceRequest:
       type: object
-      required: [regionId, label, latitude, longitude, coverageRadiusKm]
+      required: [regionId, label]
       properties:
         regionId:
           type: string
@@ -720,13 +894,21 @@ components:
           type: number
         longitude:
           type: number
+        postalCode:
+          type: string
         coverageRadiusKm:
           type: number
+          default: 5
+          minimum: 1
+          maximum: 25
         isDefault:
           type: boolean
+        locationSource:
+          type: string
+          enum: [manual, browser_geolocation, postal_code_fallback]
     CoveragePreviewRequest:
       type: object
-      required: [regionId, latitude, longitude, coverageRadiusKm]
+      required: [regionId]
       properties:
         regionId:
           type: string
@@ -734,11 +916,16 @@ components:
           type: number
         longitude:
           type: number
+        postalCode:
+          type: string
         coverageRadiusKm:
           type: number
+          default: 5
+          minimum: 1
+          maximum: 25
     CoveragePreview:
       type: object
-      required: [regionId, coverageRadiusKm, activeEstablishmentCount]
+      required: [regionId, coverageRadiusKm, activeEstablishmentCount, fallbackUsed, establishments]
       properties:
         regionId:
           type: string
@@ -746,6 +933,31 @@ components:
           type: number
         activeEstablishmentCount:
           type: integer
+        fallbackUsed:
+          type: boolean
+        fallbackReason:
+          type: string
+          enum: [missing_coordinates, postal_code_only]
+        establishments:
+          type: array
+          items:
+            type: object
+            required: [id, brandName, unitName, neighborhood]
+            properties:
+              id:
+                type: string
+              brandName:
+                type: string
+              unitName:
+                type: string
+              neighborhood:
+                type: string
+              postalCode:
+                type: string
+                nullable: true
+              distanceKm:
+                type: number
+                nullable: true
     CatalogProduct:
       type: object
       required: [id, name, slug, category, isActive]
@@ -920,6 +1132,12 @@ components:
         status:
           type: string
           enum: [draft, ready, archived]
+        shareToken:
+          type: string
+          description: Opaque public token exposed only after the owner publishes the list.
+        sharedAt:
+          type: string
+          format: date-time
         items:
           type: array
           items:
@@ -930,7 +1148,10 @@ components:
       properties:
         mode:
           type: string
-          enum: [local_unique, local_multi, global_multi]
+          description: >
+            Descriptive mode id. Legacy aliases `local` and `global_full` are
+            accepted for backwards compatibility and normalized by the backend.
+          enum: [local_unique, local_multi, global_multi, local, global_full]
         regionId:
           type: string
         userLocationPreferenceId:
@@ -1010,6 +1231,40 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/OptimizationSelection'
+    ReceiptSubmission:
+      type: object
+      required:
+        - id
+        - processingStatus
+        - moderationStatus
+        - rewardEligibilityStatus
+      properties:
+        id:
+          type: string
+        storeName:
+          type: string
+          nullable: true
+        processingStatus:
+          type: string
+          enum:
+            - waiting_manual_release
+            - queued
+            - running
+            - completed
+            - failed
+            - retrying
+        moderationStatus:
+          type: string
+          enum: [pending, accepted, quarantined, duplicate, rejected]
+        rewardEligibilityStatus:
+          type: string
+          enum: [disabled, ineligible, eligible_pending, granted]
+        rewardPoints:
+          type: integer
+        rewardOptimizationTokens:
+          type: integer
+        rewardMessage:
+          type: string
     ProcessingJob:
       type: object
       required: [id, queueName, jobType, status, attemptCount, createdAt, updatedAt]
@@ -1053,6 +1308,94 @@ components:
           type: integer
         activeOffers:
           type: integer
+    PublicSearchMetrics:
+      type: object
+      required: [windowSize, retentionDays, sampleCount, volume, p95TargetMs, strategyCounts, fallbackRate, timeline, pgTrgmEvaluation, alert]
+      properties:
+        windowSize:
+          type: integer
+        retentionDays:
+          type: integer
+        sampleCount:
+          type: integer
+        volume:
+          type: object
+          required: [last24Hours, last7Days]
+          properties:
+            last24Hours:
+              type: integer
+            last7Days:
+              type: integer
+        p50Ms:
+          type: number
+          nullable: true
+        p95Ms:
+          type: number
+          nullable: true
+        maxMs:
+          type: number
+          nullable: true
+        p95TargetMs:
+          type: integer
+        strategyCounts:
+          type: object
+          properties:
+            candidate:
+              type: integer
+            broadFallback:
+              type: integer
+        fallbackRate:
+          type: number
+        timeline:
+          type: array
+          items:
+            type: object
+            required: [startsAt, sampleCount]
+            properties:
+              startsAt:
+                type: string
+                format: date-time
+              sampleCount:
+                type: integer
+              p95Ms:
+                type: number
+                nullable: true
+        pgTrgmEvaluation:
+          type: object
+          properties:
+            minimumSamples:
+              type: integer
+            recommended:
+              type: boolean
+            reason:
+              type: string
+              enum: [insufficient_samples, p95_within_target, p95_above_target]
+        alert:
+          type: object
+          required: [status, targetP95Ms, sampleCount]
+          properties:
+            status:
+              type: string
+              enum: [healthy, active]
+            observedP95Ms:
+              type: number
+              nullable: true
+            targetP95Ms:
+              type: integer
+            sampleCount:
+              type: integer
+            triggeredAt:
+              type: string
+              format: date-time
+              nullable: true
+            lastNotifiedAt:
+              type: string
+              format: date-time
+              nullable: true
+        lastRecordedAt:
+          type: string
+          format: date-time
+          nullable: true
     CreateRegionRequest:
       type: object
       required: [name, stateCode, implantationStatus]

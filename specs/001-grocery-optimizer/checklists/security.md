@@ -4,22 +4,22 @@
 
 - [X] Protected APIs reject unauthenticated requests.
 - [X] User-scoped reads and writes enforce the authenticated user id.
-- [ ] Session refresh and logout behavior do not expose stale account state.
-- [ ] Mobile token storage is validated against platform secure-storage expectations.
+- [X] Session refresh and logout behavior do not expose stale account state.
+- [X] Mobile token storage is validated against platform secure-storage expectations.
 
 ## RBAC and Admin Boundaries
 
 - [X] Admin routes require an admin role from the backend, not a client flag.
-- [ ] Admin mutations are audited with actor id, target id, and timestamp.
-- [ ] User accounts cannot self-promote or alter entitlement source fields.
+- [X] Admin mutations are audited with actor id, target id, and timestamp.
+- [X] User accounts cannot self-promote or alter entitlement source fields.
 - [X] Admin diagnostics avoid exposing CPF, names, addresses, or raw receipt text.
 
 ## Payments and Entitlements
 
 - [X] Stripe checkout is disabled until Phase 19 starts.
-- [ ] Webhook endpoints verify signatures before parsing trusted state.
-- [ ] Webhook event ids are persisted for replay protection.
-- [ ] Entitlement changes are derived from billing events or explicit admin actions.
+- [X] Webhook endpoints verify signatures before parsing trusted state.
+- [X] Webhook event ids are persisted for replay protection.
+- [X] Entitlement changes are derived from billing events or explicit admin actions.
 - [X] Token consume/refund/grant operations are idempotent and append-only.
 
 ## Injection and Input Handling

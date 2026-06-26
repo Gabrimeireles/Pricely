@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../persistence/prisma.service';
+import { toSlug } from '../../common/utils/slug.util';
 import { type ReceiptRecordEntity } from '../domain/receipt-record.entity';
 
 @Injectable()
@@ -7,7 +8,13 @@ export class ReceiptRecordRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(record: ReceiptRecordEntity): Promise<ReceiptRecordEntity> {
-    const establishment = await this.findKnownEstablishment(record);
+    const establishment = await this.findOrCreateEstablishmentCandidate(record);
+    const processingLogs = [
+      ...record.processingLogs,
+      ...(establishment && establishment.id !== record.storeId
+        ? [`store_candidate_linked:${establishment.id}`]
+        : []),
+    ];
 
     await this.prisma.receiptRecord.create({
       data: {
@@ -25,7 +32,7 @@ export class ReceiptRecordRepository {
           : null,
         rawReference: JSON.stringify({
           rawSourceReference: record.rawSourceReference,
-          processingLogs: record.processingLogs,
+          processingLogs,
         }),
         confidenceScore: record.confidenceScore,
         duplicateKey: record.duplicateKey,
@@ -54,7 +61,11 @@ export class ReceiptRecordRepository {
       },
     });
 
-    return record;
+    return {
+      ...record,
+      storeId: establishment?.id ?? record.storeId,
+      processingLogs,
+    };
   }
 
   async attachProcessingJob(
@@ -67,6 +78,51 @@ export class ReceiptRecordRepository {
       },
       data: {
         jobId: processingJobId,
+      },
+    });
+  }
+
+  async markRejected(receiptRecordId: string, reason: string): Promise<void> {
+    const existing = await this.findById(receiptRecordId);
+
+    await this.prisma.receiptRecord.update({
+      where: {
+        id: receiptRecordId,
+      },
+      data: {
+        trustLevel: 'rejected',
+        moderationStatus: 'rejected',
+        rewardEligibilityStatus: 'ineligible',
+        reviewReason: reason,
+        rawReference: JSON.stringify({
+          rawSourceReference: existing?.rawSourceReference,
+          processingLogs: [
+            ...(existing?.processingLogs ?? []),
+            `manual_rejection:${reason}`,
+          ],
+        }),
+      },
+    });
+  }
+
+  async markRewardGranted(receiptRecordId: string): Promise<void> {
+    const existing = await this.findById(receiptRecordId);
+
+    await this.prisma.receiptRecord.update({
+      where: {
+        id: receiptRecordId,
+      },
+      data: {
+        rewardEligibilityStatus: 'granted',
+        reviewReason: 'receipt_reward_granted',
+        rawReference: JSON.stringify({
+          rawSourceReference: existing?.rawSourceReference,
+          processingLogs: [
+            ...(existing?.processingLogs ?? []),
+            'reward:points_granted:100',
+            'reward:optimization_token_granted:1',
+          ],
+        }),
       },
     });
   }
@@ -191,6 +247,59 @@ export class ReceiptRecordRepository {
     return this.prisma.establishment.findFirst({
       where: {
         unitName: record.storeName,
+      },
+    });
+  }
+
+  private async findOrCreateEstablishmentCandidate(record: ReceiptRecordEntity) {
+    const knownEstablishment = await this.findKnownEstablishment(record);
+
+    if (knownEstablishment) {
+      return knownEstablishment;
+    }
+
+    if (
+      !record.storeCnpj ||
+      !record.storeName ||
+      !record.storeCityName ||
+      !record.storeStateCode
+    ) {
+      return null;
+    }
+
+    const regionSlug = `${toSlug(record.storeCityName)}-${record.storeStateCode.toLowerCase()}`;
+    const region = await this.prisma.region.findFirst({
+      where: {
+        OR: [
+          { slug: regionSlug },
+          {
+            name: record.storeCityName,
+            stateCode: record.storeStateCode,
+          },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    if (!region) {
+      return null;
+    }
+
+    return this.prisma.establishment.create({
+      data: {
+        brandName: record.storeName,
+        unitName: record.storeName,
+        cnpj: this.formatCnpj(record.storeCnpj),
+        cityName: region.name,
+        neighborhood: record.storeNeighborhood ?? 'A revisar',
+        addressLine: record.storeAddressLine,
+        postalCode: record.storePostalCode,
+        locationSource: 'receipt_candidate',
+        regionId: region.id,
+        isActive: false,
       },
     });
   }

@@ -6,7 +6,50 @@ describe('AdminDashboardService', () => {
   it('aggregates metrics, queue health, and processing job projections', async () => {
     const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     const prisma = {
-      userAccount: { count: jest.fn().mockResolvedValue(12) },
+      userAccount: {
+        count: jest.fn().mockResolvedValue(12),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'user-1',
+            email: 'cliente1@pricely.local',
+            displayName: 'Cliente 1',
+            role: 'customer',
+            status: 'active',
+            lastLoginAt: new Date('2026-04-27T08:00:00Z'),
+            createdAt: new Date('2026-04-20T08:00:00Z'),
+            updatedAt: new Date('2026-04-27T08:00:00Z'),
+            preferredRegion: {
+              id: 'region-1',
+              slug: 'sao-paulo-sp',
+              name: 'Sao Paulo',
+              stateCode: 'SP',
+            },
+            entitlements: [
+              {
+                plan: 'free',
+                status: 'active',
+                source: 'monthly_free_refill',
+                endsAt: null,
+              },
+            ],
+            optimizationRuns: [
+              {
+                id: 'run-1',
+                mode: 'global_full',
+                status: 'completed',
+                createdAt: new Date('2026-04-27T10:00:00Z'),
+                completedAt: new Date('2026-04-27T10:05:00Z'),
+              },
+            ],
+            _count: {
+              shoppingLists: 3,
+              optimizationRuns: 2,
+              receiptRecords: 1,
+              priceMismatchReports: 4,
+            },
+          },
+        ]),
+      },
       shoppingList: { count: jest.fn().mockResolvedValue(24) },
       optimizationRun: {
         count: jest.fn().mockResolvedValue(18),
@@ -142,6 +185,16 @@ describe('AdminDashboardService', () => {
           },
         ]),
       },
+      optimizationTokenLedgerEntry: {
+        groupBy: jest.fn().mockResolvedValue([
+          {
+            userId: 'user-1',
+            _sum: {
+              amount: 5,
+            },
+          },
+        ]),
+      },
       shoppingList: {
         count: jest.fn().mockResolvedValue(24),
         findMany: jest.fn().mockResolvedValue([
@@ -184,6 +237,12 @@ describe('AdminDashboardService', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
+      {
+        monthlyFreeTokenCount: jest.fn().mockReturnValue(2),
+        setManualPremium: jest.fn(),
+        grantAdminOptimizationTokens: jest.fn(),
+      } as never,
       {} as never,
     );
 
@@ -301,6 +360,29 @@ describe('AdminDashboardService', () => {
       }),
     ]);
 
+    await expect(service.listUsers()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'user-1',
+        email: 'cliente1@pricely.local',
+        counts: {
+          shoppingLists: 3,
+          optimizationRuns: 2,
+          receiptRecords: 1,
+          priceMismatchReports: 4,
+        },
+        entitlement: expect.objectContaining({
+          plan: 'free',
+          availableOptimizationTokens: 5,
+          billingEnabled: false,
+          lastPaymentStatus: 'billing_disabled',
+        }),
+        latestOptimization: expect.objectContaining({
+          id: 'run-1',
+          mode: 'global_full',
+        }),
+      }),
+    ]);
+
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining('Admin metrics generated'),
     );
@@ -336,6 +418,8 @@ describe('AdminDashboardService', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
+      {} as never,
     );
 
     await service.createRegion({
@@ -359,5 +443,194 @@ describe('AdminDashboardService', () => {
     });
     expect(logSpy).toHaveBeenCalledWith('Admin created region campinas-sp (region-1)');
     expect(logSpy).toHaveBeenCalledWith('Admin updated region region-1');
+  });
+
+  it('projects receipt line extraction, maker action, and price comparison for admin review', async () => {
+    const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    const prisma = {
+      receiptRecord: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'receipt-1',
+            storeName: 'Mercado Centro',
+            storeCnpj: '00.000.000/0001-00',
+            parseStatus: 'parsed',
+            trustLevel: 'trusted',
+            moderationStatus: 'accepted',
+            rewardEligibilityStatus: 'eligible_pending',
+            reviewReason: null,
+            purchaseDate: new Date('2026-05-09T10:00:00Z'),
+            createdAt: new Date('2026-05-09T10:05:00Z'),
+            updatedAt: new Date('2026-05-09T10:06:00Z'),
+            user: {
+              id: 'user-1',
+              displayName: 'Cliente 1',
+              email: 'cliente1@pricely.local',
+            },
+            processingJob: null,
+            lineItems: [
+              {
+                id: 'line-1',
+                rawProductName: 'CAFE PILAO 500G',
+                normalizedName: 'Cafe Pilao 500g',
+                ean: '7891000000000',
+                quantity: { toString: () => '1' },
+                unitPrice: { toString: () => '15.90' },
+                originalUnitPrice: { toString: () => '18.90' },
+                promotionalUnitPrice: { toString: () => '15.90' },
+                matchConfidence: { toString: () => '0.91' },
+                productOffers: [
+                  {
+                    id: 'offer-1',
+                    catalogProductId: 'product-1',
+                    productVariantId: 'variant-1',
+                    establishmentId: 'store-1',
+                    displayName: 'Cafe Pilao 500g',
+                    packageLabel: '500 g',
+                    priceAmount: { toString: () => '15.90' },
+                    observedAt: new Date('2026-05-09T10:06:00Z'),
+                    catalogProduct: { name: 'Cafe torrado' },
+                    productVariant: {
+                      displayName: 'Cafe Pilao 500g',
+                      brandName: 'Pilao',
+                    },
+                    establishment: {
+                      unitName: 'Mercado Centro',
+                      neighborhood: 'Centro',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      },
+      productOffer: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            productVariantId: 'variant-1',
+            establishmentId: 'store-1',
+            priceAmount: { toString: () => '16.90' },
+            observedAt: new Date('2026-05-01T10:06:00Z'),
+          },
+        ]),
+      },
+    };
+
+    const service = new AdminDashboardService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(service.listReceiptProcessingReviews()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'receipt-1',
+        quality: expect.objectContaining({
+          lineItemCount: 1,
+          highConfidenceLineItemCount: 1,
+        }),
+        lineItems: [
+          expect.objectContaining({
+            rawProductName: 'CAFE PILAO 500G',
+            matcherStatus: 'matched_offer',
+            makerAction: 'offer_created',
+            offers: [
+              expect.objectContaining({
+                priceAmount: 15.9,
+                comparison: {
+                  previousPriceAmount: 16.9,
+                  newPriceAmount: 15.9,
+                  deltaAmount: -1,
+                  direction: 'down',
+                  previousObservedAt: '2026-05-01T10:06:00.000Z',
+                },
+              }),
+            ],
+          }),
+        ],
+      }),
+    ]);
+    expect(logSpy).toHaveBeenCalledWith(
+      'Admin receipt processing requested: 1 records returned',
+    );
+  });
+
+  it('delegates premium and token adjustments to entitlement service', async () => {
+    const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    const prisma = {
+      userAccount: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'user-1',
+            email: 'cliente1@pricely.local',
+            displayName: 'Cliente 1',
+            role: 'customer',
+            status: 'active',
+            lastLoginAt: null,
+            createdAt: new Date('2026-04-20T08:00:00Z'),
+            updatedAt: new Date('2026-04-27T08:00:00Z'),
+            preferredRegion: null,
+            entitlements: [],
+            optimizationRuns: [],
+            _count: {
+              shoppingLists: 0,
+              optimizationRuns: 0,
+              receiptRecords: 0,
+              priceMismatchReports: 0,
+            },
+          },
+        ]),
+      },
+      optimizationTokenLedgerEntry: {
+        groupBy: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const entitlementsService = {
+      monthlyFreeTokenCount: jest.fn().mockReturnValue(2),
+      setManualPremium: jest.fn().mockResolvedValue(null),
+      grantAdminOptimizationTokens: jest.fn().mockResolvedValue(null),
+    };
+
+    const service = new AdminDashboardService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      entitlementsService as never,
+      {} as never,
+    );
+
+    await service.setUserPremium('user-1', { enabled: true }, 'admin-1');
+    await service.grantUserOptimizationTokens(
+      'user-1',
+      { amount: 3, reason: 'suporte_admin' },
+      'admin-1',
+    );
+
+    expect(entitlementsService.setManualPremium).toHaveBeenCalledWith({
+      userId: 'user-1',
+      enabled: true,
+      adminUserId: 'admin-1',
+    });
+    expect(entitlementsService.grantAdminOptimizationTokens).toHaveBeenCalledWith({
+      userId: 'user-1',
+      amount: 3,
+      reason: 'suporte_admin',
+      adminUserId: 'admin-1',
+    });
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('enabled premium'),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('granted 3 optimization tokens'),
+    );
   });
 });

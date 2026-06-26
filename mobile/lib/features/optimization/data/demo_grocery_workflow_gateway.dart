@@ -40,15 +40,21 @@ class DemoGroceryWorkflowGateway {
     }
 
     return ReceiptSubmissionSummary(
+      id: 'demo-receipt-${DateTime.now().millisecondsSinceEpoch}',
       storeName: storeName,
       ingestedItems: ingestedItems,
       lowConfidenceItems: lowConfidenceItems,
       moderationStatus:
           lowConfidenceItems.isEmpty ? 'accepted' : 'quarantined',
+      processingStatus: 'waiting_manual_release',
       reviewReason: lowConfidenceItems.isEmpty
           ? 'receipt_rewards_disabled'
           : 'low_confidence_extraction',
       rewardEligibilityStatus: 'disabled',
+      rewardPoints: 0,
+      rewardOptimizationTokens: 0,
+      rewardMessage:
+          'Nota recebida no modo demo. Rewards ficam pendentes no backend real.',
     );
   }
 

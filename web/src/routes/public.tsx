@@ -8,13 +8,17 @@ import {
   OfferDetailPage,
   OffersPage,
   OptimizationPage,
+  ReceiptSubmissionPage,
+  SharedListPage,
   SignInPage,
   SignUpPage,
 } from '@/public/public-pages';
+import { RouteErrorPage } from './route-error';
 
 export const publicRoute = {
   path: '/',
   element: <PublicLayout />,
+  errorElement: <RouteErrorPage />,
   children: [
     {
       index: true,
@@ -45,8 +49,16 @@ export const publicRoute = {
       element: <ListsPage />,
     },
     {
+      path: 'notas',
+      element: <ReceiptSubmissionPage />,
+    },
+    {
       path: 'listas/:listId',
       element: <ListEditorPage />,
+    },
+    {
+      path: 'compartilhar/listas/:shareToken',
+      element: <SharedListPage />,
     },
     {
       path: 'listas/:listId/checklist',
@@ -55,6 +67,10 @@ export const publicRoute = {
     {
       path: 'otimizacao/:listId',
       element: <OptimizationPage />,
+    },
+    {
+      path: '*',
+      element: <RouteErrorPage />,
     },
   ],
 };

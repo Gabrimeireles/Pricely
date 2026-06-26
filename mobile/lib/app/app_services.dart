@@ -4,11 +4,15 @@ import '../core/storage/local_cache_service.dart';
 import '../core/storage/shared_preferences_key_value_store.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/discovery/application/market_discovery_controller.dart';
+import '../features/location/application/mobile_location_controller.dart';
+import '../features/location/data/geolocator_mobile_location_service.dart';
 import '../features/optimization/application/optimization_controller.dart';
 import '../features/optimization/data/demo_grocery_workflow_gateway.dart';
+import '../features/privacy/application/monetary_privacy_controller.dart';
 import '../features/receipts/application/receipt_flow_controller.dart';
 import '../features/shared/data/pricely_backend_gateway.dart';
 import '../features/shopping_lists/application/shopping_list_controller.dart';
+import '../features/theme/application/theme_controller.dart';
 
 class AppServices {
   AppServices._({
@@ -16,23 +20,36 @@ class AppServices {
     required this.apiClient,
     required this.workflowGateway,
   })  : localCacheService = LocalCacheService(keyValueStore),
-        backendGateway = PricelyBackendGateway(apiClient) {
+        backendGateway = PricelyBackendGateway(apiClient),
+        monetaryPrivacyController = MonetaryPrivacyController(keyValueStore),
+        themeController = ThemeController(keyValueStore) {
     authController = AuthController(
       cacheService: localCacheService,
       backendGateway: backendGateway,
     );
     marketDiscoveryController = MarketDiscoveryController(backendGateway);
+    locationController = MobileLocationController(
+      authController: authController,
+      discoveryController: marketDiscoveryController,
+      backendGateway: backendGateway,
+      locationService: const GeolocatorMobileLocationService(),
+    );
     shoppingListController = ShoppingListController(
       cacheService: localCacheService,
       authController: authController,
       backendGateway: backendGateway,
     );
-    receiptFlowController = ReceiptFlowController(workflowGateway);
+    receiptFlowController = ReceiptFlowController(
+      workflowGateway,
+      authController: authController,
+      backendGateway: backendGateway,
+    );
     optimizationController = OptimizationController(
       cacheService: localCacheService,
       shoppingListController: shoppingListController,
       backendGateway: backendGateway,
       authController: authController,
+      locationController: locationController,
     );
   }
 
@@ -41,9 +58,12 @@ class AppServices {
   final HttpApiClient apiClient;
   final PricelyBackendGateway backendGateway;
   final DemoGroceryWorkflowGateway workflowGateway;
+  final MonetaryPrivacyController monetaryPrivacyController;
+  final ThemeController themeController;
 
   late final AuthController authController;
   late final MarketDiscoveryController marketDiscoveryController;
+  late final MobileLocationController locationController;
   late final ShoppingListController shoppingListController;
   late final ReceiptFlowController receiptFlowController;
   late final OptimizationController optimizationController;
@@ -72,6 +92,8 @@ class AppServices {
   }
 
   Future<void> initialize() async {
+    await themeController.initialize();
+    await monetaryPrivacyController.initialize();
     await authController.bootstrap();
     await marketDiscoveryController.loadInitialData();
     await shoppingListController.loadDraft();

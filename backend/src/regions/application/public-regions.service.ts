@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { type CreateCityInclusionRequestContract } from '../../common/contracts';
 import { PrismaService } from '../../persistence/prisma.service';
 
 @Injectable()
@@ -15,7 +16,7 @@ export class PublicRegionsService {
           not: 'inactive',
         },
       },
-      orderBy: [{ publicSortOrder: 'asc' }, { name: 'asc' }],
+      orderBy: [{ name: 'asc' }],
       include: {
         establishments: {
           where: {
@@ -48,16 +49,39 @@ export class PublicRegionsService {
         implantationStatus: region.implantationStatus,
         activeEstablishmentCount,
         offerCoverageStatus: liveOffersCount > 0 ? 'live' : 'collecting_data',
+        establishments: region.establishments.map((establishment) => ({
+          id: establishment.id,
+          brandName: establishment.brandName,
+          unitName: establishment.unitName,
+          neighborhood: establishment.neighborhood,
+          cityName: establishment.cityName,
+          offerCount: establishment.productOffers.length,
+        })),
       };
+    }).sort((first, second) => {
+      const activeStoreDiff =
+        second.activeEstablishmentCount - first.activeEstablishmentCount;
+
+      if (activeStoreDiff !== 0) {
+        return activeStoreDiff;
+      }
+
+      return `${first.name}-${first.stateCode}`.localeCompare(
+        `${second.name}-${second.stateCode}`,
+      );
     });
 
-    this.logger.log(`Public regions requested: ${projectedRegions.length} regions visible`);
+    this.logger.log(
+      `Public regions requested: ${projectedRegions.length} regions visible`,
+    );
 
     const zeroStoreRegions = projectedRegions.filter(
       (region) => region.activeEstablishmentCount === 0,
     ).length;
     if (zeroStoreRegions > 0) {
-      this.logger.warn(`Public regions response contains ${zeroStoreRegions} zero-store regions`);
+      this.logger.warn(
+        `Public regions response contains ${zeroStoreRegions} zero-store regions`,
+      );
     }
 
     return projectedRegions;
@@ -81,7 +105,9 @@ export class PublicRegionsService {
     ]);
 
     const impact = {
-      totalEstimatedSavings: Number(aggregatedSavings._sum.estimatedSavings ?? 0),
+      totalEstimatedSavings: Number(
+        aggregatedSavings._sum.estimatedSavings ?? 0,
+      ),
       optimizedListsCount,
     };
 
@@ -90,5 +116,29 @@ export class PublicRegionsService {
     );
 
     return impact;
+  }
+
+  async requestCityInclusion(input: CreateCityInclusionRequestContract) {
+    const request = await this.prisma.cityInclusionRequest.create({
+      data: {
+        cityName: input.cityName.trim(),
+        stateCode: input.stateCode.trim().toUpperCase(),
+        contactName: input.contactName?.trim(),
+        contactEmail: input.contactEmail?.trim().toLowerCase(),
+        message: input.message?.trim(),
+      },
+    });
+
+    this.logger.log(
+      `City inclusion requested: ${request.cityName}-${request.stateCode}`,
+    );
+
+    return {
+      id: request.id,
+      cityName: request.cityName,
+      stateCode: request.stateCode,
+      status: request.status,
+      createdAt: request.createdAt.toISOString(),
+    };
   }
 }

@@ -1,10 +1,17 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
-import { type OptimizeShoppingListRequest, type OptimizationMode } from '../../../common/contracts';
+import { type OptimizationModeRequest, type OptimizeShoppingListRequest } from '../../../common/contracts';
 
 export class OptimizeShoppingListDto implements OptimizeShoppingListRequest {
-  @IsEnum(['local', 'global_unique', 'global_full'])
-  mode!: OptimizationMode;
+  @IsIn([
+    'local',
+    'global_unique',
+    'global_full',
+    'local_unique',
+    'local_multi',
+    'global_multi',
+  ])
+  mode!: OptimizationModeRequest;
 
   @IsOptional()
   @IsString()
@@ -13,4 +20,18 @@ export class OptimizeShoppingListDto implements OptimizeShoppingListRequest {
   @IsOptional()
   @IsString()
   regionId?: string;
+
+  @IsOptional()
+  @IsString()
+  locationPreferenceId?: string;
+
+  @IsOptional()
+  @IsString()
+  userLocationPreferenceId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(25)
+  coverageRadiusKm?: number;
 }

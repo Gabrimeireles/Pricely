@@ -1,15 +1,66 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
-import { AdminEstablishmentsPage, AdminOverviewPage, AdminQueuePage, AdminRegionsPage } from './dashboard-pages';
+import {
+  AdminCatalogPage,
+  AdminEstablishmentsPage,
+  AdminOverviewPage,
+  AdminPricesPage,
+  AdminQueueDetailPage,
+  AdminQueuePage,
+  AdminReceiptAuditPage,
+  AdminReceiptsPage,
+  AdminRegionsPage,
+  AdminUsersPage,
+} from './dashboard-pages';
 
 const fetchAdminMetrics = vi.fn();
+const fetchAdminPublicSearchMetrics = vi.fn();
 const fetchAdminQueueHealth = vi.fn();
 const fetchAdminProcessingJobs = vi.fn();
+const fetchAdminProcessingJobDetail = vi.fn();
+const fetchAdminReceiptProcessing = vi.fn();
+const fetchAdminReceiptProcessingDetail = vi.fn();
+const releaseAdminReceiptProcessing = vi.fn();
+const reprocessAdminReceiptProcessing = vi.fn();
+const rejectAdminReceiptProcessing = vi.fn();
 const fetchAdminRegions = vi.fn();
 const fetchAdminEstablishments = vi.fn();
+const fetchAdminOffers = vi.fn();
+const fetchAdminProducts = vi.fn();
+const fetchAdminProductVariants = vi.fn();
+const fetchAdminMissingProductRequests = vi.fn();
+const convertAdminMissingProductRequest = vi.fn();
+const rejectAdminMissingProductRequest = vi.fn();
+const retryAdminProcessingJob = vi.fn();
+const reviewAdminProcessingJob = vi.fn();
+const cancelAdminProcessingJob = vi.fn();
+const createAdminOffer = vi.fn();
+const updateAdminOffer = vi.fn();
+const deleteAdminProduct = vi.fn();
+const deleteAdminProductVariant = vi.fn();
+const fetchAdminUsers = vi.fn();
+const setAdminUserPremium = vi.fn();
+const grantAdminUserTokens = vi.fn();
+const monetaryPrivacyMockState = vi.hoisted(() => ({
+  isMoneyVisible: true,
+}));
 
 vi.mock('@/app/pricely-context', () => ({
   usePricely: () => ({
@@ -24,40 +75,297 @@ vi.mock('@/app/pricely-context', () => ({
   }),
 }));
 
+vi.mock('@/app/monetary-privacy-context', () => ({
+  useMonetaryPrivacy: () => ({
+    isMoneyVisible: monetaryPrivacyMockState.isMoneyVisible,
+    setMoneyVisible: vi.fn(),
+    toggleMoneyVisibility: vi.fn(),
+  }),
+}));
+
 vi.mock('@/app/api', () => ({
   fetchAdminMetrics: (...args: unknown[]) => fetchAdminMetrics(...args),
+  fetchAdminPublicSearchMetrics: (...args: unknown[]) =>
+    fetchAdminPublicSearchMetrics(...args),
   fetchAdminQueueHealth: (...args: unknown[]) => fetchAdminQueueHealth(...args),
-  fetchAdminProcessingJobs: (...args: unknown[]) => fetchAdminProcessingJobs(...args),
-  fetchAdminProcessingJobDetail: vi.fn(),
+  fetchAdminProcessingJobs: (...args: unknown[]) =>
+    fetchAdminProcessingJobs(...args),
+  fetchAdminProcessingJobDetail: (...args: unknown[]) =>
+    fetchAdminProcessingJobDetail(...args),
+  fetchAdminReceiptProcessing: (...args: unknown[]) =>
+    fetchAdminReceiptProcessing(...args),
+  fetchAdminReceiptProcessingDetail: (...args: unknown[]) =>
+    fetchAdminReceiptProcessingDetail(...args),
+  releaseAdminReceiptProcessing: (...args: unknown[]) =>
+    releaseAdminReceiptProcessing(...args),
+  reprocessAdminReceiptProcessing: (...args: unknown[]) =>
+    reprocessAdminReceiptProcessing(...args),
+  rejectAdminReceiptProcessing: (...args: unknown[]) =>
+    rejectAdminReceiptProcessing(...args),
   fetchAdminRegions: (...args: unknown[]) => fetchAdminRegions(...args),
-  fetchAdminEstablishments: (...args: unknown[]) => fetchAdminEstablishments(...args),
+  fetchAdminEstablishments: (...args: unknown[]) =>
+    fetchAdminEstablishments(...args),
   fetchAdminShoppingLists: vi.fn(),
+  fetchAdminUsers: (...args: unknown[]) => fetchAdminUsers(...args),
+  setAdminUserPremium: (...args: unknown[]) => setAdminUserPremium(...args),
+  grantAdminUserTokens: (...args: unknown[]) => grantAdminUserTokens(...args),
   updateAdminRegion: vi.fn(),
   createAdminRegion: vi.fn(),
   createAdminEstablishment: vi.fn(),
   updateAdminEstablishment: vi.fn(),
-  fetchAdminOffers: vi.fn(),
-  fetchAdminProducts: vi.fn(),
-  fetchAdminProductVariants: vi.fn(),
-  createAdminOffer: vi.fn(),
+  fetchAdminOffers: (...args: unknown[]) => fetchAdminOffers(...args),
+  fetchAdminProducts: (...args: unknown[]) => fetchAdminProducts(...args),
+  fetchAdminProductVariants: (...args: unknown[]) =>
+    fetchAdminProductVariants(...args),
+  fetchAdminMissingProductRequests: (...args: unknown[]) =>
+    fetchAdminMissingProductRequests(...args),
+  convertAdminMissingProductRequest: (...args: unknown[]) =>
+    convertAdminMissingProductRequest(...args),
+  rejectAdminMissingProductRequest: (...args: unknown[]) =>
+    rejectAdminMissingProductRequest(...args),
+  retryAdminProcessingJob: (...args: unknown[]) =>
+    retryAdminProcessingJob(...args),
+  reviewAdminProcessingJob: (...args: unknown[]) =>
+    reviewAdminProcessingJob(...args),
+  cancelAdminProcessingJob: (...args: unknown[]) =>
+    cancelAdminProcessingJob(...args),
+  createAdminOffer: (...args: unknown[]) => createAdminOffer(...args),
   createAdminProduct: vi.fn(),
   createAdminProductVariant: vi.fn(),
-  updateAdminOffer: vi.fn(),
+  deleteAdminProduct: (...args: unknown[]) => deleteAdminProduct(...args),
+  deleteAdminProductVariant: (...args: unknown[]) =>
+    deleteAdminProductVariant(...args),
+  updateAdminOffer: (...args: unknown[]) => updateAdminOffer(...args),
   updateAdminProduct: vi.fn(),
   updateAdminProductVariant: vi.fn(),
 }));
 
+function buildReceiptAudit(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'receipt-1',
+    storeName: 'Mercado Centro',
+    storeCnpj: '00.000.000/0001-00',
+    parseStatus: 'parsed',
+    trustLevel: 'trusted',
+    moderationStatus: 'accepted',
+    rewardEligibilityStatus: 'eligible_pending',
+    reviewReason: null,
+    purchaseDate: '2026-05-09T10:00:00.000Z',
+    createdAt: '2026-05-09T10:05:00.000Z',
+    updatedAt: '2026-05-09T10:06:00.000Z',
+    owner: {
+      id: 'user-1',
+      displayName: 'Cliente Teste',
+      email: 'cliente@pricely.local',
+    },
+    processingJob: {
+      id: 'job-1',
+      status: 'completed',
+      attemptCount: 1,
+      failureReason: null,
+      updatedAt: '2026-05-09T10:06:00.000Z',
+    },
+    quality: {
+      lineItemCount: 4,
+      highConfidenceLineItemCount: 3,
+      averageMatchConfidence: 0.83,
+      usefulDataRatio: 0.75,
+    },
+    reward: {
+      points: 100,
+      optimizationTokens: 1,
+      label: '100 pontos + 1 credito pendente',
+    },
+    extractedPayload: {
+      accessKey: '35260500000000000100550010000000011000000011',
+      sefazUrl: 'https://sefaz.example/accepted',
+      rawReference: null,
+      purchaseDate: '2026-05-09T10:00:00.000Z',
+      lineItemCount: 1,
+      totalLineAmount: 15.9,
+    },
+    lineItems: [
+      {
+        id: 'line-1',
+        rawProductName: 'CAFE PILAO 500G',
+        normalizedName: 'Cafe Pilao 500g',
+        ean: '7891000000000',
+        quantity: 1,
+        unitPrice: 15.9,
+        lineTotal: 15.9,
+        originalUnitPrice: 18.9,
+        promotionalUnitPrice: 15.9,
+        matchConfidence: 0.91,
+        matcherStatus: 'matched_offer',
+        makerAction: 'offer_created',
+        offers: [
+          {
+            id: 'offer-1',
+            catalogProductName: 'Cafe torrado',
+            variantName: 'Cafe Pilao 500g',
+            brandName: 'Pilao',
+            establishmentName: 'Mercado Centro',
+            neighborhood: 'Centro',
+            displayName: 'Cafe Pilao 500g',
+            packageLabel: '500 g',
+            priceAmount: 15.9,
+            observedAt: '2026-05-09T10:06:00.000Z',
+            comparison: {
+              previousPriceAmount: 16.9,
+              newPriceAmount: 15.9,
+              deltaAmount: -1,
+              direction: 'down',
+              previousObservedAt: '2026-05-01T10:06:00.000Z',
+            },
+          },
+        ],
+      },
+    ],
+    ...overrides,
+  };
+}
+
+function buildAdminOfferProduct(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'product-1',
+    slug: 'refrigerante',
+    name: 'Refrigerante',
+    category: 'bebidas',
+    defaultUnit: 'un',
+    imageUrl: null,
+    isActive: true,
+    aliases: [],
+    productVariants: [
+      {
+        id: 'variant-1',
+        catalogProductId: 'product-1',
+        slug: 'coca-cola-pet-2l',
+        displayName: 'Coca Cola PET 2L',
+        brandName: 'Coca Cola',
+        variantLabel: null,
+        packageLabel: '2 L',
+        imageUrl: null,
+        isActive: true,
+      },
+    ],
+    _count: { productOffers: 0 },
+    ...overrides,
+  };
+}
+
+function buildAdminOffer(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'offer-1',
+    displayName: 'Coca Cola PET 2L',
+    packageLabel: '2 L',
+    priceAmount: 14.99,
+    basePriceAmount: 16.49,
+    promotionalPriceAmount: 14.99,
+    availabilityStatus: 'available',
+    confidenceLevel: 'high',
+    observedAt: '2026-05-10T04:00:00.000Z',
+    isActive: true,
+    catalogProduct: { id: 'product-1', name: 'Refrigerante' },
+    productVariant: {
+      id: 'variant-1',
+      displayName: 'Coca Cola PET 2L',
+      brandName: 'Coca Cola',
+      packageLabel: '2 L',
+      imageUrl: null,
+    },
+    establishment: {
+      id: 'store-1',
+      unitName: 'Mercado Centro',
+      neighborhood: 'Centro',
+      region: {
+        id: 'region-1',
+        slug: 'sao-paulo-sp',
+        name: 'Sao Paulo',
+        stateCode: 'SP',
+      },
+    },
+    ...overrides,
+  };
+}
+
 describe('Admin dashboard pages', () => {
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  });
+
   beforeEach(() => {
     fetchAdminMetrics.mockReset();
+    fetchAdminPublicSearchMetrics.mockReset();
     fetchAdminQueueHealth.mockReset();
     fetchAdminProcessingJobs.mockReset();
+    fetchAdminProcessingJobDetail.mockReset();
+    fetchAdminReceiptProcessing.mockReset();
+    fetchAdminReceiptProcessingDetail.mockReset();
+    releaseAdminReceiptProcessing.mockReset();
+    reprocessAdminReceiptProcessing.mockReset();
+    rejectAdminReceiptProcessing.mockReset();
     fetchAdminRegions.mockReset();
     fetchAdminEstablishments.mockReset();
+    fetchAdminOffers.mockReset();
+    fetchAdminProducts.mockReset();
+    fetchAdminProductVariants.mockReset();
+    fetchAdminMissingProductRequests.mockReset();
+    convertAdminMissingProductRequest.mockReset();
+    rejectAdminMissingProductRequest.mockReset();
+    retryAdminProcessingJob.mockReset();
+    reviewAdminProcessingJob.mockReset();
+    cancelAdminProcessingJob.mockReset();
+    fetchAdminMissingProductRequests.mockResolvedValue([]);
+    createAdminOffer.mockReset();
+    updateAdminOffer.mockReset();
+    deleteAdminProduct.mockReset();
+    deleteAdminProductVariant.mockReset();
+    fetchAdminUsers.mockReset();
+    setAdminUserPremium.mockReset();
+    grantAdminUserTokens.mockReset();
+    monetaryPrivacyMockState.isMoneyVisible = true;
+    fetchAdminPublicSearchMetrics.mockResolvedValue({
+      windowSize: 500,
+      retentionDays: 30,
+      sampleCount: 120,
+      volume: { last24Hours: 38, last7Days: 120 },
+      p50Ms: 28,
+      p95Ms: 72,
+      maxMs: 110,
+      p95TargetMs: 750,
+      strategyCounts: { candidate: 118, broadFallback: 2 },
+      fallbackRate: 0.0167,
+      timeline: Array.from({ length: 12 }, (_, index) => ({
+        startsAt: new Date(
+          Date.now() - (12 - index) * 2 * 60 * 60 * 1000,
+        ).toISOString(),
+        sampleCount: index + 1,
+        p95Ms: 40 + index,
+      })),
+      pgTrgmEvaluation: {
+        minimumSamples: 100,
+        recommended: false,
+        reason: 'p95_within_target',
+      },
+      alert: {
+        status: 'healthy',
+        observedP95Ms: 72,
+        targetP95Ms: 750,
+        sampleCount: 120,
+        triggeredAt: null,
+        lastNotifiedAt: null,
+      },
+      lastRecordedAt: new Date().toISOString(),
+    });
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    cleanup();
   });
 
   it('renders queue health when overview data loads successfully', async () => {
@@ -84,10 +392,16 @@ describe('Admin dashboard pages', () => {
 
     render(<AdminOverviewPage />);
 
-    expect(await screen.findByText('Saude das filas')).toBeTruthy();
-    expect(screen.getByText('Cobertura da operacao')).toBeTruthy();
-    expect(screen.getByText('Sinais do dia')).toBeTruthy();
-    expect(screen.getByText('Painel comparativo')).toBeTruthy();
+    expect(await screen.findByText('Saúde das filas')).toBeTruthy();
+    expect(screen.getByText('Fila de ações')).toBeTruthy();
+    expect(screen.getAllByText(/jobs na fila/i).length).toBeGreaterThan(0);
+    expect(screen.getByText('Moderação de notas fiscais')).toBeTruthy();
+    expect(screen.getByText('Confiança das ofertas')).toBeTruthy();
+    expect(screen.getByText('Cobertura por cidade')).toBeTruthy();
+    expect(screen.getByText('Ações rápidas')).toBeTruthy();
+    expect(screen.getByText('Busca pública')).toBeTruthy();
+    expect(screen.getByText('72 ms')).toBeTruthy();
+    expect(screen.getByText('Sem ação de índice')).toBeTruthy();
   });
 
   it('shows an empty-state message when all overview metrics are zero', async () => {
@@ -114,7 +428,10 @@ describe('Admin dashboard pages', () => {
 
     render(<AdminOverviewPage />);
 
-    expect(await screen.findByText(/Nenhuma metrica operacional ainda/)).toBeTruthy();
+    expect(
+      await screen.findByText(/Nenhuma m[eé]trica operacional ainda/),
+    ).toBeTruthy();
+    expect(screen.getByText('Cadastrar catálogo')).toBeTruthy();
   });
 
   it('renders queue diagnostics and recent jobs in the dedicated queue page', async () => {
@@ -142,11 +459,31 @@ describe('Admin dashboard pages', () => {
       {
         id: 'job-1',
         queueName: 'optimization',
+        jobType: 'optimization',
         resourceType: 'shopping_list',
         resourceId: 'list-1',
         status: 'completed',
         attemptCount: 1,
         failureReason: null,
+        createdAt: '2026-05-10T04:00:00.000Z',
+        updatedAt: '2026-05-10T04:03:00.000Z',
+        finishedAt: '2026-05-10T04:03:00.000Z',
+        owner: {
+          id: 'user-1',
+          displayName: 'Cliente Teste',
+          email: 'cliente@pricely.local',
+        },
+        shoppingList: {
+          id: 'list-1',
+          name: 'Compra da semana',
+        },
+        optimizationRun: {
+          id: 'run-1',
+          mode: 'global_multi',
+          status: 'completed',
+          createdAt: '2026-05-10T04:00:00.000Z',
+          completedAt: '2026-05-10T04:03:00.000Z',
+        },
       },
     ]);
 
@@ -154,7 +491,330 @@ describe('Admin dashboard pages', () => {
 
     expect(await screen.findByText('Saude da fila')).toBeTruthy();
     expect(screen.getByText('Jobs recentes')).toBeTruthy();
-    expect(screen.getByText(/shopping_list/)).toBeTruthy();
+    expect(screen.getByText(/Fila optimization/)).toBeTruthy();
+    expect(screen.getAllByText(/Cliente Teste/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Lista: Compra da semana')).toBeTruthy();
+    expect(screen.getByText(/Menor total na cidade/)).toBeTruthy();
+    expect(screen.getByLabelText('Abrir detalhe do job job-1')).toBeTruthy();
+    expect(screen.queryByText('Go to link')).toBeNull();
+  });
+
+  it('renders queue detail as operational diagnostics without business audit payloads', async () => {
+    fetchAdminProcessingJobDetail.mockResolvedValue({
+      id: 'job-1',
+      queueName: 'optimization',
+      jobType: 'optimization',
+      resourceType: 'shopping_list',
+      resourceId: 'list-1',
+      status: 'completed',
+      attemptCount: 1,
+      failureReason: null,
+      createdAt: '2026-05-10T04:00:00.000Z',
+      updatedAt: '2026-05-10T04:03:00.000Z',
+      finishedAt: '2026-05-10T04:03:00.000Z',
+      owner: {
+        id: 'user-1',
+        displayName: 'Cliente Teste',
+        email: 'cliente@pricely.local',
+      },
+      shoppingList: {
+        id: 'list-1',
+        name: 'Compra da semana',
+      },
+      optimizationRun: {
+        id: 'run-1',
+        mode: 'global_multi',
+        status: 'completed',
+        createdAt: '2026-05-10T04:00:00.000Z',
+        completedAt: '2026-05-10T04:03:00.000Z',
+        totalEstimatedCost: 42.5,
+        estimatedSavings: 6.4,
+        coverageStatus: 'complete',
+        summary: 'Selecionou menor total elegível na cidade.',
+        selections: [
+          {
+            id: 'selection-1',
+            shoppingListItemId: 'item-1',
+            shoppingListItemName: 'Arroz tipo 1 5kg',
+            status: 'selected',
+            estimatedCost: 21.9,
+            offer: {
+              id: 'offer-1',
+              displayName: 'Arroz Camil 5kg',
+              variantName: 'Arroz Camil 5kg',
+              establishmentName: 'Mercado Centro',
+              neighborhood: 'Centro',
+              priceAmount: 21.9,
+              confidenceLevel: 'high',
+              sourceType: 'receipt',
+              sourceLabel: 'Nota fiscal',
+              observedAt: '2026-05-10T03:00:00.000Z',
+              receiptEvidence: {
+                id: 'receipt-1',
+                moderationStatus: 'accepted',
+                trustLevel: 'trusted',
+                reviewReason: null,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    render(<AdminQueueDetailPage />);
+
+    expect(
+      (await screen.findAllByText('Lista: Compra da semana')).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Cliente Teste · optimization/).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText('Concluido').length).toBeGreaterThan(0);
+    expect(screen.getByText('Dados técnicos')).toBeTruthy();
+    expect(
+      screen.getAllByText('Abrir auditoria de listas').length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText('Linha do tempo')).toBeTruthy();
+    expect(screen.getByText(/Worker execut/)).toBeTruthy();
+    expect(screen.getByText(/Verificar a auditoria/)).toBeTruthy();
+    expect(screen.queryByText('Como o resultado foi montado')).toBeNull();
+    expect(screen.queryByText('Selecionada')).toBeNull();
+    expect(screen.queryByText(/Nota Aceita · Confiável/)).toBeNull();
+    expect(screen.queryByText('Resumo do thinking')).toBeNull();
+  });
+
+  it('renders catalog search, collapsed variants, and offer variant images', async () => {
+    fetchAdminProducts.mockResolvedValue([
+      {
+        id: 'product-1',
+        slug: 'cafe-torrado',
+        name: 'Cafe torrado',
+        category: 'mercearia',
+        defaultUnit: 'un',
+        imageUrl: null,
+        isActive: true,
+        aliases: [{ id: 'alias-1', alias: 'cafe' }],
+        productVariants: [],
+        _count: { productOffers: 1 },
+      },
+    ]);
+    fetchAdminProductVariants.mockResolvedValue([
+      {
+        id: 'variant-1',
+        catalogProductId: 'product-1',
+        slug: 'cafe-pilao-500g',
+        displayName: 'Cafe Pilao 500g',
+        brandName: 'Pilao',
+        variantLabel: null,
+        packageLabel: '500 g',
+        imageUrl: '/uploads/cafe.png',
+        isActive: true,
+      },
+    ]);
+    fetchAdminOffers.mockResolvedValue([
+      {
+        id: 'offer-1',
+        displayName: 'Cafe Pilao 500g',
+        packageLabel: '500 g',
+        priceAmount: 15.9,
+        basePriceAmount: 18.9,
+        promotionalPriceAmount: 15.9,
+        availabilityStatus: 'available',
+        confidenceLevel: 'high',
+        observedAt: '2026-05-10T04:00:00.000Z',
+        isActive: true,
+        catalogProduct: { id: 'product-1', name: 'Cafe torrado' },
+        productVariant: {
+          id: 'variant-1',
+          displayName: 'Cafe Pilao 500g',
+          brandName: 'Pilao',
+          packageLabel: '500 g',
+          imageUrl: '/uploads/cafe.png',
+        },
+        establishment: {
+          id: 'store-1',
+          unitName: 'Mercado Centro',
+          neighborhood: 'Centro',
+          region: {
+            id: 'region-1',
+            slug: 'sao-paulo-sp',
+            name: 'Sao Paulo',
+            stateCode: 'SP',
+          },
+        },
+      },
+    ]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        unitName: 'Mercado Centro',
+      },
+    ]);
+    deleteAdminProduct.mockResolvedValue({ id: 'product-1', isActive: false });
+    deleteAdminProductVariant.mockResolvedValue({
+      id: 'variant-1',
+      isActive: false,
+    });
+
+    render(<AdminCatalogPage />);
+
+    expect(await screen.findByLabelText('Buscar no catalogo')).toBeTruthy();
+    expect(screen.getByText('Bancada de variantes')).toBeTruthy();
+    expect(screen.getByLabelText('Buscar variantes')).toBeTruthy();
+    expect(screen.getByText('1 variantes')).toBeTruthy();
+    expect(screen.getByText('Cafe Pilao 500g')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Buscar variantes'), {
+      target: { value: 'pilao' },
+    });
+    expect(await screen.findByText('Editar variante')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Buscar no catalogo'), {
+      target: { value: 'pilao' },
+    });
+    await waitFor(() => {
+      expect(screen.getAllByText(/Cafe Pilao 500g/).length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByText('Excluir variante'));
+    await waitFor(() => {
+      expect(deleteAdminProductVariant).toHaveBeenCalledWith(
+        'token',
+        'variant-1',
+      );
+    });
+
+    fireEvent.click(screen.getByText('Excluir produto'));
+    await waitFor(() => {
+      expect(deleteAdminProduct).toHaveBeenCalledWith('token', 'product-1');
+    });
+
+    render(<AdminPricesPage />);
+    expect(
+      (await screen.findAllByAltText('Cafe Pilao 500g')).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Pilao/).length).toBeGreaterThan(0);
+  });
+
+  it('accepts Brazilian currency values when creating admin offers', async () => {
+    fetchAdminProducts.mockResolvedValue([buildAdminOfferProduct()]);
+    fetchAdminOffers.mockResolvedValue([]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        unitName: 'Mercado Centro',
+      },
+    ]);
+    createAdminOffer.mockResolvedValue({ id: 'offer-1' });
+
+    render(<AdminPricesPage />);
+
+    const selects = await screen.findAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: 'variant-1' } });
+    fireEvent.change(selects[1], { target: { value: 'store-1' } });
+    fireEvent.change(screen.getByPlaceholderText('Preço efetivo'), {
+      target: { value: 'R$ 14,99' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+
+    await waitFor(() => {
+      expect(createAdminOffer).toHaveBeenCalledWith(
+        'token',
+        expect.objectContaining({
+          priceAmount: 14.99,
+          basePriceAmount: 14.99,
+          promotionalPriceAmount: null,
+        }),
+      );
+    });
+  });
+
+  it('edits admin offers with Brazilian currency values and confirms the save', async () => {
+    fetchAdminProducts.mockResolvedValue([buildAdminOfferProduct()]);
+    fetchAdminOffers.mockResolvedValue([buildAdminOffer()]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        unitName: 'Mercado Centro',
+      },
+    ]);
+    updateAdminOffer.mockResolvedValue({ id: 'offer-1' });
+
+    render(<AdminPricesPage />);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Ver variantes/ }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Editar' }));
+    fireEvent.change(screen.getByPlaceholderText('Preço efetivo'), {
+      target: { value: 'R$ 15,49' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => {
+      expect(updateAdminOffer).toHaveBeenCalledWith(
+        'token',
+        'offer-1',
+        expect.objectContaining({
+          priceAmount: 15.49,
+        }),
+      );
+    });
+    expect(
+      await screen.findByText('Oferta atualizada com sucesso.'),
+    ).toBeTruthy();
+  });
+
+  it('shows a friendly validation error and does not call the API for invalid admin offer prices', async () => {
+    fetchAdminProducts.mockResolvedValue([buildAdminOfferProduct()]);
+    fetchAdminOffers.mockResolvedValue([]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        unitName: 'Mercado Centro',
+      },
+    ]);
+
+    render(<AdminPricesPage />);
+
+    const selects = await screen.findAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: 'variant-1' } });
+    fireEvent.change(selects[1], { target: { value: 'store-1' } });
+    fireEvent.change(screen.getByPlaceholderText('Preço efetivo'), {
+      target: { value: 'abc' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+
+    expect(await screen.findByText(/Informe valores válidos/)).toBeTruthy();
+    expect(createAdminOffer).not.toHaveBeenCalled();
+    expect(updateAdminOffer).not.toHaveBeenCalled();
+  });
+
+  it('shows friendly backend validation errors without exposing raw JSON', async () => {
+    fetchAdminProducts.mockResolvedValue([buildAdminOfferProduct()]);
+    fetchAdminOffers.mockResolvedValue([]);
+    fetchAdminEstablishments.mockResolvedValue([
+      {
+        id: 'store-1',
+        unitName: 'Mercado Centro',
+      },
+    ]);
+    createAdminOffer.mockRejectedValue(
+      new Error(
+        '{"statusCode":400,"error":{"message":["priceAmount must not be less than 0"]}}',
+      ),
+    );
+
+    render(<AdminPricesPage />);
+
+    const selects = await screen.findAllByRole('combobox');
+    fireEvent.change(selects[0], { target: { value: 'variant-1' } });
+    fireEvent.change(selects[1], { target: { value: 'store-1' } });
+    fireEvent.change(screen.getByPlaceholderText('Preço efetivo'), {
+      target: { value: '14,99' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Criar' }));
+
+    expect(await screen.findByText(/Preço inválido/)).toBeTruthy();
+    expect(screen.queryByText(/statusCode/)).toBeNull();
   });
 
   it('renders dedicated regions and establishments views', async () => {
@@ -207,5 +867,335 @@ describe('Admin dashboard pages', () => {
     render(<AdminEstablishmentsPage />);
     expect(await screen.findByText('Unidades por cidade')).toBeTruthy();
     expect(screen.getAllByText('Unidade Pinheiros').length).toBeGreaterThan(0);
+  });
+
+  it('renders receipt processing quality and review actions', async () => {
+    fetchAdminReceiptProcessing.mockResolvedValue([
+      {
+        id: 'receipt-1',
+        storeName: 'Mercado Centro',
+        storeCnpj: '00.000.000/0001-00',
+        parseStatus: 'parsed',
+        trustLevel: 'trusted',
+        moderationStatus: 'accepted',
+        rewardEligibilityStatus: 'eligible_pending',
+        reviewReason: null,
+        purchaseDate: '2026-05-09T10:00:00.000Z',
+        createdAt: '2026-05-09T10:05:00.000Z',
+        updatedAt: '2026-05-09T10:06:00.000Z',
+        owner: {
+          id: 'user-1',
+          displayName: 'Cliente Teste',
+          email: 'cliente@pricely.local',
+        },
+        processingJob: {
+          id: 'job-1',
+          status: 'completed',
+          attemptCount: 1,
+          failureReason: null,
+          updatedAt: '2026-05-09T10:06:00.000Z',
+        },
+        quality: {
+          lineItemCount: 4,
+          highConfidenceLineItemCount: 3,
+          averageMatchConfidence: 0.83,
+          usefulDataRatio: 0.75,
+        },
+        reward: {
+          points: 100,
+          optimizationTokens: 1,
+          label: '100 pontos + 1 credito pendente',
+        },
+        extractedPayload: {
+          accessKey: '35260500000000000100550010000000011000000011',
+          sefazUrl: 'https://sefaz.example/accepted',
+          rawReference: null,
+          purchaseDate: '2026-05-09T10:00:00.000Z',
+          lineItemCount: 1,
+          totalLineAmount: 15.9,
+        },
+        lineItems: [
+          {
+            id: 'line-1',
+            rawProductName: 'CAFE PILAO 500G',
+            normalizedName: 'Cafe Pilao 500g',
+            ean: '7891000000000',
+            quantity: 1,
+            unitPrice: 15.9,
+            lineTotal: 15.9,
+            originalUnitPrice: 18.9,
+            promotionalUnitPrice: 15.9,
+            matchConfidence: 0.91,
+            matcherStatus: 'matched_offer',
+            makerAction: 'offer_created',
+            offers: [
+              {
+                id: 'offer-1',
+                catalogProductName: 'Cafe torrado',
+                variantName: 'Cafe Pilao 500g',
+                brandName: 'Pilao',
+                establishmentName: 'Mercado Centro',
+                neighborhood: 'Centro',
+                displayName: 'Cafe Pilao 500g',
+                packageLabel: '500 g',
+                priceAmount: 15.9,
+                observedAt: '2026-05-09T10:06:00.000Z',
+                comparison: {
+                  previousPriceAmount: 16.9,
+                  newPriceAmount: 15.9,
+                  deltaAmount: -1,
+                  direction: 'down',
+                  previousObservedAt: '2026-05-01T10:06:00.000Z',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    render(<AdminReceiptsPage />);
+
+    expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
+    expect(screen.getByText('Ação agora')).toBeTruthy();
+    expect(screen.getByText(/Baixa confian/)).toBeTruthy();
+    expect(screen.getByText(/Mercado Centro/)).toBeTruthy();
+    expect(screen.getByText('3/4 itens fortes')).toBeTruthy();
+    expect(screen.getByText('75% útil para preço')).toBeTruthy();
+    expect(
+      screen.getAllByText(/Validar reward pendente após qualidade/),
+    ).toHaveLength(2);
+    expect(screen.getByText('100 pontos + 1 credito pendente')).toBeTruthy();
+    expect(screen.getByText('Elegível pendente')).toBeTruthy();
+    fireEvent.pointerMove(screen.getByText('Elegível pendente'), {
+      pointerType: 'mouse',
+    });
+    expect(
+      await screen.findAllByText(/Reward elegível, mas pendente/i),
+    ).not.toHaveLength(0);
+    fireEvent.pointerMove(screen.getAllByText('Aceita')[0], {
+      pointerType: 'mouse',
+    });
+    expect(
+      await screen.findAllByText(/Nota aceita para evidência/i),
+    ).not.toHaveLength(0);
+    expect(screen.getByText('Auditar processamento')).toBeTruthy();
+    expect(
+      screen
+        .getByText('Auditar processamento')
+        .closest('a')
+        ?.getAttribute('href'),
+    ).toBe('/dashboard/nota/receipt-1');
+    expect(
+      screen.getByText('1 itens extraídos · 1 com oferta gerada'),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByText('Ver conteúdo e matcher'));
+    expect(await screen.findByText('CAFE PILAO 500G')).toBeTruthy();
+    expect(screen.getByText('Payload extraído')).toBeTruthy();
+    expect(screen.getAllByText(/1 itens/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('R$ 15,90').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/35260500000000000100550010000000011000000011/),
+    ).toBeTruthy();
+    expect(screen.getByText('1 ofertas · 0 para revisar')).toBeTruthy();
+    expect(screen.getByText('Oferta criada')).toBeTruthy();
+    expect(screen.getByText('Ver oferta criada')).toBeTruthy();
+    expect(screen.getByText('Preço caiu')).toBeTruthy();
+    expect(screen.getAllByText('R$ 16,90').length).toBeGreaterThan(0);
+    expect(screen.getByText(/anterior/)).toBeTruthy();
+  });
+
+  it('hides admin receipt money values when monetary privacy is disabled', async () => {
+    monetaryPrivacyMockState.isMoneyVisible = false;
+    fetchAdminReceiptProcessing.mockResolvedValue([buildReceiptAudit()]);
+
+    render(<AdminReceiptsPage />);
+
+    expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
+    fireEvent.click(screen.getByText('Ver conteúdo e matcher'));
+
+    expect(await screen.findAllByText('R$ •••')).not.toHaveLength(0);
+    expect(screen.queryByText('R$ 15,90')).toBeNull();
+  });
+
+  it('links pending receipts to the dedicated receipt audit before processing exists', async () => {
+    fetchAdminReceiptProcessing.mockResolvedValue([
+      buildReceiptAudit({
+        processingJob: null,
+        moderationStatus: 'pending',
+        trustLevel: 'pending_review',
+        rewardEligibilityStatus: 'disabled',
+      }),
+    ]);
+
+    render(<AdminReceiptsPage />);
+
+    expect(await screen.findByText('Notas fiscais processadas')).toBeTruthy();
+    expect(
+      screen
+        .getByText('Auditar nota fiscal')
+        .closest('a')
+        ?.getAttribute('href'),
+    ).toBe('/dashboard/nota/receipt-1');
+    expect(screen.getByText('Liberar processamento')).toBeTruthy();
+  });
+
+  it('renders receipt audit by receipt id and can release or reprocess from that audit', async () => {
+    fetchAdminReceiptProcessingDetail.mockResolvedValue(
+      buildReceiptAudit({
+        processingJob: null,
+        moderationStatus: 'pending',
+        trustLevel: 'pending_review',
+        rewardEligibilityStatus: 'disabled',
+        reward: {
+          points: 0,
+          optimizationTokens: 0,
+          label: 'Sem reward',
+        },
+      }),
+    );
+    releaseAdminReceiptProcessing.mockResolvedValue(buildReceiptAudit());
+
+    render(<AdminReceiptAuditPage />);
+
+    expect(await screen.findByText('Auditoria da nota fiscal')).toBeTruthy();
+    expect(screen.getByText(/Mercado Centro/)).toBeTruthy();
+    fireEvent.click(screen.getByText('Liberar processamento'));
+
+    await waitFor(() => {
+      expect(releaseAdminReceiptProcessing).toHaveBeenCalledWith(
+        'token',
+        'receipt-1',
+      );
+    });
+    expect(
+      await screen.findByText('Nota fiscal liberada para processamento.'),
+    ).toBeTruthy();
+
+    fetchAdminReceiptProcessingDetail.mockResolvedValue(buildReceiptAudit());
+    reprocessAdminReceiptProcessing.mockResolvedValue(buildReceiptAudit());
+
+    render(<AdminReceiptAuditPage />);
+
+    expect(await screen.findByText('Reprocessar')).toBeTruthy();
+    const reprocessButtons = screen.getAllByText('Reprocessar');
+    fireEvent.click(reprocessButtons[reprocessButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(reprocessAdminReceiptProcessing).toHaveBeenCalledWith(
+        'token',
+        'receipt-1',
+      );
+    });
+    expect(
+      await screen.findByText('Nota fiscal reenfileirada para processamento.'),
+    ).toBeTruthy();
+  });
+
+  it('can reject a receipt from the dedicated receipt audit page', async () => {
+    fetchAdminReceiptProcessingDetail.mockResolvedValue(
+      buildReceiptAudit({
+        processingJob: null,
+        moderationStatus: 'pending',
+        trustLevel: 'pending_review',
+        rewardEligibilityStatus: 'disabled',
+      }),
+    );
+    rejectAdminReceiptProcessing.mockResolvedValue(
+      buildReceiptAudit({
+        moderationStatus: 'rejected',
+        trustLevel: 'rejected',
+        reviewReason: 'manual_admin_rejection',
+      }),
+    );
+
+    render(<AdminReceiptAuditPage />);
+
+    expect(await screen.findByText('Auditoria da nota fiscal')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Recusar' }));
+
+    await waitFor(() => {
+      expect(rejectAdminReceiptProcessing).toHaveBeenCalledWith(
+        'token',
+        'receipt-1',
+      );
+    });
+    expect(await screen.findByText('Nota fiscal recusada.')).toBeTruthy();
+  });
+
+  it('renders admin users and supports premium and token actions', async () => {
+    fetchAdminUsers.mockResolvedValue([
+      {
+        id: 'user-1',
+        email: 'cliente@pricely.local',
+        displayName: 'Cliente Teste',
+        role: 'customer',
+        status: 'active',
+        preferredRegion: {
+          id: 'region-1',
+          slug: 'sao-paulo-sp',
+          name: 'Sao Paulo',
+          stateCode: 'SP',
+        },
+        lastLoginAt: '2026-05-10T04:00:00.000Z',
+        createdAt: '2026-05-01T04:00:00.000Z',
+        updatedAt: '2026-05-10T04:00:00.000Z',
+        counts: {
+          shoppingLists: 4,
+          optimizationRuns: 3,
+          receiptRecords: 2,
+          priceMismatchReports: 1,
+        },
+        entitlement: {
+          plan: 'free',
+          status: 'active',
+          source: 'monthly_free_refill',
+          availableOptimizationTokens: 2,
+          monthlyFreeOptimizationTokens: 2,
+          billingEnabled: false,
+          checkoutEnabled: false,
+          lastPaymentAt: null,
+          lastPaymentStatus: 'billing_disabled',
+        },
+        latestOptimization: null,
+      },
+    ]);
+    setAdminUserPremium.mockResolvedValue({});
+    grantAdminUserTokens.mockResolvedValue({});
+
+    render(<AdminUsersPage />);
+
+    expect((await screen.findAllByText('Usuarios')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Cliente Teste').length).toBeGreaterThan(0);
+    expect(screen.getByText('Sao Paulo - SP')).toBeTruthy();
+    expect(screen.getByText('2 creditos disponiveis')).toBeTruthy();
+    expect(screen.getByText('Billing desativado')).toBeTruthy();
+    fireEvent.pointerMove(
+      screen.getByRole('button', { name: 'Entender billing desativado' }),
+      { pointerType: 'mouse' },
+    );
+    expect(
+      await screen.findAllByText(/Billing está desativado neste MVP/i),
+    ).not.toHaveLength(0);
+
+    fireEvent.click(screen.getByText('Ativar premium'));
+    await waitFor(() =>
+      expect(setAdminUserPremium).toHaveBeenCalledWith('token', 'user-1', true),
+    );
+
+    fireEvent.change(
+      screen.getByLabelText('Creditos extras para Cliente Teste'),
+      {
+        target: { value: '3' },
+      },
+    );
+    fireEvent.click(screen.getByText('Adicionar'));
+    await waitFor(() =>
+      expect(grantAdminUserTokens).toHaveBeenCalledWith('token', 'user-1', {
+        amount: 3,
+        reason: 'suporte_admin',
+      }),
+    );
   });
 });

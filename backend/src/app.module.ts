@@ -3,11 +3,14 @@ import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { EstablishmentsModule } from './establishments/establishments.module';
+import { HealthModule } from './health/health.module';
 import { JobsModule } from './jobs/jobs.module';
 import { ListsModule } from './lists/lists.module';
+import { LocationsModule } from './locations/locations.module';
 import { LoggingModule } from './common/logging/logging.module';
 import { QueueModule } from './common/queue/queue.module';
 import { OptimizationModule } from './optimization/optimization.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './persistence/prisma.module';
 import { PricingModule } from './pricing/pricing.module';
 import { ReceiptsModule } from './receipts/receipts.module';
@@ -18,6 +21,7 @@ import { StoresModule } from './stores/stores.module';
   imports: [
     LoggingModule,
     PrismaModule,
+    HealthModule,
     AuthModule,
     QueueModule,
     ReceiptsModule,
@@ -25,9 +29,11 @@ import { StoresModule } from './stores/stores.module';
     EstablishmentsModule,
     RegionsModule,
     ListsModule,
+    LocationsModule,
     StoresModule,
     PricingModule,
     OptimizationModule,
+    NotificationsModule,
     AdminModule,
     JobsModule,
   ],

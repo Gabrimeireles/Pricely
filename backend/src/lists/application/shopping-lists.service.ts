@@ -1,7 +1,13 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 
 import {
   type CreateShoppingListRequest,
+  type OptimizationMode,
   type ShoppingListItemInput,
 } from '../../common/contracts';
 import { ProductNormalizerService } from '../../catalog/application/product-normalizer.service';
@@ -35,7 +41,7 @@ export class ShoppingListsService {
         userId,
         name: request.name.trim(),
         preferredRegionId,
-        lastMode: request.lastMode ?? 'global_full',
+        lastMode: request.lastMode ?? 'global_multi',
       });
     } catch (error) {
       this.logger.error(
@@ -125,6 +131,42 @@ export class ShoppingListsService {
     return list;
   }
 
+  async getByShareToken(shareToken: string): Promise<ShoppingListEntity> {
+    const list = await this.shoppingListRepository.findByShareToken(shareToken);
+
+    if (!list) {
+      throw new NotFoundException('Shared shopping list not found');
+    }
+
+    return list;
+  }
+
+  async share(userId: string, id: string): Promise<ShoppingListEntity> {
+    const list = await this.shoppingListRepository.findByIdForUser(id, userId);
+
+    if (!list) {
+      throw new NotFoundException(`Shopping list ${id} not found`);
+    }
+
+    if (list.items.length === 0) {
+      throw new BadRequestException(
+        'Add at least one item before sharing a shopping list',
+      );
+    }
+
+    const updated = await this.shoppingListRepository.share(
+      id,
+      userId,
+      list.shareToken ?? this.generateShareToken(),
+    );
+
+    if (!updated) {
+      throw new NotFoundException(`Shopping list ${id} not found`);
+    }
+
+    return updated;
+  }
+
   async updateItemPurchaseStatus(
     userId: string,
     shoppingListId: string,
@@ -145,13 +187,93 @@ export class ShoppingListsService {
     return updated;
   }
 
+  async completeCheckout(
+    userId: string,
+    shoppingListId: string,
+    paidTotal?: number,
+  ): Promise<ShoppingListEntity> {
+    const list = await this.shoppingListRepository.findByIdForUser(
+      shoppingListId,
+      userId,
+    );
+
+    if (!list) {
+      throw new NotFoundException(`Shopping list ${shoppingListId} not found`);
+    }
+
+    const hasPendingItems = list.items.some(
+      (item) => item.purchaseStatus !== 'purchased',
+    );
+
+    if (list.items.length === 0 || hasPendingItems) {
+      throw new BadRequestException(
+        'All shopping list items must be purchased before checkout completion',
+      );
+    }
+
+    const updated = await this.shoppingListRepository.completeCheckout(
+      shoppingListId,
+      userId,
+      paidTotal,
+    );
+
+    if (!updated) {
+      throw new NotFoundException(`Shopping list ${shoppingListId} not found`);
+    }
+
+    return updated;
+  }
+
+  async reportItemPriceMismatch(
+    userId: string,
+    shoppingListId: string,
+    itemId: string,
+    input: {
+      expectedPrice?: number;
+      reportedPrice?: number;
+      reason?: string;
+    },
+  ): Promise<{ id: string; createdAt: string }> {
+    const list = await this.shoppingListRepository.findByIdForUser(
+      shoppingListId,
+      userId,
+    );
+
+    if (!list) {
+      throw new NotFoundException(`Shopping list ${shoppingListId} not found`);
+    }
+
+    const item = list.items.find((entry) => entry.id === itemId);
+
+    if (!item) {
+      throw new NotFoundException(`Shopping list item ${itemId} not found`);
+    }
+
+    if (
+      input.expectedPrice === undefined &&
+      input.reportedPrice === undefined &&
+      !input.reason?.trim()
+    ) {
+      throw new BadRequestException(
+        'At least one report field must be provided',
+      );
+    }
+
+    return this.shoppingListRepository.createPriceMismatchReport(
+      shoppingListId,
+      userId,
+      itemId,
+      input,
+    );
+  }
+
   async replace(
     userId: string,
     id: string,
     input: {
       name?: string;
       preferredRegionId?: string;
-      lastMode?: 'local' | 'global_unique' | 'global_full';
+      lastMode?: OptimizationMode;
       items: ShoppingListItemInput[];
     },
   ): Promise<ShoppingListEntity> {
@@ -229,5 +351,9 @@ export class ShoppingListsService {
     });
 
     return slugMatch?.id;
+  }
+
+  private generateShareToken(): string {
+    return crypto.randomUUID().replaceAll('-', '');
   }
 }

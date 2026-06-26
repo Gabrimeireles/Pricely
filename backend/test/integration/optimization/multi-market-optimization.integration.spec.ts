@@ -4,6 +4,8 @@ import { createUs1TestApp } from '../../support/us1-app.factory';
 
 describe('Multi-market optimization integration', () => {
   it('creates a list, ingests receipts, and returns the cheapest valid plan', async () => {
+    const previousProcessingMode = process.env.RECEIPT_PROCESSING_MODE;
+    process.env.RECEIPT_PROCESSING_MODE = 'automatic';
     const { app, queues, auth } = await createUs1TestApp();
 
     try {
@@ -76,7 +78,9 @@ describe('Multi-market optimization integration', () => {
       expect(latestResponse.body.coverageStatus).toBe('complete');
       expect(latestResponse.body.totalEstimatedCost).toBe(40.88);
       expect(latestResponse.body.selections).toHaveLength(2);
-      expect(latestResponse.body.explanationSummary).toEqual(expect.any(String));
+      expect(latestResponse.body.explanationSummary).toEqual(
+        expect.any(String),
+      );
       expect(latestResponse.body.explanationPayload).toEqual(
         expect.objectContaining({
           version: 1,
@@ -87,6 +91,11 @@ describe('Multi-market optimization integration', () => {
         }),
       );
     } finally {
+      if (previousProcessingMode === undefined) {
+        delete process.env.RECEIPT_PROCESSING_MODE;
+      } else {
+        process.env.RECEIPT_PROCESSING_MODE = previousProcessingMode;
+      }
       await app.close();
     }
   });
@@ -95,14 +104,17 @@ describe('Multi-market optimization integration', () => {
     const { app, auth } = await createUs1TestApp();
 
     try {
-      const session = await auth.registerCustomer('catalog-backed@pricely.local');
+      const session = await auth.registerCustomer(
+        'catalog-backed@pricely.local',
+      );
 
       const offersResponse = await request(app.getHttpServer())
         .get('/regions/sao-paulo-sp/offers')
         .expect(200);
 
       const arrozOffer = offersResponse.body.offers.find(
-        (offer: { productName: string }) => offer.productName === 'Arroz tipo 1 5kg',
+        (offer: { productName: string }) =>
+          offer.productName === 'Arroz tipo 1 5kg',
       );
 
       expect(arrozOffer).toBeDefined();
@@ -157,6 +169,153 @@ describe('Multi-market optimization integration', () => {
           establishmentName: 'Unidade Pinheiros',
         }),
       );
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('uses saved coordinates for local multi-store optimization and exposes selection distance', async () => {
+    const { app, auth } = await createUs1TestApp();
+
+    try {
+      const session = await auth.registerCustomer(
+        'local-coverage@pricely.local',
+      );
+
+      const locationResponse = await request(app.getHttpServer())
+        .post('/locations')
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          regionId: 'region-test-1',
+          label: 'Casa',
+          latitude: -23.566263,
+          longitude: -46.683677,
+          coverageRadiusKm: 1,
+          isDefault: true,
+          locationSource: 'browser_geolocation',
+        })
+        .expect(201);
+
+      expect(locationResponse.body.activeEstablishmentCount).toBe(1);
+
+      const listResponse = await request(app.getHttpServer())
+        .post('/shopping-lists')
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          name: 'Local groceries',
+          lastMode: 'local_multi',
+          regionSlug: 'sao-paulo-sp',
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/shopping-lists/${listResponse.body.id}/items`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          items: [
+            {
+              requestedName: 'Arroz',
+              quantity: 1,
+              catalogProductId: 'product-test-arroz',
+              brandPreferenceMode: 'any',
+            },
+          ],
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/shopping-lists/${listResponse.body.id}/optimize`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          mode: 'local_multi',
+          userLocationPreferenceId: locationResponse.body.id,
+          coverageRadiusKm: 1,
+        })
+        .expect(201);
+
+      const latestResponse = await request(app.getHttpServer())
+        .get(`/shopping-lists/${listResponse.body.id}/optimizations/latest`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .expect(200);
+
+      expect(latestResponse.body.mode).toBe('local_multi');
+      expect(
+        latestResponse.body.explanationPayload.constraints
+          .userLocationPreferenceId,
+      ).toBe(locationResponse.body.id);
+      expect(
+        latestResponse.body.explanationPayload.constraints
+          .candidateEstablishmentCount,
+      ).toBe(1);
+      expect(latestResponse.body.selections[0]).toEqual(
+        expect.objectContaining({
+          establishmentName: 'Unidade Pinheiros',
+          distanceKm: expect.any(Number),
+        }),
+      );
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('rejects local optimization when the saved radius has no covered establishments', async () => {
+    const { app, auth } = await createUs1TestApp();
+
+    try {
+      const session = await auth.registerCustomer(
+        'local-zero-coverage@pricely.local',
+      );
+
+      const locationResponse = await request(app.getHttpServer())
+        .post('/locations')
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          regionId: 'region-test-1',
+          label: 'Fora do raio',
+          latitude: -23.9,
+          longitude: -46.9,
+          coverageRadiusKm: 1,
+          isDefault: true,
+          locationSource: 'browser_geolocation',
+        })
+        .expect(201);
+
+      expect(locationResponse.body.activeEstablishmentCount).toBe(0);
+
+      const listResponse = await request(app.getHttpServer())
+        .post('/shopping-lists')
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          name: 'No local coverage',
+          lastMode: 'local_unique',
+          regionSlug: 'sao-paulo-sp',
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/shopping-lists/${listResponse.body.id}/items`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          items: [
+            {
+              requestedName: 'Arroz',
+              quantity: 1,
+              catalogProductId: 'product-test-arroz',
+              brandPreferenceMode: 'any',
+            },
+          ],
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/shopping-lists/${listResponse.body.id}/optimize`)
+        .set('Authorization', `Bearer ${session.accessToken}`)
+        .send({
+          mode: 'local_unique',
+          userLocationPreferenceId: locationResponse.body.id,
+          coverageRadiusKm: 1,
+        })
+        .expect(400);
     } finally {
       await app.close();
     }

@@ -14,7 +14,12 @@ export class MultiMarketOptimizerService {
   optimize(
     shoppingList: ShoppingListEntity,
     storeOffers: StoreOfferEntity[],
-    mode: OptimizationMode = 'global_full',
+    mode: OptimizationMode = 'global_multi',
+    context?: {
+      userLocationPreferenceId?: string;
+      coverageRadiusKm?: number;
+      candidateEstablishmentCount?: number;
+    },
   ): OptimizationResultEntity {
     const itemOffers = this.generateCandidates(shoppingList, storeOffers);
     const selectedStoreId = this.solveStoreConstraint(
@@ -57,6 +62,7 @@ export class MultiMarketOptimizerService {
         coverageStatus,
         selectedStoreId,
         selections,
+        context,
       ),
       explanationPayload: this.buildExplanationPayload(
         shoppingList,
@@ -64,6 +70,7 @@ export class MultiMarketOptimizerService {
         selections,
         mode,
         selectedStoreId,
+        context,
       ),
       selections,
     };
@@ -86,7 +93,7 @@ export class MultiMarketOptimizerService {
     itemOffers: Map<string, StoreOfferEntity[]>,
     mode: OptimizationMode,
   ): string | undefined {
-    return mode === 'global_full'
+    return this.isMultiStoreMode(mode)
       ? undefined
       : this.selectSingleStore(shoppingList, itemOffers, mode);
   }
@@ -182,26 +189,37 @@ export class MultiMarketOptimizerService {
       productOfferId: cheapestOffer.id,
       shoppingListItemName: item.requestedName,
       establishmentName: cheapestOffer.storeName,
+      distanceKm: cheapestOffer.distanceKm,
       selectionStatus: 'selected',
       estimatedCost: Number((cheapestOffer.price * quantity).toFixed(2)),
       priceAmount: Number(cheapestOffer.price.toFixed(2)),
-      comparisonPriceAmount: comparison.highestPriceAmount,
+      comparisonPriceAmount: comparison.secondCheapestPriceAmount,
       regionalAveragePriceAmount: comparison.averagePriceAmount,
       savingsVsComparison: Number(
         Math.max(
           0,
-          (comparison.highestPriceAmount - cheapestOffer.price) * quantity,
+          (comparison.secondCheapestPriceAmount - cheapestOffer.price) *
+            quantity,
         ).toFixed(2),
       ),
       sourceLabel: cheapestOffer.sourceReceiptLineItemId,
       observedAt: cheapestOffer.observedAt,
+      trustFactor: cheapestOffer.trustFactor,
+      trustLevel: cheapestOffer.trustLevel,
+      trustEvidenceCount: cheapestOffer.trustEvidenceCount,
+      trustFreshnessDays: cheapestOffer.trustFreshnessDays,
+      trustLastValidatedAt: cheapestOffer.trustLastValidatedAt,
+      trustExplanation: cheapestOffer.trustExplanation,
       confidenceNotice:
-        cheapestOffer.confidenceScore < 0.75
+        cheapestOffer.confidenceScore < 0.75 ||
+        (cheapestOffer.trustFactor !== undefined && cheapestOffer.trustFactor < 60)
           ? 'Selected from low-confidence market evidence.'
           : undefined,
       decisionReason: selectedStoreId
         ? `Selected best confirmed offer inside ${cheapestOffer.storeName}.`
-        : 'Selected cheapest confirmed regional offer for this product constraint.',
+        : cheapestOffer.distanceKm !== undefined
+          ? `Selected cheapest confirmed nearby offer within ${cheapestOffer.distanceKm.toFixed(1)} km.`
+          : 'Selected cheapest confirmed regional offer for this product constraint.',
     };
   }
 
@@ -214,9 +232,14 @@ export class MultiMarketOptimizerService {
         ? offer.productVariantId === selectedOffer.productVariantId
         : offer.canonicalName === selectedOffer.canonicalName,
     );
-    const prices = comparableOffers.map((offer) => offer.price);
-    const highestPriceAmount =
-      prices.length > 0 ? Math.max(...prices) : selectedOffer.price;
+    const prices = comparableOffers
+      .map((offer) => offer.price)
+      .sort((left, right) => left - right);
+    const secondCheapestPriceAmount =
+      comparableOffers
+        .filter((offer) => offer.id !== selectedOffer.id)
+        .map((offer) => offer.price)
+        .sort((left, right) => left - right)[0] ?? selectedOffer.price;
     const averagePriceAmount =
       prices.length > 0
         ? Number(
@@ -227,7 +250,7 @@ export class MultiMarketOptimizerService {
         : selectedOffer.price;
 
     return {
-      highestPriceAmount: Number(highestPriceAmount.toFixed(2)),
+      secondCheapestPriceAmount: Number(secondCheapestPriceAmount.toFixed(2)),
       averagePriceAmount,
     };
   }
@@ -235,7 +258,7 @@ export class MultiMarketOptimizerService {
   private selectSingleStore(
     shoppingList: ShoppingListEntity,
     itemOffers: Map<string, StoreOfferEntity[]>,
-    mode: Exclude<OptimizationMode, 'global_full'>,
+    mode: OptimizationMode,
   ): string | undefined {
     const storeScores = new Map<
       string,
@@ -288,7 +311,7 @@ export class MultiMarketOptimizerService {
         }
       }
 
-      if (mode === 'local') {
+      if (mode === 'local' || mode === 'local_unique') {
         if (rightScore.matchedItems !== leftScore.matchedItems) {
           return rightScore.matchedItems - leftScore.matchedItems;
         }
@@ -325,18 +348,31 @@ export class MultiMarketOptimizerService {
     coverageStatus: OptimizationResultEntity['coverageStatus'],
     selectedStoreId: string | undefined,
     selections: OptimizationSelectionEntity[],
+    context?: {
+      coverageRadiusKm?: number;
+      candidateEstablishmentCount?: number;
+    },
   ): string {
     const selectedStoreName = selectedStoreId
       ? selections.find((selection) => selection.selectionStatus === 'selected')
           ?.establishmentName
       : undefined;
 
-    if (mode === 'global_full') {
+    if (mode === 'global_full' || mode === 'global_multi') {
       return coverageStatus === 'complete'
-        ? 'Pricely selected the cheapest confirmed offer for each requested item.'
+        ? 'Pricely selected the cheapest confirmed offer for each requested item inside the selected city.'
         : coverageStatus === 'partial'
-          ? 'Pricely selected the cheapest confirmed offers and flagged unresolved or unavailable items.'
+          ? 'Pricely selected the cheapest confirmed city offers and flagged unresolved or unavailable items.'
           : 'Pricely could not find confirmed offers for the requested items yet.';
+    }
+
+    if (mode === 'local_multi') {
+      const radiusText = context?.coverageRadiusKm
+        ? ` within ${context.coverageRadiusKm} km`
+        : '';
+      return coverageStatus === 'none'
+        ? 'Pricely could not find confirmed nearby offers for the requested items.'
+        : `Pricely selected item-level offers across nearby establishments${radiusText}.`;
     }
 
     if (mode === 'global_unique') {
@@ -346,8 +382,8 @@ export class MultiMarketOptimizerService {
     }
 
     return selectedStoreName
-      ? `Pricely prioritized one nearby-style store flow in ${selectedStoreName}, maximizing coverage before price.`
-      : 'Pricely could not find a practical single-store option for this list.';
+      ? `Pricely prioritized one nearby store flow in ${selectedStoreName}, maximizing coverage before price.`
+      : 'Pricely could not find a practical single-store nearby option for this list.';
   }
 
   private buildExplanationPayload(
@@ -356,6 +392,11 @@ export class MultiMarketOptimizerService {
     selections: OptimizationSelectionEntity[],
     mode: OptimizationMode,
     selectedStoreId?: string,
+    context?: {
+      userLocationPreferenceId?: string;
+      coverageRadiusKm?: number;
+      candidateEstablishmentCount?: number;
+    },
   ): OptimizationExplanationPayload {
     const selectionsByItemId = new Map(
       selections.map((selection) => [selection.shoppingListItemId, selection]),
@@ -366,8 +407,11 @@ export class MultiMarketOptimizerService {
       version: 1,
       constraints: {
         mode,
-        singleStoreRequired: mode !== 'global_full',
+        singleStoreRequired: !this.isMultiStoreMode(mode),
         selectedStoreId,
+        userLocationPreferenceId: context?.userLocationPreferenceId,
+        coverageRadiusKm: context?.coverageRadiusKm,
+        candidateEstablishmentCount: context?.candidateEstablishmentCount,
         exactVariantItemIds: shoppingList.items
           .filter((item) => item.brandPreferenceMode === 'exact')
           .map((item) => item.id),
@@ -387,10 +431,17 @@ export class MultiMarketOptimizerService {
             productOfferId: selection.productOfferId as string,
             storeId: offer?.storeId,
             storeName: selection.establishmentName,
+            distanceKm: selection.distanceKm,
             priceAmount: selection.priceAmount,
             estimatedCost: selection.estimatedCost,
             savingsVsComparison: selection.savingsVsComparison,
             decisionReason: selection.decisionReason,
+            trustFactor: selection.trustFactor,
+            trustLevel: selection.trustLevel,
+            trustEvidenceCount: selection.trustEvidenceCount,
+            trustFreshnessDays: selection.trustFreshnessDays,
+            trustLastValidatedAt: selection.trustLastValidatedAt,
+            trustExplanation: selection.trustExplanation,
           };
         }),
       rejectedAlternatives: shoppingList.items.flatMap((item) =>
@@ -443,6 +494,7 @@ export class MultiMarketOptimizerService {
         productOfferId: offer.id,
         storeId: offer.storeId,
         storeName: offer.storeName,
+        distanceKm: offer.distanceKm,
         priceAmount: Number(offer.price.toFixed(2)),
         reason: this.resolveRejectedAlternativeReason(
           offer,
@@ -502,6 +554,10 @@ export class MultiMarketOptimizerService {
     }
 
     return warnings;
+  }
+
+  private isMultiStoreMode(mode: OptimizationMode): boolean {
+    return mode === 'global_full' || mode === 'global_multi' || mode === 'local_multi';
   }
 
   private matchesBaseProduct(

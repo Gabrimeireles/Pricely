@@ -1,23 +1,28 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import {
   DatabaseZapIcon,
+  EyeIcon,
+  EyeOffIcon,
   LayoutDashboardIcon,
   ListChecksIcon,
   MapPinnedIcon,
   MoonStarIcon,
   PackageSearchIcon,
+  ReceiptTextIcon,
   ShieldCheckIcon,
   StoreIcon,
   SunMediumIcon,
+  UsersIcon,
   WorkflowIcon,
 } from 'lucide-react';
 
+import { useMonetaryPrivacy } from '@/app/monetary-privacy-context';
 import { usePricely } from '@/app/pricely-context';
 import { useTheme } from '@/app/theme-context';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { StatusBadge, WithTooltip } from '@/components/design-system';
 import {
   Sidebar,
   SidebarContent,
@@ -66,6 +71,16 @@ const adminNav = [
     icon: ListChecksIcon,
   },
   {
+    to: '/dashboard/usuarios',
+    label: 'Usuarios',
+    icon: UsersIcon,
+  },
+  {
+    to: '/dashboard/notas',
+    label: 'Notas fiscais',
+    icon: ReceiptTextIcon,
+  },
+  {
     to: '/dashboard/fila',
     label: 'Fila e saude',
     icon: WorkflowIcon,
@@ -74,6 +89,7 @@ const adminNav = [
 
 export function AdminLayout() {
   const { currentUser, isAuthenticated } = usePricely();
+  const { isMoneyVisible, toggleMoneyVisibility } = useMonetaryPrivacy();
   const { theme, toggleTheme } = useTheme();
 
   if (!isAuthenticated || currentUser?.role !== 'admin') {
@@ -83,7 +99,8 @@ export function AdminLayout() {
           <ShieldCheckIcon />
           <AlertTitle>Acesso restrito</AlertTitle>
           <AlertDescription>
-            O dashboard administrativo so pode ser acessado por contas admin no web.
+            O dashboard administrativo so pode ser acessado por contas admin no
+            web.
           </AlertDescription>
         </Alert>
       </div>
@@ -94,13 +111,18 @@ export function AdminLayout() {
     <SidebarProvider>
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
-          <Link className="flex items-center gap-3 rounded-lg px-2 py-2" to="/dashboard">
+          <Link
+            className="flex items-center gap-3 rounded-lg px-2 py-2"
+            to="/dashboard"
+          >
             <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
               <ShieldCheckIcon />
             </div>
             <div className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
               <span className="text-sm font-semibold">Pricely</span>
-              <span className="text-xs text-sidebar-foreground/70">Area administrativa</span>
+              <span className="text-xs text-sidebar-foreground/70">
+                Area administrativa
+              </span>
             </div>
           </Link>
         </SidebarHeader>
@@ -114,7 +136,9 @@ export function AdminLayout() {
                     <SidebarMenuButton asChild tooltip={item.label}>
                       <NavLink
                         className={({ isActive }) =>
-                          isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                          isActive
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                            : ''
                         }
                         to={item.to}
                       >
@@ -129,46 +153,145 @@ export function AdminLayout() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          <div className="flex items-center gap-3 rounded-lg border border-sidebar-border p-2">
-            <Avatar className="size-8">
-              <AvatarFallback>
-                {currentUser.displayName.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
-              <span className="text-sm font-medium">{currentUser.displayName}</span>
-              <span className="text-xs text-sidebar-foreground/70">{currentUser.email}</span>
+          <div className="grid gap-2 rounded-lg border border-sidebar-border p-2 group-data-[collapsible=icon]:hidden">
+            <div className="flex items-center gap-3">
+              <Avatar className="size-8">
+                <AvatarFallback>
+                  {currentUser.displayName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
+                <span className="text-sm font-medium">
+                  {currentUser.displayName}
+                </span>
+                <span className="text-xs text-sidebar-foreground/70">
+                  {currentUser.email}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <WithTooltip
+                label={
+                  isMoneyVisible
+                    ? 'Oculta valores monetários sensíveis em métricas, usuários, ofertas e notas.'
+                    : 'Mostra novamente valores monetários administrativos.'
+                }
+              >
+                <Button
+                  aria-label={
+                    isMoneyVisible
+                      ? 'Ocultar valores monetários'
+                      : 'Mostrar valores monetários'
+                  }
+                  onClick={toggleMoneyVisibility}
+                  size="icon-sm"
+                  type="button"
+                  variant="outline"
+                  className="border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                >
+                  {isMoneyVisible ? (
+                    <EyeIcon className="size-4" />
+                  ) : (
+                    <EyeOffIcon className="size-4" />
+                  )}
+                </Button>
+              </WithTooltip>
+              <WithTooltip label="Alterna entre tema claro e escuro no dashboard.">
+                <Button
+                  aria-label={
+                    theme === 'dark'
+                      ? 'Ativar modo claro'
+                      : 'Ativar modo escuro'
+                  }
+                  onClick={toggleTheme}
+                  size="icon-sm"
+                  type="button"
+                  variant="outline"
+                  className="border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                >
+                  {theme === 'dark' ? (
+                    <SunMediumIcon className="size-4" />
+                  ) : (
+                    <MoonStarIcon className="size-4" />
+                  )}
+                </Button>
+              </WithTooltip>
+              <Button
+                asChild
+                className="flex-1 border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                size="sm"
+                variant="outline"
+              >
+                <Link to="/">Publico</Link>
+              </Button>
             </div>
           </div>
+          <WithTooltip
+            label={
+              isMoneyVisible
+                ? 'Oculta valores monetários sensíveis em métricas, usuários, ofertas e notas.'
+                : 'Mostra novamente valores monetários administrativos.'
+            }
+          >
+            <Button
+              aria-label={
+                isMoneyVisible
+                  ? 'Ocultar valores monetários'
+                  : 'Mostrar valores monetários'
+              }
+              className="hidden border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:inline-flex"
+              onClick={toggleMoneyVisibility}
+              size="icon-sm"
+              type="button"
+              variant="outline"
+            >
+              {isMoneyVisible ? (
+                <EyeIcon className="size-4" />
+              ) : (
+                <EyeOffIcon className="size-4" />
+              )}
+            </Button>
+          </WithTooltip>
+          <WithTooltip label="Alterna entre tema claro e escuro no dashboard.">
+            <Button
+              aria-label={
+                theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'
+              }
+              className="hidden border-sidebar-border bg-sidebar-accent/20 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:inline-flex"
+              onClick={toggleTheme}
+              size="icon-sm"
+              type="button"
+              variant="outline"
+            >
+              {theme === 'dark' ? (
+                <SunMediumIcon className="size-4" />
+              ) : (
+                <MoonStarIcon className="size-4" />
+              )}
+            </Button>
+          </WithTooltip>
         </SidebarFooter>
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/70 bg-background/92 px-4 py-3 backdrop-blur lg:px-6">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-30 flex min-h-14 shrink-0 items-center justify-between border-b border-border/70 bg-background/92 px-4 backdrop-blur lg:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <SidebarTrigger />
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">Dashboard restrito a administradores</span>
-              <span className="text-xs text-muted-foreground">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">
+                Dashboard restrito a administradores
+              </p>
+              <p className="text-xs text-muted-foreground">
                 Metricas rastreaveis, filas, catalogo e operacao da base
-              </span>
+              </p>
             </div>
-          </div>
-          <div className="hidden items-center gap-2 md:flex">
-            <Button
-              aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
-              className="border-border/80 bg-card/90"
-              onClick={toggleTheme}
-              size="icon"
-              type="button"
-              variant="outline"
+            <StatusBadge
+              icon={ShieldCheckIcon}
+              tone="primary"
+              tooltip="Área restrita: ações alteram catálogo, notas, fila e usuários."
             >
-              {theme === 'dark' ? <SunMediumIcon className="size-4" /> : <MoonStarIcon className="size-4" />}
-            </Button>
-            <Badge variant="secondary">Acesso admin</Badge>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/">Voltar para o publico</Link>
-            </Button>
+              Acesso admin
+            </StatusBadge>
           </div>
         </header>
 

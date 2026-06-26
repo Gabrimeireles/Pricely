@@ -1,4 +1,9 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
 
 import { PrismaService } from '../persistence/prisma.service';
 
@@ -169,6 +174,104 @@ export class EntitlementsService {
         relatedOptimizationRunId: input.optimizationRunId,
       },
       update: {},
+    });
+  }
+
+  async setManualPremium(input: {
+    userId: string;
+    enabled: boolean;
+    adminUserId: string;
+  }) {
+    if (input.enabled) {
+      const existing = await this.prisma.userEntitlement.findFirst({
+        where: {
+          userId: input.userId,
+          plan: 'premium',
+          status: {
+            in: ['active', 'trialing'],
+          },
+          OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+        },
+      });
+
+      if (existing) {
+        return existing;
+      }
+
+      return this.prisma.userEntitlement.create({
+        data: {
+          userId: input.userId,
+          plan: 'premium',
+          status: 'active',
+          source: 'admin_manual',
+          externalRef: `admin:${input.adminUserId}`,
+        },
+      });
+    }
+
+    await this.prisma.userEntitlement.updateMany({
+      where: {
+        userId: input.userId,
+        plan: 'premium',
+        status: {
+          in: ['active', 'trialing', 'past_due'],
+        },
+      },
+      data: {
+        status: 'cancelled',
+        endsAt: new Date(),
+        externalRef: `admin:${input.adminUserId}:cancelled`,
+      },
+    });
+
+    return null;
+  }
+
+  async grantAdminOptimizationTokens(input: {
+    userId: string;
+    amount: number;
+    adminUserId: string;
+    reason?: string;
+  }) {
+    if (!Number.isInteger(input.amount) || input.amount <= 0) {
+      throw new BadRequestException('Token adjustment amount must be positive');
+    }
+
+    return this.prisma.optimizationTokenLedgerEntry.create({
+      data: {
+        userId: input.userId,
+        action: 'admin_adjustment',
+        amount: input.amount,
+        source: input.reason
+          ? `admin_adjustment:${input.reason}`
+          : 'admin_adjustment',
+        idempotencyKey: `admin-adjustment:${input.userId}:${input.adminUserId}:${Date.now()}`,
+      },
+    });
+  }
+
+  async grantReceiptBonusTokens(input: {
+    userId: string;
+    receiptRecordId: string;
+    amount?: number;
+  }) {
+    const amount = input.amount ?? 1;
+    if (!Number.isInteger(amount) || amount <= 0) {
+      throw new BadRequestException('Receipt bonus amount must be positive');
+    }
+
+    return this.prisma.optimizationTokenLedgerEntry.upsert({
+      where: {
+        idempotencyKey: `receipt-bonus:${input.receiptRecordId}`,
+      },
+      update: {},
+      create: {
+        userId: input.userId,
+        action: 'receipt_bonus',
+        amount,
+        source: 'receipt_quality_reward',
+        idempotencyKey: `receipt-bonus:${input.receiptRecordId}`,
+      },
     });
   }
 

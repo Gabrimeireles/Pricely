@@ -8,7 +8,7 @@ export class RegionsAdminService {
 
   async list() {
     const regions = await this.prisma.region.findMany({
-      orderBy: [{ publicSortOrder: 'asc' }, { name: 'asc' }],
+      orderBy: [{ name: 'asc' }],
       include: {
         _count: {
           select: {
@@ -37,24 +37,37 @@ export class RegionsAdminService {
       },
     });
 
-    return regions.map((region) => ({
-      id: region.id,
-      slug: region.slug,
-      name: region.name,
-      stateCode: region.stateCode,
-      implantationStatus: region.implantationStatus,
-      publicSortOrder: region.publicSortOrder,
-      activeEstablishmentsCount: region._count.establishments,
-      establishments: region.establishments.map((establishment) => ({
-        id: establishment.id,
-        brandName: establishment.brandName,
-        unitName: establishment.unitName,
-        neighborhood: establishment.neighborhood,
-        cityName: establishment.cityName,
-        isActive: establishment.isActive,
-        auditedProductsCount: establishment._count.productOffers,
-      })),
-    }));
+    return regions
+      .map((region) => ({
+        id: region.id,
+        slug: region.slug,
+        name: region.name,
+        stateCode: region.stateCode,
+        implantationStatus: region.implantationStatus,
+        publicSortOrder: region.publicSortOrder,
+        activeEstablishmentsCount: region._count.establishments,
+        establishments: region.establishments.map((establishment) => ({
+          id: establishment.id,
+          brandName: establishment.brandName,
+          unitName: establishment.unitName,
+          neighborhood: establishment.neighborhood,
+          cityName: establishment.cityName,
+          isActive: establishment.isActive,
+          auditedProductsCount: establishment._count.productOffers,
+        })),
+      }))
+      .sort((first, second) => {
+        const activeStoreDiff =
+          second.activeEstablishmentsCount - first.activeEstablishmentsCount;
+
+        if (activeStoreDiff !== 0) {
+          return activeStoreDiff;
+        }
+
+        return `${first.name}-${first.stateCode}`.localeCompare(
+          `${second.name}-${second.stateCode}`,
+        );
+      });
   }
 
   async create(input: {

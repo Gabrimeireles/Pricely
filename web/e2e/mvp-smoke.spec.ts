@@ -52,7 +52,7 @@ const savedList = {
   name: 'Compra mensal',
   preferredRegionId: 'sao-paulo-sp',
   status: 'ready',
-  lastMode: 'global_full',
+  lastMode: 'global_multi',
   latestEstimatedSavings: 18.5,
   latestOptimizationStatus: 'completed',
   latestOptimizedAt: '2026-05-05T10:00:00.000Z',
@@ -77,12 +77,13 @@ const savedList = {
 const optimizationResult = {
   id: 'run-1',
   shoppingListId: 'list-1',
-  mode: 'global_full',
+  mode: 'global_multi',
   status: 'completed',
   totalEstimatedCost: 15.8,
   estimatedSavings: 4.2,
   coverageStatus: 'complete',
-  explanationSummary: 'Menor cesta encontrada com dados de recibos de usuarios.',
+  explanationSummary:
+    'Menor cesta encontrada com dados de recibos de usuarios.',
   createdAt: '2026-05-05T10:00:00.000Z',
   completedAt: '2026-05-05T10:00:02.000Z',
   selections: [
@@ -99,14 +100,102 @@ const optimizationResult = {
       savingsVsComparison: 1.5,
       sourceLabel: 'Recibo de usuario',
       observedAt: '2026-05-05T09:30:00.000Z',
+      trustFactor: 82,
+      trustLevel: 'high',
+      trustEvidenceCount: 4,
+      trustFreshnessDays: 3,
+      trustLastValidatedAt: '2026-05-05T09:30:00.000Z',
+      trustExplanation:
+        '4 notas fiscais confiaveis; ultima validacao ha 3 dias; trust factor 82/100.',
       selectionStatus: 'selected',
       confidenceNotice: 'Preco observado em recibo recente.',
-      decisionReason: 'Menor preco elegivel para o item.',
+      decisionReason: 'selected_confirmed_offer',
+      distanceKm: 0.8,
+    },
+  ],
+};
+
+const receiptAudit = {
+  id: 'receipt-1',
+  storeName: 'Mercado Centro',
+  storeCnpj: '00.000.000/0001-00',
+  parseStatus: 'queued',
+  trustLevel: 'pending_review',
+  moderationStatus: 'pending',
+  rewardEligibilityStatus: 'eligible_pending',
+  reviewReason: 'receipt_reward_ready',
+  purchaseDate: '2026-05-05T09:30:00.000Z',
+  createdAt: '2026-05-05T10:10:00.000Z',
+  updatedAt: '2026-05-05T10:10:00.000Z',
+  owner: {
+    id: 'user-1',
+    displayName: 'Cliente Pricely',
+    email: 'cliente@pricely.test',
+  },
+  processingJob: null,
+  quality: {
+    lineItemCount: 1,
+    highConfidenceLineItemCount: 1,
+    averageMatchConfidence: 0.91,
+    usefulDataRatio: 1,
+  },
+  reward: {
+    points: 100,
+    optimizationTokens: 1,
+    label: '100 pontos + 1 credito pendente',
+  },
+  extractedPayload: {
+    accessKey: null,
+    sefazUrl: null,
+    rawReference: 'Entrada manual',
+    purchaseDate: '2026-05-05T09:30:00.000Z',
+    lineItemCount: 1,
+    totalLineAmount: 15.8,
+  },
+  lineItems: [
+    {
+      id: 'line-1',
+      rawProductName: 'Arroz tipo 1 1kg',
+      normalizedName: 'Arroz tipo 1 1kg',
+      ean: null,
+      quantity: 2,
+      unitPrice: 7.9,
+      lineTotal: 15.8,
+      originalUnitPrice: null,
+      promotionalUnitPrice: null,
+      matchConfidence: 0.91,
+      matcherStatus: 'matched_offer',
+      makerAction: 'offer_created',
+      offers: [
+        {
+          id: 'offer-1',
+          catalogProductName: 'Arroz tipo 1',
+          variantName: 'Arroz tipo 1 1kg',
+          brandName: null,
+          establishmentName: 'Mercado Centro',
+          neighborhood: 'Centro',
+          displayName: 'Arroz tipo 1 1kg',
+          packageLabel: '1 kg',
+          priceAmount: 7.9,
+          observedAt: '2026-05-05T10:10:00.000Z',
+          comparison: {
+            previousPriceAmount: 9.4,
+            newPriceAmount: 7.9,
+            deltaAmount: -1.5,
+            direction: 'down',
+            previousObservedAt: '2026-05-01T10:10:00.000Z',
+          },
+        },
+      ],
     },
   ],
 };
 
 async function mockApi(page: Page) {
+  let sessionToken: 'customer-token' | 'admin-token' | null = null;
+  let receiptReleased = false;
+  let receiptRejected = false;
+
   await page.route('http://localhost:3000/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -122,13 +211,128 @@ async function mockApi(page: Page) {
         body: JSON.stringify(body),
       });
 
+    const receiptSubmissionResponse = (
+      processingStatus:
+        | 'waiting_manual_release'
+        | 'queued'
+        | 'running'
+        | 'completed'
+        | 'failed'
+        | 'retrying',
+    ) => ({
+      id: receiptAudit.id,
+      storeName: receiptAudit.storeName,
+      storeCnpj: receiptAudit.storeCnpj,
+      parseStatus: receiptAudit.parseStatus,
+      trustLevel: receiptRejected ? 'rejected' : receiptAudit.trustLevel,
+      moderationStatus: receiptRejected
+        ? 'rejected'
+        : receiptAudit.moderationStatus,
+      rewardEligibilityStatus: receiptRejected
+        ? 'disabled'
+        : receiptAudit.rewardEligibilityStatus,
+      rewardPoints: receiptAudit.reward.points,
+      rewardOptimizationTokens: receiptAudit.reward.optimizationTokens,
+      rewardMessage:
+        'Nota recebida: reward em processamento ate a liberacao e validacao.',
+      processingStatus,
+    });
+
+    const receiptProcessingRecord = () => ({
+      ...receiptAudit,
+      trustLevel: receiptRejected ? 'rejected' : receiptAudit.trustLevel,
+      moderationStatus: receiptRejected
+        ? 'rejected'
+        : receiptAudit.moderationStatus,
+      rewardEligibilityStatus: receiptRejected
+        ? 'disabled'
+        : receiptAudit.rewardEligibilityStatus,
+      processingJob: receiptReleased
+        ? {
+            id: 'job-1',
+            queueName: 'receipts',
+            jobType: 'receipt.extract',
+            status: 'queued',
+            attemptCount: 0,
+            createdAt: '2026-05-05T10:12:00.000Z',
+            updatedAt: '2026-05-05T10:12:00.000Z',
+          }
+        : null,
+    });
+
+    if (method === 'GET' && path === '/notifications') {
+      return json([]);
+    }
+
+    if (method === 'GET' && path === '/notification-preferences') {
+      return json({
+        inAppEnabled: true,
+        priceDropsEnabled: true,
+        receiptOutcomesEnabled: true,
+        optimizationReadyEnabled: true,
+        emailEnabled: false,
+        pushEnabled: false,
+      });
+    }
+
+    if (method === 'PATCH' && path === '/notification-preferences') {
+      const body = JSON.parse(request.postData() ?? '{}') as Record<
+        string,
+        boolean
+      >;
+      return json({
+        inAppEnabled: true,
+        priceDropsEnabled: true,
+        receiptOutcomesEnabled: true,
+        optimizationReadyEnabled: true,
+        emailEnabled: false,
+        pushEnabled: false,
+        ...body,
+      });
+    }
+
+    if (method === 'POST' && path === '/notifications/read-all') {
+      return json({ updatedCount: 0 });
+    }
+
+    if (method === 'PATCH' && /^\/notifications\/[^/]+\/read$/.test(path)) {
+      return json({
+        id: path.split('/')[2],
+        type: 'price_drop',
+        title: 'Oferta atualizada',
+        message: 'O preco de um item da sua lista diminuiu.',
+        resourceType: 'product_offer',
+        resourceId: 'offer-1',
+        metadata: null,
+        readAt: '2026-06-25T12:00:00.000Z',
+        createdAt: '2026-06-25T11:00:00.000Z',
+      });
+    }
+
     if (method === 'POST' && path === '/auth/login') {
       const body = JSON.parse(request.postData() ?? '{}') as { email?: string };
+      sessionToken =
+        body.email === adminUser.email ? 'admin-token' : 'customer-token';
       return json({
-        accessToken:
-          body.email === adminUser.email ? 'admin-token' : 'customer-token',
+        accessToken: sessionToken,
         user: body.email === adminUser.email ? adminUser : customerUser,
       });
+    }
+
+    if (method === 'POST' && path === '/auth/refresh') {
+      if (!sessionToken) {
+        return json({ message: 'No refresh session' }, 401);
+      }
+
+      return json({
+        accessToken: sessionToken,
+        user: sessionToken === 'admin-token' ? adminUser : customerUser,
+      });
+    }
+
+    if (method === 'POST' && path === '/auth/logout') {
+      sessionToken = null;
+      return json({ status: 'ok' });
     }
 
     if (path === '/auth/me') {
@@ -137,6 +341,47 @@ async function mockApi(page: Page) {
 
     if (path === '/auth/preferred-region') {
       return json(customerUser);
+    }
+
+    if (path === '/locations' && method === 'GET') {
+      return json([]);
+    }
+
+    if (path === '/locations' && method === 'POST') {
+      const body = JSON.parse(request.postData() ?? '{}') as {
+        latitude?: number;
+        longitude?: number;
+        coverageRadiusKm?: number;
+      };
+      return json(
+        {
+          id: 'location-1',
+          regionId: region.id,
+          regionSlug: region.slug,
+          regionName: region.name,
+          label: 'Local atual',
+          latitude: body.latitude,
+          longitude: body.longitude,
+          postalCode: null,
+          coverageRadiusKm: body.coverageRadiusKm ?? 5,
+          activeEstablishmentCount: 2,
+          isDefault: true,
+          locationSource: 'browser_geolocation',
+          createdAt: '2026-05-05T10:00:00.000Z',
+          updatedAt: '2026-05-05T10:00:00.000Z',
+        },
+        201,
+      );
+    }
+
+    if (path === '/locations/coverage-preview' && method === 'POST') {
+      return json({
+        regionId: region.id,
+        coverageRadiusKm: 5,
+        activeEstablishmentCount: 2,
+        fallbackUsed: false,
+        establishments: [],
+      });
     }
 
     if (path === '/regions') {
@@ -152,13 +397,20 @@ async function mockApi(page: Page) {
     }
 
     if (path === '/shopping-lists' && method === 'POST') {
-      return json({ ...savedList, id: 'list-2', name: 'Compra semanal', items: [] }, 201);
+      return json(
+        { ...savedList, id: 'list-2', name: 'Compra semanal', items: [] },
+        201,
+      );
     }
 
     if (path === '/shopping-lists/list-2' && method === 'PATCH') {
       const body = JSON.parse(request.postData() ?? '{}') as {
         name: string;
-        items: Array<{ requestedName: string; quantity?: number; unitLabel?: string }>;
+        items: Array<{
+          requestedName: string;
+          quantity?: number;
+          unitLabel?: string;
+        }>;
       };
       return json({
         ...savedList,
@@ -187,14 +439,17 @@ async function mockApi(page: Page) {
     }
 
     if (path === '/shopping-lists/list-1/optimize') {
-      return json({
-        id: 'run-1',
-        jobId: 'job-1',
-        shoppingListId: 'list-1',
-        mode: 'global_full',
-        status: 'queued',
-        queuedAt: '2026-05-05T10:00:00.000Z',
-      }, 202);
+      return json(
+        {
+          id: 'run-1',
+          jobId: 'job-1',
+          shoppingListId: 'list-1',
+          mode: 'global_multi',
+          status: 'queued',
+          queuedAt: '2026-05-05T10:00:00.000Z',
+        },
+        202,
+      );
     }
 
     if (path === '/shopping-lists/list-1/optimizations/latest') {
@@ -219,6 +474,12 @@ async function mockApi(page: Page) {
       return json([]);
     }
 
+    if (path === '/receipts' && method === 'POST') {
+      receiptReleased = false;
+      receiptRejected = false;
+      return json(receiptSubmissionResponse('waiting_manual_release'), 201);
+    }
+
     if (path === '/admin/metrics') {
       return json({
         activeUsers: 12,
@@ -233,6 +494,80 @@ async function mockApi(page: Page) {
       });
     }
 
+    if (path === '/admin/metrics/public-search') {
+      return json({
+        windowSize: 500,
+        retentionDays: 30,
+        sampleCount: 120,
+        volume: {
+          last24Hours: 38,
+          last7Days: 120,
+        },
+        p50Ms: 28,
+        p95Ms: 72,
+        maxMs: 110,
+        p95TargetMs: 750,
+        strategyCounts: {
+          candidate: 118,
+          broadFallback: 2,
+        },
+        fallbackRate: 0.0167,
+        timeline: Array.from({ length: 12 }, (_, index) => ({
+          startsAt: new Date(
+            Date.now() - (12 - index) * 2 * 60 * 60 * 1000,
+          ).toISOString(),
+          sampleCount: index + 1,
+          p95Ms: 40 + index,
+        })),
+        pgTrgmEvaluation: {
+          minimumSamples: 100,
+          recommended: false,
+          reason: 'p95_within_target',
+        },
+        alert: {
+          status: 'healthy',
+          observedP95Ms: 72,
+          targetP95Ms: 750,
+          sampleCount: 120,
+          triggeredAt: null,
+          lastNotifiedAt: null,
+        },
+        lastRecordedAt: new Date().toISOString(),
+      });
+    }
+
+    if (path === '/admin/receipt-processing' && method === 'GET') {
+      return json([receiptProcessingRecord()]);
+    }
+
+    if (path === '/admin/receipt-processing/receipt-1' && method === 'GET') {
+      return json(receiptProcessingRecord());
+    }
+
+    if (
+      path === '/admin/receipt-processing/receipt-1/release' &&
+      method === 'POST'
+    ) {
+      receiptReleased = true;
+      return json(receiptSubmissionResponse('queued'));
+    }
+
+    if (
+      path === '/admin/receipt-processing/receipt-1/reprocess' &&
+      method === 'POST'
+    ) {
+      receiptReleased = true;
+      return json(receiptSubmissionResponse('queued'));
+    }
+
+    if (
+      path === '/admin/receipt-processing/receipt-1/reject' &&
+      method === 'POST'
+    ) {
+      receiptRejected = true;
+      return json(receiptSubmissionResponse('failed'));
+    }
+
     if (path === '/admin/processing-jobs') {
       return json([
         {
@@ -245,7 +580,11 @@ async function mockApi(page: Page) {
           attemptCount: 0,
           createdAt: '2026-05-05T10:00:00.000Z',
           updatedAt: '2026-05-05T10:00:00.000Z',
-          owner: { id: 'user-1', displayName: 'Cliente Pricely', email: 'cliente@pricely.test' },
+          owner: {
+            id: 'user-1',
+            displayName: 'Cliente Pricely',
+            email: 'cliente@pricely.test',
+          },
           receiptRecord: {
             id: 'receipt-1',
             status: 'processed',
@@ -272,7 +611,11 @@ async function mockApi(page: Page) {
         attemptCount: 0,
         createdAt: '2026-05-05T10:00:00.000Z',
         updatedAt: '2026-05-05T10:00:00.000Z',
-        owner: { id: 'user-1', displayName: 'Cliente Pricely', email: 'cliente@pricely.test' },
+        owner: {
+          id: 'user-1',
+          displayName: 'Cliente Pricely',
+          email: 'cliente@pricely.test',
+        },
         receiptRecord: {
           id: 'receipt-1',
           status: 'processed',
@@ -318,58 +661,264 @@ test.beforeEach(async ({ page }) => {
   await mockApi(page);
 });
 
-test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and premium gate', async ({ page }) => {
+test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and premium gate', async ({
+  page,
+}) => {
   await page.goto('/entrar');
-  await expect(page.getByText('Entrar no Pricely').first()).toBeVisible();
+  await expect(
+    page.getByText('Sua conta para comprar melhor').first(),
+  ).toBeVisible();
   await page.getByLabel('E-mail').fill(customerUser.email);
   await page.getByLabel('Senha').fill('password');
   await page.getByRole('button', { name: 'Entrar' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Minhas listas' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
   await expect(page.getByText('2 de 2 listas no mês')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Comprar Premium' })).toBeDisabled();
+  await expect(
+    page.getByRole('button', { name: /Premium indispon/i }),
+  ).toBeDisabled();
+  await page
+    .getByRole('button', { name: /Ocultar valores monetários/i })
+    .first()
+    .click();
+  await page.goto('/');
+  await expect(page.getByText('R$ •••').first()).toBeVisible();
 
   await page.goto('/cidades');
   await expect(page.getByText('Cidades suportadas').first()).toBeVisible();
-  await expect(page.getByText('Sao Paulo · SP')).toBeVisible();
+  await expect(page.getByText('Sao Paulo · SP', { exact: true })).toBeVisible();
 
   await page.goto('/listas/nova');
-  await page.getByLabel('Nome da lista').fill('Compra semanal');
-  await page.getByLabel('Cidade').selectOption('sao-paulo-sp');
+  await page.getByLabel('Título da lista').fill('Compra semanal');
   await page.getByLabel('Produto').fill('Arroz');
-  await expect(page.getByRole('button', { name: 'Adicionar' })).toBeVisible();
-  await page.getByRole('button', { name: 'Adicionar' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Adicionar', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Adicionar', exact: true }).click();
   await expect(page.getByText('Arroz tipo 1 1kg').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Minhas listas' })).toBeVisible();
+  const saveDraftButton = page.getByRole('button', {
+    name: 'Salvar rascunho',
+  });
+  await expect(saveDraftButton).toBeEnabled({ timeout: 15_000 });
+  await saveDraftButton.click();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
 
   await page.goto('/otimizacao/list-1');
-  await expect(page.getByRole('heading', { name: 'Resultado da otimização' })).toBeVisible();
-  await page.getByText('Usar este modo').first().click();
-  await expect(page.getByText('Decisões por item')).toBeVisible();
-  await expect(page.getByText('Menor preco elegivel para o item.')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Resultado da otimização' }),
+  ).toBeVisible();
+  await expect(page.getByText(/Itens da lista/)).toBeVisible();
+  await expect(page.getByText(/Plano de compras/)).toBeVisible();
+  await expect(page.getByText('Oferta confirmada selecionada')).toBeVisible();
+  await expect(page.getByText('Confiança alta', { exact: true })).toBeVisible();
+  await expect(page.getByText('82/100', { exact: true })).toBeVisible();
+  await page
+    .getByRole('link', { name: /Abrir checklist/i })
+    .first()
+    .click();
 
-  await page.goto('/listas/list-1/checklist');
-  await expect(page.getByRole('heading', { name: 'Checklist de compra' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Checklist de compra' }),
+  ).toBeVisible();
   await page.getByRole('checkbox').click();
-  await expect(page.getByText('Comprado')).toBeVisible();
+  await expect(page.getByText('Comprado', { exact: true })).toBeVisible();
 });
 
-test('MVP admin flow covers route protection and queue detail', async ({ page }) => {
+test('location-aware web flow saves browser coordinates and shows local result distance', async ({
+  page,
+}) => {
+  await page.context().grantPermissions(['geolocation']);
+  await page.context().setGeolocation({
+    latitude: -23.566263,
+    longitude: -46.683677,
+  });
+  await page.goto('/entrar');
+  await page.getByLabel('E-mail').fill(customerUser.email);
+  await page.getByLabel('Senha').fill('password');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
+
+  await page.goto('/');
+  await page.getByRole('button', { name: /Configurar localização/i }).click();
+  await page.getByRole('button', { name: /Usar localizacao/i }).click();
+  await expect(
+    page.getByText(/Preview local: 2 lojas dentro de 5 km/),
+  ).toBeVisible();
+
+  await page.goto('/otimizacao/list-1');
+  await expect(page.getByText('0.8 km do local salvo')).toBeVisible();
+});
+
+test('MVP receipt flow covers submission, admin audit release, and reward state', async ({
+  page,
+}) => {
+  await page.goto('/entrar');
+  await page.getByLabel('E-mail').fill(customerUser.email);
+  await page.getByLabel('Senha').fill('password');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
+
+  await page.goto('/notas');
+  await expect(page.getByText('Enviar nota fiscal').first()).toBeVisible();
+  await page.getByLabel('Estabelecimento').fill('Mercado Centro');
+  await page.getByLabel('Data da compra').fill('2026-05-05');
+  await page.getByLabel('CNPJ').fill('00.000.000/0001-00');
+  await page.getByLabel('Produto').fill('Arroz tipo 1 1kg');
+  await page.getByLabel('Qtd.').fill('2');
+  await page.getByLabel('Preço').fill('7.90');
+  await page.getByRole('button', { name: 'Enviar nota' }).click();
+
+  await expect(page.getByText('Nota recebida', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Aguardando liberação manual', { exact: true }),
+  ).toBeVisible();
+  await page.getByText('Aguardando liberação manual', { exact: true }).hover();
+  await expect(page.getByText(/Status da fila após o envio/i)).toBeVisible();
+  await expect(page.getByText(/Reward previsto/i)).toBeVisible();
+  await expect(page.getByText('Admin libera no dashboard')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Sair' }).click();
+  await page.goto('/entrar');
+  await page.getByLabel('E-mail').fill(adminUser.email);
+  await page.getByLabel('Senha').fill('password');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
+
+  await page.goto('/dashboard/notas');
+  await expect(page.getByText('Notas fiscais processadas')).toBeVisible();
+  await expect(page.getByText('Mercado Centro')).toBeVisible();
+  await expect(page.getByText('Rewards prontos')).toBeVisible();
+  await expect(page.getByText('100 pontos + 1 credito pendente')).toBeVisible();
+  await page.getByRole('link', { name: /Auditar nota fiscal/i }).click();
+
+  await expect(page.getByText('Auditoria da nota fiscal')).toBeVisible();
+  await expect(page.getByText('receipt_reward_ready')).toBeVisible();
+  await expect(
+    page.getByText('Arroz tipo 1 1kg', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Liberar processamento' }).click();
+  await expect(
+    page.getByText('Nota fiscal liberada para processamento.'),
+  ).toBeVisible();
+  await expect(page.getByRole('link', { name: /Ver execu/i })).toBeVisible();
+});
+
+test('MVP admin flow covers route protection and queue detail', async ({
+  page,
+}) => {
   await page.goto('/dashboard');
   await expect(page.getByText('Acesso restrito')).toBeVisible();
 
-  await page.evaluate(() => {
-    window.localStorage.setItem('pricely-auth-token', 'admin-token');
-  });
+  await page.goto('/entrar');
+  await page.getByLabel('E-mail').fill(adminUser.email);
+  await page.getByLabel('Senha').fill('password');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Minhas listas' }),
+  ).toBeVisible();
 
   await page.goto('/dashboard/fila');
   await expect(page.getByText('Saude da fila')).toBeVisible();
-  await expect(page.getByText('recibo receipt-1')).toBeVisible();
+  await expect(page.getByText('Nota fiscal: Mercado Centro')).toBeVisible();
+  await expect(
+    page.getByText(/ID t.cnico: receipt .* receipt-1 .* job job-1/),
+  ).toBeVisible();
+  await page.getByText('Em fila', { exact: true }).hover();
+  await expect(page.getByText(/Job aguardando worker/i)).toBeVisible();
   await page.goto('/dashboard/fila/job-1');
 
-  await expect(page.getByText('Mercado Centro')).toBeVisible();
+  await expect(
+    page.getByText('Nota fiscal: Mercado Centro').first(),
+  ).toBeVisible();
   await expect(page.getByText('Recibo contribuído')).toBeVisible();
   await expect(page.getByText('suspicious_price_detected')).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'Arroz tipo 1 1kg', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('cell', { name: 'Arroz tipo 1 1kg', exact: true }),
+  ).toBeVisible();
+});
+
+test('admin overview search observability is responsive and passes basic accessibility checks', async ({
+  page,
+}) => {
+  const consoleErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text());
+    }
+  });
+
+  await page.goto('/entrar');
+  await page.getByLabel('E-mail').fill(adminUser.email);
+  await page.getByLabel('Senha').fill('password');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  consoleErrors.length = 0;
+  await page.goto('/dashboard');
+
+  await expect(
+    page.getByRole('heading', { name: 'Busca pública' }),
+  ).toBeVisible();
+  await expect(page.getByText('72 ms')).toBeVisible();
+  await expect(page.getByText('Sem ação de índice')).toBeVisible();
+  await expect(
+    page.getByRole('img', {
+      name: 'Histórico de latência p95 da busca pública',
+    }),
+  ).toBeVisible();
+
+  const desktopAudit = await page.evaluate(() => {
+    const duplicateIds = [...document.querySelectorAll('[id]')]
+      .map((element) => element.id)
+      .filter((id, index, ids) => id && ids.indexOf(id) !== index);
+    const unnamedControls = [
+      ...document.querySelectorAll('button, a[href], input, select, textarea'),
+    ].filter((element) => {
+      const htmlElement = element as HTMLElement;
+      const name =
+        htmlElement.getAttribute('aria-label') ??
+        htmlElement.getAttribute('title') ??
+        htmlElement.textContent?.trim() ??
+        '';
+      return name.length === 0;
+    }).length;
+    const imagesWithoutAlt = [...document.querySelectorAll('img:not([alt])')]
+      .length;
+
+    return {
+      duplicateIds,
+      unnamedControls,
+      imagesWithoutAlt,
+      horizontalOverflow:
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth + 1,
+    };
+  });
+
+  expect(desktopAudit).toEqual({
+    duplicateIds: [],
+    unnamedControls: 0,
+    imagesWithoutAlt: 0,
+    horizontalOverflow: false,
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    page.getByRole('heading', { name: 'Busca pública' }),
+  ).toBeVisible();
+  const mobileOverflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth >
+      document.documentElement.clientWidth + 1,
+  );
+  expect(mobileOverflow).toBe(false);
+  expect(consoleErrors).toEqual([]);
 });

@@ -9,6 +9,8 @@ import { ProductMatchService } from './application/product-match.service';
 import { ProductNormalizerService } from './application/product-normalizer.service';
 import { PublicCatalogService } from './application/public-catalog.service';
 import { CatalogProductsService } from './application/catalog-products.service';
+import { MissingProductRequestsController } from './api/missing-product-requests.controller';
+import { MissingProductRequestsService } from './application/missing-product-requests.service';
 
 @Module({
   imports: [PrismaModule],
@@ -19,8 +21,13 @@ import { CatalogProductsService } from './application/catalog-products.service';
     PublicCatalogService,
     CatalogProductsService,
     CatalogMediaService,
+    MissingProductRequestsService,
   ],
-  controllers: [PublicCatalogController, CatalogMediaController],
+  controllers: [
+    PublicCatalogController,
+    CatalogMediaController,
+    MissingProductRequestsController,
+  ],
   exports: [
     ProductNormalizerService,
     ProductMatchService,
@@ -28,6 +35,7 @@ import { CatalogProductsService } from './application/catalog-products.service';
     PublicCatalogService,
     CatalogProductsService,
     CatalogMediaService,
+    MissingProductRequestsService,
   ],
 })
 export class CatalogModule {}

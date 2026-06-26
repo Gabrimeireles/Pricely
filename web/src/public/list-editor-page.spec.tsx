@@ -1,14 +1,22 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ListEditorPage } from './public-pages';
 
 const saveList = vi.fn();
+const shareList = vi.fn();
 
 const mockPricelyState = {
+  accessToken: 'token',
   cityId: 'sao-paulo-sp',
   cities: [
     {
@@ -24,8 +32,9 @@ const mockPricelyState = {
     },
   ],
   lists: [] as Array<Record<string, unknown>>,
-  preferredMode: 'global_full',
+  preferredMode: 'global_multi',
   saveList,
+  shareList,
   isAuthenticated: true,
   isBootstrapping: false,
 };
@@ -67,12 +76,32 @@ vi.mock('@/app/api', () => ({
       isActive: true,
     },
   ]),
+  fetchSharedShoppingList: vi.fn(),
+  requestMissingProduct: vi.fn(),
+  mapShoppingList: vi.fn((list) => ({
+    id: list.id,
+    name: list.name,
+    cityId: list.preferredRegionId ?? '',
+    lastMode: list.lastMode,
+    updatedAt: list.updatedAt,
+    expectedSavings: list.latestEstimatedSavings ?? 0,
+    shareToken: list.shareToken,
+    shareUrl: list.shareToken
+      ? `http://localhost:3000/compartilhar/listas/${list.shareToken}`
+      : undefined,
+    items: [],
+  })),
 }));
 
 describe('ListEditorPage', () => {
   beforeEach(() => {
     saveList.mockReset();
+    shareList.mockReset();
     saveList.mockResolvedValue({ id: 'list-1' });
+    shareList.mockResolvedValue({
+      id: 'list-1',
+      shareUrl: 'http://localhost:3000/compartilhar/listas/token-1',
+    });
     mockPricelyState.lists = [];
   });
 
@@ -90,11 +119,13 @@ describe('ListEditorPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('1. Defina o contexto da compra')).toBeTruthy();
-    expect(screen.getByText('2. Adicione itens reais da sua compra')).toBeTruthy();
-    expect(screen.getByText('3. Salve agora ou otimize depois')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Nova lista' })).toBeTruthy();
+    expect(screen.getByText('Sua lista')).toBeTruthy();
+    expect(screen.getByText('Buscar produtos')).toBeTruthy();
+    expect(screen.getByText('Produtos comparáveis')).toBeTruthy();
+    expect(screen.getByText('Itens da lista')).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText('Nome da lista'), {
+    fireEvent.change(screen.getByLabelText('Título da lista'), {
       target: { value: 'Compra mensal' },
     });
     fireEvent.change(screen.getByLabelText('Produto'), {
@@ -105,12 +136,18 @@ describe('ListEditorPage', () => {
       expect(screen.getByRole('button', { name: 'Configurar' })).toBeTruthy(),
     );
 
-    const searchImage = screen.getByAltText('Arroz tipo 1 1kg') as HTMLImageElement;
+    const searchImage = screen.getByAltText(
+      'Arroz tipo 1 1kg',
+    ) as HTMLImageElement;
     expect(searchImage.src).toContain('https://example.com/arroz-camil.jpg');
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Adicionar' })[0]);
 
-    expect(await screen.findByText('Qualquer variante')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getAllByText('Qualquer variante').length).toBeGreaterThan(
+        0,
+      );
+    });
     expect(screen.getAllByText('Arroz tipo 1 1kg').length).toBeGreaterThan(0);
   });
 
@@ -147,7 +184,9 @@ describe('ListEditorPage', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getAllByRole('button', { name: 'Configurar' }).length).toBeGreaterThan(0),
+      expect(
+        screen.getAllByRole('button', { name: 'Configurar' }).length,
+      ).toBeGreaterThan(0),
     );
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Configurar' })[0]);
@@ -160,7 +199,9 @@ describe('ListEditorPage', () => {
     });
 
     const variantImage = await screen.findByAltText('Camil · Arroz Tipo 1 1kg');
-    expect((variantImage as HTMLImageElement).src).toContain('https://example.com/arroz-camil.jpg');
+    expect((variantImage as HTMLImageElement).src).toContain(
+      'https://example.com/arroz-camil.jpg',
+    );
     expect(screen.getByText('Variante exata selecionada')).toBeTruthy();
   });
 
@@ -170,7 +211,7 @@ describe('ListEditorPage', () => {
         id: 'list-1',
         name: 'Compra mensal',
         cityId: 'sao-paulo-sp',
-        lastMode: 'global_full',
+        lastMode: 'global_multi',
         items: [
           {
             id: 'item-1',
@@ -197,6 +238,49 @@ describe('ListEditorPage', () => {
     );
 
     expect(await screen.findByText('Camil · Arroz Tipo 1 1kg')).toBeTruthy();
-    expect(await screen.findByText('Variante exata: Camil · Arroz Tipo 1 1kg')).toBeTruthy();
+    expect(
+      await screen.findByText('Variante exata: Camil · Arroz Tipo 1 1kg'),
+    ).toBeTruthy();
+  });
+  it('copies a public share link for an existing list', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    mockPricelyState.lists = [
+      {
+        id: 'list-1',
+        name: 'Compra mensal',
+        cityId: 'sao-paulo-sp',
+        lastMode: 'global_multi',
+        items: [
+          {
+            id: 'item-1',
+            name: 'Arroz tipo 1 1kg',
+            quantity: 1,
+            unitLabel: 'un',
+            purchaseStatus: 'pending',
+          },
+        ],
+      },
+    ];
+
+    render(
+      <MemoryRouter initialEntries={['/listas/list-1']}>
+        <Routes>
+          <Route path="/listas/:listId" element={<ListEditorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Compartilhar lista' }));
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        'http://localhost:3000/compartilhar/listas/token-1',
+      ),
+    );
+    expect(await screen.findByText('Link copiado.')).toBeTruthy();
   });
 });

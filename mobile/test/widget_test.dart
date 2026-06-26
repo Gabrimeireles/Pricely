@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pricely_mobile/app/app.dart';
 import 'package:pricely_mobile/app/app_services.dart';
@@ -14,7 +15,26 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Preços com contexto real'), findsOneWidget);
+    expect(find.text('Cliente Pricely'), findsOneWidget);
+    expect(find.text('Cidade ativa'), findsWidgets);
+  });
+
+  testWidgets('renders at narrow width in dark mode without overflow',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final services = AppServices(
+      keyValueStore: _InMemoryKeyValueStore(),
+    );
+    await services.themeController.setThemeMode(ThemeMode.dark);
+
+    await tester.pumpWidget(PricelyApp(services: services));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MaterialApp), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
 

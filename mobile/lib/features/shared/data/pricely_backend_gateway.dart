@@ -1,6 +1,7 @@
 import '../../../core/networking/api_environment.dart';
 import '../../../core/networking/http_api_client.dart';
 import '../../optimization/domain/optimization_result.dart';
+import '../../receipts/domain/receipt_submission.dart';
 import '../../shopping_lists/domain/shopping_list_draft.dart';
 
 class PricelyBackendGateway {
@@ -58,6 +59,92 @@ class PricelyBackendGateway {
     return AuthUser.fromJson(response);
   }
 
+  Future<UserLocationPreferenceSummary> upsertLocationPreference({
+    required String accessToken,
+    required String regionId,
+    required String label,
+    required double coverageRadiusKm,
+    required bool isDefault,
+    required String locationSource,
+    double? latitude,
+    double? longitude,
+    String? postalCode,
+  }) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/locations',
+      accessToken: accessToken,
+      body: <String, dynamic>{
+        'regionId': regionId,
+        'label': label,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (postalCode != null && postalCode.trim().isNotEmpty)
+          'postalCode': postalCode.trim(),
+        'coverageRadiusKm': coverageRadiusKm,
+        'isDefault': isDefault,
+        'locationSource': locationSource,
+      },
+    );
+    return UserLocationPreferenceSummary.fromJson(response);
+  }
+
+  Future<LocationCoveragePreviewSummary> previewLocationCoverage({
+    required String accessToken,
+    required String regionId,
+    double? latitude,
+    double? longitude,
+    String? postalCode,
+    double coverageRadiusKm = 5,
+  }) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/locations/coverage-preview',
+      accessToken: accessToken,
+      body: <String, dynamic>{
+        'regionId': regionId,
+        'coverageRadiusKm': coverageRadiusKm,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (postalCode != null && postalCode.trim().isNotEmpty)
+          'postalCode': postalCode.trim(),
+      },
+    );
+    return LocationCoveragePreviewSummary.fromJson(response);
+  }
+
+
+  List<Map<String, dynamic>> _parseManualReceiptItems(String? rawReceipt) {
+    if (rawReceipt == null || rawReceipt.trim().isEmpty) {
+      return <Map<String, dynamic>>[];
+    }
+
+    return rawReceipt
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .map((line) {
+          final parts = line.split(RegExp(r'\s+'));
+          final unitPrice = parts.isEmpty
+              ? null
+              : double.tryParse(parts.last.replaceAll(',', '.'));
+          if (unitPrice == null || parts.length < 2) {
+            return null;
+          }
+
+          final rawProductName = parts.sublist(0, parts.length - 1).join(' ');
+          if (rawProductName.trim().isEmpty) {
+            return null;
+          }
+
+          return <String, dynamic>{
+            'rawProductName': rawProductName,
+            'quantity': 1,
+            'unitPrice': unitPrice,
+          };
+        })
+        .whereType<Map<String, dynamic>>()
+        .toList();
+  }
+
   Future<List<PublicRegionSummary>> fetchPublicRegions() async {
     final response = await _apiClient.get<List<dynamic>>('/regions');
     return response
@@ -103,6 +190,49 @@ class PricelyBackendGateway {
     final response =
         await _apiClient.get<Map<String, dynamic>>('/offers/$offerId');
     return PublicOfferDetail.fromJson(response);
+  }
+
+  Future<ReceiptSubmissionSummary> submitReceipt({
+    required String accessToken,
+    String? storeName,
+    String? qrCodeUrl,
+    String? rawReceipt,
+  }) async {
+    final items = _parseManualReceiptItems(rawReceipt);
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/receipts',
+      accessToken: accessToken,
+      body: <String, dynamic>{
+        if (storeName != null && storeName.trim().isNotEmpty)
+          'storeName': storeName.trim(),
+        if (qrCodeUrl != null && qrCodeUrl.trim().isNotEmpty)
+          'qrCodeUrl': qrCodeUrl.trim(),
+        'sourceType': qrCodeUrl != null && qrCodeUrl.trim().isNotEmpty
+            ? 'qr_code_url'
+            : 'manual_entry',
+        if (items.isNotEmpty) 'items': items,
+      },
+    );
+
+    return ReceiptSubmissionSummary.fromJson(
+      response,
+      fallbackQrCodeUrl: qrCodeUrl,
+    );
+  }
+
+  Future<ReceiptSubmissionSummary> fetchReceipt({
+    required String accessToken,
+    required String receiptId,
+    String? fallbackQrCodeUrl,
+  }) async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      '/receipts/$receiptId',
+      accessToken: accessToken,
+    );
+    return ReceiptSubmissionSummary.fromJson(
+      response,
+      fallbackQrCodeUrl: fallbackQrCodeUrl,
+    );
   }
 
   Future<List<ShoppingListDraft>> fetchShoppingLists(String accessToken) async {
@@ -189,11 +319,21 @@ class PricelyBackendGateway {
     required String accessToken,
     required String listId,
     required String mode,
+    String? userLocationPreferenceId,
+    double? coverageRadiusKm,
   }) async {
+    final body = <String, dynamic>{'mode': mode};
+    if (userLocationPreferenceId != null) {
+      body['userLocationPreferenceId'] = userLocationPreferenceId;
+    }
+    if (coverageRadiusKm != null) {
+      body['coverageRadiusKm'] = coverageRadiusKm;
+    }
+
     await _apiClient.post<Map<String, dynamic>>(
       '${ApiEnvironment.shoppingListsPath}/$listId/optimize',
       accessToken: accessToken,
-      body: <String, dynamic>{'mode': mode},
+      body: body,
     );
     return _waitForOptimizationResult(
       accessToken: accessToken,
@@ -239,7 +379,7 @@ class PricelyBackendGateway {
       id: json['id'] as String,
       title: json['name'] as String? ?? 'Minha lista',
       regionId: json['preferredRegionId'] as String? ?? '',
-      lastMode: json['lastMode'] as String? ?? 'global_full',
+      lastMode: json['lastMode'] as String? ?? 'global_multi',
       items: items
           .map(
             (item) => ShoppingListItemDraft(
@@ -290,10 +430,21 @@ class PricelyBackendGateway {
           unit: 'un',
           unitPrice: priceAmount.toDouble(),
           subtotal: priceAmount.toDouble(),
+          distanceKm: (selection['distanceKm'] as num?)?.toDouble(),
           confidenceLabel:
               selection['confidenceNotice'] as String? ?? 'confirmado',
           decisionReason: selection['decisionReason'] as String?,
           rejectedReason: selection['rejectedReason'] as String?,
+          sourceLabel: selection['sourceLabel'] as String?,
+          trustFactor: (selection['trustFactor'] as num?)?.toInt(),
+          trustLevel: selection['trustLevel'] as String?,
+          trustEvidenceCount:
+              (selection['trustEvidenceCount'] as num?)?.toInt(),
+          trustFreshnessDays:
+              (selection['trustFreshnessDays'] as num?)?.toInt(),
+          selectedVariantName: selection['selectedVariantName'] as String?,
+          selectedPackageLabel: selection['selectedPackageLabel'] as String?,
+          confidenceNotice: selection['confidenceNotice'] as String?,
         ),
       );
     }
@@ -522,6 +673,73 @@ class PublicRegionSummary {
           (json['activeEstablishmentCount'] as num? ?? 0).toInt(),
       offerCoverageStatus:
           json['offerCoverageStatus'] as String? ?? 'collecting_data',
+    );
+  }
+}
+
+class UserLocationPreferenceSummary {
+  UserLocationPreferenceSummary({
+    required this.id,
+    required this.regionId,
+    required this.regionSlug,
+    required this.label,
+    required this.latitude,
+    required this.longitude,
+    required this.coverageRadiusKm,
+    required this.activeEstablishmentCount,
+    required this.isDefault,
+    required this.locationSource,
+  });
+
+  final String id;
+  final String regionId;
+  final String regionSlug;
+  final String label;
+  final double? latitude;
+  final double? longitude;
+  final double coverageRadiusKm;
+  final int activeEstablishmentCount;
+  final bool isDefault;
+  final String locationSource;
+
+  factory UserLocationPreferenceSummary.fromJson(Map<String, dynamic> json) {
+    return UserLocationPreferenceSummary(
+      id: json['id'] as String,
+      regionId: json['regionId'] as String,
+      regionSlug: json['regionSlug'] as String? ?? '',
+      label: json['label'] as String? ?? 'Local atual',
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      coverageRadiusKm:
+          (json['coverageRadiusKm'] as num? ?? 5).toDouble(),
+      activeEstablishmentCount:
+          (json['activeEstablishmentCount'] as num? ?? 0).toInt(),
+      isDefault: json['isDefault'] as bool? ?? false,
+      locationSource: json['locationSource'] as String? ?? 'manual',
+    );
+  }
+}
+
+class LocationCoveragePreviewSummary {
+  LocationCoveragePreviewSummary({
+    required this.regionId,
+    required this.coverageRadiusKm,
+    required this.activeEstablishmentCount,
+    required this.fallbackUsed,
+  });
+
+  final String regionId;
+  final double coverageRadiusKm;
+  final int activeEstablishmentCount;
+  final bool fallbackUsed;
+
+  factory LocationCoveragePreviewSummary.fromJson(Map<String, dynamic> json) {
+    return LocationCoveragePreviewSummary(
+      regionId: json['regionId'] as String? ?? '',
+      coverageRadiusKm: (json['coverageRadiusKm'] as num? ?? 5).toDouble(),
+      activeEstablishmentCount:
+          (json['activeEstablishmentCount'] as num? ?? 0).toInt(),
+      fallbackUsed: json['fallbackUsed'] as bool? ?? false,
     );
   }
 }
