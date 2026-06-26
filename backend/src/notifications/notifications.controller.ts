@@ -8,7 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsBoolean, IsOptional } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 
 import { type JwtUserPayload } from '../auth/auth.types';
 import { CurrentUser } from '../common/auth/current-user.decorator';
@@ -31,14 +31,37 @@ class UpdateNotificationPreferencesDto {
   @IsOptional()
   @IsBoolean()
   optimizationReadyEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  emailEnabled?: boolean;
+}
+
+class RequestEmailDestinationDto {
+  @IsEmail()
+  email!: string;
+}
+
+class ConfirmEmailDestinationDto {
+  @IsString()
+  token!: string;
+}
+
+class UnsubscribeEmailDto {
+  @IsString()
+  token!: string;
+
+  @IsOptional()
+  @IsIn(['all', 'price_drop', 'receipt_outcome', 'optimization'])
+  category?: 'all' | 'price_drop' | 'receipt_outcome' | 'optimization';
 }
 
 @Controller()
-@UseGuards(JwtAuthGuard)
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get('notifications')
+  @UseGuards(JwtAuthGuard)
   list(
     @CurrentUser() user: JwtUserPayload,
     @Query('unreadOnly') unreadOnly?: string,
@@ -47,25 +70,57 @@ export class NotificationsController {
   }
 
   @Patch('notifications/:id/read')
+  @UseGuards(JwtAuthGuard)
   markRead(@CurrentUser() user: JwtUserPayload, @Param('id') id: string) {
     return this.notificationsService.markRead(user.sub, id);
   }
 
   @Post('notifications/read-all')
+  @UseGuards(JwtAuthGuard)
   markAllRead(@CurrentUser() user: JwtUserPayload) {
     return this.notificationsService.markAllRead(user.sub);
   }
 
   @Get('notification-preferences')
+  @UseGuards(JwtAuthGuard)
   preferences(@CurrentUser() user: JwtUserPayload) {
     return this.notificationsService.getPreferences(user.sub);
   }
 
   @Patch('notification-preferences')
+  @UseGuards(JwtAuthGuard)
   updatePreferences(
     @CurrentUser() user: JwtUserPayload,
     @Body() body: UpdateNotificationPreferencesDto,
   ) {
     return this.notificationsService.updatePreferences(user.sub, body);
+  }
+
+  @Get('notification-email-destination')
+  @UseGuards(JwtAuthGuard)
+  emailDestination(@CurrentUser() user: JwtUserPayload) {
+    return this.notificationsService.getEmailDestination(user.sub);
+  }
+
+  @Post('notification-email-destination')
+  @UseGuards(JwtAuthGuard)
+  requestEmailDestination(
+    @CurrentUser() user: JwtUserPayload,
+    @Body() body: RequestEmailDestinationDto,
+  ) {
+    return this.notificationsService.requestEmailDestination(
+      user.sub,
+      body.email,
+    );
+  }
+
+  @Post('notification-email-destination/confirm')
+  confirmEmailDestination(@Body() body: ConfirmEmailDestinationDto) {
+    return this.notificationsService.confirmEmailDestination(body.token);
+  }
+
+  @Post('notification-email-unsubscribe')
+  unsubscribeEmail(@Body() body: UnsubscribeEmailDto) {
+    return this.notificationsService.unsubscribeEmail(body);
   }
 }

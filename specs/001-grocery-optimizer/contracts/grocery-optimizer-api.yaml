@@ -393,15 +393,56 @@ paths:
           description: Unread notifications updated
   /notification-preferences:
     get:
-      summary: Fetch in-app notification category preferences
+      summary: Fetch notification channel and category preferences
       responses:
         '200':
           description: Preferences returned
     patch:
-      summary: Update in-app notification category preferences
+      summary: Update notification channel and category preferences
       responses:
         '200':
-          description: Preferences updated; email and push remain disabled
+          description: Preferences updated; email can be enabled after destination verification
+  /notification-email-destination:
+    get:
+      summary: Fetch the authenticated user's email notification destination
+      responses:
+        '200':
+          description: Email destination returned when configured
+    post:
+      summary: Request verification for an email notification destination
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailDestinationRequest'
+      responses:
+        '201':
+          description: Verification request recorded; external email delivery remains provider-gated
+  /notification-email-destination/confirm:
+    post:
+      summary: Confirm an email notification destination by verification token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailTokenRequest'
+      responses:
+        '201':
+          description: Destination verified and email notifications enabled
+  /notification-email-unsubscribe:
+    post:
+      summary: Disable all email notifications or one mapped category by unsubscribe token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailUnsubscribeRequest'
+      responses:
+        '201':
+          description: Email preference updated
   /receipts:
     post:
       summary: Submit a receipt contribution from manual items or an NFC-e QR URL
@@ -761,6 +802,46 @@ components:
           format: email
         password:
           type: string
+    EmailDestinationRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    EmailTokenRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    EmailUnsubscribeRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+        category:
+          type: string
+          enum: [all, price_drop, receipt_outcome, optimization]
+    EmailNotificationDestination:
+      type: object
+      required: [id, email, status]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          enum: [pending, verified, unsubscribed]
+        verifiedAt:
+          type: string
+          format: date-time
+        unsubscribedAt:
+          type: string
+          format: date-time
     AuthSession:
       type: object
       required: [accessToken, user]
