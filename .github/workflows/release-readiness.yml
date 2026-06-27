@@ -89,6 +89,8 @@ jobs:
       - run: npm run db:migrate:policy
       - run: npm run db:migrate:deploy:safe
       - run: npm run db:restore:drill
+      - name: Run notification delivery release coverage
+        run: npx jest test/integration/notifications/notification-delivery-release.integration.spec.ts --runInBand
 
   mobile-release:
     runs-on: ubuntu-latest
