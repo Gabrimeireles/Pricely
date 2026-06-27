@@ -287,7 +287,7 @@ jobs:
           BACKUP_FILE="backups/pre-deploy-${IMAGE_TAG}-$(date -u +%Y%m%dT%H%M%SZ).dump"
           echo "Creating verified pre-deploy database backup at $BACKUP_FILE..."
           docker compose --env-file .env exec -T postgres sh -lc \
-            'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner' \
+            'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner' </dev/null \
             > "$BACKUP_FILE"
           chmod 600 "$BACKUP_FILE"
           docker compose --env-file .env exec -T postgres sh -lc \
@@ -311,6 +311,17 @@ jobs:
 
           docker compose --env-file .env up -d --force-recreate backend web
           docker compose --env-file .env ps
+
+          backend_image="$(docker inspect --format '{{ .Config.Image }}' "$(docker compose --env-file .env ps -q backend)")"
+          web_image="$(docker inspect --format '{{ .Config.Image }}' "$(docker compose --env-file .env ps -q web)")"
+          case "$backend_image" in
+            *":$IMAGE_TAG") echo "Backend container image matches $IMAGE_TAG" ;;
+            *) echo "Backend container image mismatch: expected tag $IMAGE_TAG, got $backend_image"; exit 1 ;;
+          esac
+          case "$web_image" in
+            *":$IMAGE_TAG") echo "Web container image matches $IMAGE_TAG" ;;
+            *) echo "Web container image mismatch: expected tag $IMAGE_TAG, got $web_image"; exit 1 ;;
+          esac
 
           echo "Waiting for backend API..."
           for attempt in $(seq 1 30); do
