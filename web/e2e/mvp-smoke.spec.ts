@@ -838,11 +838,14 @@ test('MVP admin flow covers route protection and queue detail', async ({
 
   await page.goto('/dashboard/fila');
   await expect(page.getByText('Saude da fila')).toBeVisible();
-  await expect(page.getByText('Nota fiscal: Mercado Centro')).toBeVisible();
+  const queueItem = page
+    .getByRole('article')
+    .filter({ hasText: 'Nota fiscal: Mercado Centro' });
+  await expect(queueItem).toBeVisible();
   await expect(
     page.getByText(/ID t.cnico: receipt .* receipt-1 .* job job-1/),
   ).toBeVisible();
-  await page.getByText('Em fila', { exact: true }).hover();
+  await queueItem.getByText('Em fila', { exact: true }).hover();
   await expect(page.getByText(/Job aguardando worker/i)).toBeVisible();
   await page.goto('/dashboard/fila/job-1');
 
