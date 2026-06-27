@@ -664,7 +664,7 @@ validated with sandbox behavior.
 - [X] T270 Add provider-neutral notification delivery contracts, sandbox email/push adapters, and backend coverage for provider-gated execution in `backend/src/notifications/` and `backend/test/unit/notifications/`
 - [X] T271 Add a notification delivery worker or scheduler with bounded batch size, structured logs, and safe disable flags in `backend/src/jobs/` and `backend/src/notifications/`
 - [X] T272 Add admin delivery filters/search for channel, status, destination, notification type, and retryability in `backend/src/admin/` and `web/src/dashboard/`
-- [ ] T273 Add release and rollback checklist entries for provider credentials, unsubscribe safety, quiet-hour policy, sandbox smoke, and incident response in `docs/release/`
+- [X] T273 Add release and rollback checklist entries for provider credentials, unsubscribe safety, quiet-hour policy, sandbox smoke, and incident response in `docs/release/`
 - [ ] T274 Add end-to-end release coverage for sandbox delivery attempts, deferred quiet-hour attempts, retryable provider failure, and terminal provider failure across backend/web/mobile where applicable
 
 ---
