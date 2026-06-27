@@ -624,6 +624,55 @@ describe('Admin dashboard pages', () => {
     expect(screen.queryByText('Go to link')).toBeNull();
   });
 
+  it('applies notification delivery destination and search filters from the queue page', async () => {
+    fetchAdminMetrics.mockResolvedValue({
+      queuedJobs: 0,
+      activeUsers: 1,
+      shoppingListsCount: 0,
+      optimizationRunsCount: 0,
+      activeRegions: 1,
+      activeEstablishments: 1,
+      activeOffers: 0,
+      productCount: 0,
+      globalEstimatedSavings: 0,
+    });
+    fetchAdminQueueHealth.mockResolvedValue({
+      queuedJobs: 0,
+      runningJobs: 0,
+      failedJobs: 0,
+      completedJobs: 0,
+      jobsByStatus: {},
+      queues: [],
+      recentFailures: [],
+    });
+    fetchAdminProcessingJobs.mockResolvedValue([]);
+    fetchAdminNotificationDeliveries.mockResolvedValue([]);
+
+    render(<AdminQueuePage />);
+
+    const destinationInput = await screen.findByLabelText('Destino');
+    fireEvent.change(destinationInput, {
+      target: { value: 'android' },
+    });
+    fireEvent.change(screen.getByLabelText('Busca'), {
+      target: { value: 'Lista pronta' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /filtrar/i }));
+
+    await waitFor(() =>
+      expect(fetchAdminNotificationDeliveries).toHaveBeenLastCalledWith(
+        'token',
+        expect.objectContaining({
+          destination: 'android',
+          search: 'Lista pronta',
+          retryability: 'all',
+          status: 'all',
+          notificationType: 'all',
+        }),
+      ),
+    );
+  });
+
   it('renders queue detail as operational diagnostics without business audit payloads', async () => {
     fetchAdminProcessingJobDetail.mockResolvedValue({
       id: 'job-1',

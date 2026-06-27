@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -416,6 +417,52 @@ class CancelNotificationDeliveryDto {
   reason?: string;
 }
 
+class ListNotificationDeliveriesQueryDto {
+  @IsOptional()
+  @IsIn(['email', 'push'])
+  channel?: 'email' | 'push';
+
+  @IsOptional()
+  @IsIn(['all', 'queued', 'sending', 'retrying', 'delivered', 'failed', 'cancelled'])
+  status?:
+    | 'all'
+    | 'queued'
+    | 'sending'
+    | 'retrying'
+    | 'delivered'
+    | 'failed'
+    | 'cancelled';
+
+  @IsOptional()
+  @IsIn([
+    'all',
+    'price_drop',
+    'receipt_outcome',
+    'optimization_ready',
+    'optimization_failed',
+  ])
+  notificationType?:
+    | 'all'
+    | 'price_drop'
+    | 'receipt_outcome'
+    | 'optimization_ready'
+    | 'optimization_failed';
+
+  @IsOptional()
+  @IsIn(['all', 'retryable', 'not_retryable'])
+  retryability?: 'all' | 'retryable' | 'not_retryable';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  destination?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  search?: string;
+}
+
 class ConvertMissingProductRequestDto {
   @IsOptional()
   @IsString()
@@ -555,8 +602,17 @@ export class AdminDashboardController {
   }
 
   @Get('notification-deliveries')
-  async listNotificationDeliveries() {
-    return this.adminDashboardService.listNotificationDeliveries();
+  async listNotificationDeliveries(
+    @Query() query: ListNotificationDeliveriesQueryDto,
+  ) {
+    return this.adminDashboardService.listNotificationDeliveries({
+      channel: query.channel,
+      status: query.status ?? 'all',
+      notificationType: query.notificationType ?? 'all',
+      retryability: query.retryability ?? 'all',
+      destination: query.destination,
+      search: query.search,
+    });
   }
 
   @Post('notification-deliveries/:id/retry')

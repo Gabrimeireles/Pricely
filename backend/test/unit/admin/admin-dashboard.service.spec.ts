@@ -627,6 +627,104 @@ describe('AdminDashboardService', () => {
     expect(JSON.stringify(projected)).not.toContain('https://fcm.example');
   });
 
+  it('filters notification delivery diagnostics by channel, status, type, destination, search, and retryability', async () => {
+    const matchingAttempt = {
+      id: 'attempt-push-1',
+      notificationId: 'notification-1',
+      userId: 'user-1',
+      channel: 'push',
+      status: 'retrying',
+      attemptCount: 2,
+      maxAttempts: 4,
+      providerMessageId: null,
+      lastFailureReason: 'temporary provider error',
+      terminalFailureReason: null,
+      nextAttemptAt: new Date('2026-06-26T11:00:00Z'),
+      lastAttemptAt: new Date('2026-06-26T10:00:00Z'),
+      deliveredAt: null,
+      createdAt: new Date('2026-06-26T09:00:00Z'),
+      updatedAt: new Date('2026-06-26T10:01:00Z'),
+      user: {
+        id: 'user-1',
+        displayName: 'Cliente Push',
+        email: 'cliente@pricely.local',
+      },
+      notification: {
+        id: 'notification-1',
+        type: 'optimization_ready',
+        title: 'Lista pronta',
+        resourceType: 'optimization_run',
+        resourceId: 'run-1',
+        createdAt: new Date('2026-06-26T08:59:00Z'),
+      },
+      emailDestination: null,
+      pushDevice: {
+        id: 'device-1',
+        platform: 'android',
+        provider: 'fcm',
+        deviceTokenTail: 'token-tail-123',
+        isActive: true,
+      },
+    };
+    const filteredOutAttempt = {
+      ...matchingAttempt,
+      id: 'attempt-push-2',
+      attemptCount: 4,
+      notification: {
+        ...matchingAttempt.notification,
+        title: 'Outro evento',
+      },
+    };
+    const prisma = {
+      userNotificationDeliveryAttempt: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([matchingAttempt, filteredOutAttempt]),
+      },
+    };
+    const service = new AdminDashboardService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      service.listNotificationDeliveries({
+        channel: 'push',
+        status: 'retrying',
+        notificationType: 'optimization_ready',
+        retryability: 'retryable',
+        destination: 'android',
+        search: 'lista',
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: 'attempt-push-1',
+        canRetry: true,
+        destination: expect.objectContaining({
+          label: 'android redacted:il-123',
+        }),
+      }),
+    ]);
+
+    expect(prisma.userNotificationDeliveryAttempt.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          channel: 'push',
+          status: 'retrying',
+          notification: { type: 'optimization_ready' },
+        },
+        take: 250,
+      }),
+    );
+  });
+
   it('projects receipt line extraction, maker action, and price comparison for admin review', async () => {
     const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     const prisma = {

@@ -112,7 +112,8 @@ without sending to external providers or storing raw provider payloads.
 - Bounded scheduler is implemented for due delivery attempts with startup and
   interval ticks, structured logs, no overlapping batches, capped batch size,
   and environment kill switches.
-- Add admin filters/search for delivery diagnostics before volume grows.
+- Admin diagnostics include filters for channel, status, notification type,
+  retryability, redacted destination, and general search.
 - Extend release readiness with provider credential checks, unsubscribe rollback,
   quiet-hour validation, sandbox smoke, and incident response.
 - Add broader release coverage for sandbox success, retryable provider failure,

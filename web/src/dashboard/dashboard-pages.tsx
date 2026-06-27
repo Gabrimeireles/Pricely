@@ -23,6 +23,7 @@ import {
   type AdminEstablishmentResponse,
   type AdminMetricsResponse,
   type MissingProductRequestResponse,
+  type AdminNotificationDeliveryFilters,
   type AdminNotificationDeliveryResponse,
   type AdminOfferResponse,
   type AdminPublicSearchMetricsResponse,
@@ -99,6 +100,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
   Table,
@@ -112,6 +120,7 @@ import {
 function useAdminData<T>(
   loader: (token: string) => Promise<T>,
   initialValue: T,
+  dependencies: unknown[] = [],
 ) {
   const { accessToken } = usePricely();
   const [data, setData] = useState<T>(initialValue);
@@ -136,7 +145,7 @@ function useAdminData<T>(
 
   useEffect(() => {
     void reload();
-  }, [accessToken]);
+  }, [accessToken, ...dependencies]);
 
   return { data, error, reload };
 }
@@ -334,6 +343,43 @@ function notificationDeliverySeverity(
     return 'healthy' as const;
   }
   return 'info' as const;
+}
+
+type AdminNotificationDeliveryFilterState = Required<
+  Pick<
+    AdminNotificationDeliveryFilters,
+    'status' | 'notificationType' | 'retryability'
+  >
+> &
+  Pick<AdminNotificationDeliveryFilters, 'channel' | 'destination' | 'search'>;
+
+const defaultNotificationDeliveryFilters: AdminNotificationDeliveryFilterState =
+  {
+    status: 'all',
+    notificationType: 'all',
+    retryability: 'all',
+    channel: undefined,
+    destination: '',
+    search: '',
+  };
+
+function notificationDeliveryFilterKey(
+  filters: AdminNotificationDeliveryFilterState,
+) {
+  return JSON.stringify(filters);
+}
+
+function toNotificationDeliveryApiFilters(
+  filters: AdminNotificationDeliveryFilterState,
+): AdminNotificationDeliveryFilters {
+  return {
+    channel: filters.channel,
+    status: filters.status,
+    notificationType: filters.notificationType,
+    retryability: filters.retryability,
+    destination: filters.destination?.trim() || undefined,
+    search: filters.search?.trim() || undefined,
+  };
 }
 
 function receiptTrustLabel(
@@ -5252,6 +5298,20 @@ export function AdminReceiptAuditPage() {
 
 export function AdminQueuePage() {
   const { accessToken } = usePricely();
+  const [deliveryFilterDraft, setDeliveryFilterDraft] =
+    useState<AdminNotificationDeliveryFilterState>(
+      defaultNotificationDeliveryFilters,
+    );
+  const [deliveryFilters, setDeliveryFilters] =
+    useState<AdminNotificationDeliveryFilterState>(
+      defaultNotificationDeliveryFilters,
+    );
+  const deliveryFilterKey = notificationDeliveryFilterKey(deliveryFilters);
+  const notificationDeliveryLoader = (token: string) =>
+    fetchAdminNotificationDeliveries(
+      token,
+      toNotificationDeliveryApiFilters(deliveryFilters),
+    );
   const { data: metrics } = useAdminData<AdminMetricsResponse | null>(
     fetchAdminMetrics,
     null,
@@ -5269,8 +5329,9 @@ export function AdminQueuePage() {
     error: notificationDeliveriesError,
     reload: reloadNotificationDeliveries,
   } = useAdminData<AdminNotificationDeliveryResponse[]>(
-    fetchAdminNotificationDeliveries,
+    notificationDeliveryLoader,
     [],
+    [deliveryFilterKey],
   );
   const [deliveryActionError, setDeliveryActionError] = useState<string | null>(
     null,
@@ -5278,6 +5339,18 @@ export function AdminQueuePage() {
   const [activeDeliveryAction, setActiveDeliveryAction] = useState<
     string | null
   >(null);
+  const applyDeliveryFilters = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setDeliveryFilters({
+      ...deliveryFilterDraft,
+      destination: deliveryFilterDraft.destination?.trim() ?? '',
+      search: deliveryFilterDraft.search?.trim() ?? '',
+    });
+  };
+  const clearDeliveryFilters = () => {
+    setDeliveryFilterDraft(defaultNotificationDeliveryFilters);
+    setDeliveryFilters(defaultNotificationDeliveryFilters);
+  };
 
   const runDeliveryAction = async (
     delivery: AdminNotificationDeliveryResponse,
@@ -5475,6 +5548,149 @@ export function AdminQueuePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
+          <form
+            className="grid gap-3 rounded-lg border border-border/70 bg-muted/20 p-3 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]"
+            onSubmit={applyDeliveryFilters}
+          >
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Canal
+              <Select
+                onValueChange={(value) =>
+                  setDeliveryFilterDraft((current) => ({
+                    ...current,
+                    channel:
+                      value === 'all' ? undefined : (value as 'email' | 'push'),
+                  }))
+                }
+                value={deliveryFilterDraft.channel ?? 'all'}
+              >
+                <SelectTrigger className="w-full bg-background">
+                  <SelectValue placeholder="Canal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="push">Push</SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Status
+              <Select
+                onValueChange={(value) =>
+                  setDeliveryFilterDraft((current) => ({
+                    ...current,
+                    status:
+                      value as AdminNotificationDeliveryFilterState['status'],
+                  }))
+                }
+                value={deliveryFilterDraft.status}
+              >
+                <SelectTrigger className="w-full bg-background">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="queued">Em fila</SelectItem>
+                  <SelectItem value="sending">Enviando</SelectItem>
+                  <SelectItem value="retrying">Retry</SelectItem>
+                  <SelectItem value="delivered">Entregue</SelectItem>
+                  <SelectItem value="failed">Falhou</SelectItem>
+                  <SelectItem value="cancelled">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Tipo
+              <Select
+                onValueChange={(value) =>
+                  setDeliveryFilterDraft((current) => ({
+                    ...current,
+                    notificationType:
+                      value as AdminNotificationDeliveryFilterState['notificationType'],
+                  }))
+                }
+                value={deliveryFilterDraft.notificationType}
+              >
+                <SelectTrigger className="w-full bg-background">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="price_drop">Preço</SelectItem>
+                  <SelectItem value="receipt_outcome">Nota fiscal</SelectItem>
+                  <SelectItem value="optimization_ready">
+                    Otimização pronta
+                  </SelectItem>
+                  <SelectItem value="optimization_failed">
+                    Otimização falhou
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+              Retry
+              <Select
+                onValueChange={(value) =>
+                  setDeliveryFilterDraft((current) => ({
+                    ...current,
+                    retryability:
+                      value as AdminNotificationDeliveryFilterState['retryability'],
+                  }))
+                }
+                value={deliveryFilterDraft.retryability}
+              >
+                <SelectTrigger className="w-full bg-background">
+                  <SelectValue placeholder="Retry" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="retryable">Pode retry</SelectItem>
+                  <SelectItem value="not_retryable">Sem retry</SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+            <div className="grid gap-2 lg:col-span-5 lg:grid-cols-[1fr_1fr_auto_auto]">
+              <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                Destino
+                <Input
+                  onChange={(event) =>
+                    setDeliveryFilterDraft((current) => ({
+                      ...current,
+                      destination: event.target.value,
+                    }))
+                  }
+                  placeholder="email mascarado, fcm, android"
+                  value={deliveryFilterDraft.destination}
+                />
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                Busca
+                <Input
+                  onChange={(event) =>
+                    setDeliveryFilterDraft((current) => ({
+                      ...current,
+                      search: event.target.value,
+                    }))
+                  }
+                  placeholder="id, usuário, título ou erro"
+                  value={deliveryFilterDraft.search}
+                />
+              </label>
+              <Button className="self-end" type="submit" variant="outline">
+                <SearchIcon className="size-4" />
+                Filtrar
+              </Button>
+              <Button
+                className="self-end"
+                onClick={clearDeliveryFilters}
+                type="button"
+                variant="ghost"
+              >
+                Limpar
+              </Button>
+            </div>
+          </form>
           {notificationDeliveriesError ? (
             <Alert variant="destructive">
               <AlertTitle>Falha ao carregar entregas</AlertTitle>
