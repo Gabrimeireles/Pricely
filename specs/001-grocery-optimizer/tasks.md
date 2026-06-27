@@ -667,6 +667,13 @@ validated with sandbox behavior.
 - [X] T273 Add release and rollback checklist entries for provider credentials, unsubscribe safety, quiet-hour policy, sandbox smoke, and incident response in `docs/release/`
 - [X] T274 Add end-to-end release coverage for sandbox delivery attempts, deferred quiet-hour attempts, retryable provider failure, and terminal provider failure across backend/web/mobile where applicable
 
+**Phase 36 completion note (2026-06-27)**: Provider-gated notification delivery
+hardening was completed on `homolog` commit
+`22910d3b82cc7a1f9f8ba8748ba6427f7239c6af`. PR #470 closed T274 with Release
+Readiness coverage for sandbox delivery success, quiet-hour deferral, retryable
+provider failure, and terminal provider failure. CI, Release Readiness, and
+Deploy Homolog Server passed after merge.
+
 ---
 
 ## Dependencies & Execution Order

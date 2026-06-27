@@ -94,9 +94,13 @@ diagnostics.
 
 ## Phase 36 delivery hardening
 
-**Status (2026-06-26)**: Started with provider-neutral delivery contracts and
-sandbox adapters. Sandbox delivery can exercise email and push state transitions
-without sending to external providers or storing raw provider payloads.
+**Status (2026-06-27)**: Complete on `homolog` at
+`22910d3b82cc7a1f9f8ba8748ba6427f7239c6af`. CI, Release Readiness, and Deploy
+Homolog Server passed after T274. Provider-gated outbound delivery now has
+sandbox email/push adapters, bounded worker scheduling, admin delivery
+filtering/search, release/rollback gates, and release coverage for sandbox
+success, quiet-hour deferral, retryable provider failure, and terminal provider
+failure.
 
 ### Provider gating
 
@@ -107,7 +111,7 @@ without sending to external providers or storing raw provider payloads.
 - Provider responses update the delivery attempt as `delivered`, `retrying`, or
   `failed`; in-app notifications remain the canonical record.
 
-### Remaining Phase 36 work
+### Completed Phase 36 scope
 
 - Bounded scheduler is implemented for due delivery attempts with startup and
   interval ticks, structured logs, no overlapping batches, capped batch size,
