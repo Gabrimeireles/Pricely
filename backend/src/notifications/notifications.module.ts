@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 
+import { NotificationDeliverySchedulerService } from '../jobs/notification-delivery-scheduler.service';
 import { PrismaModule } from '../persistence/prisma.module';
 import { NotificationDeliveryExecutorService } from './notification-delivery-executor.service';
 import { NOTIFICATION_DELIVERY_PROVIDER } from './notification-delivery.provider';
@@ -14,6 +15,7 @@ import { SandboxNotificationDeliveryProvider } from './sandbox-notification-deli
   providers: [
     NotificationsService,
     NotificationDeliveryExecutorService,
+    NotificationDeliverySchedulerService,
     SandboxNotificationDeliveryProvider,
     {
       provide: NOTIFICATION_DELIVERY_PROVIDER,

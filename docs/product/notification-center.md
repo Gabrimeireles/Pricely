@@ -109,10 +109,22 @@ without sending to external providers or storing raw provider payloads.
 
 ### Remaining Phase 36 work
 
-- Add a bounded worker or scheduler that calls the delivery executor for due
-  attempts and can be disabled per environment.
+- Bounded scheduler is implemented for due delivery attempts with startup and
+  interval ticks, structured logs, no overlapping batches, capped batch size,
+  and environment kill switches.
 - Add admin filters/search for delivery diagnostics before volume grows.
 - Extend release readiness with provider credential checks, unsubscribe rollback,
   quiet-hour validation, sandbox smoke, and incident response.
 - Add broader release coverage for sandbox success, retryable provider failure,
   terminal provider failure, and quiet-hour deferral.
+
+### Worker controls
+
+- `QUEUE_WORKERS_ENABLED=false` disables queue workers and notification delivery
+  scheduling in shared worker environments.
+- `NOTIFICATION_DELIVERY_WORKER_ENABLED=false` disables only outbound notification
+  delivery scheduling.
+- `NOTIFICATION_DELIVERY_BATCH_SIZE` controls each due-attempt batch and is capped
+  at 100 attempts.
+- `NOTIFICATION_DELIVERY_POLL_INTERVAL_MS` controls scheduler cadence and is
+  floored at 1000 ms.
