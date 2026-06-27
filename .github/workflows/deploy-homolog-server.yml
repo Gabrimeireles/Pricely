@@ -240,6 +240,40 @@ jobs:
           docker compose --env-file .env up -d --force-recreate backend web
           docker compose --env-file .env ps
 
+          echo "Waiting for backend API..."
+          for attempt in $(seq 1 30); do
+            if docker compose --env-file .env exec -T backend node -e \
+              "fetch('http://127.0.0.1:3000/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))" </dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "Backend API did not become ready"
+              docker compose --env-file .env logs --tail=160 backend
+              exit 1
+            fi
+            sleep 5
+          done
+
+          echo "Checking backend internal admin routes..."
+          docker compose --env-file .env exec -T backend node <<'NODE'
+          const routes = [
+            '/admin/processing-jobs',
+            '/admin/queue-health',
+            '/admin/missing-product-requests',
+            '/admin/notification-deliveries',
+          ];
+
+          for (const route of routes) {
+            const response = await fetch(`http://127.0.0.1:3000${route}`);
+            if (response.status !== 401 && response.status !== 403) {
+              console.error(`Internal protected route ${route} returned HTTP ${response.status}`);
+              console.error(await response.text());
+              process.exit(1);
+            }
+            console.log(`Internal protected route ${route} is exposed and protected with HTTP ${response.status}`);
+          }
+          NODE
+
           echo "Waiting for web production server..."
           for attempt in $(seq 1 30); do
             if docker compose --env-file .env exec -T web sh -lc \
