@@ -273,3 +273,42 @@ jobs:
           echo "Health check failed"
           cat /tmp/health.body || true
           exit 1
+
+      - name: Public API route smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          api_base="${VITE_API_BASE_URL%/}"
+          [ -n "$api_base" ] || { echo "Missing VITE_API_BASE_URL"; exit 1; }
+
+          status=$(curl -sS -L --connect-timeout 5 --max-time 15 -o /tmp/api-health.body -w "%{http_code}" "$api_base/health" || true)
+          if ! echo "$status" | grep -q '^2[0-9][0-9]$'; then
+            echo "Public API health failed with HTTP $status"
+            cat /tmp/api-health.body || true
+            exit 1
+          fi
+
+          for route in \
+            /admin/processing-jobs \
+            /admin/queue-health \
+            /admin/missing-product-requests \
+            /admin/notification-deliveries
+          do
+            status=$(curl -sS -L --connect-timeout 5 --max-time 15 -o /tmp/api-route.body -w "%{http_code}" "$api_base$route" || true)
+            case "$status" in
+              401|403)
+                echo "Protected route $route is exposed and protected with HTTP $status"
+                ;;
+              404)
+                echo "Protected route $route returned 404; public API is not serving the expected backend routes"
+                cat /tmp/api-route.body || true
+                exit 1
+                ;;
+              *)
+                echo "Protected route $route returned unexpected HTTP $status"
+                cat /tmp/api-route.body || true
+                exit 1
+                ;;
+            esac
+          done
