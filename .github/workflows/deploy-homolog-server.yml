@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: ""
+      diagnose_server:
+        description: "Inspect homolog server compose, ports, route status, and proxy hints without deploying."
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -137,7 +142,73 @@ jobs:
           echo "Unable to scan SSH host key for $DEPLOY_HOST"
           exit 1
 
+      - name: Diagnose server routes and proxy
+        if: ${{ inputs.diagnose_server == true }}
+        shell: bash
+        run: |
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' VITE_API_BASE_URL='$VITE_API_BASE_URL' bash -s" <<'ENDSSH'
+          set -euo pipefail
+
+          echo "== Host identity =="
+          hostname
+          date -u
+
+          echo "== Compose public env =="
+          if [ -f "$DEPLOY_PATH/.env" ]; then
+            grep -E '^(BACKEND_IMAGE|WEB_IMAGE|IMAGE_TAG|BACKEND_PORT|WEB_PORT|WEB_APP_URL|VITE_API_BASE_URL|NODE_ENV)=' "$DEPLOY_PATH/.env" || true
+          else
+            echo "Missing $DEPLOY_PATH/.env"
+          fi
+
+          echo "== Docker containers =="
+          docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}'
+
+          echo "== Compose status =="
+          if [ -f "$DEPLOY_PATH/docker-compose.yml" ]; then
+            cd "$DEPLOY_PATH"
+            docker compose --env-file .env ps
+          fi
+
+          echo "== Listening TCP ports =="
+          if command -v ss >/dev/null 2>&1; then
+            ss -ltnp || true
+          elif command -v netstat >/dev/null 2>&1; then
+            netstat -ltnp || true
+          fi
+
+          backend_port="$(grep -E '^BACKEND_PORT=' "$DEPLOY_PATH/.env" | tail -1 | cut -d= -f2- || true)"
+          backend_port="${backend_port:-3000}"
+          api_base="${VITE_API_BASE_URL%/}"
+
+          echo "== Server-local route smoke =="
+          for base in "http://127.0.0.1:${backend_port}" "$api_base"; do
+            echo "-- Base: $base"
+            for route in /health /admin/processing-jobs /admin/queue-health /admin/missing-product-requests /admin/notification-deliveries; do
+              status="$(curl -sS -L --connect-timeout 5 --max-time 15 -o /tmp/pricely-diagnostic-body -w '%{http_code}' "$base$route" || true)"
+              body="$(head -c 220 /tmp/pricely-diagnostic-body 2>/dev/null || true)"
+              printf '%s %s %s\n' "$status" "$route" "$body"
+            done
+          done
+
+          echo "== Proxy service hints =="
+          for service in nginx caddy traefik cloudflared; do
+            if command -v systemctl >/dev/null 2>&1; then
+              systemctl is-active "$service" >/dev/null 2>&1 && systemctl status "$service" --no-pager -l || true
+            fi
+          done
+
+          echo "== Proxy config hints =="
+          for path in /etc/nginx /etc/caddy /etc/traefik /etc/cloudflared /etc/systemd/system; do
+            if [ -d "$path" ]; then
+              echo "-- $path"
+              grep -RInE 'apipricely|pricely|localhost:3000|127\.0\.0\.1:3000|localhost:3003|127\.0\.0\.1:3003|:5173' "$path" 2>/dev/null || true
+            fi
+          done
+          ENDSSH
+
       - name: Upload compose and env files
+        if: ${{ inputs.diagnose_server != true }}
         shell: bash
         run: |
           mkdir -p .deploy
@@ -180,6 +251,7 @@ jobs:
           scp .deploy/.env.web "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env.web"
 
       - name: Deploy containers
+        if: ${{ inputs.diagnose_server != true }}
         shell: bash
         run: |
           GHCR_AUTH_TOKEN="$GHCR_TOKEN"
@@ -294,6 +366,7 @@ jobs:
           ENDSSH
 
       - name: Health check
+        if: ${{ inputs.diagnose_server != true }}
         shell: bash
         run: |
           for attempt in $(seq 1 20); do
@@ -309,6 +382,7 @@ jobs:
           exit 1
 
       - name: Public API route smoke
+        if: ${{ inputs.diagnose_server != true }}
         shell: bash
         run: |
           set -euo pipefail
