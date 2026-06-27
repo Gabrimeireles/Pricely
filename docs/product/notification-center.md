@@ -91,3 +91,28 @@ turning on broad sends immediately:
 If product priority shifts back to UX, the alternate next phase is mobile/web
 parity polish for notification preferences, device management, and admin delivery
 diagnostics.
+
+## Phase 36 delivery hardening
+
+**Status (2026-06-26)**: Started with provider-neutral delivery contracts and
+sandbox adapters. Sandbox delivery can exercise email and push state transitions
+without sending to external providers or storing raw provider payloads.
+
+### Provider gating
+
+- Sandbox is the only implemented adapter.
+- Email delivery receives a masked destination label and verified destination id.
+- Push delivery receives a redacted device-token tail, device id, platform, and
+  provider label; raw push tokens are never available to the delivery adapter.
+- Provider responses update the delivery attempt as `delivered`, `retrying`, or
+  `failed`; in-app notifications remain the canonical record.
+
+### Remaining Phase 36 work
+
+- Add a bounded worker or scheduler that calls the delivery executor for due
+  attempts and can be disabled per environment.
+- Add admin filters/search for delivery diagnostics before volume grows.
+- Extend release readiness with provider credential checks, unsubscribe rollback,
+  quiet-hour validation, sandbox smoke, and incident response.
+- Add broader release coverage for sandbox success, retryable provider failure,
+  terminal provider failure, and quiet-hour deferral.
