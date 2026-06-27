@@ -358,6 +358,43 @@ paths:
   /admin/notification-deliveries:
     get:
       summary: List redacted notification delivery attempts for admin diagnostics
+      parameters:
+        - in: query
+          name: channel
+          schema:
+            type: string
+            enum: [email, push]
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [queued, sending, retrying, delivered, failed, cancelled]
+        - in: query
+          name: notificationType
+          schema:
+            type: string
+            enum:
+              [
+                price_drop,
+                receipt_outcome,
+                optimization_ready,
+                optimization_failed,
+              ]
+        - in: query
+          name: retryability
+          schema:
+            type: string
+            enum: [retryable, not_retryable]
+        - in: query
+          name: destination
+          schema:
+            type: string
+          description: Search against redacted email or push destination labels
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search attempt id, notification id, owner label, title, resource, or redacted error
       responses:
         '200':
           description: Notification delivery attempts returned newest first

@@ -509,6 +509,27 @@ type AdminNotificationDeliveryResponse = {
   } | null;
 };
 
+type AdminNotificationDeliveryFilters = {
+  channel?: 'email' | 'push';
+  status?:
+    | 'all'
+    | 'queued'
+    | 'sending'
+    | 'retrying'
+    | 'delivered'
+    | 'failed'
+    | 'cancelled';
+  notificationType?:
+    | 'all'
+    | 'price_drop'
+    | 'receipt_outcome'
+    | 'optimization_ready'
+    | 'optimization_failed';
+  retryability?: 'all' | 'retryable' | 'not_retryable';
+  destination?: string;
+  search?: string;
+};
+
 type AdminProcessingJobDetailResponse = AdminProcessingJobResponse & {
   optimizationRun?:
     | (NonNullable<AdminProcessingJobResponse['optimizationRun']> & {
@@ -1463,9 +1484,19 @@ export async function cancelAdminProcessingJob(
   );
 }
 
-export async function fetchAdminNotificationDeliveries(token: string) {
+export async function fetchAdminNotificationDeliveries(
+  token: string,
+  filters: AdminNotificationDeliveryFilters = {},
+) {
+  const query = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value && value !== 'all') {
+      query.set(key, value);
+    }
+  });
+
   return apiFetch<AdminNotificationDeliveryResponse[]>(
-    '/admin/notification-deliveries',
+    `/admin/notification-deliveries${query.size ? `?${query.toString()}` : ''}`,
     {},
     token,
   );
@@ -1950,6 +1981,7 @@ export type {
   AdminMetricsResponse,
   AdminPublicSearchMetricsResponse,
   AdminOfferResponse,
+  AdminNotificationDeliveryFilters,
   AdminNotificationDeliveryResponse,
   AdminProductResponse,
   AdminProductVariantResponse,

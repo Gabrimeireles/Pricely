@@ -8,6 +8,7 @@ import {
 
 import { CatalogProductsService } from '../../catalog/application/catalog-products.service';
 import { CatalogMediaService } from '../../catalog/application/catalog-media.service';
+import { type AdminNotificationDeliveryFiltersContract } from '../../common/contracts/admin.contract';
 import { EstablishmentsService } from '../../establishments/application/establishments.service';
 import { PrismaService } from '../../persistence/prisma.service';
 import { OfferManagementService } from '../../pricing/application/offer-management.service';
@@ -932,11 +933,18 @@ export class AdminDashboardService {
     return summary;
   }
 
-  async listNotificationDeliveries() {
+  async listNotificationDeliveries(
+    filters: AdminNotificationDeliveryFiltersContract = {
+      status: 'all',
+      notificationType: 'all',
+      retryability: 'all',
+    },
+  ) {
     const attempts =
       await this.prisma.userNotificationDeliveryAttempt.findMany({
+        where: this.buildNotificationDeliveryWhere(filters),
         orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
-        take: 100,
+        take: 250,
         include: {
           user: {
             select: {
@@ -974,12 +982,17 @@ export class AdminDashboardService {
         },
       });
 
-    const projected = attempts.map((attempt) =>
-      this.projectNotificationDelivery(attempt),
-    );
+    const projected = attempts
+      .map((attempt) => this.projectNotificationDelivery(attempt))
+      .filter((attempt) =>
+        this.matchesNotificationDeliveryProjectedFilters(attempt, filters),
+      )
+      .slice(0, 100);
 
     this.logger.log(
-      `Admin notification delivery diagnostics requested: ${projected.length} attempts returned`,
+      `Admin notification delivery diagnostics requested: ${projected.length} attempts returned filters=${JSON.stringify(
+        this.describeNotificationDeliveryFilters(filters),
+      )}`,
     );
 
     return projected;
@@ -1053,6 +1066,90 @@ export class AdminDashboardService {
     return attempts.map((attempt) =>
       this.projectNotificationDelivery(attempt),
     );
+  }
+
+  private buildNotificationDeliveryWhere(
+    filters: AdminNotificationDeliveryFiltersContract,
+  ) {
+    return {
+      ...(filters.channel ? { channel: filters.channel } : {}),
+      ...(filters.status !== 'all' ? { status: filters.status } : {}),
+      ...(filters.notificationType !== 'all'
+        ? { notification: { type: filters.notificationType } }
+        : {}),
+    };
+  }
+
+  private matchesNotificationDeliveryProjectedFilters(
+    attempt: ReturnType<typeof this.projectNotificationDelivery>,
+    filters: AdminNotificationDeliveryFiltersContract,
+  ) {
+    if (filters.retryability === 'retryable' && !attempt.canRetry) {
+      return false;
+    }
+
+    if (filters.retryability === 'not_retryable' && attempt.canRetry) {
+      return false;
+    }
+
+    const destination = filters.destination?.trim().toLowerCase();
+    if (destination) {
+      const destinationText = [
+        attempt.destination?.kind,
+        attempt.destination?.label,
+        attempt.destination?.status,
+        attempt.destination?.provider,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      if (!destinationText.includes(destination)) {
+        return false;
+      }
+    }
+
+    const search = filters.search?.trim().toLowerCase();
+    if (search) {
+      const searchableText = [
+        attempt.id,
+        attempt.notificationId,
+        attempt.userId,
+        attempt.channel,
+        attempt.status,
+        attempt.owner.displayName,
+        attempt.owner.email,
+        attempt.notification.type,
+        attempt.notification.title,
+        attempt.notification.resourceType,
+        attempt.notification.resourceId,
+        attempt.destination?.label,
+        attempt.destination?.provider,
+        attempt.lastFailureReason,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      if (!searchableText.includes(search)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private describeNotificationDeliveryFilters(
+    filters: AdminNotificationDeliveryFiltersContract,
+  ) {
+    return {
+      channel: filters.channel ?? 'all',
+      status: filters.status,
+      notificationType: filters.notificationType,
+      retryability: filters.retryability,
+      destination: filters.destination ? '[set]' : 'all',
+      search: filters.search ? '[set]' : 'all',
+    };
   }
 
   private projectNotificationDelivery(attempt: {

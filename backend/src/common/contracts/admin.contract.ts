@@ -73,6 +73,27 @@ export interface AdminNotificationDeliveryContract {
   } | null;
 }
 
+export interface AdminNotificationDeliveryFiltersContract {
+  channel?: 'email' | 'push';
+  status:
+    | 'all'
+    | 'queued'
+    | 'sending'
+    | 'retrying'
+    | 'delivered'
+    | 'failed'
+    | 'cancelled';
+  notificationType:
+    | 'all'
+    | 'price_drop'
+    | 'receipt_outcome'
+    | 'optimization_ready'
+    | 'optimization_failed';
+  retryability: 'all' | 'retryable' | 'not_retryable';
+  destination?: string;
+  search?: string;
+}
+
 export interface AdminShoppingListAuditContract {
   id: string;
   name: string;
