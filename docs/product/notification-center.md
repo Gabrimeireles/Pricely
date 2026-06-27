@@ -116,8 +116,9 @@ without sending to external providers or storing raw provider payloads.
   retryability, redacted destination, and general search.
 - Release readiness now includes provider credential checks, unsubscribe
   rollback, quiet-hour validation, sandbox smoke, and incident response.
-- Add broader release coverage for sandbox success, retryable provider failure,
-  terminal provider failure, and quiet-hour deferral.
+- Release Readiness runs notification delivery release coverage for sandbox
+  success, retryable provider failure, terminal provider failure, and quiet-hour
+  deferral.
 
 ### Worker controls
 
