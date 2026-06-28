@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { CITIES, type City } from '@/app/shopper-data';
+import { usePricely } from '@/app/pricely-context';
 
 import { CityDialog, CoverageDialog, RadiusSelect } from '@/components/shopper/location-controls';
 
@@ -87,6 +88,7 @@ function Sidebar() {
 
 function Topbar() {
   const { city, radius, setRadius, openCity } = useLocationCtx();
+  const { signOut } = usePricely();
   return (
     <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3.5 border-b border-border bg-card px-7 py-3">
       <Button variant="outline" onClick={openCity} className="h-[42px] gap-2 rounded-xl text-[15px] font-semibold">
@@ -100,7 +102,7 @@ function Topbar() {
       <StatusBadge tone="savings" icon={CheckCircle2Icon} label="Cobertura ativa" />
 
       <div className="ml-auto flex items-center gap-3">
-        <Button variant="ghost" size="icon" aria-label="Notificações" className="relative">
+        <Button variant="ghost" size="icon" aria-label="Notificacoes" className="relative">
           <BellIcon className="size-5" />
           <span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-card bg-[var(--ds-critical)]" />
         </Button>
@@ -109,6 +111,9 @@ function Topbar() {
             <AvatarImage src="" alt="Usuário" />
             <AvatarFallback className="bg-[var(--ds-primary-soft)] text-primary">U</AvatarFallback>
           </Avatar>
+          <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
+            Sair
+          </Button>
         </div>
       </div>
     </header>
