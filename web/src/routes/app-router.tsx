@@ -13,68 +13,68 @@ function RouteHydrationFallback() {
   );
 }
 
-const publicChildren: RouteObject[] = [
+const shopperChildren: RouteObject[] = [
   {
     index: true,
     lazy: async () => {
-      const { LandingPage } = await import('@/public/public-pages');
-      return { Component: LandingPage };
+      const { HomePage } = await import('@/public/home-page');
+      return { Component: HomePage };
     },
   },
   {
     path: 'ofertas',
     lazy: async () => {
-      const { OffersPage } = await import('@/public/public-pages');
+      const { OffersPage } = await import('@/public/offers-page');
       return { Component: OffersPage };
     },
   },
   {
-    path: 'ofertas/:offerId',
+    path: 'lojas',
     lazy: async () => {
-      const { OfferDetailPage } = await import('@/public/public-pages');
-      return { Component: OfferDetailPage };
+      const { StoresPage } = await import('@/public/stores-page');
+      return { Component: StoresPage };
     },
   },
   {
-    path: 'cidades',
+    path: 'lista',
     lazy: async () => {
-      const { CitiesPage } = await import('@/public/public-pages');
-      return { Component: CitiesPage };
+      const { ListPage } = await import('@/public/list-page');
+      return { Component: ListPage };
     },
   },
   {
-    path: 'entrar',
+    path: 'cupons',
     lazy: async () => {
-      const { SignInPage } = await import('@/public/public-pages');
-      return { Component: SignInPage };
+      const { CouponsPage } = await import('@/public/coupons-page');
+      return { Component: CouponsPage };
     },
   },
   {
-    path: 'criar-conta',
+    path: 'notas-fiscais',
     lazy: async () => {
-      const { SignUpPage } = await import('@/public/public-pages');
-      return { Component: SignUpPage };
+      const { ReceiptsPage } = await import('@/public/receipts-page');
+      return { Component: ReceiptsPage };
     },
   },
   {
-    path: 'listas',
+    path: 'historico',
     lazy: async () => {
-      const { ListsPage } = await import('@/public/public-pages');
-      return { Component: ListsPage };
+      const { HistoryPage } = await import('@/public/history-page');
+      return { Component: HistoryPage };
     },
   },
   {
-    path: 'notas',
+    path: 'configuracoes',
     lazy: async () => {
-      const { ReceiptSubmissionPage } = await import('@/public/public-pages');
-      return { Component: ReceiptSubmissionPage };
+      const { SettingsPage } = await import('@/public/settings-page');
+      return { Component: SettingsPage };
     },
   },
   {
-    path: 'listas/:listId',
+    path: 'otimizacao/:listId',
     lazy: async () => {
-      const { ListEditorPage } = await import('@/public/public-pages');
-      return { Component: ListEditorPage };
+      const { OptimizationResultPage } = await import('@/public/optimization-result-page');
+      return { Component: OptimizationResultPage };
     },
   },
   {
@@ -89,13 +89,6 @@ const publicChildren: RouteObject[] = [
     lazy: async () => {
       const { ChecklistPage } = await import('@/public/public-pages');
       return { Component: ChecklistPage };
-    },
-  },
-  {
-    path: 'otimizacao/:listId',
-    lazy: async () => {
-      const { OptimizationPage } = await import('@/public/public-pages');
-      return { Component: OptimizationPage };
     },
   },
   {
@@ -212,10 +205,26 @@ export const appRouter = createBrowserRouter([
     errorElement: <RouteErrorPage />,
     hydrateFallbackElement: <RouteHydrationFallback />,
     lazy: async () => {
-      const { PublicLayout } = await import('@/public/public-shell');
-      return { Component: PublicLayout };
+      const { ShopperShell } = await import('@/public/shopper-shell');
+      return { Component: ShopperShell };
     },
-    children: publicChildren,
+    children: shopperChildren,
+  },
+  {
+    path: '/entrar',
+    errorElement: <RouteErrorPage />,
+    lazy: async () => {
+      const { SignInPage } = await import('@/public/public-pages');
+      return { Component: SignInPage };
+    },
+  },
+  {
+    path: '/criar-conta',
+    errorElement: <RouteErrorPage />,
+    lazy: async () => {
+      const { SignUpPage } = await import('@/public/public-pages');
+      return { Component: SignUpPage };
+    },
   },
   {
     path: '/dashboard',
