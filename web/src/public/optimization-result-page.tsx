@@ -66,7 +66,7 @@ function ItemRow({ d, open, onToggle }: { d: ItemData; open: boolean; onToggle: 
           <div className="min-w-0">
             <div className="font-semibold">{d.item}</div>
             <div className="text-[12px] text-muted-foreground">{d.qty}</div>
-            <StatusBadge className="mt-1" tone={d.rtone as any} icon={null}>{d.rule}</StatusBadge>
+            <StatusBadge className="mt-1" tone={d.rtone as 'primary' | 'warning' | 'location' | 'savings' | 'neutral'} icon={null}>{d.rule}</StatusBadge>
           </div>
         </div>
         <div className="min-w-0 hidden sm:block">

@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
   BellIcon,

@@ -13,8 +13,6 @@ import {
   SparklesIcon,
   StoreIcon,
 } from 'lucide-react';
-import { toast } from 'sonner';
-
 import { StatusBadge } from '@/components/design-system';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
