@@ -24,8 +24,36 @@ const shopperChildren: RouteObject[] = [
   {
     path: 'ofertas',
     lazy: async () => {
-      const { OffersPage } = await import('@/public/offers-page');
+      const { OffersPage } = await import('@/public/public-pages');
       return { Component: OffersPage };
+    },
+  },
+  {
+    path: 'cidades',
+    lazy: async () => {
+      const { CitiesPage } = await import('@/public/public-pages');
+      return { Component: CitiesPage };
+    },
+  },
+  {
+    path: 'listas',
+    lazy: async () => {
+      const { ListsPage } = await import('@/public/public-pages');
+      return { Component: ListsPage };
+    },
+  },
+  {
+    path: 'listas/:listId',
+    lazy: async () => {
+      const { ListEditorPage } = await import('@/public/public-pages');
+      return { Component: ListEditorPage };
+    },
+  },
+  {
+    path: 'notas',
+    lazy: async () => {
+      const { ReceiptSubmissionPage } = await import('@/public/public-pages');
+      return { Component: ReceiptSubmissionPage };
     },
   },
   {
@@ -73,8 +101,8 @@ const shopperChildren: RouteObject[] = [
   {
     path: 'otimizacao/:listId',
     lazy: async () => {
-      const { OptimizationResultPage } = await import('@/public/optimization-result-page');
-      return { Component: OptimizationResultPage };
+      const { OptimizationPage } = await import('@/public/public-pages');
+      return { Component: OptimizationPage };
     },
   },
   {
