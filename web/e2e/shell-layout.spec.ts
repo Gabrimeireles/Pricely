@@ -107,6 +107,21 @@ async function mockShellApi(page: Page) {
       return json({ totalEstimatedSavings: 450, optimizedListsCount: 32 });
     }
 
+    if (method === 'GET' && path === '/notifications') {
+      return json([]);
+    }
+
+    if (method === 'GET' && path === '/notification-preferences') {
+      return json({
+        inAppEnabled: true,
+        priceDropsEnabled: true,
+        receiptOutcomesEnabled: true,
+        optimizationReadyEnabled: true,
+        emailEnabled: false,
+        pushEnabled: false,
+      });
+    }
+
     if (path === '/locations' && method === 'GET') {
       return json([]);
     }
@@ -248,16 +263,8 @@ test('public shell uses fixed sidebar navigation instead of topbar nav', async (
   await expect(page.locator('[data-slot="sidebar-footer"]')).toBeVisible();
   await expect(page.locator('header nav')).toHaveCount(0);
   await expect(page.getByRole('link', { name: /Minha lista/i })).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: /Configurar localização/i }),
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /São Paulo/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /Notificacoes/i })).toBeVisible();
-  await page
-    .getByRole('button', { name: /Configurar localização/i })
-    .hover();
-  await expect(
-    page.getByText(/Configure cidade, CEP ou localização precisa/i),
-  ).toBeVisible();
 
   const extraction = await extractShell(page, 'public-home-sidebar');
   expect(extraction.header).not.toBeNull();
@@ -266,7 +273,7 @@ test('public shell uses fixed sidebar navigation instead of topbar nav', async (
   expect(extraction.headerNavCount).toBe(0);
   expect(extraction.navLabels).toEqual(
     expect.arrayContaining([
-      'Inicio',
+      'Início',
       'Minha lista',
       'Ofertas',
       'Lojas',

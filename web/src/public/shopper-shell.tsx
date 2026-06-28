@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
   BellIcon,
@@ -53,8 +53,8 @@ const NAV = [
 
 function Sidebar() {
   return (
-    <aside className="hidden w-[236px] shrink-0 flex-col gap-1 border-r border-border bg-card p-3.5 lg:flex">
-      <div className="px-2 pb-4 pt-1">
+    <aside data-slot="sidebar" className="hidden w-[236px] shrink-0 flex-col gap-1 border-r border-border bg-card p-3.5 lg:flex">
+      <div data-slot="sidebar-header" className="px-2 pb-4 pt-1">
         <img src={pricelyIcon} alt="Pricely" className="h-7" />
       </div>
       {NAV.map((n) => (
@@ -62,6 +62,7 @@ function Sidebar() {
           key={n.to}
           to={n.to}
           end={n.end}
+          data-sidebar="menu-button"
           className={({ isActive }) =>
             cn(
               'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14.5px] font-medium transition-colors',
@@ -72,10 +73,10 @@ function Sidebar() {
           }
         >
           <n.icon className="size-[19px]" />
-          {n.label}
+          <span>{n.label}</span>
         </NavLink>
       ))}
-      <div className="mt-auto rounded-2xl bg-brand-band p-4 text-white">
+      <div data-slot="sidebar-footer" className="mt-auto rounded-2xl bg-brand-band p-4 text-white">
         <div className="font-heading text-[15px] font-bold">Pricely Plus</div>
         <p className="mt-0.5 text-[12.5px] opacity-85">Mais cidades, alertas de preço e histórico estendido.</p>
         <Button className="mt-3 w-full bg-white font-bold text-primary hover:bg-white/90">Conhecer</Button>

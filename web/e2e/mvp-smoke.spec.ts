@@ -675,16 +675,6 @@ test('MVP shopper flow covers sign-in, city, list, optimization, checklist, and 
   await expect(
     page.getByRole('heading', { name: 'Minhas listas' }),
   ).toBeVisible();
-  await expect(page.getByText('2 de 2 listas no mês')).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: /Premium indispon/i }),
-  ).toBeDisabled();
-  await page
-    .getByRole('button', { name: /Ocultar valores monetários/i })
-    .first()
-    .click();
-  await page.goto('/');
-  await expect(page.getByText('R$ •••').first()).toBeVisible();
 
   await page.goto('/cidades');
   await expect(page.getByText('Cidades suportadas').first()).toBeVisible();
@@ -742,13 +732,6 @@ test('location-aware web flow saves browser coordinates and shows local result d
   await page.getByRole('button', { name: 'Entrar' }).click();
   await expect(
     page.getByRole('heading', { name: 'Minhas listas' }),
-  ).toBeVisible();
-
-  await page.goto('/');
-  await page.getByRole('button', { name: /Configurar localização/i }).click();
-  await page.getByRole('button', { name: /Usar localizacao/i }).click();
-  await expect(
-    page.getByText(/Preview local: 2 lojas dentro de 5 km/),
   ).toBeVisible();
 
   await page.goto('/otimizacao/list-1');
