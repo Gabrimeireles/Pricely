@@ -676,6 +676,30 @@ Deploy Homolog Server passed after merge.
 
 ---
 
+## Phase 31: Shopper Shell Design System Handoff
+
+**Context:** Imported "Pricely Design System" handoff (`e59efe32`) and refactored all public shopper screens. TypeScript clean (0 errors), 55/55 unit tests passing as of 2026-06-28.
+
+- [X] T262 [P] Integrate `handoff/styles/modern.css` tokens (`--shadow-*`, `--animate-*`, `--color-brand-band-*`, keyframes `rise`/`pop`, utilities `.bg-brand-band`, `.lift`, `.stagger`) into `web/src/index.css`
+- [X] T263 [P] Create `web/src/app/shopper-data.ts` with demo types (`City`, `Offer`, `ListItem`) and seed data (`CITIES`, `OFFERS`, `LIST_SEED`, `BRAND_RULES`, `RADII`)
+- [X] T264 [P] Create 5 shared shopper components in `web/src/components/shopper/`: `offer-card.tsx`, `stat-card.tsx`, `section.tsx`, `coverage-map.tsx`, `location-controls.tsx`
+- [X] T265 [P] Create `web/src/public/shopper-shell.tsx` with `ShopperShell` (sidebar + topbar + `LocationCtx`) replacing `PublicLayout`; exports `useLocationCtx`
+- [X] T266 [P] Create `web/src/public/home-page.tsx` — hero brand band, stat cards, list/coverage grid, offers section, quick-actions right rail
+- [X] T267 [P] Create `web/src/public/offers-page.tsx` — category chips, trust notice, offer grid, `OfferDetail` dialog
+- [X] T268 [P] Create `web/src/public/stores-page.tsx` — coverage map + store list with freshness badges
+- [X] T269 [P] Create `web/src/public/list-page.tsx` — editable shopping list with per-item rule chips, qty stepper, sticky optimize bar
+- [X] T270 [P] Create `web/src/public/coupons-page.tsx`, `receipts-page.tsx`, `history-page.tsx`, `settings-page.tsx` from `ui_kits/web-public/screen-misc.jsx`
+- [X] T271 [P] Create `web/src/public/optimization-result-page.tsx` with metrics panel, `EvidenceModule` per item, purchase plan rail, unavailable-item alert
+- [X] T272 [P] Rewrite `web/src/routes/app-router.tsx` to use `ShopperShell` as root layout; move `/entrar` and `/criar-conta` outside shell as top-level routes
+- [ ] T273 Replace product image placeholders (`web/public/assets/products/*.png`) with real illustrations from design system — currently 1×1 transparent PNGs; needs manual export from design assets
+- [ ] T274 Add Vitest smoke tests for new shopper pages (`HomePage`, `OffersPage`, `StoresPage`, `ListPage`, `OptimizationResultPage`) covering render, navigation interactions, and `LocationCtx` dependency in `web/src/public/`
+- [ ] T275 Add E2E Playwright smoke coverage for shopper shell golden path: `/` → `/ofertas` → `/lista` → `/otimizacao/1` in `web/e2e/`
+- [ ] T276 Wire `ShopperShell` to real auth state (currently renders for any visitor); add redirect to `/entrar` when unauthenticated in `web/src/public/shopper-shell.tsx`
+- [ ] T277 Connect `ListPage` to real backend list CRUD (currently uses `LIST_SEED` demo data) in `web/src/public/list-page.tsx` and `web/src/app/api.ts`
+- [ ] T278 Connect `OffersPage` and `OfferCard` to real backend offer API (currently uses `OFFERS` demo data) in `web/src/public/offers-page.tsx` and `web/src/app/api.ts`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

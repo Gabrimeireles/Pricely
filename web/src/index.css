@@ -185,3 +185,40 @@
     color: transparent;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Pricely modern product layer — merged from design system handoff
+   Adds: brand-gradient token, soft elevations, restrained keyframes.
+   All values reuse the existing --ds-* / oklch palette; nothing new chromatic.
+   --------------------------------------------------------------------------- */
+@theme inline {
+  --shadow-card: 0 1px 2px rgba(24, 34, 31, 0.04), 0 6px 20px -8px rgba(24, 34, 31, 0.10);
+  --shadow-lift: 0 2px 4px rgba(24, 34, 31, 0.05), 0 16px 32px -10px rgba(24, 34, 31, 0.16);
+  --shadow-pop: 0 8px 16px -6px rgba(24, 34, 31, 0.12), 0 24px 48px -12px rgba(24, 34, 31, 0.22);
+
+  --color-brand-band-from: var(--ds-primary);
+  --color-brand-band-to: #0c3f3a;
+
+  --animate-rise: rise 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+  --animate-pop: pop 0.18s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes rise { from { transform: translateY(10px); } to { transform: none; } }
+@keyframes pop { from { transform: translateY(8px) scale(0.985); } to { transform: none; } }
+
+@layer utilities {
+  .bg-brand-band {
+    background-image: linear-gradient(135deg, var(--ds-primary) 0%, #115e59 48%, #0c3f3a 100%);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-rise { animation: var(--animate-rise); }
+    .animate-pop { animation: var(--animate-pop); }
+    .stagger > * { animation: rise 0.26s cubic-bezier(0.22, 0.61, 0.36, 1); }
+    .stagger > *:nth-child(2) { animation-delay: 0.04s; }
+    .stagger > *:nth-child(3) { animation-delay: 0.08s; }
+    .stagger > *:nth-child(4) { animation-delay: 0.12s; }
+    .stagger > *:nth-child(5) { animation-delay: 0.16s; }
+  }
+  .lift { transition: transform 0.16s ease, box-shadow 0.16s ease; }
+  .lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+}
