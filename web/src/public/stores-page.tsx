@@ -18,12 +18,13 @@ type StoreRow = { name: string; neighborhood: string; count: number };
 export function StoresPage() {
   const navigate = useNavigate();
   const { city, radius, openCoverage, setRadius } = useLocationCtx();
-  const { cityId } = usePricely();
+  const { cityId, cities } = usePricely();
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [storeCount, setStoreCount] = useState(city.stores);
 
   useEffect(() => {
-    const regionSlug = cityId ?? city.id;
+    const regionSlug = cityId ?? cities[0]?.id;
+    if (!regionSlug) return;
     fetchRegionOffers(regionSlug, { pageSize: 100 })
       .then((r) => {
         setStoreCount(r.activeEstablishmentCount);
@@ -41,7 +42,7 @@ export function StoresPage() {
         );
       })
       .catch(() => {});
-  }, [cityId, city.id]);
+  }, [cityId, cities]);
 
   return (
     <div>
