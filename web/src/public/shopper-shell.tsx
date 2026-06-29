@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   BellIcon,
   ChevronDownIcon,
@@ -87,8 +87,19 @@ function Sidebar() {
 }
 
 function Topbar() {
+  const navigate = useNavigate();
   const { city, radius, setRadius, openCity } = useLocationCtx();
-  const { signOut } = usePricely();
+  const { signOut, currentUser, isAuthenticated } = usePricely();
+
+  const initials = currentUser?.displayName
+    ? currentUser.displayName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+    : 'U';
+
+  function handleSignOut() {
+    signOut();
+    navigate('/entrar');
+  }
+
   return (
     <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3.5 border-b border-border bg-card px-7 py-3">
       <Button variant="outline" onClick={openCity} className="h-[42px] gap-2 rounded-xl text-[15px] font-semibold">
@@ -106,15 +117,21 @@ function Topbar() {
           <BellIcon className="size-5" />
           <span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-card bg-[var(--ds-critical)]" />
         </Button>
-        <div className="flex items-center gap-2.5">
-          <Avatar className="size-9">
-            <AvatarImage src="" alt="Usuário" />
-            <AvatarFallback className="bg-[var(--ds-primary-soft)] text-primary">U</AvatarFallback>
-          </Avatar>
-          <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
-            Sair
+        {isAuthenticated ? (
+          <div className="flex items-center gap-2.5">
+            <Avatar className="size-9">
+              <AvatarImage src="" alt={currentUser?.displayName ?? 'Usuário'} />
+              <AvatarFallback className="bg-[var(--ds-primary-soft)] text-primary">{initials}</AvatarFallback>
+            </Avatar>
+            <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground">
+              Sair
+            </Button>
+          </div>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => navigate('/entrar')}>
+            Entrar
           </Button>
-        </div>
+        )}
       </div>
     </header>
   );
