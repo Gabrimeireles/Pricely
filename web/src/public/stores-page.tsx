@@ -9,6 +9,7 @@ import { CoverageMap } from '@/components/shopper/coverage-map';
 import { PageHead, SectionTitle } from '@/components/shopper/section';
 import { StatCard } from '@/components/shopper/stat-card';
 import { fetchRegionOffers } from '@/app/api';
+import { usePricely } from '@/app/pricely-context';
 
 import { useLocationCtx } from './shopper-shell';
 
@@ -17,11 +18,13 @@ type StoreRow = { name: string; neighborhood: string; count: number };
 export function StoresPage() {
   const navigate = useNavigate();
   const { city, radius, openCoverage, setRadius } = useLocationCtx();
+  const { cityId } = usePricely();
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [storeCount, setStoreCount] = useState(city.stores);
 
   useEffect(() => {
-    fetchRegionOffers(city.id, { pageSize: 100 })
+    const regionSlug = cityId ?? city.id;
+    fetchRegionOffers(regionSlug, { pageSize: 100 })
       .then((r) => {
         setStoreCount(r.activeEstablishmentCount);
         const countMap: Record<string, { neighborhood: string; count: number }> = {};
@@ -38,7 +41,7 @@ export function StoresPage() {
         );
       })
       .catch(() => {});
-  }, [city.id]);
+  }, [cityId, city.id]);
 
   return (
     <div>
