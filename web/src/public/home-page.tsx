@@ -32,12 +32,13 @@ function priceStr(n: number) {
 export function HomePage() {
   const navigate = useNavigate();
   const { city, radius, openCoverage } = useLocationCtx();
-  const { lists, cityId } = usePricely();
+  const { lists, cityId, cities } = usePricely();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [storeCount, setStoreCount] = useState(city.stores);
 
   useEffect(() => {
-    const regionSlug = cityId ?? city.id;
+    const regionSlug = cityId ?? cities[0]?.id;
+    if (!regionSlug) return;
     fetchRegionOffers(regionSlug, { pageSize: 4 })
       .then((r) => {
         setStoreCount(r.activeEstablishmentCount);
@@ -57,7 +58,7 @@ export function HomePage() {
         );
       })
       .catch(() => {});
-  }, [cityId, city.id]);
+  }, [cityId, cities]);
 
   const latestList = lists[0];
   const savings = latestList?.expectedSavings ?? 0;
