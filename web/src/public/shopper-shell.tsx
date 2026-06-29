@@ -43,11 +43,11 @@ export function useLocationCtx() {
 
 const NAV = [
   { to: '/', label: 'Início', icon: HomeIcon, end: true },
-  { to: '/lista', label: 'Minha lista', icon: ListChecksIcon },
+  { to: '/listas', label: 'Minha lista', icon: ListChecksIcon },
   { to: '/ofertas', label: 'Ofertas', icon: TagsIcon },
   { to: '/lojas', label: 'Lojas', icon: StoreIcon },
   { to: '/cupons', label: 'Cupons', icon: CoinsIcon },
-  { to: '/notas-fiscais', label: 'Notas fiscais', icon: ReceiptTextIcon },
+  { to: '/notas', label: 'Notas fiscais', icon: ReceiptTextIcon },
   { to: '/historico', label: 'Histórico', icon: ClockIcon },
   { to: '/configuracoes', label: 'Configurações', icon: SettingsIcon },
 ];
