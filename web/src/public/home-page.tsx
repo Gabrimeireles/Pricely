@@ -25,34 +25,39 @@ import type { Offer } from '@/app/shopper-data';
 
 import { useLocationCtx } from './shopper-shell';
 
+function priceStr(n: number) {
+  return `R$ ${n.toFixed(2).replace('.', ',')}`;
+}
+
 export function HomePage() {
   const navigate = useNavigate();
   const { city, radius, openCoverage } = useLocationCtx();
-  const { lists } = usePricely();
+  const { lists, cityId } = usePricely();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [storeCount, setStoreCount] = useState(city.stores);
 
   useEffect(() => {
-    fetchRegionOffers(city.id, { pageSize: 4 })
+    const regionSlug = cityId ?? city.id;
+    fetchRegionOffers(regionSlug, { pageSize: 4 })
       .then((r) => {
         setStoreCount(r.activeEstablishmentCount);
         setOffers(
-          r.offers.slice(0, 4).map((o) => ({
+          r.offers.slice(0, 4).map((o): Offer => ({
             id: o.id,
-            name: o.displayName,
-            store: o.storeName,
-            neighborhood: o.neighborhood,
-            price: o.priceAmount,
-            oldPrice: o.comparisonPriceAmount,
+            title: o.displayName,
+            pack: o.packageLabel,
             image: o.imageUrl ?? '',
+            store: o.storeName,
+            distance: '—',
+            price: priceStr(o.priceAmount),
+            save: o.savingsVsComparison != null ? priceStr(o.savingsVsComparison) : '',
             trust: o.confidenceLevel,
-            saved: o.savingsVsComparison,
-            category: o.category,
+            score: o.confidenceLevel === 'high' ? 95 : o.confidenceLevel === 'medium' ? 75 : 50,
           })),
         );
       })
       .catch(() => {});
-  }, [city.id]);
+  }, [cityId, city.id]);
 
   const latestList = lists[0];
   const savings = latestList?.expectedSavings ?? 0;
