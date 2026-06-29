@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MapPinIcon, ShieldCheckIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { PageHead } from '@/components/shopper/section';
+import { fetchNotificationPreferences, updateNotificationPreferences } from '@/app/api';
+import { usePricely } from '@/app/pricely-context';
 import { useLocationCtx } from './shopper-shell';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -43,10 +45,43 @@ function Row({
 
 export function SettingsPage() {
   const { city, openCity, openCoverage } = useLocationCtx();
+  const { currentUser, accessToken } = usePricely();
+
   const [priv, setPriv] = useState(false);
-  const [push, setPush] = useState(true);
-  const [price, setPrice] = useState(true);
-  const [emails, setEmails] = useState(false);
+  const [push, setPush] = useState(false);
+  const [price, setPrice] = useState(false);
+  const [receipts, setReceipts] = useState(false);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    fetchNotificationPreferences(accessToken)
+      .then((p) => {
+        setPush(p.inAppEnabled);
+        setPrice(p.priceDropsEnabled);
+        setReceipts(p.receiptOutcomesEnabled);
+        setPrefsLoaded(true);
+      })
+      .catch(() => setPrefsLoaded(true));
+  }, [accessToken]);
+
+  async function savePrefs() {
+    if (!accessToken) return;
+    try {
+      await updateNotificationPreferences(accessToken, {
+        inAppEnabled: push,
+        priceDropsEnabled: price,
+        receiptOutcomesEnabled: receipts,
+      });
+      toast.success('Configurações salvas');
+    } catch {
+      toast.error('Erro ao salvar configurações');
+    }
+  }
+
+  const initials = currentUser?.displayName
+    ? currentUser.displayName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+    : 'U';
 
   return (
     <div>
@@ -56,13 +91,14 @@ export function SettingsPage() {
         <Section title="Perfil">
           <div className="flex items-center gap-3.5">
             <Avatar className="size-14">
-              <AvatarFallback className="bg-[var(--ds-primary-soft)] text-lg font-bold text-primary">U</AvatarFallback>
+              <AvatarFallback className="bg-[var(--ds-primary-soft)] text-lg font-bold text-primary">
+                {initials}
+              </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <div className="text-[16px] font-bold">Usuário</div>
-              <div className="text-[13px] text-muted-foreground">usuario@email.com</div>
+              <div className="text-[16px] font-bold">{currentUser?.displayName ?? 'Usuário'}</div>
+              <div className="text-[13px] text-muted-foreground">{currentUser?.email ?? ''}</div>
             </div>
-            <Button variant="outline">Editar</Button>
           </div>
           <div className="mt-3.5">
             <StatusBadge tone="primary" icon={ShieldCheckIcon}>Conta verificada</StatusBadge>
@@ -77,9 +113,6 @@ export function SettingsPage() {
             <Button variant="outline" onClick={openCoverage}>
               <MapPinIcon className="size-[15px]" /> Mapa
             </Button>
-          </Row>
-          <Row label="Usar localização salva" desc="Resultados priorizam lojas perto de você" top>
-            <Switch defaultChecked onCheckedChange={() => toast.info('Localização mantida')} />
           </Row>
         </Section>
 
@@ -99,20 +132,20 @@ export function SettingsPage() {
         </Section>
 
         <Section title="Notificações">
-          <Row label="Notificações push" desc="Status de otimização e notas">
-            <Switch checked={push} onCheckedChange={setPush} />
+          <Row label="Notificações in-app" desc="Status de otimização e notas">
+            <Switch checked={push} onCheckedChange={setPush} disabled={!prefsLoaded} />
           </Row>
           <Row label="Alertas de preço" desc="Quando um item da lista baixar de preço" top>
-            <Switch checked={price} onCheckedChange={setPrice} />
+            <Switch checked={price} onCheckedChange={setPrice} disabled={!prefsLoaded} />
           </Row>
-          <Row label="E-mails de novidades" top>
-            <Switch checked={emails} onCheckedChange={setEmails} />
+          <Row label="Resultado de notas fiscais" desc="Quando uma nota for processada" top>
+            <Switch checked={receipts} onCheckedChange={setReceipts} disabled={!prefsLoaded} />
           </Row>
         </Section>
       </div>
 
       <div className="mt-4 flex justify-end">
-        <Button onClick={() => toast.success('Configurações salvas')} className="bg-[#134e48] hover:bg-[#0f3f3a]">
+        <Button onClick={savePrefs} className="bg-[#134e48] hover:bg-[#0f3f3a]">
           Salvar alterações
         </Button>
       </div>
