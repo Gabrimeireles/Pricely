@@ -1,27 +1,24 @@
-import { useState } from 'react';
-import { CheckCircle2Icon, PlusIcon, ShieldCheckIcon, StoreIcon } from 'lucide-react';
-import { toast } from 'sonner';
+import { useEffect, useState } from 'react';
+import { CheckCircle2Icon, SearchIcon, ShieldCheckIcon, StoreIcon } from 'lucide-react';
 
 import { StatusBadge } from '@/components/design-system';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { OFFERS, type Offer } from '@/app/shopper-data';
+import { fetchRegionOffers } from '@/app/api';
+import { usePricely } from '@/app/pricely-context';
+import type { Offer } from '@/app/shopper-data';
 
 import { OfferCard } from '@/components/shopper/offer-card';
 import { PageHead } from '@/components/shopper/section';
 import { useLocationCtx } from './shopper-shell';
 
-const CATS = ['Todas', 'Grãos', 'Laticínios', 'Bebidas', 'Limpeza', 'Hortifrúti'];
+function priceStr(n: number) {
+  return `R$ ${n.toFixed(2).replace('.', ',')}`;
+}
 
 function OfferDetail({ offer, onClose }: { offer: Offer; onClose: () => void }) {
-  const compares: [string, string, boolean][] = [
-    [offer.store, offer.price, true],
-    ['Carrefour V. Mariana', 'R$ 27,40', false],
-    ['Extra Paulista', 'R$ 28,90', false],
-  ];
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-xl rounded-3xl">
@@ -37,19 +34,19 @@ function OfferDetail({ offer, onClose }: { offer: Offer; onClose: () => void }) 
             <div className="text-[13.5px] text-muted-foreground">{offer.pack}</div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <StatusBadge family="trust" status={offer.trust}>
-                {offer.trust === 'high' ? 'Alta' : 'Média'} confiança {offer.score}
+                {offer.trust === 'high' ? 'Alta' : offer.trust === 'medium' ? 'Média' : 'Baixa'} confiança {offer.score}
               </StatusBadge>
-              <StatusBadge tone="savings" icon={CheckCircle2Icon}>Validado por nota</StatusBadge>
+              <StatusBadge tone="savings" icon={CheckCircle2Icon}>Validado</StatusBadge>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           {([
-            ['Preço otimizado', offer.price, 'text-primary'],
-            ['Você economiza', offer.save, 'text-[var(--ds-savings)]'],
+            ['Preço', offer.price, 'text-primary'],
+            ['Economia', offer.save || '—', 'text-[var(--ds-savings)]'],
             ['Loja', offer.store, 'text-foreground'],
-            ['Distância', offer.distance, 'text-foreground'],
+            ['Bairro', offer.distance, 'text-foreground'],
           ] as const).map(([k, v, c]) => (
             <div key={k} className="rounded-xl bg-muted/60 px-3.5 py-2.5">
               <div className="text-xs text-muted-foreground">{k}</div>
@@ -58,31 +55,7 @@ function OfferDetail({ offer, onClose }: { offer: Offer; onClose: () => void }) 
           ))}
         </div>
 
-        <div>
-          <div className="mb-2 text-[13.5px] font-semibold">Comparar em outras lojas</div>
-          {compares.map(([s, pr, best], i) => (
-            <div key={s} className={cn('flex items-center gap-2.5 py-2.5', i && 'border-t border-border')}>
-              <StoreIcon className="size-[15px] text-muted-foreground" />
-              <span className="flex-1 text-[13.5px]">{s}</span>
-              {best ? <StatusBadge tone="savings">Melhor</StatusBadge> : null}
-              <span className="font-bold tabular-nums">{pr}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex gap-2.5">
-          <Button
-            variant="default"
-            className="flex-1 bg-[#134e48] hover:bg-[#0f3f3a]"
-            onClick={() => {
-              onClose();
-              toast.success('Adicionado à lista', { description: offer.title });
-            }}
-          >
-            <PlusIcon className="size-4" /> Adicionar à lista
-          </Button>
-          <Button variant="outline" onClick={onClose}>Ver no mapa</Button>
-        </div>
+        <Button variant="outline" onClick={onClose} className="w-full">Fechar</Button>
       </DialogContent>
     </Dialog>
   );
@@ -90,8 +63,47 @@ function OfferDetail({ offer, onClose }: { offer: Offer; onClose: () => void }) 
 
 export function OffersPage() {
   const { city, radius } = useLocationCtx();
+  const { cityId, cities } = usePricely();
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [cat, setCat] = useState('Todas');
+  const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<Offer | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const regionSlug = cityId ?? cities[0]?.id;
+    if (!regionSlug) return;
+    setLoading(true);
+    fetchRegionOffers(regionSlug, { pageSize: 100 })
+      .then((r) => {
+        const mapped = r.offers.map((o): Offer => ({
+          id: o.id,
+          title: o.displayName,
+          pack: o.packageLabel,
+          image: o.imageUrl ?? '',
+          store: o.storeName,
+          distance: o.neighborhood,
+          price: priceStr(o.priceAmount),
+          save: o.savingsVsComparison != null ? priceStr(o.savingsVsComparison) : '',
+          trust: o.confidenceLevel,
+          score: o.confidenceLevel === 'high' ? 95 : o.confidenceLevel === 'medium' ? 75 : 50,
+        }));
+        setOffers(mapped);
+        const cats = Array.from(new Set(r.offers.map((o) => o.category).filter(Boolean))) as string[];
+        setCategories(cats);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [cityId, cities]);
+
+  const filtered = offers.filter((o) => {
+    const matchCat = cat === 'Todas' || (o.title + o.pack).toLowerCase().includes(cat.toLowerCase());
+    const matchSearch = !search || o.title.toLowerCase().includes(search.toLowerCase()) || o.store.toLowerCase().includes(search.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
+  const allCats = ['Todas', ...categories];
 
   return (
     <div>
@@ -99,32 +111,36 @@ export function OffersPage() {
         title="Ofertas"
         subtitle={`Comparadas por nota fiscal em ${city.name} · raio de ${radius} km`}
         actions={
-          <Tabs defaultValue="savings">
-            <TabsList>
-              <TabsTrigger value="savings">Maior economia</TabsTrigger>
-              <TabsTrigger value="price">Menor preço</TabsTrigger>
-              <TabsTrigger value="trust">Mais confiável</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="relative">
+            <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar produto ou loja…"
+              className="h-[38px] rounded-xl border border-border bg-card pl-9 pr-3 text-[13.5px] focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
         }
       />
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        {CATS.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCat(c)}
-            className={cn(
-              'h-[34px] rounded-full border px-3.5 text-[13.5px] font-semibold transition-colors',
-              cat === c
-                ? 'border-[var(--ds-primary-border)] bg-[var(--ds-primary-soft)] text-primary'
-                : 'border-border bg-card text-muted-foreground hover:border-[var(--ds-neutral-border)]',
-            )}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
+      {allCats.length > 1 && (
+        <div className="mb-5 flex flex-wrap gap-2">
+          {allCats.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCat(c)}
+              className={cn(
+                'h-[34px] rounded-full border px-3.5 text-[13.5px] font-semibold transition-colors',
+                cat === c
+                  ? 'border-[var(--ds-primary-border)] bg-[var(--ds-primary-soft)] text-primary'
+                  : 'border-border bg-card text-muted-foreground hover:border-[var(--ds-neutral-border)]',
+              )}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
 
       <Card className="mb-5 flex items-center gap-3 rounded-2xl p-4 px-5">
         <ShieldCheckIcon className="size-[18px] text-[var(--ds-savings)]" />
@@ -133,11 +149,23 @@ export function OffersPage() {
         </span>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {OFFERS.map((o) => <OfferCard key={o.id} offer={o} onClick={() => setDetail(o)} />)}
-      </div>
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-40 animate-pulse rounded-2xl bg-muted" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-2xl border border-border bg-card p-8 text-center text-[14px] text-muted-foreground">
+          {search ? `Nenhuma oferta encontrada para "${search}".` : 'Nenhuma oferta disponível no momento.'}
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((o) => <OfferCard key={o.id} offer={o} onClick={() => setDetail(o)} />)}
+        </div>
+      )}
 
-      {detail ? <OfferDetail offer={detail} onClose={() => setDetail(null)} /> : null}
+      {detail && <OfferDetail offer={detail} onClose={() => setDetail(null)} />}
     </div>
   );
 }
