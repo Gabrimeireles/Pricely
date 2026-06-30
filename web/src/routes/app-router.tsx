@@ -64,24 +64,10 @@ const shopperChildren: RouteObject[] = [
     },
   },
   {
-    path: 'lista',
-    lazy: async () => {
-      const { ListPage } = await import('@/public/list-page');
-      return { Component: ListPage };
-    },
-  },
-  {
     path: 'cupons',
     lazy: async () => {
       const { CouponsPage } = await import('@/public/coupons-page');
       return { Component: CouponsPage };
-    },
-  },
-  {
-    path: 'notas-fiscais',
-    lazy: async () => {
-      const { ReceiptsPage } = await import('@/public/receipts-page');
-      return { Component: ReceiptsPage };
     },
   },
   {

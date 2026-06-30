@@ -652,6 +652,19 @@ manual-location fallback, and dark-mode parity were completed in Phase 32.
 
 ---
 
+## Phase 32: Frontend-Backend Integration Audit Fixes
+
+**Purpose**: Close gaps found in the 2026-06-30 runtime audit of the homolog deployment.
+All gaps are frontend-only unless noted.
+
+- [~] T276 Wire `ShopperShell` to real auth state — conditional Entrar/Sair/avatar done; auth guard redirect for protected routes still missing in `web/src/public/shopper-shell.tsx`
+- [ ] T279 [P] Remove orphaned `/notas-fiscais` (ReceiptsPage) and `/lista` (ListPage) routes from `web/src/routes/app-router.tsx` — not in nav, use static mock data; covered by `/notas` and `/listas/:listId`
+- [ ] T280 [P] Connect topbar bell icon to real `GET /notifications` API with unread count badge and a dropdown list; wire `PATCH /notifications/:id/read` and `POST /notifications/read-all` in `web/src/public/shopper-shell.tsx` and `web/src/app/api.ts`
+- [ ] T281 [P] Replace `/cupons` static hardcoded array with an "em breve" placeholder and disable the sidebar link until a backend coupons endpoint exists in `web/src/public/coupons-page.tsx` and `web/src/public/shopper-shell.tsx`
+- [ ] T282 [P] Add auth redirect guard to `ShopperShell` so unauthenticated users visiting protected routes (`/listas`, `/notas`, `/historico`, `/configuracoes`) are sent to `/entrar` in `web/src/public/shopper-shell.tsx`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
