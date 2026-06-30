@@ -24,7 +24,7 @@ const shopperChildren: RouteObject[] = [
   {
     path: 'ofertas',
     lazy: async () => {
-      const { OffersPage } = await import('@/public/public-pages');
+      const { OffersPage } = await import('@/public/offers-page');
       return { Component: OffersPage };
     },
   },
