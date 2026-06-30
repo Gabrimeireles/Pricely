@@ -1,7 +1,8 @@
-import { createContext, useContext, useMemo, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BellIcon,
+  CheckCheck,
   ChevronDownIcon,
   CheckCircle2Icon,
   ClockIcon,
@@ -22,6 +23,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { CITIES, type City } from '@/app/shopper-data';
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+  type UserNotificationResponse,
+} from '@/app/api';
 import { usePricely } from '@/app/pricely-context';
 
 import { CityDialog, CoverageDialog, RadiusSelect } from '@/components/shopper/location-controls';
@@ -86,10 +92,106 @@ function Sidebar() {
   );
 }
 
+function NotificationBell({ accessToken }: { accessToken: string | null }) {
+  const [notifications, setNotifications] = useState<UserNotificationResponse[]>([]);
+  const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    fetchNotifications(accessToken).then(setNotifications).catch(() => {});
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickOutside(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [open]);
+
+  const unread = notifications.filter((n) => !n.readAt).length;
+
+  function handleOpen() {
+    setOpen((v) => !v);
+    if (!open && unread > 0 && accessToken) {
+      markAllNotificationsRead(accessToken)
+        .then(() => setNotifications((ns) => ns.map((n) => ({ ...n, readAt: new Date().toISOString() }))))
+        .catch(() => {});
+    }
+  }
+
+  return (
+    <div className="relative" ref={panelRef}>
+      <Button variant="ghost" size="icon" aria-label="Notificações" className="relative" onClick={handleOpen}>
+        <BellIcon className="size-5" />
+        {unread > 0 && (
+          <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full border-2 border-card bg-[var(--ds-critical)] text-[9px] font-bold text-white">
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </Button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <span className="font-heading text-[14px] font-bold">Notificações</span>
+            {notifications.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (accessToken) {
+                    markAllNotificationsRead(accessToken)
+                      .then(() => setNotifications((ns) => ns.map((n) => ({ ...n, readAt: new Date().toISOString() }))))
+                      .catch(() => {});
+                  }
+                }}
+                className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground"
+              >
+                <CheckCheck className="size-3.5" /> Marcar todas como lidas
+              </button>
+            )}
+          </div>
+          <div className="max-h-72 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="px-4 py-8 text-center text-[13px] text-muted-foreground">
+                Nenhuma notificação ainda.
+              </div>
+            ) : (
+              notifications.slice(0, 10).map((n) => (
+                <div
+                  key={n.id}
+                  className={cn(
+                    'border-b border-border px-4 py-3 last:border-0',
+                    !n.readAt && 'bg-[var(--ds-primary-soft)]/40',
+                  )}
+                >
+                  <div className="flex items-start gap-2">
+                    {!n.readAt && (
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                    )}
+                    <div className={cn('min-w-0', n.readAt && 'pl-3.5')}>
+                      <div className="text-[13px] font-semibold">{n.title}</div>
+                      <div className="mt-0.5 text-[12px] text-muted-foreground">{n.message}</div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Topbar() {
   const navigate = useNavigate();
   const { city, radius, setRadius, openCity } = useLocationCtx();
-  const { signOut, currentUser, isAuthenticated } = usePricely();
+  const { signOut, currentUser, isAuthenticated, accessToken } = usePricely();
 
   const initials = currentUser?.displayName
     ? currentUser.displayName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
@@ -113,10 +215,7 @@ function Topbar() {
       <StatusBadge tone="savings" icon={CheckCircle2Icon} label="Cobertura ativa" />
 
       <div className="ml-auto flex items-center gap-3">
-        <Button variant="ghost" size="icon" aria-label="Notificacoes" className="relative">
-          <BellIcon className="size-5" />
-          <span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-card bg-[var(--ds-critical)]" />
-        </Button>
+        {isAuthenticated && <NotificationBell accessToken={accessToken} />}
         {isAuthenticated ? (
           <div className="flex items-center gap-2.5">
             <Avatar className="size-9">
@@ -137,7 +236,21 @@ function Topbar() {
   );
 }
 
+const PROTECTED_PREFIXES = ['/listas', '/notas', '/historico', '/configuracoes'];
+
 export function ShopperShell() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, isBootstrapping } = usePricely();
+
+  useEffect(() => {
+    if (isBootstrapping) return;
+    const isProtected = PROTECTED_PREFIXES.some((p) => location.pathname.startsWith(p));
+    if (!isAuthenticated && isProtected) {
+      navigate('/entrar', { replace: true });
+    }
+  }, [isAuthenticated, isBootstrapping, location.pathname, navigate]);
+
   const [city, setCity] = useState<City>(CITIES[0]);
   const [radius, setRadius] = useState(5);
   const [cityOpen, setCityOpen] = useState(false);
