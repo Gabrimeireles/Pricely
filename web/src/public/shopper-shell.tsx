@@ -238,10 +238,20 @@ function Topbar() {
 
 const PROTECTED_PREFIXES = ['/listas', '/notas', '/historico', '/configuracoes'];
 
+function regionToCity(r: { id: string; name: string; stateCode: string; activeStoreCount: number }): City {
+  return {
+    id: r.id,
+    name: `${r.name} · ${r.stateCode}`,
+    stores: r.activeStoreCount,
+    status: 'active',
+    district: 'Centro',
+  };
+}
+
 export function ShopperShell() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isBootstrapping } = usePricely();
+  const { isAuthenticated, isBootstrapping, cityId, cities } = usePricely();
 
   useEffect(() => {
     if (isBootstrapping) return;
@@ -251,8 +261,14 @@ export function ShopperShell() {
     }
   }, [isAuthenticated, isBootstrapping, location.pathname, navigate]);
 
-  const [city, setCity] = useState<City>(CITIES[0]);
+  const activeRegion = cities.find((c) => c.id === (cityId ?? cities[0]?.id)) ?? cities[0];
+  const defaultCity = activeRegion ? regionToCity(activeRegion) : CITIES[0];
+  const [city, setCity] = useState<City>(defaultCity);
   const [radius, setRadius] = useState(5);
+
+  useEffect(() => {
+    if (activeRegion) setCity(regionToCity(activeRegion));
+  }, [activeRegion?.id, activeRegion?.activeStoreCount]);
   const [cityOpen, setCityOpen] = useState(false);
   const [coverageOpen, setCoverageOpen] = useState(false);
 
