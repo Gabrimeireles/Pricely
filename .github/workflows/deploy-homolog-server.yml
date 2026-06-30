@@ -1,9 +1,6 @@
 name: Deploy Homolog Server
 
 on:
-  push:
-    branches:
-      - homolog
   workflow_dispatch:
     inputs:
       reset_database:
