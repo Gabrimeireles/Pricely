@@ -236,22 +236,9 @@ jobs:
             docker compose --env-file .env run --rm -T backend sh -lc "npm run db:seed" </dev/null
           fi
 
-          {
-            echo "=== before rm ($(date -u +%T)) ==="
-            docker ps -a --filter "name=pricely-homolog-web" --format "{{.ID}} {{.Image}} {{.Status}} {{.Names}}"
-          } > /tmp/deploy-diag.txt 2>&1
-          docker compose --env-file .env rm -sf backend web || true
-          {
-            echo "=== after rm ($(date -u +%T)) ==="
-            docker ps -a --filter "name=pricely-homolog-web" --format "{{.ID}} {{.Image}} {{.Status}} {{.Names}}"
-          } >> /tmp/deploy-diag.txt 2>&1
+          # Remove by name to avoid project-name mismatch with previously deployed containers.
+          docker rm -f pricely-homolog-backend pricely-homolog-web 2>/dev/null || true
           docker compose --env-file .env up -d backend web
-          {
-            echo "=== after up ($(date -u +%T)) ==="
-            docker ps -a --filter "name=pricely-homolog-web" --format "{{.ID}} {{.Image}} {{.Status}} {{.Names}}"
-            docker inspect pricely-homolog-web --format "ImageID={{.Image}} ConfigImage={{.Config.Image}}" 2>/dev/null || echo "inspect failed"
-          } >> /tmp/deploy-diag.txt 2>&1
-          cat /tmp/deploy-diag.txt
           docker compose --env-file .env ps
 
           echo "Waiting for web production server..."
