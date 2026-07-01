@@ -236,8 +236,15 @@ jobs:
             docker compose --env-file .env run --rm -T backend sh -lc "npm run db:seed" </dev/null
           fi
 
+          echo "=== containers before rm ==="
+          docker ps -a --filter "name=pricely-homolog-web" --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}"
           docker compose --env-file .env rm -sf backend web || true
+          echo "=== containers after rm ==="
+          docker ps -a --filter "name=pricely-homolog-web" --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}"
           docker compose --env-file .env up -d backend web
+          echo "=== containers after up ==="
+          docker ps -a --filter "name=pricely-homolog-web" --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}"
+          docker inspect pricely-homolog-web --format "Image: {{.Config.Image}}" || true
           docker compose --env-file .env ps
 
           echo "Waiting for web production server..."
