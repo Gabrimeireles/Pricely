@@ -12,8 +12,10 @@ import {
   MapPinIcon,
   ReceiptTextIcon,
   SettingsIcon,
+  SparklesIcon,
   StoreIcon,
   TagsIcon,
+  ZapIcon,
 } from 'lucide-react';
 import { Toaster } from 'sonner';
 
@@ -58,9 +60,37 @@ const NAV = [
   { to: '/configuracoes', label: 'Configurações', icon: SettingsIcon },
 ];
 
+function SidebarFooter() {
+  const { profile, isAuthenticated } = usePricely();
+  const isPremium = isAuthenticated && profile.entitlementPlan === 'premium';
+
+  if (isPremium) {
+    return (
+      <div data-slot="sidebar-footer" className="mt-auto rounded-2xl border border-[var(--ds-primary-soft)] bg-[var(--ds-primary-soft)]/40 p-4">
+        <div className="flex items-center gap-2">
+          <SparklesIcon className="size-4 text-primary" />
+          <span className="font-heading text-[14px] font-bold text-primary">Pricely Plus ativo</span>
+        </div>
+        <div className="mt-2 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          <ZapIcon className="size-3.5 text-primary" />
+          <span>{profile.availableOptimizationTokens} token{profile.availableOptimizationTokens !== 1 ? 's' : ''} disponíve{profile.availableOptimizationTokens !== 1 ? 'is' : 'l'}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div data-slot="sidebar-footer" className="mt-auto rounded-2xl bg-brand-band p-4 text-white">
+      <div className="font-heading text-[15px] font-bold">Pricely Plus</div>
+      <p className="mt-0.5 text-[12.5px] opacity-85">Mais cidades, alertas de preço e histórico estendido.</p>
+      <Button className="mt-3 w-full bg-white font-bold text-primary hover:bg-white/90">Conhecer</Button>
+    </div>
+  );
+}
+
 function Sidebar() {
   return (
-    <aside data-slot="sidebar" className="hidden w-[236px] shrink-0 flex-col gap-1 border-r border-border bg-card p-3.5 lg:flex">
+    <aside data-slot="sidebar" className="hidden w-[236px] shrink-0 flex-col gap-1 overflow-y-auto border-r border-border bg-card p-3.5 lg:flex">
       <div data-slot="sidebar-header" className="px-2 pb-4 pt-1">
         <img src={pricelyIcon} alt="Pricely" className="h-7" />
       </div>
@@ -83,11 +113,7 @@ function Sidebar() {
           <span>{n.label}</span>
         </NavLink>
       ))}
-      <div data-slot="sidebar-footer" className="mt-auto rounded-2xl bg-brand-band p-4 text-white">
-        <div className="font-heading text-[15px] font-bold">Pricely Plus</div>
-        <p className="mt-0.5 text-[12.5px] opacity-85">Mais cidades, alertas de preço e histórico estendido.</p>
-        <Button className="mt-3 w-full bg-white font-bold text-primary hover:bg-white/90">Conhecer</Button>
-      </div>
+      <SidebarFooter />
     </aside>
   );
 }
@@ -286,9 +312,9 @@ export function ShopperShell() {
 
   return (
     <Ctx.Provider value={ctx}>
-      <div className="flex min-h-screen bg-background text-foreground">
+      <div className="flex h-screen overflow-hidden bg-background text-foreground">
         <Sidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <Topbar />
           <main className="flex-1 overflow-y-auto">
             <div className="mx-auto max-w-[1280px] px-7 py-6 pb-14">
