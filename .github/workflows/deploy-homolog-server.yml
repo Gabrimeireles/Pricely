@@ -237,9 +237,15 @@ jobs:
           fi
 
           # Remove by name to avoid project-name mismatch with previously deployed containers.
-          docker rm -f pricely-homolog-backend pricely-homolog-web 2>/dev/null || true
+          echo "=== pre-deploy container state ==="
+          docker ps -a --filter "name=pricely-homolog" --format "{{.Names}} | {{.Image}} | {{.Status}}"
+          docker stop pricely-homolog-backend pricely-homolog-web 2>&1 || true
+          docker rm -f pricely-homolog-backend pricely-homolog-web 2>&1 || true
+          echo "=== after explicit rm ==="
+          docker ps -a --filter "name=pricely-homolog" --format "{{.Names}} | {{.Image}} | {{.Status}}"
           docker compose --env-file .env up -d backend web
-          docker compose --env-file .env ps
+          echo "=== after docker compose up ==="
+          docker ps -a --filter "name=pricely-homolog" --format "{{.Names}} | {{.Image}} | {{.Status}}"
 
           echo "Waiting for web production server..."
           for attempt in $(seq 1 30); do
