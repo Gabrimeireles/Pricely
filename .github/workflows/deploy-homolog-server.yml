@@ -176,6 +176,14 @@ jobs:
           scp .deploy/.env.backend "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env.backend"
           scp .deploy/.env.web "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env.web"
 
+      - name: Remove stale application containers
+        shell: bash
+        run: |
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "
+            docker rm -f pricely-homolog-backend pricely-homolog-web 2>/dev/null || true
+            echo 'old containers cleared'
+          "
+
       - name: Deploy containers
         shell: bash
         run: |
@@ -192,7 +200,6 @@ jobs:
 
           echo "$GHCR_AUTH_TOKEN" | docker login ghcr.io -u "$GITHUB_REPOSITORY_OWNER" --password-stdin
 
-          # Pull directly so any auth or digest mismatch aborts the deploy.
           docker pull "${BACKEND_IMAGE}:${IMAGE_TAG}"
           docker pull "${WEB_IMAGE}:${IMAGE_TAG}"
           docker compose --env-file .env up -d postgres redis pgadmin
@@ -236,16 +243,7 @@ jobs:
             docker compose --env-file .env run --rm -T backend sh -lc "npm run db:seed" </dev/null
           fi
 
-          # Remove by name to avoid project-name mismatch with previously deployed containers.
-          echo "=== pre-deploy container state ==="
-          docker ps -a --filter "name=pricely-homolog" --format "{{.Names}} | {{.Image}} | {{.Status}}"
-          docker stop pricely-homolog-backend pricely-homolog-web 2>&1 || true
-          docker rm -f pricely-homolog-backend pricely-homolog-web 2>&1 || true
-          echo "=== after explicit rm ==="
-          docker ps -a --filter "name=pricely-homolog" --format "{{.Names}} | {{.Image}} | {{.Status}}"
           docker compose --env-file .env up -d backend web
-          echo "=== after docker compose up ==="
-          docker ps -a --filter "name=pricely-homolog" --format "{{.Names}} | {{.Image}} | {{.Status}}"
 
           echo "Waiting for web production server..."
           for attempt in $(seq 1 30); do
@@ -261,28 +259,8 @@ jobs:
             sleep 5
           done
 
-          docker compose --env-file .env exec -T web sh -lc \
-            "printenv | sort | grep -E '^(VITE_|NODE_ENV)'; echo '---index.html---'; cat /usr/share/nginx/html/index.html" </dev/null \
-            >> /tmp/deploy-diag.txt 2>&1 || true
-          cat /tmp/deploy-diag.txt
           docker image prune -f
           ENDSSH
-
-      - name: Verify deployed bundle
-        shell: bash
-        run: |
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" "
-            echo '=== ALL pricely containers ==='
-            docker ps -a --filter 'name=pricely' --format '{{.ID}} | {{.Image}} | {{.Status}} | {{.Names}}'
-            echo '=== try rm web container ==='
-            docker rm -f pricely-homolog-web 2>&1 && echo 'rm succeeded' || echo 'rm FAILED with exit code: '$?
-            echo '=== containers after rm attempt ==='
-            docker ps -a --filter 'name=pricely' --format '{{.ID}} | {{.Image}} | {{.Status}} | {{.Names}}'
-            echo '=== whoami ==='
-            whoami
-            echo '=== docker info context ==='
-            docker info 2>&1 | grep -E 'Context:|Docker Root|Operating System'
-          "
 
       - name: Health check
         shell: bash
