@@ -278,13 +278,16 @@ jobs:
       - name: Verify deployed bundle
         shell: bash
         run: |
-          result=$(ssh "$DEPLOY_USER@$DEPLOY_HOST" "cat /tmp/deploy-diag.txt 2>/dev/null || echo 'no diag file'")
-          echo "$result"
-          if echo "$result" | grep -q 'index-jIKArUyV'; then
-            echo "DEPLOY VERIFIED: new bundle is live"
-          else
-            echo "WARNING: new bundle NOT detected in running container"
-          fi
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "
+            echo '=== docker ps web ==='
+            docker ps -a --filter 'name=pricely-homolog-web' --format '{{.ID}} | {{.Image}} | {{.Status}} | {{.Names}}'
+            echo '=== image in use ==='
+            docker inspect pricely-homolog-web --format 'Image: {{.Config.Image}}' 2>/dev/null || echo 'container not found'
+            echo '=== index.html bundle ref ==='
+            docker exec pricely-homolog-web grep -o 'index-[A-Za-z0-9_-]*\.js' /usr/share/nginx/html/index.html 2>/dev/null || echo 'could not read index.html from container'
+            echo '=== diag file ==='
+            cat /tmp/deploy-diag.txt 2>/dev/null || echo 'no diag file'
+          "
 
       - name: Health check
         shell: bash
