@@ -262,6 +262,18 @@ jobs:
           docker image prune -f
           ENDSSH
 
+      - name: Check container state post-deploy
+        shell: bash
+        run: |
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "
+            echo '--- containers ---'
+            docker ps -a --filter 'name=pricely' --format '{{.Names}} | {{.Image}} | {{.Status}} | {{.Ports}}'
+            echo '--- port 5173 ---'
+            ss -tlnp 2>/dev/null | grep 5173 || netstat -tlnp 2>/dev/null | grep 5173 || echo 'not found'
+            echo '--- cloudflared status ---'
+            systemctl is-active cloudflared 2>/dev/null || echo 'no systemctl / not found'
+          "
+
       - name: Health check
         shell: bash
         run: |
