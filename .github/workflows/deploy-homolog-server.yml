@@ -272,14 +272,16 @@ jobs:
         shell: bash
         run: |
           ssh "$DEPLOY_USER@$DEPLOY_HOST" "
-            echo '=== docker ps web ==='
-            docker ps -a --filter 'name=pricely-homolog-web' --format '{{.ID}} | {{.Image}} | {{.Status}} | {{.Names}}'
-            echo '=== image in use ==='
-            docker inspect pricely-homolog-web --format 'Image: {{.Config.Image}}' 2>/dev/null || echo 'container not found'
-            echo '=== index.html bundle ref ==='
-            docker exec pricely-homolog-web grep -o 'index-[A-Za-z0-9_-]*\.js' /usr/share/nginx/html/index.html 2>/dev/null || echo 'could not read index.html from container'
-            echo '=== diag file ==='
-            cat /tmp/deploy-diag.txt 2>/dev/null || echo 'no diag file'
+            echo '=== ALL pricely containers ==='
+            docker ps -a --filter 'name=pricely' --format '{{.ID}} | {{.Image}} | {{.Status}} | {{.Names}}'
+            echo '=== try rm web container ==='
+            docker rm -f pricely-homolog-web 2>&1 && echo 'rm succeeded' || echo 'rm FAILED with exit code: '$?
+            echo '=== containers after rm attempt ==='
+            docker ps -a --filter 'name=pricely' --format '{{.ID}} | {{.Image}} | {{.Status}} | {{.Names}}'
+            echo '=== whoami ==='
+            whoami
+            echo '=== docker info context ==='
+            docker info 2>&1 | grep -E 'Context:|Docker Root|Operating System'
           "
 
       - name: Health check
