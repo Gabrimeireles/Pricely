@@ -236,15 +236,22 @@ jobs:
             docker compose --env-file .env run --rm -T backend sh -lc "npm run db:seed" </dev/null
           fi
 
-          echo "=== containers before rm ==="
-          docker ps -a --filter "name=pricely-homolog-web" --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}"
+          {
+            echo "=== before rm ($(date -u +%T)) ==="
+            docker ps -a --filter "name=pricely-homolog-web" --format "{{.ID}} {{.Image}} {{.Status}} {{.Names}}"
+          } > /tmp/deploy-diag.txt 2>&1
           docker compose --env-file .env rm -sf backend web || true
-          echo "=== containers after rm ==="
-          docker ps -a --filter "name=pricely-homolog-web" --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}"
+          {
+            echo "=== after rm ($(date -u +%T)) ==="
+            docker ps -a --filter "name=pricely-homolog-web" --format "{{.ID}} {{.Image}} {{.Status}} {{.Names}}"
+          } >> /tmp/deploy-diag.txt 2>&1
           docker compose --env-file .env up -d backend web
-          echo "=== containers after up ==="
-          docker ps -a --filter "name=pricely-homolog-web" --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}"
-          docker inspect pricely-homolog-web --format "Image: {{.Config.Image}}" || true
+          {
+            echo "=== after up ($(date -u +%T)) ==="
+            docker ps -a --filter "name=pricely-homolog-web" --format "{{.ID}} {{.Image}} {{.Status}} {{.Names}}"
+            docker inspect pricely-homolog-web --format "ImageID={{.Image}} ConfigImage={{.Config.Image}}" 2>/dev/null || echo "inspect failed"
+          } >> /tmp/deploy-diag.txt 2>&1
+          cat /tmp/deploy-diag.txt
           docker compose --env-file .env ps
 
           echo "Waiting for web production server..."
@@ -262,9 +269,22 @@ jobs:
           done
 
           docker compose --env-file .env exec -T web sh -lc \
-            "printenv | sort | grep -E '^(VITE_|NODE_ENV)'; sed -n '1,20p' /usr/share/nginx/html/index.html" </dev/null
+            "printenv | sort | grep -E '^(VITE_|NODE_ENV)'; echo '---index.html---'; cat /usr/share/nginx/html/index.html" </dev/null \
+            >> /tmp/deploy-diag.txt 2>&1 || true
+          cat /tmp/deploy-diag.txt
           docker image prune -f
           ENDSSH
+
+      - name: Verify deployed bundle
+        shell: bash
+        run: |
+          result=$(ssh "$DEPLOY_USER@$DEPLOY_HOST" "cat /tmp/deploy-diag.txt 2>/dev/null || echo 'no diag file'")
+          echo "$result"
+          if echo "$result" | grep -q 'index-jIKArUyV'; then
+            echo "DEPLOY VERIFIED: new bundle is live"
+          else
+            echo "WARNING: new bundle NOT detected in running container"
+          fi
 
       - name: Health check
         shell: bash
