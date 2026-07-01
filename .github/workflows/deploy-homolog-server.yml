@@ -185,7 +185,7 @@ jobs:
           fi
 
           ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-            "GHCR_AUTH_TOKEN='$GHCR_AUTH_TOKEN' GITHUB_REPOSITORY_OWNER='${{ github.repository_owner }}' IMAGE_TAG='$IMAGE_TAG' RESET_DATABASE='${{ inputs.reset_database || false }}' RUN_SEEDERS='${{ inputs.run_seeders || false }}' DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'ENDSSH'
+            "GHCR_AUTH_TOKEN='$GHCR_AUTH_TOKEN' GITHUB_REPOSITORY_OWNER='${{ github.repository_owner }}' BACKEND_IMAGE='$BACKEND_IMAGE' WEB_IMAGE='$WEB_IMAGE' IMAGE_TAG='$IMAGE_TAG' RESET_DATABASE='${{ inputs.reset_database || false }}' RUN_SEEDERS='${{ inputs.run_seeders || false }}' DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'ENDSSH'
           set -euo pipefail
 
           cd "$DEPLOY_PATH"
