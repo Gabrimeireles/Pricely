@@ -176,14 +176,6 @@ jobs:
           scp .deploy/.env.backend "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env.backend"
           scp .deploy/.env.web "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/.env.web"
 
-      - name: Remove stale application containers
-        shell: bash
-        run: |
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" "
-            docker rm -f pricely-homolog-backend pricely-homolog-web 2>/dev/null || true
-            echo 'old containers cleared'
-          "
-
       - name: Deploy containers
         shell: bash
         run: |
@@ -193,15 +185,14 @@ jobs:
           fi
 
           ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-            "GHCR_AUTH_TOKEN='$GHCR_AUTH_TOKEN' GITHUB_REPOSITORY_OWNER='${{ github.repository_owner }}' BACKEND_IMAGE='$BACKEND_IMAGE' WEB_IMAGE='$WEB_IMAGE' IMAGE_TAG='$IMAGE_TAG' RESET_DATABASE='${{ inputs.reset_database || false }}' RUN_SEEDERS='${{ inputs.run_seeders || false }}' DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'ENDSSH'
+            "GHCR_AUTH_TOKEN='$GHCR_AUTH_TOKEN' GITHUB_REPOSITORY_OWNER='${{ github.repository_owner }}' IMAGE_TAG='$IMAGE_TAG' RESET_DATABASE='${{ inputs.reset_database || false }}' RUN_SEEDERS='${{ inputs.run_seeders || false }}' DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'ENDSSH'
           set -euo pipefail
 
           cd "$DEPLOY_PATH"
 
           echo "$GHCR_AUTH_TOKEN" | docker login ghcr.io -u "$GITHUB_REPOSITORY_OWNER" --password-stdin
 
-          docker pull "${BACKEND_IMAGE}:${IMAGE_TAG}"
-          docker pull "${WEB_IMAGE}:${IMAGE_TAG}"
+          docker compose --env-file .env pull backend web
           docker compose --env-file .env up -d postgres redis pgadmin
 
           echo "Waiting for PostgreSQL..."
@@ -243,7 +234,8 @@ jobs:
             docker compose --env-file .env run --rm -T backend sh -lc "npm run db:seed" </dev/null
           fi
 
-          docker compose --env-file .env up -d backend web
+          docker compose --env-file .env up -d --force-recreate backend web
+          docker compose --env-file .env ps
 
           echo "Waiting for web production server..."
           for attempt in $(seq 1 30); do
@@ -259,20 +251,10 @@ jobs:
             sleep 5
           done
 
+          docker compose --env-file .env exec -T web sh -lc \
+            "printenv | sort | grep -E '^(VITE_|NODE_ENV)'; sed -n '1,20p' /usr/share/nginx/html/index.html" </dev/null
           docker image prune -f
           ENDSSH
-
-      - name: Check container state post-deploy
-        shell: bash
-        run: |
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" "
-            echo '--- containers ---'
-            docker ps -a --filter 'name=pricely' --format '{{.Names}} | {{.Image}} | {{.Status}} | {{.Ports}}'
-            echo '--- port 5173 ---'
-            ss -tlnp 2>/dev/null | grep 5173 || netstat -tlnp 2>/dev/null | grep 5173 || echo 'not found'
-            echo '--- cloudflared status ---'
-            systemctl is-active cloudflared 2>/dev/null || echo 'no systemctl / not found'
-          "
 
       - name: Health check
         shell: bash
