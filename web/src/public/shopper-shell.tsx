@@ -23,6 +23,13 @@ import pricelyIcon from '@/assets/pricely-icon.png';
 import { StatusBadge } from '@/components/design-system';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { CITIES, type City } from '@/app/shopper-data';
 import {
@@ -277,7 +284,16 @@ function regionToCity(r: { id: string; name: string; stateCode: string; activeSt
 export function ShopperShell() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isBootstrapping, cityId, cities } = usePricely();
+  const {
+    isAuthenticated,
+    isBootstrapping,
+    cityId,
+    cities,
+    locationPreferences,
+    saveBrowserLocation,
+    savePostalCodeLocation,
+    setCityId,
+  } = usePricely();
 
   useEffect(() => {
     if (isBootstrapping) return;
@@ -295,18 +311,87 @@ export function ShopperShell() {
   useEffect(() => {
     if (activeRegion) setCity(regionToCity(activeRegion));
   }, [activeRegion?.id, activeRegion?.activeStoreCount]);
+
+  const activeLocation = locationPreferences.find(
+    (p) => p.isDefault && p.regionSlug === cityId,
+  ) ?? null;
+
+  useEffect(() => {
+    if (activeLocation?.coverageRadiusKm) setRadius(activeLocation.coverageRadiusKm);
+  }, [activeLocation?.coverageRadiusKm]);
+
   const [cityOpen, setCityOpen] = useState(false);
   const [coverageOpen, setCoverageOpen] = useState(false);
+  const [locationPromptOpen, setLocationPromptOpen] = useState(false);
+  const [locating, setLocating] = useState(false);
+
+  // Prompt for city if none is set
+  useEffect(() => {
+    if (!isBootstrapping && isAuthenticated && !cityId && cities.length > 0) {
+      setCityOpen(true);
+    }
+  }, [isBootstrapping, isAuthenticated, cityId, cities.length]);
+
+  // Prompt for location permission once per city (when no preference exists)
+  useEffect(() => {
+    if (!isBootstrapping && isAuthenticated && cityId && !activeLocation) {
+      setLocationPromptOpen(true);
+    }
+  }, [isBootstrapping, isAuthenticated, cityId, activeLocation]);
+
+  const handleCityPick = (c: City) => {
+    setCity(c);
+    void setCityId(c.id);
+  };
+
+  const handleRadiusChange = (km: number) => {
+    setRadius(km);
+    if (!activeLocation) return;
+    if (activeLocation.locationSource === 'browser_geolocation' &&
+        activeLocation.latitude && activeLocation.longitude) {
+      void saveBrowserLocation({ latitude: activeLocation.latitude, longitude: activeLocation.longitude, coverageRadiusKm: km });
+    } else if (activeLocation.locationSource === 'postal_code_fallback' && activeLocation.postalCode) {
+      void savePostalCodeLocation({ postalCode: activeLocation.postalCode, coverageRadiusKm: km });
+    }
+  };
+
+  const requestBrowserLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationPromptOpen(false);
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        void saveBrowserLocation({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          coverageRadiusKm: radius,
+        }).finally(() => {
+          setLocating(false);
+          setLocationPromptOpen(false);
+        });
+      },
+      () => {
+        setLocating(false);
+        setLocationPromptOpen(false);
+      },
+      { enableHighAccuracy: false, maximumAge: 300_000, timeout: 8_000 },
+    );
+  };
+
+  const cityItems = cities.map(regionToCity);
 
   const ctx = useMemo<LocationCtx>(
     () => ({
       city,
       radius,
-      setCity,
-      setRadius,
+      setCity: handleCityPick,
+      setRadius: handleRadiusChange,
       openCity: () => setCityOpen(true),
       openCoverage: () => setCoverageOpen(true),
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [city, radius],
   );
 
@@ -324,7 +409,40 @@ export function ShopperShell() {
         </div>
       </div>
 
-      <CityDialog open={cityOpen} onOpenChange={setCityOpen} current={city} onPick={setCity} />
+      <Dialog open={locationPromptOpen} onOpenChange={setLocationPromptOpen}>
+        <DialogContent className="max-w-sm rounded-3xl text-center">
+          <DialogHeader className="items-center">
+            <div className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-[var(--ds-primary-soft)]">
+              <MapPinIcon className="size-6 text-primary" />
+            </div>
+            <DialogTitle className="font-heading text-lg">Encontrar lojas próximas</DialogTitle>
+            <DialogDescription>
+              Compartilhe sua localização para ver preços e lojas no seu raio.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-2 flex flex-col gap-2">
+            <Button onClick={requestBrowserLocation} disabled={locating} className="w-full">
+              {locating ? 'Detectando…' : 'Usar minha localização'}
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-muted-foreground"
+              onClick={() => { setLocationPromptOpen(false); setCityOpen(true); }}
+            >
+              Escolher cidade manualmente
+            </Button>
+            <button
+              type="button"
+              onClick={() => setLocationPromptOpen(false)}
+              className="text-[13px] text-muted-foreground hover:text-foreground"
+            >
+              Agora não
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <CityDialog open={cityOpen} onOpenChange={setCityOpen} current={city} onPick={handleCityPick} items={cityItems} />
       <CoverageDialog open={coverageOpen} onOpenChange={setCoverageOpen} city={city} radius={radius} />
       <Toaster position="bottom-right" richColors />
     </Ctx.Provider>

@@ -50,11 +50,13 @@ export function CityDialog({
   onOpenChange,
   current,
   onPick,
+  items,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   current: City;
   onPick: (c: City) => void;
+  items?: City[];
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,7 +66,7 @@ export function CityDialog({
           <DialogDescription>Resultados e ofertas dependem da cidade ativa</DialogDescription>
         </DialogHeader>
         <div className="grid gap-1.5 p-3">
-          {CITIES.map((c) => {
+          {(items ?? CITIES).map((c) => {
             const disabled = c.status === 'activating';
             const selected = current.id === c.id;
             return (
