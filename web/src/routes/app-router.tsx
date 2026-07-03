@@ -87,8 +87,8 @@ const shopperChildren: RouteObject[] = [
   {
     path: 'otimizacao/:listId',
     lazy: async () => {
-      const { OptimizationPage } = await import('@/public/public-pages');
-      return { Component: OptimizationPage };
+      const { OptimizationResultPage } = await import('@/public/optimization-result-page');
+      return { Component: OptimizationResultPage };
     },
   },
   {

@@ -108,6 +108,8 @@ export class LocationsService {
         neighborhood: store.neighborhood,
         postalCode: store.postalCode,
         distanceKm: null,
+        latitude: store.latitude === null ? null : Number(store.latitude),
+        longitude: store.longitude === null ? null : Number(store.longitude),
       }));
 
       return {
@@ -144,6 +146,8 @@ export class LocationsService {
           neighborhood: store.neighborhood,
           postalCode: store.postalCode,
           distanceKm,
+          latitude: store.latitude === null ? null : Number(store.latitude),
+          longitude: store.longitude === null ? null : Number(store.longitude),
         };
       })
       .filter(

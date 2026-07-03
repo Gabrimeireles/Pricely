@@ -771,6 +771,8 @@ type CoveragePreviewResponse = {
     neighborhood: string;
     postalCode?: string | null;
     distanceKm?: number | null;
+    latitude?: number | null;
+    longitude?: number | null;
   }>;
 };
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BellIcon,
@@ -10,6 +10,7 @@ import {
   HomeIcon,
   ListChecksIcon,
   MapPinIcon,
+  NavigationIcon,
   ReceiptTextIcon,
   SettingsIcon,
   SparklesIcon,
@@ -41,13 +42,17 @@ import { usePricely } from '@/app/pricely-context';
 
 import { CityDialog, CoverageDialog, RadiusSelect } from '@/components/shopper/location-controls';
 
+type LocationSource = 'browser_geolocation' | 'postal_code_fallback' | 'manual' | null;
+
 type LocationCtx = {
   city: City;
   radius: number;
+  locationSource: LocationSource;
   setCity: (c: City) => void;
   setRadius: (km: number) => void;
   openCity: () => void;
   openCoverage: () => void;
+  openLocationPrompt: () => void;
 };
 const Ctx = createContext<LocationCtx | null>(null);
 export function useLocationCtx() {
@@ -221,9 +226,33 @@ function NotificationBell({ accessToken }: { accessToken: string | null }) {
   );
 }
 
+function LocationStatusLabel({ source, onAdd }: { source: LocationSource; onAdd: () => void }) {
+  if (source === 'browser_geolocation') {
+    return (
+      <span className="hidden items-center gap-1.5 text-sm text-[var(--ds-savings)] md:inline-flex">
+        <NavigationIcon className="size-3.5" /> GPS ativo
+      </span>
+    );
+  }
+  if (source === 'postal_code_fallback') {
+    return (
+      <span className="hidden text-sm text-muted-foreground md:inline">CEP cadastrado</span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      className="hidden text-sm font-medium text-primary underline-offset-2 hover:underline md:inline"
+    >
+      Adicionar localização
+    </button>
+  );
+}
+
 function Topbar() {
   const navigate = useNavigate();
-  const { city, radius, setRadius, openCity } = useLocationCtx();
+  const { city, radius, setRadius, locationSource, openCity, openLocationPrompt } = useLocationCtx();
   const { signOut, currentUser, isAuthenticated, accessToken } = usePricely();
 
   const initials = currentUser?.displayName
@@ -244,8 +273,10 @@ function Topbar() {
       <div className="hidden md:block">
         <RadiusSelect radius={radius} onChange={setRadius} />
       </div>
-      <span className="hidden text-sm text-muted-foreground md:inline">Localização salva</span>
-      <StatusBadge tone="savings" icon={CheckCircle2Icon} label="Cobertura ativa" />
+      <LocationStatusLabel source={locationSource} onAdd={openLocationPrompt} />
+      {locationSource && (
+        <StatusBadge tone="savings" icon={CheckCircle2Icon} label="Cobertura ativa" />
+      )}
 
       <div className="ml-auto flex items-center gap-3">
         {isAuthenticated && <NotificationBell accessToken={accessToken} />}
@@ -279,6 +310,42 @@ function regionToCity(r: { id: string; name: string; stateCode: string; activeSt
     status: 'active',
     district: 'Centro',
   };
+}
+
+function CEPInput({ onConfirm, onCancel }: { onConfirm: (cep: string) => void; onCancel: () => void }) {
+  const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  function formatCEP(raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 8);
+    return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+  }
+
+  const digits = value.replace(/\D/g, '');
+  const valid = digits.length === 8;
+
+  return (
+    <div className="mt-2 flex flex-col gap-3">
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="numeric"
+        placeholder="00000-000"
+        value={value}
+        onChange={(e) => setValue(formatCEP(e.target.value))}
+        onKeyDown={(e) => e.key === 'Enter' && valid && onConfirm(digits)}
+        className="h-[44px] rounded-xl border border-border bg-background px-4 text-center text-[16px] tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/30"
+      />
+      <Button onClick={() => onConfirm(digits)} disabled={!valid} className="w-full">
+        Confirmar CEP
+      </Button>
+      <button type="button" onClick={onCancel} className="text-[13px] text-muted-foreground hover:text-foreground">
+        Voltar
+      </button>
+    </div>
+  );
 }
 
 export function ShopperShell() {
@@ -324,6 +391,7 @@ export function ShopperShell() {
   const [coverageOpen, setCoverageOpen] = useState(false);
   const [locationPromptOpen, setLocationPromptOpen] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [cepMode, setCepMode] = useState(false);
 
   // Prompt for city if none is set
   useEffect(() => {
@@ -339,12 +407,12 @@ export function ShopperShell() {
     }
   }, [isBootstrapping, isAuthenticated, cityId, activeLocation]);
 
-  const handleCityPick = (c: City) => {
+  const handleCityPick = useCallback((c: City) => {
     setCity(c);
     void setCityId(c.id);
-  };
+  }, [setCityId]);
 
-  const handleRadiusChange = (km: number) => {
+  const handleRadiusChange = useCallback((km: number) => {
     setRadius(km);
     if (!activeLocation) return;
     if (activeLocation.locationSource === 'browser_geolocation' &&
@@ -353,7 +421,7 @@ export function ShopperShell() {
     } else if (activeLocation.locationSource === 'postal_code_fallback' && activeLocation.postalCode) {
       void savePostalCodeLocation({ postalCode: activeLocation.postalCode, coverageRadiusKm: km });
     }
-  };
+  }, [activeLocation, saveBrowserLocation, savePostalCodeLocation]);
 
   const requestBrowserLocation = () => {
     if (!navigator.geolocation) {
@@ -380,19 +448,35 @@ export function ShopperShell() {
     );
   };
 
+  const handleCEPConfirm = (postalCode: string) => {
+    setCepMode(false);
+    setLocating(true);
+    void savePostalCodeLocation({ postalCode, coverageRadiusKm: radius }).finally(() => {
+      setLocating(false);
+      setLocationPromptOpen(false);
+    });
+  };
+
+  function closeLocationPrompt() {
+    setLocationPromptOpen(false);
+    setCepMode(false);
+  }
+
   const cityItems = cities.map(regionToCity);
+  const locationSource: LocationSource = activeLocation?.locationSource ?? null;
 
   const ctx = useMemo<LocationCtx>(
     () => ({
       city,
       radius,
+      locationSource,
       setCity: handleCityPick,
       setRadius: handleRadiusChange,
       openCity: () => setCityOpen(true),
       openCoverage: () => setCoverageOpen(true),
+      openLocationPrompt: () => { setCepMode(false); setLocationPromptOpen(true); },
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [city, radius],
+    [city, radius, locationSource, handleCityPick, handleRadiusChange],
   );
 
   return (
@@ -409,36 +493,56 @@ export function ShopperShell() {
         </div>
       </div>
 
-      <Dialog open={locationPromptOpen} onOpenChange={setLocationPromptOpen}>
+      <Dialog open={locationPromptOpen} onOpenChange={closeLocationPrompt}>
         <DialogContent className="max-w-sm rounded-3xl text-center">
           <DialogHeader className="items-center">
             <div className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-[var(--ds-primary-soft)]">
               <MapPinIcon className="size-6 text-primary" />
             </div>
-            <DialogTitle className="font-heading text-lg">Encontrar lojas próximas</DialogTitle>
-            <DialogDescription>
-              Compartilhe sua localização para ver preços e lojas no seu raio.
-            </DialogDescription>
+            <DialogTitle className="font-heading text-lg">
+              {cepMode ? 'Informe seu CEP' : 'Encontrar lojas próximas'}
+            </DialogTitle>
+            {!cepMode && (
+              <DialogDescription>
+                Compartilhe sua localização para ver preços e lojas no seu raio.
+              </DialogDescription>
+            )}
           </DialogHeader>
-          <div className="mt-2 flex flex-col gap-2">
-            <Button onClick={requestBrowserLocation} disabled={locating} className="w-full">
-              {locating ? 'Detectando…' : 'Usar minha localização'}
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full text-muted-foreground"
-              onClick={() => { setLocationPromptOpen(false); setCityOpen(true); }}
-            >
-              Escolher cidade manualmente
-            </Button>
-            <button
-              type="button"
-              onClick={() => setLocationPromptOpen(false)}
-              className="text-[13px] text-muted-foreground hover:text-foreground"
-            >
-              Agora não
-            </button>
-          </div>
+
+          {cepMode ? (
+            <CEPInput
+              onConfirm={handleCEPConfirm}
+              onCancel={() => setCepMode(false)}
+            />
+          ) : (
+            <div className="mt-2 flex flex-col gap-2">
+              <Button onClick={requestBrowserLocation} disabled={locating} className="w-full">
+                {locating ? 'Detectando…' : 'Usar minha localização (GPS)'}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={locating}
+                onClick={() => setCepMode(true)}
+              >
+                Informar CEP
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={() => { closeLocationPrompt(); setCityOpen(true); }}
+              >
+                Escolher cidade manualmente
+              </Button>
+              <button
+                type="button"
+                onClick={closeLocationPrompt}
+                className="text-[13px] text-muted-foreground hover:text-foreground"
+              >
+                Agora não
+              </button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
