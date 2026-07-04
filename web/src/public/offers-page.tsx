@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { CheckCircle2Icon, SearchIcon, ShieldCheckIcon, StoreIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { CheckCircle2Icon, SearchIcon, ShieldCheckIcon } from 'lucide-react';
 
 import { StatusBadge } from '@/components/design-system';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,21 @@ import type { Offer } from '@/app/shopper-data';
 import { OfferCard } from '@/components/shopper/offer-card';
 import { PageHead } from '@/components/shopper/section';
 import { useLocationCtx } from './shopper-shell';
+
+const CATEGORY_LABELS: Record<string, string> = {
+  mercearia: 'Mercearia 🧂',
+  hortifruti: 'Hortifruti 🥦',
+  bebidas: 'Bebidas 🥤',
+  laticinios: 'Laticínios 🥛',
+  proteinas: 'Proteínas 🥚',
+  limpeza: 'Limpeza 🧹',
+  higiene: 'Higiene 🪥',
+  padaria: 'Padaria 🍞',
+};
+
+function categoryLabel(raw: string) {
+  return CATEGORY_LABELS[raw.toLowerCase()] ?? raw.charAt(0).toUpperCase() + raw.slice(1);
+}
 
 function priceStr(n: number) {
   return `R$ ${n.toFixed(2).replace('.', ',')}`;
@@ -70,13 +85,23 @@ export function OffersPage() {
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(true);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const regionSlug = cityId ?? cities[0]?.id;
     if (!regionSlug) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
-    fetchRegionOffers(regionSlug, { pageSize: 100 })
+    fetchRegionOffers(regionSlug, {
+      pageSize: 100,
+      category: cat !== 'Todas' ? cat : undefined,
+    })
       .then((r) => {
+        if (controller.signal.aborted) return;
         const mapped = r.offers.map((o): Offer => ({
           id: o.id,
           title: o.displayName,
@@ -88,19 +113,23 @@ export function OffersPage() {
           save: o.savingsVsComparison != null ? priceStr(o.savingsVsComparison) : '',
           trust: o.confidenceLevel,
           score: o.confidenceLevel === 'high' ? 95 : o.confidenceLevel === 'medium' ? 75 : 50,
+          category: o.category,
         }));
         setOffers(mapped);
-        const cats = Array.from(new Set(r.offers.map((o) => o.category).filter(Boolean))) as string[];
-        setCategories(cats);
+        if (r.filters?.categories && r.filters.categories.length > 0) {
+          setCategories(r.filters.categories);
+        }
       })
       .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [cityId, cities]);
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [cityId, cities, cat]);
 
   const filtered = offers.filter((o) => {
-    const matchCat = cat === 'Todas' || (o.title + o.pack).toLowerCase().includes(cat.toLowerCase());
-    const matchSearch = !search || o.title.toLowerCase().includes(search.toLowerCase()) || o.store.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
+    return !search || o.title.toLowerCase().includes(search.toLowerCase()) || o.store.toLowerCase().includes(search.toLowerCase());
   });
 
   const allCats = ['Todas', ...categories];
@@ -128,6 +157,7 @@ export function OffersPage() {
           {allCats.map((c) => (
             <button
               key={c}
+              type="button"
               onClick={() => setCat(c)}
               className={cn(
                 'h-[34px] rounded-full border px-3.5 text-[13.5px] font-semibold transition-colors',
@@ -136,7 +166,7 @@ export function OffersPage() {
                   : 'border-border bg-card text-muted-foreground hover:border-[var(--ds-neutral-border)]',
               )}
             >
-              {c}
+              {c === 'Todas' ? 'Todas' : categoryLabel(c)}
             </button>
           ))}
         </div>
@@ -157,7 +187,7 @@ export function OffersPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-8 text-center text-[14px] text-muted-foreground">
-          {search ? `Nenhuma oferta encontrada para "${search}".` : 'Nenhuma oferta disponível no momento.'}
+          {search ? `Nenhuma oferta encontrada para "${search}".` : cat !== 'Todas' ? `Nenhuma oferta em ${categoryLabel(cat)} no momento.` : 'Nenhuma oferta disponível no momento.'}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

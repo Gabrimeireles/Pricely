@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BellIcon,
@@ -10,10 +10,13 @@ import {
   HomeIcon,
   ListChecksIcon,
   MapPinIcon,
+  NavigationIcon,
   ReceiptTextIcon,
   SettingsIcon,
+  SparklesIcon,
   StoreIcon,
   TagsIcon,
+  ZapIcon,
 } from 'lucide-react';
 import { Toaster } from 'sonner';
 
@@ -21,6 +24,13 @@ import pricelyIcon from '@/assets/pricely-icon.png';
 import { StatusBadge } from '@/components/design-system';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { CITIES, type City } from '@/app/shopper-data';
 import {
@@ -32,13 +42,17 @@ import { usePricely } from '@/app/pricely-context';
 
 import { CityDialog, CoverageDialog, RadiusSelect } from '@/components/shopper/location-controls';
 
+type LocationSource = 'browser_geolocation' | 'postal_code_fallback' | 'manual' | null;
+
 type LocationCtx = {
   city: City;
   radius: number;
+  locationSource: LocationSource;
   setCity: (c: City) => void;
   setRadius: (km: number) => void;
   openCity: () => void;
   openCoverage: () => void;
+  openLocationPrompt: () => void;
 };
 const Ctx = createContext<LocationCtx | null>(null);
 export function useLocationCtx() {
@@ -58,9 +72,37 @@ const NAV = [
   { to: '/configuracoes', label: 'Configurações', icon: SettingsIcon },
 ];
 
+function SidebarFooter() {
+  const { profile, isAuthenticated } = usePricely();
+  const isPremium = isAuthenticated && profile.entitlementPlan === 'premium';
+
+  if (isPremium) {
+    return (
+      <div data-slot="sidebar-footer" className="mt-auto rounded-2xl border border-[var(--ds-primary-soft)] bg-[var(--ds-primary-soft)]/40 p-4">
+        <div className="flex items-center gap-2">
+          <SparklesIcon className="size-4 text-primary" />
+          <span className="font-heading text-[14px] font-bold text-primary">Pricely Plus ativo</span>
+        </div>
+        <div className="mt-2 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          <ZapIcon className="size-3.5 text-primary" />
+          <span>{profile.availableOptimizationTokens} token{profile.availableOptimizationTokens !== 1 ? 's' : ''} disponíve{profile.availableOptimizationTokens !== 1 ? 'is' : 'l'}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div data-slot="sidebar-footer" className="mt-auto rounded-2xl bg-brand-band p-4 text-white">
+      <div className="font-heading text-[15px] font-bold">Pricely Plus</div>
+      <p className="mt-0.5 text-[12.5px] opacity-85">Mais cidades, alertas de preço e histórico estendido.</p>
+      <Button className="mt-3 w-full bg-white font-bold text-primary hover:bg-white/90">Conhecer</Button>
+    </div>
+  );
+}
+
 function Sidebar() {
   return (
-    <aside data-slot="sidebar" className="hidden w-[236px] shrink-0 flex-col gap-1 border-r border-border bg-card p-3.5 lg:flex">
+    <aside data-slot="sidebar" className="hidden w-[236px] shrink-0 flex-col gap-1 overflow-y-auto border-r border-border bg-card p-3.5 lg:flex">
       <div data-slot="sidebar-header" className="px-2 pb-4 pt-1">
         <img src={pricelyIcon} alt="Pricely" className="h-7" />
       </div>
@@ -83,11 +125,7 @@ function Sidebar() {
           <span>{n.label}</span>
         </NavLink>
       ))}
-      <div data-slot="sidebar-footer" className="mt-auto rounded-2xl bg-brand-band p-4 text-white">
-        <div className="font-heading text-[15px] font-bold">Pricely Plus</div>
-        <p className="mt-0.5 text-[12.5px] opacity-85">Mais cidades, alertas de preço e histórico estendido.</p>
-        <Button className="mt-3 w-full bg-white font-bold text-primary hover:bg-white/90">Conhecer</Button>
-      </div>
+      <SidebarFooter />
     </aside>
   );
 }
@@ -188,9 +226,33 @@ function NotificationBell({ accessToken }: { accessToken: string | null }) {
   );
 }
 
+function LocationStatusLabel({ source, onAdd }: { source: LocationSource; onAdd: () => void }) {
+  if (source === 'browser_geolocation') {
+    return (
+      <span className="hidden items-center gap-1.5 text-sm text-[var(--ds-savings)] md:inline-flex">
+        <NavigationIcon className="size-3.5" /> GPS ativo
+      </span>
+    );
+  }
+  if (source === 'postal_code_fallback') {
+    return (
+      <span className="hidden text-sm text-muted-foreground md:inline">CEP cadastrado</span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      className="hidden text-sm font-medium text-primary underline-offset-2 hover:underline md:inline"
+    >
+      Adicionar localização
+    </button>
+  );
+}
+
 function Topbar() {
   const navigate = useNavigate();
-  const { city, radius, setRadius, openCity } = useLocationCtx();
+  const { city, radius, setRadius, locationSource, openCity, openLocationPrompt } = useLocationCtx();
   const { signOut, currentUser, isAuthenticated, accessToken } = usePricely();
 
   const initials = currentUser?.displayName
@@ -211,8 +273,10 @@ function Topbar() {
       <div className="hidden md:block">
         <RadiusSelect radius={radius} onChange={setRadius} />
       </div>
-      <span className="hidden text-sm text-muted-foreground md:inline">Localização salva</span>
-      <StatusBadge tone="savings" icon={CheckCircle2Icon} label="Cobertura ativa" />
+      <LocationStatusLabel source={locationSource} onAdd={openLocationPrompt} />
+      {locationSource && (
+        <StatusBadge tone="savings" icon={CheckCircle2Icon} label="Cobertura ativa" />
+      )}
 
       <div className="ml-auto flex items-center gap-3">
         {isAuthenticated && <NotificationBell accessToken={accessToken} />}
@@ -248,10 +312,55 @@ function regionToCity(r: { id: string; name: string; stateCode: string; activeSt
   };
 }
 
+function CEPInput({ onConfirm, onCancel }: { onConfirm: (cep: string) => void; onCancel: () => void }) {
+  const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  function formatCEP(raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 8);
+    return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+  }
+
+  const digits = value.replace(/\D/g, '');
+  const valid = digits.length === 8;
+
+  return (
+    <div className="mt-2 flex flex-col gap-3">
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="numeric"
+        placeholder="00000-000"
+        value={value}
+        onChange={(e) => setValue(formatCEP(e.target.value))}
+        onKeyDown={(e) => e.key === 'Enter' && valid && onConfirm(digits)}
+        className="h-[44px] rounded-xl border border-border bg-background px-4 text-center text-[16px] tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/30"
+      />
+      <Button onClick={() => onConfirm(digits)} disabled={!valid} className="w-full">
+        Confirmar CEP
+      </Button>
+      <button type="button" onClick={onCancel} className="text-[13px] text-muted-foreground hover:text-foreground">
+        Voltar
+      </button>
+    </div>
+  );
+}
+
 export function ShopperShell() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isBootstrapping, cityId, cities } = usePricely();
+  const {
+    isAuthenticated,
+    isBootstrapping,
+    cityId,
+    cities,
+    locationPreferences,
+    saveBrowserLocation,
+    savePostalCodeLocation,
+    setCityId,
+  } = usePricely();
 
   useEffect(() => {
     if (isBootstrapping) return;
@@ -269,26 +378,112 @@ export function ShopperShell() {
   useEffect(() => {
     if (activeRegion) setCity(regionToCity(activeRegion));
   }, [activeRegion?.id, activeRegion?.activeStoreCount]);
+
+  const activeLocation = locationPreferences.find(
+    (p) => p.isDefault && p.regionSlug === cityId,
+  ) ?? null;
+
+  useEffect(() => {
+    if (activeLocation?.coverageRadiusKm) setRadius(activeLocation.coverageRadiusKm);
+  }, [activeLocation?.coverageRadiusKm]);
+
   const [cityOpen, setCityOpen] = useState(false);
   const [coverageOpen, setCoverageOpen] = useState(false);
+  const [locationPromptOpen, setLocationPromptOpen] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [cepMode, setCepMode] = useState(false);
+
+  // Prompt for city if none is set
+  useEffect(() => {
+    if (!isBootstrapping && isAuthenticated && !cityId && cities.length > 0) {
+      setCityOpen(true);
+    }
+  }, [isBootstrapping, isAuthenticated, cityId, cities.length]);
+
+  // Prompt for location permission once per city (when no preference exists)
+  useEffect(() => {
+    if (!isBootstrapping && isAuthenticated && cityId && !activeLocation) {
+      setLocationPromptOpen(true);
+    }
+  }, [isBootstrapping, isAuthenticated, cityId, activeLocation]);
+
+  const handleCityPick = useCallback((c: City) => {
+    setCity(c);
+    void setCityId(c.id);
+  }, [setCityId]);
+
+  const handleRadiusChange = useCallback((km: number) => {
+    setRadius(km);
+    if (!activeLocation) return;
+    if (activeLocation.locationSource === 'browser_geolocation' &&
+        activeLocation.latitude && activeLocation.longitude) {
+      void saveBrowserLocation({ latitude: activeLocation.latitude, longitude: activeLocation.longitude, coverageRadiusKm: km });
+    } else if (activeLocation.locationSource === 'postal_code_fallback' && activeLocation.postalCode) {
+      void savePostalCodeLocation({ postalCode: activeLocation.postalCode, coverageRadiusKm: km });
+    }
+  }, [activeLocation, saveBrowserLocation, savePostalCodeLocation]);
+
+  const requestBrowserLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationPromptOpen(false);
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        void saveBrowserLocation({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          coverageRadiusKm: radius,
+        }).finally(() => {
+          setLocating(false);
+          setLocationPromptOpen(false);
+        });
+      },
+      () => {
+        setLocating(false);
+        setLocationPromptOpen(false);
+      },
+      { enableHighAccuracy: false, maximumAge: 300_000, timeout: 8_000 },
+    );
+  };
+
+  const handleCEPConfirm = (postalCode: string) => {
+    setCepMode(false);
+    setLocating(true);
+    void savePostalCodeLocation({ postalCode, coverageRadiusKm: radius }).finally(() => {
+      setLocating(false);
+      setLocationPromptOpen(false);
+    });
+  };
+
+  function closeLocationPrompt() {
+    setLocationPromptOpen(false);
+    setCepMode(false);
+  }
+
+  const cityItems = cities.map(regionToCity);
+  const locationSource: LocationSource = activeLocation?.locationSource ?? null;
 
   const ctx = useMemo<LocationCtx>(
     () => ({
       city,
       radius,
-      setCity,
-      setRadius,
+      locationSource,
+      setCity: handleCityPick,
+      setRadius: handleRadiusChange,
       openCity: () => setCityOpen(true),
       openCoverage: () => setCoverageOpen(true),
+      openLocationPrompt: () => { setCepMode(false); setLocationPromptOpen(true); },
     }),
-    [city, radius],
+    [city, radius, locationSource, handleCityPick, handleRadiusChange],
   );
 
   return (
     <Ctx.Provider value={ctx}>
-      <div className="flex min-h-screen bg-background text-foreground">
+      <div className="flex h-screen overflow-hidden bg-background text-foreground">
         <Sidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <Topbar />
           <main className="flex-1 overflow-y-auto">
             <div className="mx-auto max-w-[1280px] px-7 py-6 pb-14">
@@ -298,7 +493,60 @@ export function ShopperShell() {
         </div>
       </div>
 
-      <CityDialog open={cityOpen} onOpenChange={setCityOpen} current={city} onPick={setCity} />
+      <Dialog open={locationPromptOpen} onOpenChange={closeLocationPrompt}>
+        <DialogContent className="max-w-sm rounded-3xl text-center">
+          <DialogHeader className="items-center">
+            <div className="mb-2 flex size-12 items-center justify-center rounded-2xl bg-[var(--ds-primary-soft)]">
+              <MapPinIcon className="size-6 text-primary" />
+            </div>
+            <DialogTitle className="font-heading text-lg">
+              {cepMode ? 'Informe seu CEP' : 'Encontrar lojas próximas'}
+            </DialogTitle>
+            {!cepMode && (
+              <DialogDescription>
+                Compartilhe sua localização para ver preços e lojas no seu raio.
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          {cepMode ? (
+            <CEPInput
+              onConfirm={handleCEPConfirm}
+              onCancel={() => setCepMode(false)}
+            />
+          ) : (
+            <div className="mt-2 flex flex-col gap-2">
+              <Button onClick={requestBrowserLocation} disabled={locating} className="w-full">
+                {locating ? 'Detectando…' : 'Usar minha localização (GPS)'}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={locating}
+                onClick={() => setCepMode(true)}
+              >
+                Informar CEP
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={() => { closeLocationPrompt(); setCityOpen(true); }}
+              >
+                Escolher cidade manualmente
+              </Button>
+              <button
+                type="button"
+                onClick={closeLocationPrompt}
+                className="text-[13px] text-muted-foreground hover:text-foreground"
+              >
+                Agora não
+              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <CityDialog open={cityOpen} onOpenChange={setCityOpen} current={city} onPick={handleCityPick} items={cityItems} />
       <CoverageDialog open={coverageOpen} onOpenChange={setCoverageOpen} city={city} radius={radius} />
       <Toaster position="bottom-right" richColors />
     </Ctx.Provider>

@@ -302,7 +302,6 @@ export function PricelyProvider({ children }: PropsWithChildren) {
       setLocationPreferences([]);
       setProfile(emptyProfile());
       setCurrentUser(null);
-      setIsBootstrapping(false);
       return;
     }
 

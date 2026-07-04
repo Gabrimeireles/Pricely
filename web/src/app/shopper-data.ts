@@ -23,6 +23,7 @@ export type Offer = {
   save: string;
   trust: TrustLevel;
   score: number;
+  category?: string;
 };
 
 export type ListItem = {
@@ -34,7 +35,7 @@ export type ListItem = {
   rule: 'any' | 'brand' | 'exact';
 };
 
-export const RADII = [3, 5, 10, 15] as const;
+export const RADII = [3, 5, 10, 15, 30] as const;
 
 export const CITIES: City[] = [
   { id: 'sp', name: 'São Paulo, SP', status: 'active', stores: 8, district: 'Centro' },
