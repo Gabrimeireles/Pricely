@@ -1090,6 +1090,9 @@ export async function fetchRegionOffers(
     sort?: string;
     page?: number;
     pageSize?: number;
+    latitude?: number;
+    longitude?: number;
+    coverageRadiusKm?: number;
   },
 ) {
   const searchParams = new URLSearchParams();

@@ -27,6 +27,9 @@ type PublicOfferQuery = {
   sort?: string;
   page?: string;
   pageSize?: string;
+  latitude?: number;
+  longitude?: number;
+  coverageRadiusKm?: number;
 };
 
 @Injectable()
@@ -71,6 +74,35 @@ export class PublicPricingService {
       ? await this.buildTextSearchWhere(normalizedQuery, region.id)
       : undefined;
 
+    // Proximity filter: resolve establishments within coverageRadiusKm
+    let nearbyEstablishmentIds: string[] | undefined;
+    if (
+      query.latitude !== undefined &&
+      query.longitude !== undefined &&
+      query.coverageRadiusKm !== undefined
+    ) {
+      const allEstablishments = await this.prisma.establishment.findMany({
+        where: { regionId: region.id, isActive: true },
+        select: { id: true, latitude: true, longitude: true },
+      });
+      nearbyEstablishmentIds = allEstablishments
+        .filter((e) => e.latitude !== null && e.longitude !== null)
+        .filter(
+          (e) =>
+            this.distanceInKm(
+              query.latitude!,
+              query.longitude!,
+              Number(e.latitude),
+              Number(e.longitude),
+            ) <= query.coverageRadiusKm!,
+        )
+        .map((e) => e.id);
+      // If no establishments matched, use a sentinel so the query returns nothing
+      if (nearbyEstablishmentIds.length === 0) {
+        nearbyEstablishmentIds = ['__no_match__'];
+      }
+    }
+
     const offers = await this.prisma.productOffer.findMany({
       where: {
         isActive: true,
@@ -79,6 +111,7 @@ export class PublicPricingService {
         establishment: {
           isActive: true,
           regionId: region.id,
+          ...(nearbyEstablishmentIds ? { id: { in: nearbyEstablishmentIds } } : {}),
           ...(normalizedStore
             ? {
                 unitName: {
@@ -713,5 +746,21 @@ export class PublicPricingService {
         'pt-BR',
       );
     });
+  }
+
+  private distanceInKm(
+    originLat: number,
+    originLng: number,
+    destLat: number,
+    destLng: number,
+  ) {
+    const R = 6371;
+    const toRad = (v: number) => (v * Math.PI) / 180;
+    const dLat = toRad(destLat - originLat);
+    const dLng = toRad(destLng - originLng);
+    const h =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(originLat)) * Math.cos(toRad(destLat)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
   }
 }

@@ -15,11 +15,11 @@ import {
 import { StatusBadge } from '@/components/design-system';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CoverageMap } from '@/components/shopper/coverage-map';
 import { OfferCard } from '@/components/shopper/offer-card';
+import { StoreMap, type StoreMapEstablishment } from '@/components/shopper/store-map';
 import { SectionTitle } from '@/components/shopper/section';
 import { StatCard } from '@/components/shopper/stat-card';
-import { fetchRegionOffers } from '@/app/api';
+import { fetchRegionOffers, previewLocationCoverage } from '@/app/api';
 import { usePricely } from '@/app/pricely-context';
 import type { Offer } from '@/app/shopper-data';
 
@@ -32,9 +32,18 @@ function priceStr(n: number) {
 export function HomePage() {
   const navigate = useNavigate();
   const { city, radius, openCoverage } = useLocationCtx();
-  const { lists, cityId, cities } = usePricely();
+  const { lists, cityId, cities, locationPreferences, accessToken } = usePricely();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [storeCount, setStoreCount] = useState(city.stores);
+  const [mapEstablishments, setMapEstablishments] = useState<StoreMapEstablishment[]>([]);
+
+  const activeCity = cities.find((c) => c.id === cityId) ?? cities[0];
+  const activeLocation = locationPreferences.find(
+    (p) => p.isDefault && p.regionSlug === cityId,
+  ) ?? null;
+  const mapCenter = activeLocation?.latitude && activeLocation?.longitude
+    ? { lat: activeLocation.latitude, lng: activeLocation.longitude }
+    : null;
 
   useEffect(() => {
     const regionSlug = cityId ?? cities[0]?.id;
@@ -59,6 +68,30 @@ export function HomePage() {
       })
       .catch(() => {});
   }, [cityId, cities]);
+
+  useEffect(() => {
+    if (!activeCity || !accessToken) return;
+    previewLocationCoverage(accessToken, {
+      regionId: activeCity.regionId ?? activeCity.id,
+      latitude: activeLocation?.latitude ?? undefined,
+      longitude: activeLocation?.longitude ?? undefined,
+      coverageRadiusKm: radius,
+    })
+      .then((r) => {
+        setMapEstablishments(
+          r.establishments.map((e) => ({
+            id: e.id,
+            brandName: e.brandName,
+            unitName: e.unitName,
+            neighborhood: e.neighborhood,
+            distanceKm: e.distanceKm,
+            latitude: e.latitude,
+            longitude: e.longitude,
+          })),
+        );
+      })
+      .catch(() => {});
+  }, [activeCity?.id, activeLocation?.latitude, activeLocation?.longitude, radius, accessToken]);
 
   const latestList = lists[0];
   const savings = latestList?.expectedSavings ?? 0;
@@ -202,7 +235,7 @@ export function HomePage() {
               </div>
               <StatusBadge tone="location">Raio {radius} km</StatusBadge>
             </div>
-            <CoverageMap height={150} radiusKm={radius} stores={storeCount} interactive={false} />
+            <StoreMap height={150} center={mapCenter} radiusKm={radius} establishments={mapEstablishments} />
             <Button variant="outline" onClick={openCoverage} className="mt-3 w-full rounded-xl text-primary">
               <MapPinIcon className="size-[15px]" /> Ver mapa completo
             </Button>

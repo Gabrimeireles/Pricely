@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2Icon, SearchIcon, ShieldCheckIcon } from 'lucide-react';
+import { CheckCircle2Icon, MapPinIcon, SearchIcon, ShieldCheckIcon, XIcon } from 'lucide-react';
 
 import { StatusBadge } from '@/components/design-system';
 import { Button } from '@/components/ui/button';
@@ -78,14 +78,20 @@ function OfferDetail({ offer, onClose }: { offer: Offer; onClose: () => void }) 
 
 export function OffersPage() {
   const { city, radius } = useLocationCtx();
-  const { cityId, cities } = usePricely();
+  const { cityId, cities, locationPreferences } = usePricely();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [cat, setCat] = useState('Todas');
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(true);
+  const [locationFilter, setLocationFilter] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  const activeLocation = locationPreferences.find(
+    (p) => p.isDefault && p.regionSlug === cityId,
+  ) ?? null;
+  const hasCoords = !!(activeLocation?.latitude && activeLocation?.longitude);
 
   useEffect(() => {
     const regionSlug = cityId ?? cities[0]?.id;
@@ -95,10 +101,15 @@ export function OffersPage() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    const useLocationFilter = locationFilter && hasCoords;
+
     setLoading(true);
     fetchRegionOffers(regionSlug, {
       pageSize: 100,
       category: cat !== 'Todas' ? cat : undefined,
+      latitude: useLocationFilter ? activeLocation!.latitude! : undefined,
+      longitude: useLocationFilter ? activeLocation!.longitude! : undefined,
+      coverageRadiusKm: useLocationFilter ? radius : undefined,
     })
       .then((r) => {
         if (controller.signal.aborted) return;
@@ -126,7 +137,7 @@ export function OffersPage() {
       });
 
     return () => controller.abort();
-  }, [cityId, cities, cat]);
+  }, [cityId, cities, cat, locationFilter, hasCoords, radius]);
 
   const filtered = offers.filter((o) => {
     return !search || o.title.toLowerCase().includes(search.toLowerCase()) || o.store.toLowerCase().includes(search.toLowerCase());
@@ -138,7 +149,7 @@ export function OffersPage() {
     <div>
       <PageHead
         title="Ofertas"
-        subtitle={`Comparadas por nota fiscal em ${city.name} · raio de ${radius} km`}
+        subtitle={`Comparadas por nota fiscal em ${city.name} · raio de ${radius} km${locationFilter && hasCoords ? ` · filtradas por localização` : ''}`}
         actions={
           <div className="relative">
             <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -152,25 +163,44 @@ export function OffersPage() {
         }
       />
 
-      {allCats.length > 1 && (
-        <div className="mb-5 flex flex-wrap gap-2">
-          {allCats.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCat(c)}
-              className={cn(
-                'h-[34px] rounded-full border px-3.5 text-[13.5px] font-semibold transition-colors',
-                cat === c
-                  ? 'border-[var(--ds-primary-border)] bg-[var(--ds-primary-soft)] text-primary'
-                  : 'border-border bg-card text-muted-foreground hover:border-[var(--ds-neutral-border)]',
-              )}
-            >
-              {c === 'Todas' ? 'Todas' : categoryLabel(c)}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="mb-5 flex flex-wrap gap-2">
+        {hasCoords && (
+          <button
+            type="button"
+            onClick={() => setLocationFilter((v) => !v)}
+            className={cn(
+              'flex h-[34px] items-center gap-1.5 rounded-full border px-3.5 text-[13.5px] font-semibold transition-colors',
+              locationFilter
+                ? 'border-[var(--ds-primary-border)] bg-[var(--ds-primary-soft)] text-primary'
+                : 'border-border bg-card text-muted-foreground hover:border-[var(--ds-neutral-border)]',
+            )}
+          >
+            <MapPinIcon className="size-3.5" />
+            Lojas no raio de {radius} km
+            {locationFilter && (
+              <XIcon
+                className="size-3.5"
+                onClick={(e) => { e.stopPropagation(); setLocationFilter(false); }}
+              />
+            )}
+          </button>
+        )}
+        {allCats.length > 1 && allCats.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCat(c)}
+            className={cn(
+              'h-[34px] rounded-full border px-3.5 text-[13.5px] font-semibold transition-colors',
+              cat === c
+                ? 'border-[var(--ds-primary-border)] bg-[var(--ds-primary-soft)] text-primary'
+                : 'border-border bg-card text-muted-foreground hover:border-[var(--ds-neutral-border)]',
+            )}
+          >
+            {c === 'Todas' ? 'Todas' : categoryLabel(c)}
+          </button>
+        ))}
+      </div>
 
       <Card className="mb-5 flex items-center gap-3 rounded-2xl p-4 px-5">
         <ShieldCheckIcon className="size-[18px] text-[var(--ds-savings)]" />

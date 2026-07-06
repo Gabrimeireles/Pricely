@@ -16,7 +16,14 @@ export class PublicPricingController {
     @Query('sort') sort?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('latitude') latitudeRaw?: string,
+    @Query('longitude') longitudeRaw?: string,
+    @Query('coverageRadiusKm') coverageRadiusKmRaw?: string,
   ) {
+    const latitude = latitudeRaw !== undefined ? parseFloat(latitudeRaw) : undefined;
+    const longitude = longitudeRaw !== undefined ? parseFloat(longitudeRaw) : undefined;
+    const coverageRadiusKm = coverageRadiusKmRaw !== undefined ? parseFloat(coverageRadiusKmRaw) : undefined;
+
     return this.publicPricingService.listRegionOffers(regionSlug, {
       query,
       store,
@@ -25,6 +32,9 @@ export class PublicPricingController {
       sort,
       page,
       pageSize,
+      latitude: isNaN(latitude!) ? undefined : latitude,
+      longitude: isNaN(longitude!) ? undefined : longitude,
+      coverageRadiusKm: isNaN(coverageRadiusKm!) ? undefined : coverageRadiusKm,
     });
   }
 
