@@ -16,7 +16,7 @@ const MAX_RADIUS = RADII[RADII.length - 1];
 
 export function StoresPage() {
   const navigate = useNavigate();
-  const { city, radius, openCoverage, setRadius, locationSource, openLocationPrompt } = useLocationCtx();
+  const { city, radius, openCoverage, setRadius, locationSource, locationLabel, postalCode, openLocationPrompt } = useLocationCtx();
   const { cityId, cities, locationPreferences, accessToken } = usePricely();
   const [establishments, setEstablishments] = useState<StoreMapEstablishment[]>([]);
   const [storeCount, setStoreCount] = useState(city.stores);
@@ -70,7 +70,10 @@ export function StoresPage() {
     <div>
       <PageHead
         title="Lojas"
-        subtitle={`${storeCount} loja${storeCount !== 1 ? 's' : ''} ativa${storeCount !== 1 ? 's' : ''} em ${city.name} · raio de ${radius} km`}
+        subtitle={(() => {
+          const loc = locationLabel ?? (postalCode ? `CEP ${postalCode.replace(/\D/g,'').replace(/(\d{5})(\d{3})/,'$1-$2')}` : city.name);
+          return `${storeCount} loja${storeCount !== 1 ? 's' : ''} ativa${storeCount !== 1 ? 's' : ''} em ${loc} · raio de ${radius} km`;
+        })()}
         actions={
           <Button variant="outline" onClick={openCoverage}>
             <MapPinIcon className="size-[15px]" /> Mapa completo

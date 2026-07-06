@@ -48,22 +48,32 @@ export function StoreMap({ height = 360, center, radiusKm, establishments }: Pro
           typeof s.latitude === 'number' && typeof s.longitude === 'number',
       );
 
-      // Default center: Sao Paulo
-      const defaultCenter: [number, number] = [-23.55052, -46.633308];
+      // Zoom calibrated to show the full radius circle on screen
+      const zoomForRadius = (km: number) => {
+        if (km <= 3) return 14;
+        if (km <= 5) return 13;
+        if (km <= 10) return 12;
+        if (km <= 20) return 11;
+        return 10;
+      };
 
-      const initialCenter: [number, number] =
-        center
-          ? [center.lat, center.lng]
-          : storesWithCoords.length > 0
-          ? [
-              storesWithCoords.reduce((s, e) => s + e.latitude, 0) / storesWithCoords.length,
-              storesWithCoords.reduce((s, e) => s + e.longitude, 0) / storesWithCoords.length,
-            ]
-          : defaultCenter;
+      // Center on user location; fall back to store centroid if no GPS
+      const storeCentroid: [number, number] | null = storesWithCoords.length > 0
+        ? [
+            storesWithCoords.reduce((s, e) => s + e.latitude, 0) / storesWithCoords.length,
+            storesWithCoords.reduce((s, e) => s + e.longitude, 0) / storesWithCoords.length,
+          ]
+        : null;
+
+      const initialCenter: [number, number] = center
+        ? [center.lat, center.lng]
+        : storeCentroid ?? [-15.77972, -47.92972]; // Brasília as geographic center of Brazil
+
+      const initialZoom = center ? zoomForRadius(radiusKm) : storeCentroid ? 12 : 5;
 
       const map = L.map(containerRef.current, {
         center: initialCenter,
-        zoom: center ? 13 : 12,
+        zoom: initialZoom,
         zoomControl: true,
         attributionControl: true,
       });
@@ -128,13 +138,10 @@ export function StoreMap({ height = 360, center, radiusKm, establishments }: Pro
           `);
       });
 
-      // Fit bounds to include user + all stores
-      if (storesWithCoords.length > 0 || center) {
+      // When no user location: fit bounds to visible stores
+      if (!center && storesWithCoords.length > 1) {
         const points: [number, number][] = storesWithCoords.map((s) => [s.latitude, s.longitude]);
-        if (center) points.push([center.lat, center.lng]);
-        if (points.length > 1) {
-          map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 14 });
-        }
+        map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 13 });
       }
     });
 
