@@ -10,7 +10,6 @@ import {
   HomeIcon,
   ListChecksIcon,
   MapPinIcon,
-  NavigationIcon,
   ReceiptTextIcon,
   SettingsIcon,
   SparklesIcon,
@@ -49,6 +48,8 @@ type LocationCtx = {
   radius: number;
   locationSource: LocationSource;
   postalCode: string | null | undefined;
+  locationLabel: string | null;
+  storeCount: number | null;
   setCity: (c: City) => void;
   setRadius: (km: number) => void;
   openCity: () => void;
@@ -233,23 +234,31 @@ function formatCEPDisplay(cep: string | null | undefined) {
   return d.length === 8 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
 }
 
-function LocationStatusLabel({ source, postalCode, onAdd }: { source: LocationSource; postalCode?: string | null; onAdd: () => void }) {
+function LocationStatusLabel({
+  source,
+  postalCode,
+  onAdd,
+}: {
+  source: LocationSource;
+  postalCode?: string | null;
+  onAdd: () => void;
+}) {
   const cepLabel = formatCEPDisplay(postalCode);
-  if (source === 'browser_geolocation') {
+
+  if (source) {
+    const label = cepLabel ? `CEP ${cepLabel}` : 'Localização ativa';
     return (
-      <span className="hidden items-center gap-1.5 text-sm text-[var(--ds-savings)] md:inline-flex">
-        <NavigationIcon className="size-3.5" />
-        {cepLabel ? `GPS · CEP ${cepLabel}` : 'GPS ativo'}
-      </span>
+      <button
+        type="button"
+        onClick={onAdd}
+        className="hidden items-center gap-1.5 text-sm text-[var(--ds-savings)] underline-offset-2 hover:underline md:inline-flex"
+      >
+        <MapPinIcon className="size-3.5" />
+        {label}
+      </button>
     );
   }
-  if (source === 'postal_code_fallback') {
-    return (
-      <span className="hidden text-sm text-muted-foreground md:inline">
-        {cepLabel ? `CEP ${cepLabel}` : 'CEP cadastrado'}
-      </span>
-    );
-  }
+
   return (
     <button
       type="button"
@@ -263,12 +272,14 @@ function LocationStatusLabel({ source, postalCode, onAdd }: { source: LocationSo
 
 function Topbar() {
   const navigate = useNavigate();
-  const { city, radius, setRadius, locationSource, postalCode, openCity, openLocationPrompt } = useLocationCtx();
+  const { city, radius, setRadius, locationSource, postalCode, locationLabel, storeCount, openCity, openLocationPrompt } = useLocationCtx();
   const { signOut, currentUser, isAuthenticated, accessToken } = usePricely();
 
   const initials = currentUser?.displayName
     ? currentUser.displayName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
     : 'U';
+
+  const cityDisplay = locationLabel ?? city.name;
 
   function handleSignOut() {
     signOut();
@@ -278,15 +289,18 @@ function Topbar() {
   return (
     <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3.5 border-b border-border bg-card px-7 py-3">
       <Button variant="outline" onClick={openCity} className="h-[42px] gap-2 rounded-xl text-[15px] font-semibold">
-        <MapPinIcon className="size-[17px] text-primary" /> {city.name}
+        <MapPinIcon className="size-[17px] text-primary" /> {cityDisplay}
         <ChevronDownIcon className="size-4 text-muted-foreground" />
       </Button>
       <div className="hidden md:block">
         <RadiusSelect radius={radius} onChange={setRadius} />
       </div>
       <LocationStatusLabel source={locationSource} postalCode={postalCode} onAdd={openLocationPrompt} />
-      {locationSource && (
-        <StatusBadge tone="savings" icon={CheckCircle2Icon} label="Cobertura ativa" />
+      {locationSource && storeCount !== null && storeCount > 0 && (
+        <StatusBadge tone="savings" icon={CheckCircle2Icon} label={`${storeCount} loja${storeCount !== 1 ? 's' : ''} próxima${storeCount !== 1 ? 's' : ''}`} />
+      )}
+      {locationSource && storeCount === 0 && (
+        <StatusBadge tone="warning" icon={CheckCircle2Icon} label="Sem lojas próximas" />
       )}
 
       <div className="ml-auto flex items-center gap-3">
@@ -492,12 +506,19 @@ export function ShopperShell() {
   function closeLocationPrompt() {
     setLocationPromptOpen(false);
     setCepMode(false);
+  }
+
+  function dismissLocationPrompt() {
+    setLocationPromptOpen(false);
+    setCepMode(false);
     if (cityId) setDismissedForCity(cityId);
   }
 
   const cityItems = cities.map(regionToCity);
   const locationSource: LocationSource = activeLocation?.locationSource ?? null;
   const postalCode = activeLocation?.postalCode ?? null;
+  const locationLabel = activeLocation?.label && activeLocation.label !== 'Local atual' ? activeLocation.label : null;
+  const storeCount = activeLocation?.activeEstablishmentCount ?? null;
 
   const ctx = useMemo<LocationCtx>(
     () => ({
@@ -505,13 +526,15 @@ export function ShopperShell() {
       radius,
       locationSource,
       postalCode,
+      locationLabel,
+      storeCount,
       setCity: handleCityPick,
       setRadius: handleRadiusChange,
       openCity: () => setCityOpen(true),
       openCoverage: () => setCoverageOpen(true),
       openLocationPrompt: () => { setCepMode(false); setLocationPromptOpen(true); },
     }),
-    [city, radius, locationSource, postalCode, handleCityPick, handleRadiusChange],
+    [city, radius, locationSource, postalCode, locationLabel, storeCount, handleCityPick, handleRadiusChange],
   );
 
   return (
@@ -535,11 +558,13 @@ export function ShopperShell() {
               <MapPinIcon className="size-6 text-primary" />
             </div>
             <DialogTitle className="font-heading text-lg">
-              {cepMode ? 'Informe seu CEP' : 'Encontrar lojas próximas'}
+              {cepMode ? 'Informe seu CEP' : activeLocation ? 'Atualizar localização' : 'Encontrar lojas próximas'}
             </DialogTitle>
             {!cepMode && (
               <DialogDescription>
-                Compartilhe sua localização para ver preços e lojas no seu raio.
+                {activeLocation
+                  ? 'Você pode atualizar sua localização a qualquer momento.'
+                  : 'Informe onde você está para ver preços e lojas no seu raio.'}
               </DialogDescription>
             )}
           </DialogHeader>
@@ -552,7 +577,7 @@ export function ShopperShell() {
           ) : (
             <div className="mt-2 flex flex-col gap-2">
               <Button onClick={requestBrowserLocation} disabled={locating} className="w-full">
-                {locating ? 'Detectando…' : 'Usar minha localização (GPS)'}
+                {locating ? 'Detectando…' : 'Detectar localização automaticamente'}
               </Button>
               <Button
                 variant="outline"
@@ -569,13 +594,15 @@ export function ShopperShell() {
               >
                 Escolher cidade manualmente
               </Button>
-              <button
-                type="button"
-                onClick={closeLocationPrompt}
-                className="text-[13px] text-muted-foreground hover:text-foreground"
-              >
-                Agora não
-              </button>
+              {!activeLocation && (
+                <button
+                  type="button"
+                  onClick={dismissLocationPrompt}
+                  className="text-[13px] text-muted-foreground hover:text-foreground"
+                >
+                  Agora não
+                </button>
+              )}
             </div>
           )}
         </DialogContent>

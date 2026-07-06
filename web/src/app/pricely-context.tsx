@@ -37,6 +37,27 @@ import {
 import { profileSnapshot, supportedCities } from './mock-data';
 import type { OptimizationModeId, ShoppingList } from './types';
 
+async function nominatimReverseLabel(lat: number, lng: number): Promise<{ cityLabel: string | null; postalCode: string | null }> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+      { headers: { 'User-Agent': 'Pricely/1.0 (pricely.grmeireles.dev)' } },
+    );
+    if (!res.ok) return { cityLabel: null, postalCode: null };
+    const data = await res.json() as { address?: Record<string, string> };
+    const addr = data.address ?? {};
+    const city = addr['city'] || addr['town'] || addr['village'] || addr['municipality'] || '';
+    const stateIso = addr['ISO3166-2-lvl4'] ?? '';
+    const stateCode = stateIso.split('-')[1] ?? '';
+    const cityLabel = city ? (stateCode ? `${city} · ${stateCode}` : city) : null;
+    const rawCep = (addr['postcode'] ?? '').replace(/\D/g, '');
+    const postalCode = rawCep.length === 8 ? rawCep : null;
+    return { cityLabel, postalCode };
+  } catch {
+    return { cityLabel: null, postalCode: null };
+  }
+}
+
 type SessionUser = {
   id: string;
   email: string;
@@ -567,24 +588,25 @@ export function PricelyProvider({ children }: PropsWithChildren) {
           throw new Error('Escolha uma cidade antes de salvar a localizacao.');
         }
 
-        // Detect the actual region from GPS coordinates
+        // Resolve city label + CEP + nearest region in parallel
+        const [{ cityLabel, postalCode: detectedCep }, nearestRegion] = await Promise.all([
+          nominatimReverseLabel(input.latitude, input.longitude),
+          fetchNearestRegion(token, input.latitude, input.longitude).catch(() => null),
+        ]);
+
         let resolvedRegionId = activeCity.regionId ?? activeCity.id;
         let resolvedRegionSlug = cityId;
-        try {
-          const nearest = await fetchNearestRegion(token, input.latitude, input.longitude);
-          if (nearest) {
-            resolvedRegionId = nearest.id;
-            resolvedRegionSlug = nearest.slug;
-          }
-        } catch {
-          // fall back to account city
+        if (nearestRegion) {
+          resolvedRegionId = nearestRegion.id;
+          resolvedRegionSlug = nearestRegion.slug;
         }
 
         const saved = await createLocationPreference(token, {
           regionId: resolvedRegionId,
-          label: input.label ?? 'Local atual',
+          label: cityLabel ?? input.label ?? 'Localização atual',
           latitude: input.latitude,
           longitude: input.longitude,
+          postalCode: detectedCep ?? undefined,
           coverageRadiusKm: input.coverageRadiusKm ?? 5,
           isDefault: true,
           locationSource: 'browser_geolocation',
@@ -599,7 +621,6 @@ export function PricelyProvider({ children }: PropsWithChildren) {
                 : entry,
             ),
         ]);
-        // Auto-switch city context if GPS resolved to a different region
         if (resolvedRegionSlug && resolvedRegionSlug !== cityId) {
           void setCityId(resolvedRegionSlug);
         }
