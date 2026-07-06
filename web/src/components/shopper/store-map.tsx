@@ -50,11 +50,11 @@ export function StoreMap({ height = 360, center, radiusKm, establishments }: Pro
 
       // Zoom calibrated to show the full radius circle on screen
       const zoomForRadius = (km: number) => {
-        if (km <= 3) return 14;
-        if (km <= 5) return 13;
-        if (km <= 10) return 12;
-        if (km <= 20) return 11;
-        return 10;
+        if (km <= 3) return 15;
+        if (km <= 5) return 14;
+        if (km <= 10) return 13;
+        if (km <= 20) return 12;
+        return 11;
       };
 
       // Center on user location; fall back to store centroid if no GPS

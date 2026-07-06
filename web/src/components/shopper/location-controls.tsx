@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { CheckCircle2Icon, MapPinIcon } from 'lucide-react';
 
 import { StatusBadge } from '@/components/design-system';
@@ -17,9 +18,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { previewLocationCoverage } from '@/app/api';
+import { usePricely } from '@/app/pricely-context';
 import { CITIES, RADII, type City } from '@/app/shopper-data';
 
-import { CoverageMap } from './coverage-map';
+import { StoreMap, type StoreMapEstablishment } from './store-map';
 
 export function RadiusSelect({
   radius,
@@ -117,21 +120,57 @@ export function CoverageDialog({
   city: City;
   radius: number;
 }) {
+  const { locationPreferences, accessToken, cityId, cities } = usePricely();
+  const [establishments, setEstablishments] = useState<StoreMapEstablishment[]>([]);
+  const [storeCount, setStoreCount] = useState(city.stores);
+
+  const activeCity = cities.find((c) => c.id === cityId) ?? cities[0];
+  const activeLocation = locationPreferences.find(
+    (p) => p.isDefault && p.regionSlug === cityId,
+  ) ?? null;
+  const mapCenter = activeLocation?.latitude && activeLocation?.longitude
+    ? { lat: activeLocation.latitude, lng: activeLocation.longitude }
+    : null;
+
+  useEffect(() => {
+    if (!open || !activeCity || !accessToken) return;
+    previewLocationCoverage(accessToken, {
+      regionId: activeCity.regionId ?? activeCity.id,
+      latitude: activeLocation?.latitude ?? undefined,
+      longitude: activeLocation?.longitude ?? undefined,
+      coverageRadiusKm: radius,
+    })
+      .then((r) => {
+        setStoreCount(r.activeEstablishmentCount);
+        setEstablishments(
+          r.establishments.map((e) => ({
+            id: e.id,
+            brandName: e.brandName,
+            unitName: e.unitName,
+            neighborhood: e.neighborhood,
+            distanceKm: e.distanceKm,
+            latitude: e.latitude,
+            longitude: e.longitude,
+          })),
+        );
+      })
+      .catch(() => {});
+  }, [open, activeCity?.id, activeLocation?.latitude, activeLocation?.longitude, radius, accessToken]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl rounded-3xl">
         <DialogHeader>
           <DialogTitle className="font-heading text-lg">Cobertura — {city.name}</DialogTitle>
           <DialogDescription>
-            {city.stores} lojas ativas no raio de {radius} km
+            {storeCount} loja{storeCount !== 1 ? 's' : ''} ativa{storeCount !== 1 ? 's' : ''} no raio de {radius} km
           </DialogDescription>
         </DialogHeader>
-        <CoverageMap height={420} radiusKm={radius} stores={city.stores} />
-        <div className="grid grid-cols-3 gap-3">
+        <StoreMap height={420} center={mapCenter} radiusKm={radius} establishments={establishments} />
+        <div className="grid grid-cols-2 gap-3">
           {([
-            ['Cobertura da área', '100%', 'text-[var(--ds-savings)]'],
-            ['Lojas no raio', `${city.stores} lojas`, 'text-[var(--ds-location)]'],
-            ['Atualizado', 'há 15 min', 'text-foreground'],
+            ['Lojas no raio', `${storeCount} loja${storeCount !== 1 ? 's' : ''}`, 'text-[var(--ds-location)]'],
+            ['Raio atual', `${radius} km`, 'text-foreground'],
           ] as const).map(([k, v, c]) => (
             <Card key={k} className="rounded-2xl p-3.5">
               <div className="text-xs text-muted-foreground">{k}</div>

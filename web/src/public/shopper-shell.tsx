@@ -417,7 +417,9 @@ export function ShopperShell() {
   const [locationPromptOpen, setLocationPromptOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [cepMode, setCepMode] = useState(false);
-  const [dismissedForCity, setDismissedForCity] = useState<string | null>(null);
+  const [dismissedForCity, setDismissedForCity] = useState<string | null>(() => {
+    try { return sessionStorage.getItem('pricely_dismissed_loc_city'); } catch { return null; }
+  });
 
   // Prompt for city if none is set
   useEffect(() => {
@@ -433,9 +435,11 @@ export function ShopperShell() {
     }
   }, [isBootstrapping, isAuthenticated, cityId, activeLocation, dismissedForCity]);
 
-  // Silently refresh GPS in background if permission was previously granted
+  // Silently detect GPS only when there's no saved location with coordinates
   useEffect(() => {
     if (!isAuthenticated || isBootstrapping || !cityId) return;
+    // Skip if the user already has a location with GPS coordinates saved
+    if (activeLocation?.latitude && activeLocation?.longitude) return;
     if (!navigator.geolocation || !navigator.permissions) return;
     void navigator.permissions.query({ name: 'geolocation' }).then((status) => {
       if (status.state !== 'granted') return;
@@ -511,7 +515,10 @@ export function ShopperShell() {
   function dismissLocationPrompt() {
     setLocationPromptOpen(false);
     setCepMode(false);
-    if (cityId) setDismissedForCity(cityId);
+    if (cityId) {
+      setDismissedForCity(cityId);
+      try { sessionStorage.setItem('pricely_dismissed_loc_city', cityId); } catch { /* ignore */ }
+    }
   }
 
   const cityItems = cities.map(regionToCity);
