@@ -3,6 +3,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import {
   type CoveragePreviewContract,
   type CoveragePreviewRequest,
+  type NearestRegionContract,
   type UpsertUserLocationPreferenceRequest,
   type UserLocationPreferenceContract,
 } from '../../common/contracts';
@@ -10,7 +11,8 @@ import { PrismaService } from '../../persistence/prisma.service';
 
 const DEFAULT_COVERAGE_RADIUS_KM = 5;
 const MIN_COVERAGE_RADIUS_KM = 1;
-const MAX_COVERAGE_RADIUS_KM = 25;
+const MAX_COVERAGE_RADIUS_KM = 30;
+const NOMINATIM_UA = 'Pricely/1.0 (pricely.grmeireles.dev)';
 
 @Injectable()
 export class LocationsService {
@@ -47,7 +49,27 @@ export class LocationsService {
       throw new NotFoundException(`Region ${input.regionId} was not found`);
     }
 
-    const preview = await this.previewCoverage(input);
+    // Enrich: GPS coords → CEP via reverse geocoding
+    let enrichedPostalCode = input.postalCode;
+    let enrichedLatitude = input.latitude;
+    let enrichedLongitude = input.longitude;
+
+    if (input.latitude !== undefined && input.longitude !== undefined && !input.postalCode) {
+      const cep = await this.reverseGeocodeCoordinates(input.latitude, input.longitude).catch(() => null);
+      if (cep) enrichedPostalCode = cep;
+    }
+
+    // Enrich: CEP → GPS coords via forward geocoding
+    if (input.postalCode && input.latitude === undefined) {
+      const coords = await this.geocodePostalCode(input.postalCode).catch(() => null);
+      if (coords) {
+        enrichedLatitude = coords.lat;
+        enrichedLongitude = coords.lng;
+      }
+    }
+
+    const enrichedInput = { ...input, latitude: enrichedLatitude, longitude: enrichedLongitude, postalCode: enrichedPostalCode };
+    const preview = await this.previewCoverage(enrichedInput);
     const shouldBeDefault = input.isDefault ?? true;
 
     const created = await this.prisma.$transaction(async (tx) => {
@@ -63,16 +85,16 @@ export class LocationsService {
           userId,
           regionId: input.regionId,
           label: input.label.trim(),
-          latitude: input.latitude,
-          longitude: input.longitude,
-          postalCode: input.postalCode,
+          latitude: enrichedLatitude,
+          longitude: enrichedLongitude,
+          postalCode: enrichedPostalCode,
           coverageRadiusKm:
             input.coverageRadiusKm ?? DEFAULT_COVERAGE_RADIUS_KM,
           activeEstablishmentCount: preview.activeEstablishmentCount,
           isDefault: shouldBeDefault,
           locationSource:
             input.locationSource ??
-            (input.latitude !== undefined && input.longitude !== undefined
+            (enrichedLatitude !== undefined && enrichedLongitude !== undefined
               ? 'manual'
               : 'postal_code_fallback'),
         },
@@ -83,6 +105,10 @@ export class LocationsService {
     });
 
     return this.toContract(created);
+  }
+
+  async nearestRegionForCoordinates(lat: number, lng: number): Promise<NearestRegionContract | null> {
+    return this.findNearestRegion(lat, lng);
   }
 
   async previewCoverage(
@@ -163,6 +189,52 @@ export class LocationsService {
       fallbackUsed: false,
       establishments: covered.slice(0, 12),
     };
+  }
+
+  private async geocodePostalCode(postalCode: string): Promise<{ lat: number; lng: number } | null> {
+    const cep = postalCode.replace(/\D/g, '');
+    const url = `https://nominatim.openstreetmap.org/search?postalcode=${cep}&countrycodes=BR&format=json&limit=1`;
+    const res = await fetch(url, { headers: { 'User-Agent': NOMINATIM_UA } });
+    if (!res.ok) return null;
+    const data = await res.json() as Array<{ lat: string; lon: string }>;
+    if (!data.length) return null;
+    return { lat: Number(data[0].lat), lng: Number(data[0].lon) };
+  }
+
+  private async reverseGeocodeCoordinates(lat: number, lng: number): Promise<string | null> {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+    const res = await fetch(url, { headers: { 'User-Agent': NOMINATIM_UA } });
+    if (!res.ok) return null;
+    const data = await res.json() as { address?: { postcode?: string } };
+    const raw = data.address?.postcode;
+    if (!raw) return null;
+    return raw.replace(/\D/g, '');
+  }
+
+  private async findNearestRegion(lat: number, lng: number): Promise<NearestRegionContract | null> {
+    const establishments = await this.prisma.establishment.findMany({
+      where: { latitude: { not: null }, longitude: { not: null } },
+      select: {
+        latitude: true,
+        longitude: true,
+        region: { select: { id: true, slug: true, name: true } },
+      },
+    });
+
+    if (!establishments.length) return null;
+
+    let nearest: (typeof establishments)[0] | null = null;
+    let minDist = Infinity;
+
+    for (const e of establishments) {
+      const d = this.distanceInKm(lat, lng, Number(e.latitude), Number(e.longitude));
+      if (d < minDist) {
+        minDist = d;
+        nearest = e;
+      }
+    }
+
+    return nearest?.region ?? null;
   }
 
   private assertLocationInput(input: UpsertUserLocationPreferenceRequest) {

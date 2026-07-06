@@ -1353,6 +1353,14 @@ export async function previewLocationCoverage(
   );
 }
 
+export async function fetchNearestRegion(token: string, lat: number, lng: number) {
+  return apiFetch<{ id: string; slug: string; name: string } | null>(
+    `/locations/nearest-region?lat=${lat}&lng=${lng}`,
+    {},
+    token,
+  );
+}
+
 export async function createLocationPreference(
   token: string,
   input: {

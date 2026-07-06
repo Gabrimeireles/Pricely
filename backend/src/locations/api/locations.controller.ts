@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Type } from 'class-transformer';
 import { IsBoolean, IsIn, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 import { type JwtUserPayload } from '../../auth/auth.types';
@@ -39,6 +40,16 @@ class UpsertLocationPreferenceDto {
   locationSource?: 'manual' | 'browser_geolocation' | 'postal_code_fallback';
 }
 
+class NearestRegionQueryDto {
+  @IsNumber()
+  @Type(() => Number)
+  lat!: number;
+
+  @IsNumber()
+  @Type(() => Number)
+  lng!: number;
+}
+
 class CoveragePreviewDto {
   @IsString()
   regionId!: string;
@@ -69,6 +80,11 @@ export class LocationsController {
   @Get()
   async list(@CurrentUser() user: JwtUserPayload) {
     return this.locationsService.listPreferences(user.sub);
+  }
+
+  @Get('nearest-region')
+  async nearestRegion(@Query() q: NearestRegionQueryDto) {
+    return this.locationsService.nearestRegionForCoordinates(q.lat, q.lng);
   }
 
   @Post()

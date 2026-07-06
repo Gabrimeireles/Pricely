@@ -48,6 +48,7 @@ type LocationCtx = {
   city: City;
   radius: number;
   locationSource: LocationSource;
+  postalCode: string | null | undefined;
   setCity: (c: City) => void;
   setRadius: (km: number) => void;
   openCity: () => void;
@@ -226,17 +227,27 @@ function NotificationBell({ accessToken }: { accessToken: string | null }) {
   );
 }
 
-function LocationStatusLabel({ source, onAdd }: { source: LocationSource; onAdd: () => void }) {
+function formatCEPDisplay(cep: string | null | undefined) {
+  if (!cep) return null;
+  const d = cep.replace(/\D/g, '');
+  return d.length === 8 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+}
+
+function LocationStatusLabel({ source, postalCode, onAdd }: { source: LocationSource; postalCode?: string | null; onAdd: () => void }) {
+  const cepLabel = formatCEPDisplay(postalCode);
   if (source === 'browser_geolocation') {
     return (
       <span className="hidden items-center gap-1.5 text-sm text-[var(--ds-savings)] md:inline-flex">
-        <NavigationIcon className="size-3.5" /> GPS ativo
+        <NavigationIcon className="size-3.5" />
+        {cepLabel ? `GPS · CEP ${cepLabel}` : 'GPS ativo'}
       </span>
     );
   }
   if (source === 'postal_code_fallback') {
     return (
-      <span className="hidden text-sm text-muted-foreground md:inline">CEP cadastrado</span>
+      <span className="hidden text-sm text-muted-foreground md:inline">
+        {cepLabel ? `CEP ${cepLabel}` : 'CEP cadastrado'}
+      </span>
     );
   }
   return (
@@ -252,7 +263,7 @@ function LocationStatusLabel({ source, onAdd }: { source: LocationSource; onAdd:
 
 function Topbar() {
   const navigate = useNavigate();
-  const { city, radius, setRadius, locationSource, openCity, openLocationPrompt } = useLocationCtx();
+  const { city, radius, setRadius, locationSource, postalCode, openCity, openLocationPrompt } = useLocationCtx();
   const { signOut, currentUser, isAuthenticated, accessToken } = usePricely();
 
   const initials = currentUser?.displayName
@@ -273,7 +284,7 @@ function Topbar() {
       <div className="hidden md:block">
         <RadiusSelect radius={radius} onChange={setRadius} />
       </div>
-      <LocationStatusLabel source={locationSource} onAdd={openLocationPrompt} />
+      <LocationStatusLabel source={locationSource} postalCode={postalCode} onAdd={openLocationPrompt} />
       {locationSource && (
         <StatusBadge tone="savings" icon={CheckCircle2Icon} label="Cobertura ativa" />
       )}
@@ -392,6 +403,7 @@ export function ShopperShell() {
   const [locationPromptOpen, setLocationPromptOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [cepMode, setCepMode] = useState(false);
+  const [dismissedForCity, setDismissedForCity] = useState<string | null>(null);
 
   // Prompt for city if none is set
   useEffect(() => {
@@ -400,12 +412,32 @@ export function ShopperShell() {
     }
   }, [isBootstrapping, isAuthenticated, cityId, cities.length]);
 
-  // Prompt for location permission once per city (when no preference exists)
+  // Prompt for location permission when no preference exists for the current city
   useEffect(() => {
-    if (!isBootstrapping && isAuthenticated && cityId && !activeLocation) {
+    if (!isBootstrapping && isAuthenticated && cityId && !activeLocation && dismissedForCity !== cityId) {
       setLocationPromptOpen(true);
     }
-  }, [isBootstrapping, isAuthenticated, cityId, activeLocation]);
+  }, [isBootstrapping, isAuthenticated, cityId, activeLocation, dismissedForCity]);
+
+  // Silently refresh GPS in background if permission was previously granted
+  useEffect(() => {
+    if (!isAuthenticated || isBootstrapping || !cityId) return;
+    if (!navigator.geolocation || !navigator.permissions) return;
+    void navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+      if (status.state !== 'granted') return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          void saveBrowserLocation({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            coverageRadiusKm: activeLocation?.coverageRadiusKm ?? radius,
+          });
+        },
+        () => {},
+        { enableHighAccuracy: false, maximumAge: 60_000, timeout: 5_000 },
+      );
+    });
+  }, [isAuthenticated, isBootstrapping, cityId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCityPick = useCallback((c: City) => {
     setCity(c);
@@ -460,23 +492,26 @@ export function ShopperShell() {
   function closeLocationPrompt() {
     setLocationPromptOpen(false);
     setCepMode(false);
+    if (cityId) setDismissedForCity(cityId);
   }
 
   const cityItems = cities.map(regionToCity);
   const locationSource: LocationSource = activeLocation?.locationSource ?? null;
+  const postalCode = activeLocation?.postalCode ?? null;
 
   const ctx = useMemo<LocationCtx>(
     () => ({
       city,
       radius,
       locationSource,
+      postalCode,
       setCity: handleCityPick,
       setRadius: handleRadiusChange,
       openCity: () => setCityOpen(true),
       openCoverage: () => setCoverageOpen(true),
       openLocationPrompt: () => { setCepMode(false); setLocationPromptOpen(true); },
     }),
-    [city, radius, locationSource, handleCityPick, handleRadiusChange],
+    [city, radius, locationSource, postalCode, handleCityPick, handleRadiusChange],
   );
 
   return (

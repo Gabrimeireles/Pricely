@@ -34,6 +34,12 @@ export interface CoveragePreviewRequest {
   coverageRadiusKm?: number;
 }
 
+export interface NearestRegionContract {
+  id: string;
+  slug: string;
+  name: string;
+}
+
 export interface CoveragePreviewContract {
   regionId: string;
   coverageRadiusKm: number;

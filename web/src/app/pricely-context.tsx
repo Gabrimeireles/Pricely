@@ -10,6 +10,7 @@ import {
 import {
   completeShoppingListCheckout,
   createLocationPreference,
+  fetchNearestRegion,
   previewLocationCoverage as previewLocationCoverageRequest,
   createShoppingList,
   fetchLocationPreferences,
@@ -566,8 +567,21 @@ export function PricelyProvider({ children }: PropsWithChildren) {
           throw new Error('Escolha uma cidade antes de salvar a localizacao.');
         }
 
+        // Detect the actual region from GPS coordinates
+        let resolvedRegionId = activeCity.regionId ?? activeCity.id;
+        let resolvedRegionSlug = cityId;
+        try {
+          const nearest = await fetchNearestRegion(token, input.latitude, input.longitude);
+          if (nearest) {
+            resolvedRegionId = nearest.id;
+            resolvedRegionSlug = nearest.slug;
+          }
+        } catch {
+          // fall back to account city
+        }
+
         const saved = await createLocationPreference(token, {
-          regionId: activeCity.regionId ?? activeCity.id,
+          regionId: resolvedRegionId,
           label: input.label ?? 'Local atual',
           latitude: input.latitude,
           longitude: input.longitude,
@@ -585,6 +599,10 @@ export function PricelyProvider({ children }: PropsWithChildren) {
                 : entry,
             ),
         ]);
+        // Auto-switch city context if GPS resolved to a different region
+        if (resolvedRegionSlug && resolvedRegionSlug !== cityId) {
+          void setCityId(resolvedRegionSlug);
+        }
         return saved;
       },
       savePostalCodeLocation: async (input) => {
