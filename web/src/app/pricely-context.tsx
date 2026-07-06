@@ -70,6 +70,7 @@ interface PricelyContextValue {
   cityId: string | null;
   setCityId: (cityId: string) => Promise<void>;
   cities: typeof supportedCities;
+  locationPreferencesLoaded: boolean;
   lists: ShoppingList[];
   selectedListId: string;
   setSelectedListId: (listId: string) => void;
@@ -193,6 +194,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
   const [locationPreferences, setLocationPreferences] = useState<
     UserLocationPreferenceResponse[]
   >([]);
+  const [locationPreferencesLoaded, setLocationPreferencesLoaded] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -346,6 +348,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         const mappedLists = shoppingLists.map(mapShoppingList);
         setProfile(mapProfile(user));
         setLocationPreferences(locations);
+        setLocationPreferencesLoaded(true);
         setCurrentUser({
           id: user.id,
           email: user.email,
@@ -354,7 +357,10 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         });
         setLists(mappedLists);
         setSelectedListId((current) => current || mappedLists[0]?.id || '');
-        setCityIdState(user.preferredRegionSlug ?? null);
+        // Prefer the most recently updated default location's region over preferredRegionSlug,
+        // so a GPS-detected city switch survives F5 even if updatePreferredRegion hasn't completed yet.
+        const defaultLoc = locations.find((l) => l.isDefault);
+        setCityIdState(defaultLoc?.regionSlug ?? user.preferredRegionSlug ?? null);
       } catch {
         if (!disposed) {
           setToken(null);
@@ -413,6 +419,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
       cityId,
       setCityId,
       cities,
+      locationPreferencesLoaded,
       lists,
       selectedListId,
       setSelectedListId,
@@ -439,6 +446,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
         setSelectedListId('');
         setOptimizationResults({});
         setLocationPreferences([]);
+        setLocationPreferencesLoaded(false);
         setProfile(emptyProfile());
         setCityIdState(null);
       },
@@ -710,6 +718,7 @@ export function PricelyProvider({ children }: PropsWithChildren) {
       isBootstrapping,
       lists,
       locationPreferences,
+      locationPreferencesLoaded,
       optimizationResults,
       preferredMode,
       profile,

@@ -382,6 +382,7 @@ export function ShopperShell() {
     cityId,
     cities,
     locationPreferences,
+    locationPreferencesLoaded,
     saveBrowserLocation,
     savePostalCodeLocation,
     setCityId,
@@ -428,12 +429,11 @@ export function ShopperShell() {
     }
   }, [isBootstrapping, isAuthenticated, cityId, cities.length]);
 
-  // Prompt for location permission when no preference exists for the current city
+  // Prompt for location permission only after preferences are fully loaded
   useEffect(() => {
-    if (!isBootstrapping && isAuthenticated && cityId && !activeLocation && dismissedForCity !== cityId) {
-      setLocationPromptOpen(true);
-    }
-  }, [isBootstrapping, isAuthenticated, cityId, activeLocation, dismissedForCity]);
+    if (!locationPreferencesLoaded || !isAuthenticated || !cityId || activeLocation || dismissedForCity === cityId) return;
+    setLocationPromptOpen(true);
+  }, [locationPreferencesLoaded, isAuthenticated, cityId, activeLocation, dismissedForCity]);
 
   // Silently detect GPS only when there's no saved location with coordinates
   useEffect(() => {
