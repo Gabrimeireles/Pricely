@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { OptimizationModeId } from '@/app/types';
 import {
   AlertTriangleIcon,
   ArrowRightIcon,
@@ -129,13 +130,21 @@ function ItemRow({ d, open, onToggle }: { d: ItemData; open: boolean; onToggle: 
   );
 }
 
+const OPT_MODES: { id: OptimizationModeId; label: string; desc: string }[] = [
+  { id: 'local_unique', label: 'Mais barata próxima', desc: '1 loja dentro do seu raio' },
+  { id: 'local_multi', label: 'Distribuída próxima', desc: 'Várias lojas dentro do seu raio' },
+  { id: 'global_unique', label: 'Mais barata cidade', desc: '1 loja em qualquer lugar da cidade' },
+  { id: 'global_multi', label: 'Distribuída cidade', desc: 'Várias lojas em toda a cidade' },
+];
+
 export function OptimizationResultPage() {
   const navigate = useNavigate();
   const { listId } = useParams<{ listId: string }>();
   const { radius } = useLocationCtx();
-  const { optimizationResults, loadLatestOptimization, runOptimization, preferredMode, lists } = usePricely();
+  const { optimizationResults, loadLatestOptimization, runOptimization, preferredMode, locationPreferences, lists } = usePricely();
   const [open, setOpen] = useState(-1);
   const [loading, setLoading] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<OptimizationModeId>(preferredMode);
 
   useEffect(() => {
     if (!listId) return;
@@ -145,11 +154,16 @@ export function OptimizationResultPage() {
     }
   }, [listId]);
 
-  const handleRun = async () => {
+  const activeLocationPref = locationPreferences.find((p) => p.isDefault && p.latitude && p.longitude) ?? null;
+
+  const handleRun = async (mode = selectedMode) => {
     if (!listId) return;
     setLoading(true);
     try {
-      await runOptimization(listId, preferredMode);
+      await runOptimization(listId, mode, {
+        coverageRadiusKm: radius,
+        userLocationPreferenceId: activeLocationPref?.id,
+      });
     } catch {
       toast.error('Erro ao otimizar. Verifique se a lista tem itens e sua localização está configurada.');
     } finally {
@@ -179,9 +193,26 @@ export function OptimizationResultPage() {
         <SparklesIcon className="size-10 text-muted-foreground" />
         <p className="text-[17px] font-semibold">Nenhuma otimização encontrada</p>
         <p className="max-w-sm text-[14px] text-muted-foreground">
-          Execute a otimização para encontrar os melhores preços para os itens da sua lista.
+          Escolha um modo e execute a otimização para encontrar os melhores preços.
         </p>
-        <Button onClick={handleRun} disabled={loading} className="mt-2">
+        <div className="mt-2 grid w-full max-w-sm grid-cols-2 gap-2 text-left">
+          {OPT_MODES.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setSelectedMode(m.id)}
+              className={`rounded-xl border px-3 py-2.5 transition-colors ${
+                selectedMode === m.id
+                  ? 'border-primary bg-[var(--ds-primary-soft)] text-primary'
+                  : 'border-border bg-card hover:bg-muted'
+              }`}
+            >
+              <div className="text-[13px] font-semibold">{m.label}</div>
+              <div className="text-[11.5px] text-muted-foreground">{m.desc}</div>
+            </button>
+          ))}
+        </div>
+        <Button onClick={() => handleRun(selectedMode)} disabled={loading} className="mt-2">
           <SparklesIcon className="size-4" />
           {loading ? 'Otimizando…' : 'Otimizar agora'}
         </Button>
@@ -274,7 +305,7 @@ export function OptimizationResultPage() {
             <Button
               variant="outline"
               disabled={loading}
-              onClick={handleRun}
+              onClick={() => handleRun()}
             >
               <SparklesIcon className="size-4" /> {loading ? 'Recalculando…' : 'Recalcular'}
             </Button>
@@ -313,38 +344,52 @@ export function OptimizationResultPage() {
             </div>
           </Card>
 
-          <Card className="flex flex-wrap items-center gap-4 rounded-2xl p-4">
-            <div className="flex items-center gap-2">
-              <MapPinIcon className="size-[18px] text-[var(--ds-location)]" />
-              <div>
-                <div className="text-[12px] text-[var(--ds-location)]">Modo</div>
-                <div className="text-[13.5px] font-semibold">Menor preço perto de mim</div>
-              </div>
+          <Card className="rounded-2xl p-4">
+            <div className="mb-1.5 text-[12px] font-semibold text-muted-foreground">
+              Modo de otimização — selecione e clique em Recalcular
             </div>
-            <div className="hidden h-[30px] w-px bg-border sm:block" />
-            <div className="flex items-center gap-2">
-              <ShieldCheckIcon className="size-[18px] text-[var(--ds-savings)]" />
-              <div>
-                <div className="text-[12px] text-muted-foreground">Precisão</div>
-                <div className="text-[13.5px] font-semibold">
-                  {selectedSelections.filter((s) => s.trustLevel === 'high').length} itens alta confiança
-                </div>
-              </div>
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              {OPT_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setSelectedMode(m.id)}
+                  className={`rounded-lg border px-2.5 py-2 text-left transition-colors ${
+                    selectedMode === m.id
+                      ? 'border-primary bg-[var(--ds-primary-soft)] text-primary'
+                      : 'border-border bg-card hover:bg-muted'
+                  }`}
+                >
+                  <div className="text-[12.5px] font-semibold leading-tight">{m.label}</div>
+                  <div className="text-[11px] text-muted-foreground">{m.desc}</div>
+                </button>
+              ))}
             </div>
-            {missingSelections.length > 0 && (
-              <>
-                <div className="hidden h-[30px] w-px bg-border sm:block" />
-                <div className="flex items-center gap-2">
-                  <AlertTriangleIcon className="size-[18px] text-[var(--ds-warning)]" />
-                  <div>
-                    <div className="text-[12px] text-[var(--ds-warning)]">Avisos</div>
-                    <div className="text-[13.5px] font-semibold">
-                      {missingSelections.length} {missingSelections.length === 1 ? 'item indisponível' : 'itens indisponíveis'}
-                    </div>
+            <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-border pt-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheckIcon className="size-[18px] text-[var(--ds-savings)]" />
+                <div>
+                  <div className="text-[12px] text-muted-foreground">Precisão</div>
+                  <div className="text-[13.5px] font-semibold">
+                    {selectedSelections.filter((s) => s.trustLevel === 'high').length} itens alta confiança
                   </div>
                 </div>
-              </>
-            )}
+              </div>
+              {missingSelections.length > 0 && (
+                <>
+                  <div className="hidden h-[30px] w-px bg-border sm:block" />
+                  <div className="flex items-center gap-2">
+                    <AlertTriangleIcon className="size-[18px] text-[var(--ds-warning)]" />
+                    <div>
+                      <div className="text-[12px] text-[var(--ds-warning)]">Avisos</div>
+                      <div className="text-[13.5px] font-semibold">
+                        {missingSelections.length} {missingSelections.length === 1 ? 'item indisponível' : 'itens indisponíveis'}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </Card>
 
           <SectionTitle>Itens otimizados ({items.length})</SectionTitle>

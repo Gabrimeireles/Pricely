@@ -247,18 +247,30 @@ export function HomePage() {
         </div>
 
         {/* offers */}
-        {offers.length > 0 && (
-          <div>
-            <SectionTitle action="Ver todas as ofertas" onAction={() => navigate('/ofertas')}>
-              Ofertas recomendadas para você
-            </SectionTitle>
+        <div>
+          <SectionTitle action="Ver todas as ofertas" onAction={() => navigate('/ofertas')}>
+            {activeLocation?.latitude ? `Ofertas próximas (${radius} km)` : 'Ofertas recomendadas para você'}
+          </SectionTitle>
+          {offers.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border py-10 text-center text-muted-foreground">
+              <StoreIcon className="size-8 opacity-30" />
+              <p className="text-[14px]">
+                {activeLocation?.latitude
+                  ? `Nenhuma oferta encontrada no raio de ${radius} km`
+                  : 'Nenhuma oferta disponível no momento'}
+              </p>
+              {!activeLocation?.latitude && (
+                <p className="text-[12.5px] opacity-70">Configure sua localização para ver ofertas próximas</p>
+              )}
+            </div>
+          ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {offers.map((o) => (
                 <OfferCard key={o.id} offer={o} onClick={() => navigate('/ofertas')} />
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* right rail */}
