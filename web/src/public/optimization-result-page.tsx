@@ -133,7 +133,7 @@ export function OptimizationResultPage() {
   const navigate = useNavigate();
   const { listId } = useParams<{ listId: string }>();
   const { radius } = useLocationCtx();
-  const { optimizationResults, loadLatestOptimization, lists } = usePricely();
+  const { optimizationResults, loadLatestOptimization, runOptimization, preferredMode, lists } = usePricely();
   const [open, setOpen] = useState(-1);
   const [loading, setLoading] = useState(false);
 
@@ -144,6 +144,18 @@ export function OptimizationResultPage() {
       void loadLatestOptimization(listId).finally(() => setLoading(false));
     }
   }, [listId]);
+
+  const handleRun = async () => {
+    if (!listId) return;
+    setLoading(true);
+    try {
+      await runOptimization(listId, preferredMode);
+    } catch {
+      toast.error('Erro ao otimizar. Verifique se a lista tem itens e sua localização está configurada.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const result = listId ? optimizationResults[listId] : undefined;
   const list = lists.find((l) => l.id === listId);
@@ -164,8 +176,15 @@ export function OptimizationResultPage() {
   if (!result) {
     return (
       <div className="flex flex-col items-center gap-4 py-20 text-center">
-        <XCircleIcon className="size-10 text-muted-foreground" />
-        <p className="text-[15px] text-muted-foreground">Nenhum resultado de otimização encontrado para esta lista.</p>
+        <SparklesIcon className="size-10 text-muted-foreground" />
+        <p className="text-[17px] font-semibold">Nenhuma otimização encontrada</p>
+        <p className="max-w-sm text-[14px] text-muted-foreground">
+          Execute a otimização para encontrar os melhores preços para os itens da sua lista.
+        </p>
+        <Button onClick={handleRun} disabled={loading} className="mt-2">
+          <SparklesIcon className="size-4" />
+          {loading ? 'Otimizando…' : 'Otimizar agora'}
+        </Button>
         <Button variant="outline" onClick={() => navigate('/listas')}>Voltar para listas</Button>
       </div>
     );
@@ -254,12 +273,10 @@ export function OptimizationResultPage() {
           <>
             <Button
               variant="outline"
-              onClick={() => {
-                toast.info('Recalculando…');
-                if (listId) void loadLatestOptimization(listId);
-              }}
+              disabled={loading}
+              onClick={handleRun}
             >
-              <SparklesIcon className="size-4" /> Recalcular
+              <SparklesIcon className="size-4" /> {loading ? 'Recalculando…' : 'Recalcular'}
             </Button>
             <Button
               onClick={() => listId && navigate(`/listas/${listId}/checklist`)}

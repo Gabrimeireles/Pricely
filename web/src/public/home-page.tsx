@@ -48,9 +48,13 @@ export function HomePage() {
   useEffect(() => {
     const regionSlug = cityId ?? cities[0]?.id;
     if (!regionSlug) return;
-    fetchRegionOffers(regionSlug, { pageSize: 4 })
+    fetchRegionOffers(regionSlug, {
+      pageSize: 4,
+      latitude: activeLocation?.latitude ?? undefined,
+      longitude: activeLocation?.longitude ?? undefined,
+      coverageRadiusKm: activeLocation?.latitude ? radius : undefined,
+    })
       .then((r) => {
-        setStoreCount(r.activeEstablishmentCount);
         setOffers(
           r.offers.slice(0, 4).map((o): Offer => ({
             id: o.id,
@@ -67,7 +71,7 @@ export function HomePage() {
         );
       })
       .catch(() => {});
-  }, [cityId, cities]);
+  }, [cityId, cities, activeLocation?.latitude, activeLocation?.longitude, radius]);
 
   useEffect(() => {
     if (!activeCity || !accessToken) return;
@@ -78,17 +82,17 @@ export function HomePage() {
       coverageRadiusKm: radius,
     })
       .then((r) => {
-        setMapEstablishments(
-          r.establishments.map((e) => ({
-            id: e.id,
-            brandName: e.brandName,
-            unitName: e.unitName,
-            neighborhood: e.neighborhood,
-            distanceKm: e.distanceKm,
-            latitude: e.latitude,
-            longitude: e.longitude,
-          })),
-        );
+        const mapped = r.establishments.map((e) => ({
+          id: e.id,
+          brandName: e.brandName,
+          unitName: e.unitName,
+          neighborhood: e.neighborhood,
+          distanceKm: e.distanceKm,
+          latitude: e.latitude,
+          longitude: e.longitude,
+        }));
+        setMapEstablishments(mapped);
+        setStoreCount(mapped.length);
       })
       .catch(() => {});
   }, [activeCity?.id, activeLocation?.latitude, activeLocation?.longitude, radius, accessToken]);

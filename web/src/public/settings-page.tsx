@@ -133,19 +133,31 @@ export function SettingsPage() {
 
         <Section title="Notificações">
           <Row label="Notificações in-app" desc="Status de otimização e notas">
-            <Switch checked={push} onCheckedChange={setPush} disabled={!prefsLoaded} />
+            <Switch
+              checked={push}
+              onCheckedChange={setPush}
+              className={!prefsLoaded ? 'pointer-events-none opacity-40' : ''}
+            />
           </Row>
           <Row label="Alertas de preço" desc="Quando um item da lista baixar de preço" top>
-            <Switch checked={price} onCheckedChange={setPrice} disabled={!prefsLoaded} />
+            <Switch
+              checked={price}
+              onCheckedChange={setPrice}
+              className={!prefsLoaded ? 'pointer-events-none opacity-40' : ''}
+            />
           </Row>
           <Row label="Resultado de notas fiscais" desc="Quando uma nota for processada" top>
-            <Switch checked={receipts} onCheckedChange={setReceipts} disabled={!prefsLoaded} />
+            <Switch
+              checked={receipts}
+              onCheckedChange={setReceipts}
+              className={!prefsLoaded ? 'pointer-events-none opacity-40' : ''}
+            />
           </Row>
         </Section>
       </div>
 
       <div className="mt-4 flex justify-end">
-        <Button onClick={savePrefs} className="bg-[#134e48] hover:bg-[#0f3f3a]">
+        <Button onClick={savePrefs}>
           Salvar alterações
         </Button>
       </div>

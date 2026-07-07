@@ -48,13 +48,11 @@ export function StoreMap({ height = 360, center, radiusKm, establishments }: Pro
           typeof s.latitude === 'number' && typeof s.longitude === 'number',
       );
 
-      // Zoom calibrated to show the full radius circle on screen
-      const zoomForRadius = (km: number) => {
-        if (km <= 3) return 15;
-        if (km <= 5) return 14;
-        if (km <= 10) return 13;
-        if (km <= 20) return 12;
-        return 11;
+      // Compute zoom so the radius circle fits inside the container with ~10% padding.
+      // At latitude 23° (Brazil): visible_km ≈ height * 40075 * cos(23°) / (256 * 2^Z)
+      const zoomForRadius = (km: number, containerHeight: number) => {
+        const visibleFactor = (containerHeight * 40075 * 0.917 * 0.9) / 256;
+        return Math.min(18, Math.max(5, Math.floor(Math.log2(visibleFactor / (2 * km)))));
       };
 
       // Center on user location; fall back to store centroid if no GPS
@@ -69,7 +67,8 @@ export function StoreMap({ height = 360, center, radiusKm, establishments }: Pro
         ? [center.lat, center.lng]
         : storeCentroid ?? [-15.77972, -47.92972]; // Brasília as geographic center of Brazil
 
-      const initialZoom = center ? zoomForRadius(radiusKm) : storeCentroid ? 12 : 5;
+      const containerHeight = containerRef.current?.clientHeight ?? height;
+      const initialZoom = center ? zoomForRadius(radiusKm, containerHeight) : storeCentroid ? 12 : 5;
 
       const map = L.map(containerRef.current, {
         center: initialCenter,

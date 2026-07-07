@@ -32,6 +32,6 @@ export class OptimizeShoppingListDto implements OptimizeShoppingListRequest {
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Max(25)
+  @Max(30)
   coverageRadiusKm?: number;
 }

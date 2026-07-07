@@ -435,12 +435,13 @@ export function ShopperShell() {
     setLocationPromptOpen(true);
   }, [locationPreferencesLoaded, isAuthenticated, cityId, activeLocation, dismissedForCity]);
 
-  // Silently detect GPS only when there's no saved location with coordinates
+  // Silently detect GPS once per session to keep location and city in sync
+  const gpsDetectedRef = useRef(false);
   useEffect(() => {
     if (!isAuthenticated || isBootstrapping || !cityId) return;
-    // Skip if the user already has a location with GPS coordinates saved
-    if (activeLocation?.latitude && activeLocation?.longitude) return;
+    if (gpsDetectedRef.current) return;
     if (!navigator.geolocation || !navigator.permissions) return;
+    gpsDetectedRef.current = true;
     void navigator.permissions.query({ name: 'geolocation' }).then((status) => {
       if (status.state !== 'granted') return;
       navigator.geolocation.getCurrentPosition(
