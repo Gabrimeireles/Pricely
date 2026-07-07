@@ -234,10 +234,20 @@ jobs:
             docker compose --env-file .env run --rm -T backend sh -lc "npm run db:seed" </dev/null
           fi
 
-          docker compose --env-file .env stop web backend || true
-          docker compose --env-file .env rm -f web backend || true
+          echo "=== Pre-recreate container state ==="
+          docker ps --filter name=pricely-homolog-web --format 'web: {{.Image}} {{.Status}}'
+          docker ps --filter name=pricely-homolog-backend --format 'backend: {{.Image}} {{.Status}}'
+          echo "=== .env IMAGE_TAG ==="
+          grep IMAGE_TAG .env || echo "(not found)"
+
+          docker stop pricely-homolog-web pricely-homolog-backend 2>/dev/null || true
+          docker rm -f pricely-homolog-web pricely-homolog-backend 2>/dev/null || true
           docker compose --env-file .env up -d backend web
           docker compose --env-file .env ps
+
+          echo "=== Post-recreate container state ==="
+          docker ps --filter name=pricely-homolog-web --format 'web: {{.Image}} {{.Status}}'
+          docker ps --filter name=pricely-homolog-backend --format 'backend: {{.Image}} {{.Status}}'
 
           echo "Waiting for web production server..."
           for attempt in $(seq 1 30); do
