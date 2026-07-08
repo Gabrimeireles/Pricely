@@ -45,7 +45,7 @@ const shopperChildren: RouteObject[] = [
   {
     path: 'listas/:listId',
     lazy: async () => {
-      const { ListEditorPage } = await import('@/public/public-pages');
+      const { ListEditorPage } = await import('@/public/list-editor-page');
       return { Component: ListEditorPage };
     },
   },

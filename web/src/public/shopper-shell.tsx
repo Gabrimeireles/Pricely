@@ -10,10 +10,12 @@ import {
   HomeIcon,
   ListChecksIcon,
   MapPinIcon,
+  MoonIcon,
   ReceiptTextIcon,
   SettingsIcon,
   SparklesIcon,
   StoreIcon,
+  SunIcon,
   TagsIcon,
   ZapIcon,
 } from 'lucide-react';
@@ -38,6 +40,7 @@ import {
   type UserNotificationResponse,
 } from '@/app/api';
 import { usePricely } from '@/app/pricely-context';
+import { useTheme } from '@/app/theme-context';
 
 import { CityDialog, CoverageDialog, RadiusSelect } from '@/components/shopper/location-controls';
 
@@ -274,6 +277,7 @@ function Topbar() {
   const navigate = useNavigate();
   const { city, radius, setRadius, locationSource, postalCode, locationLabel, storeCount, openCity, openLocationPrompt } = useLocationCtx();
   const { signOut, currentUser, isAuthenticated, accessToken } = usePricely();
+  const { theme, toggleTheme } = useTheme();
 
   const initials = currentUser?.displayName
     ? currentUser.displayName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
@@ -304,6 +308,15 @@ function Topbar() {
       )}
 
       <div className="ml-auto flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+          className="size-9 rounded-xl text-muted-foreground"
+        >
+          {theme === 'dark' ? <SunIcon className="size-[18px]" /> : <MoonIcon className="size-[18px]" />}
+        </Button>
         {isAuthenticated && <NotificationBell accessToken={accessToken} />}
         {isAuthenticated ? (
           <div className="flex items-center gap-2.5">

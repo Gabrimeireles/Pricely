@@ -48,10 +48,11 @@ export function StoreMap({ height = 360, center, radiusKm, establishments }: Pro
           typeof s.latitude === 'number' && typeof s.longitude === 'number',
       );
 
-      // Compute zoom so the radius circle fits inside the container with ~10% padding.
-      // At latitude 23° (Brazil): visible_km ≈ height * 40075 * cos(23°) / (256 * 2^Z)
+      // Compute zoom so the radius circle occupies ~50% of the container height,
+      // leaving context around it. At latitude 23° (Brazil):
+      //   visible_km ≈ containerHeight * 40075 * cos(23°) / (256 * 2^Z)
       const zoomForRadius = (km: number, containerHeight: number) => {
-        const visibleFactor = (containerHeight * 40075 * 0.917 * 0.9) / 256;
+        const visibleFactor = (containerHeight * 40075 * 0.917 * 0.5) / 256;
         return Math.min(18, Math.max(5, Math.floor(Math.log2(visibleFactor / (2 * km)))));
       };
 
@@ -67,7 +68,8 @@ export function StoreMap({ height = 360, center, radiusKm, establishments }: Pro
         ? [center.lat, center.lng]
         : storeCentroid ?? [-15.77972, -47.92972]; // Brasília as geographic center of Brazil
 
-      const containerHeight = containerRef.current?.clientHeight ?? height;
+      // Use logical OR so clientHeight=0 (before first paint) falls back to the prop
+      const containerHeight = containerRef.current?.clientHeight || height;
       const initialZoom = center ? zoomForRadius(radiusKm, containerHeight) : storeCentroid ? 12 : 5;
 
       const map = L.map(containerRef.current, {
@@ -77,6 +79,9 @@ export function StoreMap({ height = 360, center, radiusKm, establishments }: Pro
         attributionControl: true,
       });
       mapRef.current = map;
+
+      // Handle dialog/animation cases where container size isn't final at mount
+      setTimeout(() => { if (!cancelled) map.invalidateSize(); }, 80);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',

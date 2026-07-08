@@ -10,7 +10,7 @@ import {
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ListEditorPage } from './public-pages';
+import { ListEditorPage } from './list-editor-page';
 
 const saveList = vi.fn();
 const shareList = vi.fn();

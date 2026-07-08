@@ -4566,7 +4566,7 @@ function buildEditableItems(source?: ShoppingList): EditableListItem[] {
   }));
 }
 
-export function ListEditorPage() {
+function ListEditorPageLegacy() {
   const navigate = useNavigate();
   const { listId = 'nova' } = useParams();
   const {

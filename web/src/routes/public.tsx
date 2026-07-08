@@ -3,7 +3,6 @@ import {
   ChecklistPage,
   CitiesPage,
   LandingPage,
-  ListEditorPage,
   ListsPage,
   OfferDetailPage,
   OffersPage,
@@ -13,6 +12,7 @@ import {
   SignInPage,
   SignUpPage,
 } from '@/public/public-pages';
+import { ListEditorPage } from '@/public/list-editor-page';
 import { RouteErrorPage } from './route-error';
 
 export const publicRoute = {
